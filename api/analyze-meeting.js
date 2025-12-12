@@ -28,7 +28,8 @@ export default async function handler(req, res) {
     }
 
     // 한국어가 아닌 경우 번역 필요
-    const needsTranslation = language && language !== 'ko';
+    const isKorean = language && ['ko', 'korean'].includes(language.toLowerCase());
+    const needsTranslation = language && !isKorean;
 
     const systemPrompt = `당신은 알프레도, 사용자의 AI 비서입니다. 
 회의 녹취록을 분석하여 다음 형식의 JSON으로 정리해주세요:
