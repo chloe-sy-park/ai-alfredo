@@ -73,4 +73,4 @@ npm run preview
 ---
 
 Made with 💜 by Life Butler Team 🐧
-wowwow
+wowwowwow
