@@ -23,7 +23,7 @@ export default async function handler(req, res) {
     }
     const accessToken = authHeader.split(' ')[1];
 
-    const { action, event, events } = req.body;
+    const { action, event, events, eventId } = req.body;
 
     // 단일 이벤트 추가
     if (action === 'add' && event) {
@@ -37,6 +37,18 @@ export default async function handler(req, res) {
         events.map(e => addEvent(accessToken, e))
       );
       return res.status(200).json({ success: true, events: results });
+    }
+
+    // 이벤트 수정
+    if (action === 'update' && eventId && event) {
+      const result = await updateEvent(accessToken, eventId, event);
+      return res.status(200).json({ success: true, event: result });
+    }
+
+    // 이벤트 삭제
+    if (action === 'delete' && eventId) {
+      await deleteEvent(accessToken, eventId);
+      return res.status(200).json({ success: true });
     }
 
     // 이벤트 목록 가져오기
@@ -56,26 +68,7 @@ export default async function handler(req, res) {
 
 // 이벤트 추가
 async function addEvent(accessToken, event) {
-  const calendarEvent = {
-    summary: event.title,
-    description: event.description || '',
-    start: event.allDay 
-      ? { date: event.date }
-      : { dateTime: `${event.date}T${event.time || '09:00'}:00`, timeZone: 'Asia/Seoul' },
-    end: event.allDay
-      ? { date: event.endDate || event.date }
-      : { dateTime: `${event.date}T${event.endTime || '10:00'}:00`, timeZone: 'Asia/Seoul' },
-  };
-
-  // 알림 설정 (선택)
-  if (event.reminder) {
-    calendarEvent.reminders = {
-      useDefault: false,
-      overrides: [
-        { method: 'popup', minutes: event.reminder }
-      ]
-    };
-  }
+  const calendarEvent = formatEvent(event);
 
   const response = await fetch(
     'https://www.googleapis.com/calendar/v3/calendars/primary/events',
@@ -97,14 +90,85 @@ async function addEvent(accessToken, event) {
   return await response.json();
 }
 
+// 이벤트 수정
+async function updateEvent(accessToken, eventId, event) {
+  const calendarEvent = formatEvent(event);
+
+  const response = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
+    {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(calendarEvent),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Failed to update event');
+  }
+
+  return await response.json();
+}
+
+// 이벤트 삭제
+async function deleteEvent(accessToken, eventId) {
+  const response = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
+    {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!response.ok && response.status !== 404) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Failed to delete event');
+  }
+
+  return true;
+}
+
+// 이벤트 포맷 변환
+function formatEvent(event) {
+  const calendarEvent = {
+    summary: event.title,
+    description: event.description || '',
+    location: event.location || '',
+    start: event.allDay 
+      ? { date: event.date }
+      : { dateTime: `${event.date}T${event.time || event.start || '09:00'}:00`, timeZone: 'Asia/Seoul' },
+    end: event.allDay
+      ? { date: event.endDate || event.date }
+      : { dateTime: `${event.date}T${event.endTime || event.end || '10:00'}:00`, timeZone: 'Asia/Seoul' },
+  };
+
+  // 알림 설정 (선택)
+  if (event.reminder) {
+    calendarEvent.reminders = {
+      useDefault: false,
+      overrides: [
+        { method: 'popup', minutes: event.reminder }
+      ]
+    };
+  }
+
+  return calendarEvent;
+}
+
 // 이벤트 목록 가져오기
 async function listEvents(accessToken, timeMin, timeMax) {
   const params = new URLSearchParams({
     timeMin: timeMin || new Date().toISOString(),
-    timeMax: timeMax || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    timeMax: timeMax || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     singleEvents: 'true',
     orderBy: 'startTime',
-    maxResults: '50',
+    maxResults: '100',
   });
 
   const response = await fetch(
