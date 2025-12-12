@@ -9223,12 +9223,14 @@ ${events.length > 0 ? events.map(e => `- ${e.start || ''} ${e.title}${e.location
   const handleQuickReply = async (reply) => {
     if (isLoading) return;
     
-    setMessages(prev => [...prev, { id: Date.now(), type: 'user', text: reply.label }]);
+    const userId = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const loadingId = `loading-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    setMessages(prev => [...prev, { id: userId, type: 'user', text: reply.label }]);
     setShowQuickReplies(false);
     setIsLoading(true);
     
     // 로딩 메시지 표시
-    const loadingId = Date.now() + 1;
     setMessages(prev => [...prev, { id: loadingId, type: 'alfredo', text: '...', isLoading: true }]);
     
     try {
@@ -9261,13 +9263,15 @@ ${events.length > 0 ? events.map(e => `- ${e.start || ''} ${e.title}${e.location
     if (!input.trim() || isLoading) return;
     
     const userText = input.trim();
-    setMessages(prev => [...prev, { id: Date.now(), type: 'user', text: userText }]);
+    const userId = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const loadingId = `loading-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    setMessages(prev => [...prev, { id: userId, type: 'user', text: userText }]);
     setInput('');
     setShowQuickReplies(false);
     setIsLoading(true);
     
     // 로딩 메시지 표시
-    const loadingId = Date.now() + 1;
     setMessages(prev => [...prev, { id: loadingId, type: 'alfredo', text: '...', isLoading: true }]);
     
     try {
