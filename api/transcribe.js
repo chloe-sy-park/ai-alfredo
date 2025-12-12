@@ -78,7 +78,7 @@ export default async function handler(req, res) {
     const blob = new Blob([fileBuffer], { type: 'audio/mpeg' });
     formData.append('file', blob, filename);
     formData.append('model', 'whisper-1');
-    formData.append('language', 'ko'); // 한국어
+    // language 파라미터 제거 - 자동 감지하도록
     formData.append('response_format', 'verbose_json'); // 타임스탬프 포함
 
     const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
@@ -100,6 +100,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       success: true,
       text: result.text,
+      language: result.language, // 감지된 언어 (en, ko, ja 등)
       duration: result.duration,
       segments: result.segments || [],
     });
