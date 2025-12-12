@@ -4,6 +4,7 @@ import {
   Calendar, CheckSquare, Lightbulb, MessageSquare, Clock,
   ChevronDown, ChevronUp, X, Plus, Sparkles, Download, FileText
 } from 'lucide-react';
+import { useGoogleCalendar } from '../hooks/useGoogleCalendar';
 
 // 회의록 업로드 및 분석 컴포넌트
 const MeetingUploader = ({ 
@@ -34,6 +35,17 @@ const MeetingUploader = ({
     events: [],
     ideas: [],
   });
+  const [addToGoogleCalendar, setAddToGoogleCalendar] = useState(false);
+  const [isAddingToGoogle, setIsAddingToGoogle] = useState(false);
+
+  // Google Calendar 훅
+  const { 
+    isSignedIn: isGoogleSignedIn, 
+    isLoading: isGoogleLoading,
+    userInfo: googleUser,
+    signIn: googleSignIn, 
+    addEvents: addGoogleEvents 
+  } = useGoogleCalendar();
 
   const theme = {
     bg: darkMode ? 'bg-gray-900' : 'bg-[#F0EBFF]',
@@ -303,54 +315,78 @@ const MeetingUploader = ({
   };
 
   // 선택된 항목 추가
-  const addSelectedItems = () => {
+  const addSelectedItems = async () => {
     if (!analysis) return;
 
-    // 태스크 추가
-    const tasksToAdd = selectedItems.tasks.map(i => {
-      const item = analysis.actionItems[i];
-      return {
+    setIsAddingToGoogle(true);
+
+    try {
+      // 태스크 추가
+      const tasksToAdd = selectedItems.tasks.map(i => {
+        const item = analysis.actionItems[i];
+        return {
+          id: Date.now() + Math.random(),
+          title: item.task,
+          completed: false,
+          priority: item.priority === 'high' ? 3 : item.priority === 'medium' ? 2 : 1,
+          dueDate: item.deadline,
+          category: 'work',
+          fromMeeting: meetingTitle || file?.name,
+        };
+      });
+      if (tasksToAdd.length > 0 && onAddTasks) {
+        onAddTasks(tasksToAdd);
+      }
+
+      // 일정 추가
+      const eventsToAdd = selectedItems.events.map(i => {
+        const item = analysis.schedules[i];
+        return {
+          id: Date.now() + Math.random(),
+          title: item.title,
+          date: item.date,
+          time: item.time || '09:00',
+          description: item.description,
+          fromMeeting: meetingTitle || file?.name,
+        };
+      });
+      if (eventsToAdd.length > 0 && onAddEvents) {
+        onAddEvents(eventsToAdd);
+      }
+
+      // Google Calendar에 일정 추가
+      if (addToGoogleCalendar && eventsToAdd.length > 0 && isGoogleSignedIn) {
+        try {
+          const googleEvents = eventsToAdd.map(event => ({
+            title: event.title,
+            date: event.date,
+            time: event.time,
+            description: `${event.description || ''}\n\n📋 회의: ${event.fromMeeting}`,
+          }));
+          await addGoogleEvents(googleEvents);
+        } catch (err) {
+          console.error('Google Calendar 추가 실패:', err);
+          // 실패해도 앱 내 일정은 추가되었으므로 계속 진행
+        }
+      }
+
+      // 아이디어는 인박스로
+      const ideasToAdd = selectedItems.ideas.map(i => ({
         id: Date.now() + Math.random(),
-        title: item.task,
-        completed: false,
-        priority: item.priority === 'high' ? 3 : item.priority === 'medium' ? 2 : 1,
-        dueDate: item.deadline,
-        category: 'work',
+        text: analysis.ideas[i],
+        createdAt: new Date().toISOString(),
         fromMeeting: meetingTitle || file?.name,
-      };
-    });
-    if (tasksToAdd.length > 0 && onAddTasks) {
-      onAddTasks(tasksToAdd);
-    }
+      }));
+      if (ideasToAdd.length > 0 && onAddToInbox) {
+        onAddToInbox(ideasToAdd);
+      }
 
-    // 일정 추가
-    const eventsToAdd = selectedItems.events.map(i => {
-      const item = analysis.schedules[i];
-      return {
-        id: Date.now() + Math.random(),
-        title: item.title,
-        date: item.date,
-        time: item.time || '09:00',
-        description: item.description,
-        fromMeeting: meetingTitle || file?.name,
-      };
-    });
-    if (eventsToAdd.length > 0 && onAddEvents) {
-      onAddEvents(eventsToAdd);
+      onClose?.();
+    } catch (err) {
+      console.error('추가 중 오류:', err);
+    } finally {
+      setIsAddingToGoogle(false);
     }
-
-    // 아이디어는 인박스로
-    const ideasToAdd = selectedItems.ideas.map(i => ({
-      id: Date.now() + Math.random(),
-      text: analysis.ideas[i],
-      createdAt: new Date().toISOString(),
-      fromMeeting: meetingTitle || file?.name,
-    }));
-    if (ideasToAdd.length > 0 && onAddToInbox) {
-      onAddToInbox(ideasToAdd);
-    }
-
-    onClose?.();
   };
 
   // 섹션 토글
@@ -799,6 +835,57 @@ const MeetingUploader = ({
                 아이디어 {selectedItems.ideas.length}개
               </span>
             </div>
+            
+            {/* Google Calendar 연동 옵션 */}
+            {selectedItems.events.length > 0 && (
+              <div className={`mb-4 p-3 rounded-xl border ${theme.border} ${darkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
+                {isGoogleLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Google 연결 확인 중...
+                  </div>
+                ) : isGoogleSignedIn ? (
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={addToGoogleCalendar}
+                      onChange={(e) => setAddToGoogleCalendar(e.target.checked)}
+                      className="w-5 h-5 rounded border-gray-300 text-[#A996FF] focus:ring-[#A996FF]"
+                    />
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                      </svg>
+                      <span className={`text-sm ${theme.text}`}>
+                        Google Calendar에도 추가
+                      </span>
+                      {googleUser && (
+                        <span className="text-xs text-gray-400">
+                          ({googleUser.email})
+                        </span>
+                      )}
+                    </div>
+                  </label>
+                ) : (
+                  <button
+                    onClick={googleSignIn}
+                    className="flex items-center gap-2 text-sm text-[#A996FF] hover:underline"
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    Google 계정 연결하기
+                  </button>
+                )}
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button
                 onClick={onClose}
@@ -808,11 +895,16 @@ const MeetingUploader = ({
               </button>
               <button
                 onClick={addSelectedItems}
-                className="flex-1 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-[#A996FF] to-[#8B7CF7]"
+                disabled={isAddingToGoogle}
+                className="flex-1 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] disabled:opacity-50"
               >
                 <span className="flex items-center justify-center gap-2">
-                  <Plus className="w-5 h-5" />
-                  추가하기
+                  {isAddingToGoogle ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Plus className="w-5 h-5" />
+                  )}
+                  {isAddingToGoogle ? '추가 중...' : '추가하기'}
                 </span>
               </button>
             </div>
