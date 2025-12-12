@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { 
   Mic, Upload, FileAudio, Loader2, CheckCircle2, AlertCircle, 
   Calendar, CheckSquare, Lightbulb, MessageSquare, Clock,
-  ChevronDown, ChevronUp, X, Plus, Sparkles
+  ChevronDown, ChevronUp, X, Plus, Sparkles, Download, FileText
 } from 'lucide-react';
 
 // 회의록 업로드 및 분석 컴포넌트
@@ -48,7 +48,7 @@ const MeetingUploader = ({
   const handleDrop = useCallback((e) => {
     e.preventDefault();
     const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile && isAudioFile(droppedFile)) {
+    if (droppedFile && isValidFile(droppedFile)) {
       setFile(droppedFile);
     }
   }, []);
@@ -59,7 +59,7 @@ const MeetingUploader = ({
 
   const handleFileSelect = (e) => {
     const selectedFile = e.target.files[0];
-    if (selectedFile && isAudioFile(selectedFile)) {
+    if (selectedFile && isValidFile(selectedFile)) {
       setFile(selectedFile);
     }
   };
@@ -68,6 +68,16 @@ const MeetingUploader = ({
     const validTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/m4a', 'audio/mp4', 'audio/webm', 'audio/ogg'];
     return validTypes.includes(file.type) || 
            file.name.match(/\.(mp3|wav|m4a|webm|ogg|mp4)$/i);
+  };
+
+  const isDocumentFile = (file) => {
+    const validTypes = ['text/plain', 'text/markdown', 'application/pdf'];
+    return validTypes.includes(file.type) || 
+           file.name.match(/\.(txt|md|text)$/i);
+  };
+
+  const isValidFile = (file) => {
+    return isAudioFile(file) || isDocumentFile(file);
   };
 
   const formatFileSize = (bytes) => {
@@ -87,29 +97,45 @@ const MeetingUploader = ({
     if (!file) return;
 
     try {
-      // Step 1: Transcribe
-      setStep('transcribing');
-      setProgress(10);
+      let transcriptText = '';
+      let language = 'ko';
 
-      const formData = new FormData();
-      formData.append('file', file);
+      // 문서 파일인 경우 직접 텍스트 읽기
+      if (isDocumentFile(file)) {
+        setStep('analyzing');
+        setProgress(30);
 
-      setProgress(30);
+        transcriptText = await readTextFile(file);
+        setTranscript(transcriptText);
+        setDetectedLanguage('ko'); // 문서는 기본적으로 한국어로 가정
+        setProgress(50);
+      } else {
+        // 오디오 파일인 경우 Whisper로 변환
+        setStep('transcribing');
+        setProgress(10);
 
-      const transcribeRes = await fetch('/api/transcribe', {
-        method: 'POST',
-        body: formData,
-      });
+        const formData = new FormData();
+        formData.append('file', file);
 
-      if (!transcribeRes.ok) {
-        const err = await transcribeRes.json();
-        throw new Error(err.error || 'Transcription failed');
+        setProgress(30);
+
+        const transcribeRes = await fetch('/api/transcribe', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!transcribeRes.ok) {
+          const err = await transcribeRes.json();
+          throw new Error(err.error || 'Transcription failed');
+        }
+
+        const transcribeData = await transcribeRes.json();
+        transcriptText = transcribeData.text;
+        language = transcribeData.language;
+        setTranscript(transcriptText);
+        setDetectedLanguage(language);
+        setProgress(60);
       }
-
-      const transcribeData = await transcribeRes.json();
-      setTranscript(transcribeData.text);
-      setDetectedLanguage(transcribeData.language);
-      setProgress(60);
 
       // Step 2: Analyze
       setStep('analyzing');
@@ -119,9 +145,9 @@ const MeetingUploader = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          transcript: transcribeData.text,
+          transcript: transcriptText,
           meetingTitle: meetingTitle || file.name,
-          language: transcribeData.language,
+          language: language,
         }),
       });
 
@@ -150,6 +176,120 @@ const MeetingUploader = ({
       setError(err.message);
       setStep('error');
     }
+  };
+
+  // 텍스트 파일 읽기
+  const readTextFile = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = (e) => reject(new Error('파일을 읽을 수 없습니다'));
+      reader.readAsText(file);
+    });
+  };
+
+  // 원문 텍스트 다운로드
+  const downloadTranscript = () => {
+    if (!transcript) return;
+    const blob = new Blob([transcript], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${meetingTitle || '회의록'}_원문.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // 정리된 회의록 다운로드 (마크다운)
+  const downloadMeetingNotes = () => {
+    if (!analysis) return;
+    
+    const date = new Date().toLocaleDateString('ko-KR');
+    let markdown = `# ${meetingTitle || '회의록'}\n\n`;
+    markdown += `📅 ${date}\n\n`;
+    markdown += `---\n\n`;
+    
+    // 요약
+    markdown += `## 📋 요약\n\n${analysis.summary}\n\n`;
+    
+    // 핵심 포인트
+    if (analysis.keyPoints?.length > 0) {
+      markdown += `## 🎯 핵심 포인트\n\n`;
+      analysis.keyPoints.forEach(point => {
+        markdown += `- ${point}\n`;
+      });
+      markdown += `\n`;
+    }
+    
+    // 액션 아이템
+    if (analysis.actionItems?.length > 0) {
+      markdown += `## ✅ 액션 아이템\n\n`;
+      analysis.actionItems.forEach(item => {
+        const priority = item.priority === 'high' ? '🔴' : item.priority === 'medium' ? '🟡' : '🟢';
+        markdown += `- [ ] ${priority} ${item.task}`;
+        if (item.assignee) markdown += ` (@${item.assignee})`;
+        if (item.deadline) markdown += ` - 마감: ${item.deadline}`;
+        markdown += `\n`;
+      });
+      markdown += `\n`;
+    }
+    
+    // 일정
+    if (analysis.schedules?.length > 0) {
+      markdown += `## 📅 일정\n\n`;
+      analysis.schedules.forEach(schedule => {
+        markdown += `- **${schedule.title}**`;
+        if (schedule.date) markdown += ` - ${schedule.date}`;
+        if (schedule.time) markdown += ` ${schedule.time}`;
+        if (schedule.description) markdown += `\n  ${schedule.description}`;
+        markdown += `\n`;
+      });
+      markdown += `\n`;
+    }
+    
+    // 결정사항
+    if (analysis.decisions?.length > 0) {
+      markdown += `## 🔖 결정 사항\n\n`;
+      analysis.decisions.forEach(decision => {
+        markdown += `- ${decision}\n`;
+      });
+      markdown += `\n`;
+    }
+    
+    // 아이디어
+    if (analysis.ideas?.length > 0) {
+      markdown += `## 💡 아이디어\n\n`;
+      analysis.ideas.forEach(idea => {
+        markdown += `- ${idea}\n`;
+      });
+      markdown += `\n`;
+    }
+    
+    // 후속 조치
+    if (analysis.followUp?.length > 0) {
+      markdown += `## 📌 후속 조치\n\n`;
+      analysis.followUp.forEach(item => {
+        markdown += `- ${item}\n`;
+      });
+      markdown += `\n`;
+    }
+    
+    // 원문 포함
+    markdown += `---\n\n`;
+    markdown += `## 📝 원문 텍스트\n\n`;
+    markdown += `${transcript}\n`;
+    
+    const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${meetingTitle || '회의록'}_정리.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   // 선택 토글
@@ -271,7 +411,7 @@ const MeetingUploader = ({
               >
                 <input
                   type="file"
-                  accept="audio/*,.mp3,.wav,.m4a,.webm,.ogg"
+                  accept="audio/*,.mp3,.wav,.m4a,.webm,.ogg,.txt,.md,.text"
                   onChange={handleFileSelect}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
@@ -279,11 +419,18 @@ const MeetingUploader = ({
                 {file ? (
                   <div className="space-y-3">
                     <div className="w-16 h-16 mx-auto rounded-2xl bg-[#A996FF]/10 flex items-center justify-center">
-                      <FileAudio className="w-8 h-8 text-[#A996FF]" />
+                      {isAudioFile(file) ? (
+                        <FileAudio className="w-8 h-8 text-[#A996FF]" />
+                      ) : (
+                        <FileText className="w-8 h-8 text-[#A996FF]" />
+                      )}
                     </div>
                     <div>
                       <p className={`font-medium ${theme.text}`}>{file.name}</p>
-                      <p className={`text-sm ${theme.textSecondary}`}>{formatFileSize(file.size)}</p>
+                      <p className={`text-sm ${theme.textSecondary}`}>
+                        {formatFileSize(file.size)}
+                        {isDocumentFile(file) && ' • 문서 파일'}
+                      </p>
                     </div>
                     <button 
                       onClick={(e) => { e.stopPropagation(); setFile(null); }}
@@ -298,14 +445,15 @@ const MeetingUploader = ({
                       <Upload className={`w-8 h-8 ${theme.textSecondary}`} />
                     </div>
                     <div>
-                      <p className={`font-medium ${theme.text}`}>녹음 파일 업로드</p>
+                      <p className={`font-medium ${theme.text}`}>파일 업로드</p>
                       <p className={`text-sm ${theme.textSecondary}`}>
                         드래그하거나 클릭해서 선택
                       </p>
                     </div>
-                    <p className={`text-xs ${theme.textSecondary}`}>
-                      MP3, WAV, M4A, WebM 지원 (최대 25MB)
-                    </p>
+                    <div className={`text-xs ${theme.textSecondary} space-y-1`}>
+                      <p>🎤 음성: MP3, WAV, M4A, WebM (최대 25MB)</p>
+                      <p>📄 문서: TXT, MD (회의록 텍스트)</p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -388,6 +536,24 @@ const MeetingUploader = ({
           {/* Result */}
           {step === 'result' && analysis && (
             <div className="space-y-4">
+              {/* 다운로드 버튼 영역 */}
+              <div className="flex gap-2">
+                <button
+                  onClick={downloadTranscript}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border ${theme.border} ${theme.card} hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors`}
+                >
+                  <FileText className="w-4 h-4 text-[#A996FF]" />
+                  <span className={`text-sm font-medium ${theme.text}`}>원문 다운로드</span>
+                </button>
+                <button
+                  onClick={downloadMeetingNotes}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] text-white hover:opacity-90 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  <span className="text-sm font-medium">회의록 다운로드</span>
+                </button>
+              </div>
+
               {/* 원문 텍스트 */}
               <div className={`rounded-xl border ${theme.border} overflow-hidden`}>
                 <button
@@ -397,7 +563,7 @@ const MeetingUploader = ({
                   <div className="flex items-center gap-2">
                     <FileAudio className="w-5 h-5 text-[#A996FF]" />
                     <span className={`font-semibold ${theme.text}`}>원문 텍스트</span>
-                    {detectedLanguage && detectedLanguage !== 'ko' && (
+                    {detectedLanguage && !['ko', 'korean'].includes(detectedLanguage.toLowerCase()) && (
                       <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-600">
                         {detectedLanguage === 'en' ? '영어' : 
                          detectedLanguage === 'ja' ? '일본어' : 
@@ -414,14 +580,14 @@ const MeetingUploader = ({
                     <div className={`p-4 ${darkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
                       <div className="flex items-center gap-2 mb-2">
                         <span className={`text-xs font-medium ${theme.textSecondary}`}>
-                          {detectedLanguage && detectedLanguage !== 'ko' ? '📝 원문' : '📝 텍스트'}
+                          {detectedLanguage && !['ko', 'korean'].includes(detectedLanguage.toLowerCase()) ? '📝 원문' : '📝 텍스트'}
                         </span>
                       </div>
                       <p className={`${theme.text} leading-relaxed text-sm whitespace-pre-wrap`}>{transcript}</p>
                     </div>
                     
                     {/* 번역본 (외국어일 때만) */}
-                    {detectedLanguage && detectedLanguage !== 'ko' && analysis.translatedTranscript && (
+                    {detectedLanguage && !['ko', 'korean'].includes(detectedLanguage.toLowerCase()) && analysis.translatedTranscript && (
                       <div className={`p-4 border-t ${theme.border} ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
                         <div className="flex items-center gap-2 mb-2">
                           <span className={`text-xs font-medium text-[#A996FF]`}>🇰🇷 한국어 번역</span>
