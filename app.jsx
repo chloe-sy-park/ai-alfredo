@@ -1,5 +1,15 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Home, Briefcase, Heart, Zap, MessageCircle, Send, ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, Plus, Clock, CheckCircle2, Circle, Bell, TrendingUp, TrendingDown, Trophy, Calendar, MapPin, Sun, Moon, Cloud, CloudRain, Sparkles, Settings, RefreshCw, Mic, Battery, Umbrella, ShirtIcon, X, FileText, Mail, AlertCircle, Inbox, Trash2, Lightbulb, Search, Award, Target, Flame, Star, Gift, Crown, Database } from 'lucide-react';
+// React hooks from global
+const { useState, useRef, useEffect, useCallback, useMemo } = React;
+
+// Lucide icons from global (loaded via CDN)
+const { 
+  Home, Briefcase, Heart, Zap, MessageCircle, Send, ArrowLeft, ArrowRight, 
+  ChevronDown, ChevronUp, ChevronRight, ChevronLeft, Plus, Clock, CheckCircle2, 
+  Circle, Bell, TrendingUp, TrendingDown, Trophy, Calendar, MapPin, Sun, Moon, 
+  Cloud, CloudRain, Sparkles, Settings, RefreshCw, Mic, Battery, Umbrella, 
+  Shirt: ShirtIcon, X, FileText, Mail, AlertCircle, Inbox, Trash2, Lightbulb, 
+  Search, Award, Target, Flame, Star, Gift, Crown, Database 
+} = lucideReact;
 
 // === Design System ===
 const COLORS = {
@@ -12414,3 +12424,8 @@ export default function LifeButlerApp() {
     </div>
   );
 }
+
+
+// Render the app
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
