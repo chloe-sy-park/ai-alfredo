@@ -174,6 +174,52 @@ export function useGoogleCalendar() {
     return await response.json();
   }, [accessToken]);
 
+  // 이벤트 수정
+  const updateEvent = useCallback(async (eventId, event) => {
+    if (!accessToken) {
+      throw new Error('로그인이 필요합니다');
+    }
+
+    const response = await fetch('/api/calendar', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ action: 'update', eventId, event }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || '일정 수정에 실패했습니다');
+    }
+
+    return await response.json();
+  }, [accessToken]);
+
+  // 이벤트 삭제
+  const deleteEvent = useCallback(async (eventId) => {
+    if (!accessToken) {
+      throw new Error('로그인이 필요합니다');
+    }
+
+    const response = await fetch('/api/calendar', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ action: 'delete', eventId }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || '일정 삭제에 실패했습니다');
+    }
+
+    return await response.json();
+  }, [accessToken]);
+
   // 이벤트 목록 가져오기
   const listEvents = useCallback(async (timeMin, timeMax) => {
     if (!accessToken) {
@@ -206,6 +252,8 @@ export function useGoogleCalendar() {
     signOut,
     addEvent,
     addEvents,
+    updateEvent,
+    deleteEvent,
     listEvents,
   };
 }
