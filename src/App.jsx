@@ -5216,7 +5216,11 @@ const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode, onAddEvent, o
   
   // Google Calendar에서 일정 불러오기
   const syncFromGoogle = useCallback(async () => {
+    console.log('🚀 syncFromGoogle 시작!');
+    console.log('🔑 isSignedIn:', googleCalendar.isSignedIn);
+    
     if (!googleCalendar.isSignedIn) {
+      console.log('❌ 로그인 안됨 - signIn 호출');
       googleCalendar.signIn();
       return;
     }
@@ -5232,12 +5236,17 @@ const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode, onAddEvent, o
       timeMax.setMonth(timeMax.getMonth() + 3);
       timeMax.setDate(0);
       
+      console.log('📅 조회 기간:', timeMin.toISOString(), '~', timeMax.toISOString());
+      
       const result = await googleCalendar.listEvents(
         timeMin.toISOString(),
         timeMax.toISOString()
       );
       
-      if (result.events) {
+      console.log('📦 API 응답:', result);
+      console.log('📊 이벤트 수:', result.events?.length || 0);
+      
+      if (result.events && result.events.length > 0) {
         // Google Calendar 일정을 앱 형식으로 변환
         const googleEvents = result.events.map(gEvent => {
           const startDateTime = gEvent.start?.dateTime || gEvent.start?.date;
@@ -5258,6 +5267,8 @@ const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode, onAddEvent, o
             end = '23:59';
           }
           
+          console.log('🔄 변환:', gEvent.summary, '→', date);
+          
           return {
             id: `google-${gEvent.id}`,
             googleEventId: gEvent.id,
@@ -5273,15 +5284,26 @@ const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode, onAddEvent, o
           };
         });
         
+        // 12월 일정만 필터링해서 로그
+        const decEvents = googleEvents.filter(e => e.date?.startsWith('2025-12'));
+        console.log('📆 12월 일정:', decEvents.length, decEvents.map(e => `${e.date}: ${e.title}`));
+        
         // 부모 컴포넌트에 동기화된 일정 전달
-        console.log('📤 onSyncGoogleEvents 호출 시도:', typeof onSyncGoogleEvents);
-        console.log('📊 변환된 일정 샘플:', googleEvents.slice(0, 2));
-        onSyncGoogleEvents && onSyncGoogleEvents(googleEvents);
+        console.log('📤 onSyncGoogleEvents 호출:', typeof onSyncGoogleEvents);
+        if (onSyncGoogleEvents) {
+          onSyncGoogleEvents(googleEvents);
+          console.log('✅ onSyncGoogleEvents 호출 완료!');
+        } else {
+          console.error('❌ onSyncGoogleEvents가 undefined입니다!');
+        }
         setLastSyncTime(new Date());
         console.log(`✅ ${googleEvents.length}개 일정 동기화 완료`);
+      } else {
+        console.log('⚠️ 가져올 일정이 없습니다');
       }
     } catch (err) {
-      console.error('Google Calendar 동기화 실패:', err);
+      console.error('❌ Google Calendar 동기화 실패:', err);
+      console.error('에러 메시지:', err.message);
       // 401 에러 (토큰 만료) 시 재로그인
       if (err.message?.includes('401') || err.message?.includes('Unauthorized') || err.message?.includes('로그인')) {
         console.log('🔄 토큰 만료 - 재로그인 시도');
