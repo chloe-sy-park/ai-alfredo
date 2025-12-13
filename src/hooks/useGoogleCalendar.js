@@ -279,6 +279,13 @@ export function useGoogleCalendar() {
     });
 
     if (!response.ok) {
+      // 401 에러 시 토큰 제거
+      if (response.status === 401) {
+        localStorage.removeItem('google_access_token');
+        setAccessToken(null);
+        setIsSignedIn(false);
+        throw new Error('401 Unauthorized - 토큰이 만료되었습니다');
+      }
       const err = await response.json();
       throw new Error(err.error || '일정 조회에 실패했습니다');
     }
