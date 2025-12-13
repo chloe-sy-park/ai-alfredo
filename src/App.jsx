@@ -5280,6 +5280,12 @@ const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode, onAddEvent, o
       }
     } catch (err) {
       console.error('Google Calendar 동기화 실패:', err);
+      // 401 에러 (토큰 만료) 시 재로그인
+      if (err.message?.includes('401') || err.message?.includes('Unauthorized') || err.message?.includes('로그인')) {
+        console.log('🔄 토큰 만료 - 재로그인 시도');
+        googleCalendar.signOut();
+        setTimeout(() => googleCalendar.signIn(), 500);
+      }
     } finally {
       setIsSyncing(false);
     }
