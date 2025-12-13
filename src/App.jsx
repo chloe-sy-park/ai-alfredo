@@ -5194,7 +5194,7 @@ const EnergyRhythmPage = ({ onBack, gameState, userData, darkMode }) => {
 };
 
 // === Calendar Page ===
-const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode, onAddEvent, onUpdateEvent, onDeleteEvent }) => {
+const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode, onAddEvent, onUpdateEvent, onDeleteEvent, onSyncGoogleEvents }) => {
   // Google Calendar 훅
   const googleCalendar = useGoogleCalendar();
   
@@ -5211,6 +5211,86 @@ const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode, onAddEvent, o
   const [showFilters, setShowFilters] = useState({ work: true, life: true });
   const [showEventModal, setShowEventModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState(null);
+  
+  // Google Calendar에서 일정 불러오기
+  const syncFromGoogle = useCallback(async () => {
+    if (!googleCalendar.isSignedIn) {
+      googleCalendar.signIn();
+      return;
+    }
+    
+    setIsSyncing(true);
+    try {
+      // 현재 달 기준 전후 3개월 일정 가져오기
+      const timeMin = new Date();
+      timeMin.setMonth(timeMin.getMonth() - 1);
+      timeMin.setDate(1);
+      
+      const timeMax = new Date();
+      timeMax.setMonth(timeMax.getMonth() + 3);
+      timeMax.setDate(0);
+      
+      const result = await googleCalendar.listEvents(
+        timeMin.toISOString(),
+        timeMax.toISOString()
+      );
+      
+      if (result.events) {
+        // Google Calendar 일정을 앱 형식으로 변환
+        const googleEvents = result.events.map(gEvent => {
+          const startDateTime = gEvent.start?.dateTime || gEvent.start?.date;
+          const endDateTime = gEvent.end?.dateTime || gEvent.end?.date;
+          
+          let date, start, end;
+          if (gEvent.start?.dateTime) {
+            // 시간이 있는 일정
+            const startDate = new Date(startDateTime);
+            const endDate = new Date(endDateTime);
+            date = startDate.toISOString().split('T')[0];
+            start = startDate.toTimeString().slice(0, 5);
+            end = endDate.toTimeString().slice(0, 5);
+          } else {
+            // 종일 일정
+            date = startDateTime;
+            start = '00:00';
+            end = '23:59';
+          }
+          
+          return {
+            id: `google-${gEvent.id}`,
+            googleEventId: gEvent.id,
+            title: gEvent.summary || '(제목 없음)',
+            date,
+            start,
+            end,
+            location: gEvent.location || null,
+            color: 'bg-blue-500', // Google 일정은 파란색
+            important: false,
+            fromGoogle: true, // Google에서 가져온 일정 표시
+            description: gEvent.description || '',
+          };
+        });
+        
+        // 부모 컴포넌트에 동기화된 일정 전달
+        onSyncGoogleEvents && onSyncGoogleEvents(googleEvents);
+        setLastSyncTime(new Date());
+        console.log(`✅ ${googleEvents.length}개 일정 동기화 완료`);
+      }
+    } catch (err) {
+      console.error('Google Calendar 동기화 실패:', err);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [googleCalendar, onSyncGoogleEvents]);
+  
+  // 컴포넌트 마운트 시 자동 동기화
+  useEffect(() => {
+    if (googleCalendar.isSignedIn && !lastSyncTime) {
+      syncFromGoogle();
+    }
+  }, [googleCalendar.isSignedIn]);
   
   // 이벤트 저장 (추가/수정) - Google Calendar 연동
   const handleSaveEvent = async (event) => {
@@ -5250,6 +5330,11 @@ const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode, onAddEvent, o
       } else {
         onAddEvent && onAddEvent(eventWithGoogle);
       }
+      
+      // 동기화 후 다시 불러오기
+      if (event.syncToGoogle && googleCalendar.isSignedIn) {
+        setTimeout(() => syncFromGoogle(), 1000);
+      }
     } catch (err) {
       console.error('Google Calendar sync error:', err);
       if (editingEvent) {
@@ -5276,6 +5361,11 @@ const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode, onAddEvent, o
     onDeleteEvent && onDeleteEvent(eventId);
     setShowEventModal(false);
     setEditingEvent(null);
+    
+    // 동기화 후 다시 불러오기
+    if (googleCalendar.isSignedIn) {
+      setTimeout(() => syncFromGoogle(), 500);
+    }
   };
   
   // 날짜 포맷
@@ -5515,6 +5605,37 @@ const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode, onAddEvent, o
       </div>
       
       <div className="p-4 space-y-4 pb-32">
+        {/* Google Calendar 동기화 상태 */}
+        <div className={`${cardBg} rounded-xl p-3 shadow-sm`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${googleCalendar.isSignedIn ? 'bg-green-500' : 'bg-gray-400'}`} />
+              <span className={`text-sm ${textPrimary}`}>
+                {googleCalendar.isSignedIn 
+                  ? `Google Calendar 연결됨` 
+                  : 'Google Calendar 연결 안됨'}
+              </span>
+              {lastSyncTime && (
+                <span className={`text-xs ${textSecondary}`}>
+                  · {lastSyncTime.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 동기화
+                </span>
+              )}
+            </div>
+            <button
+              onClick={googleCalendar.isSignedIn ? syncFromGoogle : googleCalendar.signIn}
+              disabled={isSyncing}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                googleCalendar.isSignedIn 
+                  ? 'bg-[#A996FF]/10 text-[#8B7CF7] hover:bg-[#A996FF]/20' 
+                  : 'bg-blue-500 text-white hover:bg-blue-600'
+              } ${isSyncing ? 'opacity-50' : ''}`}
+            >
+              <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
+              {isSyncing ? '동기화 중...' : googleCalendar.isSignedIn ? '동기화' : '연결'}
+            </button>
+          </div>
+        </div>
+        
         {/* 알프레도 브리핑 */}
         <div className={`${cardBg} rounded-xl p-4 shadow-sm`}>
           <div className="flex items-start gap-3">
@@ -12426,6 +12547,21 @@ export default function LifeButlerApp() {
     showToast('일정이 삭제되었어요 🗑️');
   };
   
+  // Google Calendar 일정 동기화
+  const handleSyncGoogleEvents = (googleEvents) => {
+    setAllEvents(prev => {
+      // 기존 Google 일정 제거 (새로 불러온 것으로 대체)
+      const localEvents = prev.filter(e => !e.fromGoogle);
+      
+      // 중복 체크 - 같은 googleEventId가 있으면 로컬 일정 우선
+      const localGoogleIds = new Set(localEvents.filter(e => e.googleEventId).map(e => e.googleEventId));
+      const newGoogleEvents = googleEvents.filter(ge => !localGoogleIds.has(ge.googleEventId));
+      
+      return [...localEvents, ...newGoogleEvents];
+    });
+    showToast(`Google Calendar 동기화 완료! 🔄`);
+  };
+  
   // 다크모드 배경색
   const bgColor = darkMode ? 'bg-gray-900' : 'bg-[#F0EBFF]';
   
@@ -12535,6 +12671,7 @@ export default function LifeButlerApp() {
             onAddEvent={handleAddEvent}
             onUpdateEvent={handleUpdateEvent}
             onDeleteEvent={handleDeleteEvent}
+            onSyncGoogleEvents={handleSyncGoogleEvents}
           />
         )}
         {view === 'CHAT' && (
