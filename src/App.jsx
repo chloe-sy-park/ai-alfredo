@@ -5948,47 +5948,179 @@ const AlfredoStatusBar = ({
   completedTasks = 0, 
   totalTasks = 0, 
   currentTask = null,
+  nextEvent = null,      // 다음 일정 { title, start, minutesUntil }
+  urgentTask = null,     // 마감 임박 태스크 { title, deadline }
+  streak = 0,            // 연속 완료 수
+  lastActivityMinutes = 0, // 마지막 활동 후 경과 시간 (분)
+  mood = null,           // 사용자 무드
+  energy = null,         // 사용자 에너지
   onOpenChat,
   darkMode = false
 }) => {
   const hour = new Date().getHours();
   const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
   
-  // 상황별 메시지 생성
-  const getMessage = () => {
-    // 모든 태스크 완료
-    if (completedTasks === totalTasks && totalTasks > 0) {
-      return { text: "오늘 할 일 끝! 고생했어요 🎉", mood: "celebrate" };
-    }
-    
-    // 현재 작업 중인 태스크가 있으면
-    if (currentTask) {
-      return { text: `"${currentTask}" 응원 중!`, mood: "working" };
-    }
-    
-    // 진행률 기반 메시지
-    if (completedTasks === 0 && totalTasks > 0) {
-      if (hour < 12) return { text: "좋은 아침! 첫 번째 할 일부터 시작해볼까요?", mood: "morning" };
-      if (hour < 17) return { text: "아직 시작 전이에요. 가벼운 것부터 해볼까요?", mood: "encourage" };
-      return { text: "저녁이에요. 오늘 못 한 건 내일로 미뤄도 괜찮아요.", mood: "evening" };
-    }
-    
-    if (completedTasks >= totalTasks - 1 && totalTasks > 0) {
-      return { text: "거의 다 왔어요! 마지막 스퍼트 💪", mood: "almost" };
-    }
-    
-    if (completedTasks >= 1) {
-      return { text: `${completedTasks}개 완료! 잘하고 있어요.`, mood: "progress" };
-    }
-    
-    // 시간대별 기본 메시지
-    if (hour < 12) return { text: "좋은 아침이에요! 오늘도 함께해요.", mood: "morning" };
-    if (hour < 17) return { text: "오후도 파이팅! 옆에 있을게요.", mood: "afternoon" };
-    if (hour < 21) return { text: "저녁이에요. 오늘 하루 어땠어요?", mood: "evening" };
-    return { text: "늦은 시간이네요. 푹 쉬어요!", mood: "night" };
+  // 메시지 풀 (같은 상황에서 랜덤하게 선택)
+  const messagePools = {
+    celebrate: [
+      "오늘 할 일 끝! 고생했어요 🎉",
+      "완벽해요! 오늘 정말 잘했어요 ✨",
+      "다 끝났네요! 이제 푹 쉬어요 🌟",
+    ],
+    working: (task) => [
+      `"${task}" 응원 중!`,
+      `"${task}" 같이 보고 있어요 👀`,
+      `"${task}" 파이팅! 💪`,
+    ],
+    almostDone: [
+      "거의 다 왔어요! 마지막 스퍼트 💪",
+      "조금만 더! 끝이 보여요 🏁",
+      "마지막 하나! 할 수 있어요 ✨",
+    ],
+    progress: (count) => [
+      `${count}개 완료! 잘하고 있어요.`,
+      `${count}개 끝! 이 페이스 좋아요 👍`,
+      `벌써 ${count}개! 순조로워요.`,
+    ],
+    streak: (count) => [
+      `${count}개 연속 완료! 대단해요 🔥`,
+      `연속 ${count}개! 흐름 좋아요 💫`,
+      `${count}연속! 멈추지 마요 🚀`,
+    ],
+    nextEventSoon: (event, mins) => [
+      `${mins}분 뒤 "${event}" 있어요!`,
+      `곧 "${event}"! 준비됐나요?`,
+      `"${event}" ${mins}분 전이에요 ⏰`,
+    ],
+    urgentDeadline: (task) => [
+      `"${task}" 마감이 다가와요!`,
+      `오늘까지 "${task}" 잊지 마세요!`,
+      `"${task}" 오늘 마감! 🔔`,
+    ],
+    longBreak: [
+      "좀 쉬고 있네요. 괜찮아요, 천천히 해요.",
+      "휴식도 중요해요. 준비되면 다시 시작해요.",
+      "잠깐 쉬어도 괜찮아요. 여기 있을게요.",
+    ],
+    lowEnergy: [
+      "오늘은 무리하지 말아요. 중요한 것만!",
+      "에너지 낮을 땐 쉬운 것부터 해요.",
+      "컨디션 안 좋은 날도 있어요. 괜찮아요.",
+    ],
+    morningStart: [
+      "좋은 아침! 첫 번째 할 일부터 시작해볼까요?",
+      "새로운 하루예요! 뭐부터 할까요?",
+      "아침이에요! 오늘도 함께해요 ☀️",
+    ],
+    afternoonStart: [
+      "아직 시작 전이에요. 가벼운 것부터 해볼까요?",
+      "오후인데 아직 시작 안 했네요. 괜찮아요!",
+      "지금 시작해도 충분해요. 같이 해요!",
+    ],
+    eveningStart: [
+      "저녁이에요. 오늘 못 한 건 내일로 미뤄도 괜찮아요.",
+      "오늘 바쁜 하루였나요? 내일 하면 돼요.",
+      "저녁이네요. 꼭 필요한 것만 해요.",
+    ],
+    morningDefault: [
+      "좋은 아침이에요! 오늘도 함께해요.",
+      "상쾌한 아침! 좋은 하루 될 거예요.",
+      "오늘 하루도 파이팅! ☀️",
+    ],
+    afternoonDefault: [
+      "오후도 파이팅! 옆에 있을게요.",
+      "오후예요. 잘하고 있어요!",
+      "점심 먹었어요? 오후도 화이팅!",
+    ],
+    eveningDefault: [
+      "저녁이에요. 오늘 하루 어땠어요?",
+      "하루 마무리 시간이에요.",
+      "저녁이네요. 수고했어요!",
+    ],
+    nightDefault: [
+      "늦은 시간이네요. 푹 쉬어요!",
+      "오늘도 고생했어요. 굿나잇! 🌙",
+      "이제 쉴 시간이에요. 내일 봐요!",
+    ],
   };
   
-  const { text: message } = getMessage();
+  // 랜덤 메시지 선택 (같은 시간대에는 같은 메시지 유지)
+  const pickMessage = (pool) => {
+    if (Array.isArray(pool)) {
+      // 시간 기반 인덱스로 같은 시간대에 같은 메시지 유지
+      const index = Math.floor(Date.now() / (1000 * 60 * 5)) % pool.length; // 5분마다 변경
+      return pool[index];
+    }
+    return pool;
+  };
+  
+  // 상황별 메시지 생성 (우선순위 순)
+  const getMessage = () => {
+    // 1. 모든 태스크 완료 🎉
+    if (completedTasks === totalTasks && totalTasks > 0) {
+      return { text: pickMessage(messagePools.celebrate), mood: "celebrate", icon: "🎉" };
+    }
+    
+    // 2. 다음 일정 임박 (30분 이내) ⏰
+    if (nextEvent && nextEvent.minutesUntil <= 30) {
+      const msgs = messagePools.nextEventSoon(nextEvent.title, nextEvent.minutesUntil);
+      return { text: pickMessage(msgs), mood: "alert", icon: "⏰" };
+    }
+    
+    // 3. 마감 임박 태스크 🔔
+    if (urgentTask) {
+      const msgs = messagePools.urgentDeadline(urgentTask.title);
+      return { text: pickMessage(msgs), mood: "urgent", icon: "🔔" };
+    }
+    
+    // 4. 연속 완료 (3개 이상) 🔥
+    if (streak >= 3) {
+      const msgs = messagePools.streak(streak);
+      return { text: pickMessage(msgs), mood: "streak", icon: "🔥" };
+    }
+    
+    // 5. 현재 작업 중인 태스크
+    if (currentTask) {
+      const msgs = messagePools.working(currentTask);
+      return { text: pickMessage(msgs), mood: "working", icon: "💪" };
+    }
+    
+    // 6. 오래 쉬고 있을 때 (30분 이상)
+    if (lastActivityMinutes >= 30 && completedTasks > 0 && completedTasks < totalTasks) {
+      return { text: pickMessage(messagePools.longBreak), mood: "rest", icon: "☕" };
+    }
+    
+    // 7. 에너지 낮을 때
+    if (energy !== null && energy < 30) {
+      return { text: pickMessage(messagePools.lowEnergy), mood: "lowEnergy", icon: "🌿" };
+    }
+    
+    // 8. 거의 완료 (1개 남음)
+    if (completedTasks >= totalTasks - 1 && totalTasks > 1) {
+      return { text: pickMessage(messagePools.almostDone), mood: "almost", icon: "🏁" };
+    }
+    
+    // 9. 진행 중 (1개 이상 완료)
+    if (completedTasks >= 1) {
+      const msgs = messagePools.progress(completedTasks);
+      return { text: pickMessage(msgs), mood: "progress", icon: "✨" };
+    }
+    
+    // 10. 시작 전 (시간대별)
+    if (completedTasks === 0 && totalTasks > 0) {
+      if (hour < 12) return { text: pickMessage(messagePools.morningStart), mood: "morning", icon: "☀️" };
+      if (hour < 17) return { text: pickMessage(messagePools.afternoonStart), mood: "afternoon", icon: "🌤️" };
+      return { text: pickMessage(messagePools.eveningStart), mood: "evening", icon: "🌅" };
+    }
+    
+    // 11. 기본 메시지 (시간대별)
+    if (hour < 12) return { text: pickMessage(messagePools.morningDefault), mood: "morning", icon: "☀️" };
+    if (hour < 17) return { text: pickMessage(messagePools.afternoonDefault), mood: "afternoon", icon: "🌤️" };
+    if (hour < 21) return { text: pickMessage(messagePools.eveningDefault), mood: "evening", icon: "🌅" };
+    return { text: pickMessage(messagePools.nightDefault), mood: "night", icon: "🌙" };
+  };
+  
+  const { text: message, icon } = getMessage();
   
   const bgColor = darkMode ? 'bg-gray-800/95' : 'bg-white/95';
   const textColor = darkMode ? 'text-gray-100' : 'text-gray-700';
@@ -13000,15 +13132,48 @@ export default function LifeButlerApp() {
       />
       
       {/* 알프레도 상태바 */}
-      {showNav && (
-        <AlfredoStatusBar
-          completedTasks={allTasks.filter(t => t.completed).length}
-          totalTasks={allTasks.length}
-          currentTask={focusTask?.title}
-          onOpenChat={() => setView('CHAT')}
-          darkMode={darkMode}
-        />
-      )}
+      {showNav && (() => {
+        // 다음 일정 계산 (오늘, 현재 시간 이후)
+        const now = new Date();
+        const todayStr = now.toISOString().split('T')[0];
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        
+        const todayEvents = allEvents
+          .filter(e => e.date === todayStr && e.start)
+          .map(e => {
+            const [h, m] = e.start.split(':').map(Number);
+            const eventMinutes = h * 60 + m;
+            return { ...e, eventMinutes, minutesUntil: eventMinutes - currentMinutes };
+          })
+          .filter(e => e.minutesUntil > 0)
+          .sort((a, b) => a.minutesUntil - b.minutesUntil);
+        
+        const nextEvent = todayEvents[0] ? {
+          title: todayEvents[0].title,
+          start: todayEvents[0].start,
+          minutesUntil: todayEvents[0].minutesUntil
+        } : null;
+        
+        // 마감 임박 태스크 (오늘 마감, 미완료)
+        const urgentTask = allTasks.find(t => 
+          !t.completed && 
+          t.deadline === todayStr
+        );
+        
+        return (
+          <AlfredoStatusBar
+            completedTasks={allTasks.filter(t => t.completed).length}
+            totalTasks={allTasks.length}
+            currentTask={focusTask?.title}
+            nextEvent={nextEvent}
+            urgentTask={urgentTask ? { title: urgentTask.title } : null}
+            energy={userData.energy}
+            mood={userData.mood}
+            onOpenChat={() => setView('CHAT')}
+            darkMode={darkMode}
+          />
+        );
+      })()}
       
       {showNav && (
         <nav className={`h-20 ${darkMode ? 'bg-gray-800/90' : 'bg-white/90'} backdrop-blur-xl border-t ${darkMode ? 'border-gray-700' : 'border-black/5'} flex items-center justify-around px-4 pb-4`}>
