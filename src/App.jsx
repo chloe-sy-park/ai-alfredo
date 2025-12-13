@@ -5785,9 +5785,20 @@ const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode, onAddEvent, o
           {/* 일정 (Events) */}
           {selectedItems.events.length > 0 && (
             <div className="mb-4">
-              <p className={`text-xs ${textSecondary} mb-2 flex items-center gap-1`}>
-                <Calendar size={12} /> 일정
-              </p>
+              <div className="flex items-center justify-between mb-2">
+                <p className={`text-xs ${textSecondary} flex items-center gap-1`}>
+                  <Calendar size={12} /> 일정
+                </p>
+                <button
+                  onClick={() => { 
+                    setEditingEvent(null); 
+                    setShowEventModal(true); 
+                  }}
+                  className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-[#A996FF] transition-colors"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
               <div className="space-y-2">
                 {selectedItems.events.map((event, i) => (
                   <div 
@@ -5917,18 +5928,6 @@ const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode, onAddEvent, o
             </div>
           )}
         </div>
-        
-        {/* 플로팅 추가 버튼 */}
-        <button 
-          onClick={() => { 
-            setEditingEvent(null); 
-            setShowEventModal(true); 
-          }}
-          className="absolute bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] text-white rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-105 transition-all active:scale-95"
-          style={{ zIndex: 10 }}
-        >
-          <Plus size={28} />
-        </button>
       </div>
       
       {/* Event Modal */}
@@ -5986,7 +5985,7 @@ const AlfredoFloatingBubble = ({ message, subMessage, isVisible, onOpenChat, dar
   };
   
   return (
-    <div className="fixed bottom-24 right-4 z-40 flex flex-col items-end gap-2">
+    <div className="fixed bottom-44 right-4 z-50 flex flex-col items-end gap-2">
       {/* 말풍선 (펼쳐진 상태) */}
       {isExpanded && (
         <div 
@@ -6024,15 +6023,7 @@ const AlfredoFloatingBubble = ({ message, subMessage, isVisible, onOpenChat, dar
         </div>
       )}
       
-      {/* 축소된 아이콘 */}
-      {!isExpanded && (
-        <button
-          onClick={handleOpenChat}
-          className="w-14 h-14 bg-gradient-to-br from-[#A996FF] to-[#8B7CF7] rounded-xl shadow-lg flex items-center justify-center text-2xl hover:scale-105 transition-transform active:scale-95"
-        >
-          🐧
-        </button>
-      )}
+      {/* 축소된 상태에서는 아무것도 표시 안함 (버튼들이 아래에 있으므로) */}
     </div>
   );
 };
@@ -12814,9 +12805,9 @@ export default function LifeButlerApp() {
         )}
       </div>
       
-      {/* 플로팅 버튼들 */}
+      {/* 플로팅 버튼들 - 알프레도 메시지 카드 아래에 배치되도록 */}
       {showNav && (
-        <div className="fixed bottom-24 right-4 z-40 flex flex-col gap-3">
+        <div className="fixed bottom-20 right-4 z-30 flex flex-col items-end gap-3">
           {/* 빠른 기록 버튼 */}
           <button 
             onClick={() => setShowQuickCapture(true)} 
@@ -12824,6 +12815,7 @@ export default function LifeButlerApp() {
           >
             <Plus size={22} className="text-gray-600" />
           </button>
+          
           {/* 알프레도 채팅 버튼 */}
           <button 
             onClick={() => setView('CHAT')} 
