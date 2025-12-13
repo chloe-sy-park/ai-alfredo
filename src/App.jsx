@@ -5194,7 +5194,10 @@ const EnergyRhythmPage = ({ onBack, gameState, userData, darkMode }) => {
 };
 
 // === Calendar Page ===
-const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode }) => {
+const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode, onAddEvent, onUpdateEvent, onDeleteEvent }) => {
+  // Google Calendar 훅
+  const googleCalendar = useGoogleCalendar();
+  
   const [viewMode, setViewMode] = useState('month'); // 'month' | 'week'
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -5206,6 +5209,74 @@ const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode }) => {
     return start;
   });
   const [showFilters, setShowFilters] = useState({ work: true, life: true });
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState(null);
+  
+  // 이벤트 저장 (추가/수정) - Google Calendar 연동
+  const handleSaveEvent = async (event) => {
+    try {
+      let googleEventId = event.googleEventId;
+      
+      // Google Calendar 동기화
+      if (event.syncToGoogle && googleCalendar.isSignedIn) {
+        const googleEvent = {
+          title: event.title,
+          date: event.date,
+          start: event.start,
+          end: event.end,
+          location: event.location,
+        };
+        
+        if (editingEvent && googleEventId) {
+          const result = await googleCalendar.updateEvent(googleEventId, googleEvent);
+          googleEventId = result.event?.id || googleEventId;
+        } else {
+          const result = await googleCalendar.addEvent(googleEvent);
+          googleEventId = result.event?.id;
+        }
+      } else if (!event.syncToGoogle && editingEvent?.googleEventId) {
+        try {
+          await googleCalendar.deleteEvent(editingEvent.googleEventId);
+        } catch (err) {
+          console.log('Google event delete skipped:', err);
+        }
+        googleEventId = null;
+      }
+      
+      const eventWithGoogle = { ...event, googleEventId };
+      
+      if (editingEvent) {
+        onUpdateEvent && onUpdateEvent(editingEvent.id, eventWithGoogle);
+      } else {
+        onAddEvent && onAddEvent(eventWithGoogle);
+      }
+    } catch (err) {
+      console.error('Google Calendar sync error:', err);
+      if (editingEvent) {
+        onUpdateEvent && onUpdateEvent(editingEvent.id, event);
+      } else {
+        onAddEvent && onAddEvent(event);
+      }
+    }
+    
+    setEditingEvent(null);
+    setShowEventModal(false);
+  };
+  
+  // 이벤트 삭제 - Google Calendar 연동
+  const handleDeleteEvent = async (eventId, googleEventId) => {
+    try {
+      if (googleEventId && googleCalendar.isSignedIn) {
+        await googleCalendar.deleteEvent(googleEventId);
+      }
+    } catch (err) {
+      console.error('Google Calendar delete error:', err);
+    }
+    
+    onDeleteEvent && onDeleteEvent(eventId);
+    setShowEventModal(false);
+    setEditingEvent(null);
+  };
   
   // 날짜 포맷
   const formatDate = (date) => {
@@ -5675,11 +5746,27 @@ const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode }) => {
         </div>
         
         {/* 빠른 추가 버튼 */}
-        <button className="w-full bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] text-white rounded-xl p-4 flex items-center justify-center gap-2 shadow-lg hover:opacity-90 transition-opacity">
+        <button 
+          onClick={() => { 
+            setEditingEvent(null); 
+            setShowEventModal(true); 
+          }}
+          className="w-full bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] text-white rounded-xl p-4 flex items-center justify-center gap-2 shadow-lg hover:opacity-90 transition-opacity"
+        >
           <Plus size={20} />
           <span className="font-medium">새 일정 추가</span>
         </button>
       </div>
+      
+      {/* Event Modal */}
+      <EventModal 
+        isOpen={showEventModal}
+        onClose={() => { setShowEventModal(false); setEditingEvent(null); }}
+        event={editingEvent}
+        onSave={handleSaveEvent}
+        onDelete={handleDeleteEvent}
+        googleCalendar={googleCalendar}
+      />
     </div>
   );
 };
@@ -12445,6 +12532,9 @@ export default function LifeButlerApp() {
             allTasks={allTasks}
             events={allEvents}
             darkMode={darkMode}
+            onAddEvent={handleAddEvent}
+            onUpdateEvent={handleUpdateEvent}
+            onDeleteEvent={handleDeleteEvent}
           />
         )}
         {view === 'CHAT' && (
