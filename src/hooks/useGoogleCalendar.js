@@ -1,7 +1,19 @@
 // Google Calendar 연동 훅
 import { useState, useEffect, useCallback } from 'react';
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+// 환경변수 또는 localStorage에서 Client ID 가져오기
+const getClientId = () => {
+  // 1. 환경변수 확인
+  const envClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  if (envClientId) return envClientId;
+  
+  // 2. localStorage에서 확인 (테스트용)
+  const savedClientId = localStorage.getItem('GOOGLE_CLIENT_ID');
+  if (savedClientId) return savedClientId;
+  
+  return null;
+};
+
 const SCOPES = 'https://www.googleapis.com/auth/calendar.events';
 
 export function useGoogleCalendar() {
@@ -11,25 +23,49 @@ export function useGoogleCalendar() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [tokenClient, setTokenClient] = useState(null);
+  const [clientId, setClientId] = useState(getClientId());
+
+  // Client ID 설정 함수 (외부에서 호출 가능)
+  const setGoogleClientId = useCallback((id) => {
+    localStorage.setItem('GOOGLE_CLIENT_ID', id);
+    setClientId(id);
+    window.location.reload(); // 새로고침하여 재초기화
+  }, []);
 
   // Google Identity Services 초기화
   useEffect(() => {
+    console.log('🔍 Google Calendar Init Debug:');
+    console.log('  - Client ID:', clientId ? `${clientId.substring(0, 20)}...` : '없음 ❌');
+    console.log('  - window.google:', window.google ? '로드됨 ✅' : '없음 ❌');
+    console.log('  - 환경변수:', import.meta.env.VITE_GOOGLE_CLIENT_ID ? '있음' : '없음');
+    
     const initGoogle = () => {
-      if (!window.google || !GOOGLE_CLIENT_ID) {
+      if (!window.google) {
+        console.error('❌ window.google이 없습니다. GSI 스크립트가 로드되지 않았습니다.');
+        setIsLoading(false);
+        return;
+      }
+      
+      if (!clientId) {
+        console.error('❌ Google Client ID가 설정되지 않았습니다.');
+        console.log('💡 콘솔에서 다음 명령으로 설정 가능:');
+        console.log('   localStorage.setItem("GOOGLE_CLIENT_ID", "YOUR_CLIENT_ID")');
+        console.log('   그 후 새로고침');
         setIsLoading(false);
         return;
       }
 
       try {
+        console.log('✅ Google OAuth 초기화 시작...');
         const client = window.google.accounts.oauth2.initTokenClient({
-          client_id: GOOGLE_CLIENT_ID,
+          client_id: clientId,
           scope: SCOPES,
           callback: (response) => {
+            console.log('📥 OAuth 응답:', response);
             if (response.access_token) {
               setAccessToken(response.access_token);
               setIsSignedIn(true);
               localStorage.setItem('google_access_token', response.access_token);
-              // 사용자 정보 가져오기
               fetchUserInfo(response.access_token);
             }
           },
@@ -39,12 +75,14 @@ export function useGoogleCalendar() {
           }
         });
         setTokenClient(client);
+        console.log('✅ Token client 생성 완료');
       } catch (err) {
         console.error('Failed to init Google:', err);
       }
       
       // 저장된 토큰 확인
       const savedToken = localStorage.getItem('google_access_token');
+      console.log('💾 저장된 토큰:', savedToken ? '있음' : '없음');
       if (savedToken) {
         validateToken(savedToken);
       } else {
@@ -56,8 +94,10 @@ export function useGoogleCalendar() {
     if (window.google) {
       initGoogle();
     } else {
+      console.log('⏳ window.google 로드 대기 중...');
       const checkGoogle = setInterval(() => {
         if (window.google) {
+          console.log('✅ window.google 로드됨!');
           clearInterval(checkGoogle);
           initGoogle();
         }
@@ -66,10 +106,13 @@ export function useGoogleCalendar() {
       // 3초 후 타임아웃
       setTimeout(() => {
         clearInterval(checkGoogle);
+        if (!window.google) {
+          console.error('❌ 3초 타임아웃: window.google 로드 실패');
+        }
         setIsLoading(false);
       }, 3000);
     }
-  }, []);
+  }, [clientId]);
 
   // 토큰 유효성 검사
   const validateToken = async (token) => {
@@ -248,6 +291,8 @@ export function useGoogleCalendar() {
     isLoading,
     userInfo,
     error,
+    clientId,
+    setGoogleClientId,
     signIn,
     signOut,
     addEvent,
