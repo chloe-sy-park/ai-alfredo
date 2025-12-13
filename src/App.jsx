@@ -5943,6 +5943,98 @@ const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode, onAddEvent, o
   );
 };
 
+// === Alfredo Status Bar (항상 보이는 상태바) ===
+const AlfredoStatusBar = ({ 
+  completedTasks = 0, 
+  totalTasks = 0, 
+  currentTask = null,
+  onOpenChat,
+  darkMode = false
+}) => {
+  const hour = new Date().getHours();
+  const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  
+  // 상황별 메시지 생성
+  const getMessage = () => {
+    // 모든 태스크 완료
+    if (completedTasks === totalTasks && totalTasks > 0) {
+      return { text: "오늘 할 일 끝! 고생했어요 🎉", mood: "celebrate" };
+    }
+    
+    // 현재 작업 중인 태스크가 있으면
+    if (currentTask) {
+      return { text: `"${currentTask}" 응원 중!`, mood: "working" };
+    }
+    
+    // 진행률 기반 메시지
+    if (completedTasks === 0 && totalTasks > 0) {
+      if (hour < 12) return { text: "좋은 아침! 첫 번째 할 일부터 시작해볼까요?", mood: "morning" };
+      if (hour < 17) return { text: "아직 시작 전이에요. 가벼운 것부터 해볼까요?", mood: "encourage" };
+      return { text: "저녁이에요. 오늘 못 한 건 내일로 미뤄도 괜찮아요.", mood: "evening" };
+    }
+    
+    if (completedTasks >= totalTasks - 1 && totalTasks > 0) {
+      return { text: "거의 다 왔어요! 마지막 스퍼트 💪", mood: "almost" };
+    }
+    
+    if (completedTasks >= 1) {
+      return { text: `${completedTasks}개 완료! 잘하고 있어요.`, mood: "progress" };
+    }
+    
+    // 시간대별 기본 메시지
+    if (hour < 12) return { text: "좋은 아침이에요! 오늘도 함께해요.", mood: "morning" };
+    if (hour < 17) return { text: "오후도 파이팅! 옆에 있을게요.", mood: "afternoon" };
+    if (hour < 21) return { text: "저녁이에요. 오늘 하루 어땠어요?", mood: "evening" };
+    return { text: "늦은 시간이네요. 푹 쉬어요!", mood: "night" };
+  };
+  
+  const { text: message } = getMessage();
+  
+  const bgColor = darkMode ? 'bg-gray-800/95' : 'bg-white/95';
+  const textColor = darkMode ? 'text-gray-100' : 'text-gray-700';
+  const subTextColor = darkMode ? 'text-gray-400' : 'text-gray-500';
+  const progressBg = darkMode ? 'bg-gray-700' : 'bg-gray-200';
+  
+  return (
+    <div 
+      onClick={onOpenChat}
+      className={`fixed bottom-20 left-0 right-0 z-40 ${bgColor} backdrop-blur-xl border-t ${darkMode ? 'border-gray-700' : 'border-gray-100'} cursor-pointer hover:bg-opacity-100 transition-all active:scale-[0.99]`}
+    >
+      <div className="flex items-center gap-3 px-4 py-2.5">
+        {/* 알프레도 아이콘 */}
+        <div className="w-9 h-9 bg-gradient-to-br from-[#A996FF] to-[#8B7CF7] rounded-xl flex items-center justify-center text-lg shrink-0 shadow-sm">
+          🐧
+        </div>
+        
+        {/* 메시지 + 진행률 */}
+        <div className="flex-1 min-w-0">
+          <p className={`text-sm font-medium ${textColor} truncate`}>
+            {message}
+          </p>
+          
+          {/* 진행률 바 */}
+          {totalTasks > 0 && (
+            <div className="flex items-center gap-2 mt-1">
+              <div className={`flex-1 h-1.5 ${progressBg} rounded-full overflow-hidden`}>
+                <div 
+                  className="h-full bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] rounded-full transition-all duration-500"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+              <span className={`text-xs ${subTextColor} shrink-0`}>
+                {completedTasks}/{totalTasks}
+              </span>
+            </div>
+          )}
+        </div>
+        
+        {/* 대화 아이콘 */}
+        <MessageCircle size={18} className={`${subTextColor} shrink-0`} />
+      </div>
+    </div>
+  );
+};
+
 // === Alfredo Floating Bubble (플로팅 말풍선) ===
 const AlfredoFloatingBubble = ({ message, subMessage, isVisible, onOpenChat, darkMode, quickReplies }) => {
   const [isExpanded, setIsExpanded] = useState(true);
@@ -12807,7 +12899,7 @@ export default function LifeButlerApp() {
       
       {/* 플로팅 버튼들 - 알프레도 메시지 카드 아래에 배치되도록 */}
       {showNav && (
-        <div className="fixed bottom-20 right-4 z-30 flex flex-col items-end gap-3">
+        <div className="fixed bottom-36 right-4 z-30 flex flex-col items-end gap-3">
           {/* 빠른 기록 버튼 */}
           <button 
             onClick={() => setShowQuickCapture(true)} 
@@ -12906,6 +12998,17 @@ export default function LifeButlerApp() {
         onEnable={enableDoNotDisturb}
         currentDuration={25}
       />
+      
+      {/* 알프레도 상태바 */}
+      {showNav && (
+        <AlfredoStatusBar
+          completedTasks={allTasks.filter(t => t.completed).length}
+          totalTasks={allTasks.length}
+          currentTask={focusTask?.title}
+          onOpenChat={() => setView('CHAT')}
+          darkMode={darkMode}
+        />
+      )}
       
       {showNav && (
         <nav className={`h-20 ${darkMode ? 'bg-gray-800/90' : 'bg-white/90'} backdrop-blur-xl border-t ${darkMode ? 'border-gray-700' : 'border-black/5'} flex items-center justify-around px-4 pb-4`}>
