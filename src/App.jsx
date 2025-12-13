@@ -5227,14 +5227,16 @@ const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode, onAddEvent, o
     
     setIsSyncing(true);
     try {
-      // 현재 달 기준 전후 3개월 일정 가져오기
+      // 현재 달 기준 전후 1개월 일정만 가져오기 (100개 limit 대응)
       const timeMin = new Date();
       timeMin.setMonth(timeMin.getMonth() - 1);
       timeMin.setDate(1);
+      timeMin.setHours(0, 0, 0, 0);
       
       const timeMax = new Date();
-      timeMax.setMonth(timeMax.getMonth() + 3);
+      timeMax.setMonth(timeMax.getMonth() + 2);
       timeMax.setDate(0);
+      timeMax.setHours(23, 59, 59, 999);
       
       console.log('📅 조회 기간:', timeMin.toISOString(), '~', timeMax.toISOString());
       
@@ -11970,7 +11972,20 @@ export default function LifeButlerApp() {
   const [userData, setUserData] = useState({ mood: 'light', energy: 68, oneThing: '투자 보고서 완성', memo: '' });
   const [tasks, setTasks] = useState(mockBig3);
   const [allTasks, setAllTasks] = useState(mockAllTasks);
-  const [allEvents, setAllEvents] = useState(mockEvents); // 일정
+  // localStorage에서 일정 불러오기 (없으면 mockEvents 사용)
+  const [allEvents, setAllEvents] = useState(() => {
+    try {
+      const saved = localStorage.getItem('allEvents');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        console.log('📂 localStorage에서 일정 로드:', parsed.length, '개');
+        return parsed;
+      }
+    } catch (e) {
+      console.error('localStorage 읽기 실패:', e);
+    }
+    return mockEvents;
+  });
   const [inbox, setInbox] = useState(mockInbox);
   const [toast, setToast] = useState({ visible: false, message: '' });
   const [focusTask, setFocusTask] = useState(null);
@@ -11994,6 +12009,14 @@ export default function LifeButlerApp() {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [showPWAInstall, setShowPWAInstall] = useState(false);
   const [pwaInstallDismissed, setPWAInstallDismissed] = useState(false);
+  
+  // allEvents 변경 시 localStorage에 저장
+  useEffect(() => {
+    if (allEvents && allEvents.length > 0) {
+      localStorage.setItem('allEvents', JSON.stringify(allEvents));
+      console.log('💾 allEvents 저장:', allEvents.length, '개');
+    }
+  }, [allEvents]);
   
   // PWA 이벤트 리스너
   useEffect(() => {
