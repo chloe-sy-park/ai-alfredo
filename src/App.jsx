@@ -5792,21 +5792,33 @@ const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode, onAddEvent, o
                 {selectedItems.events.map((event, i) => (
                   <div 
                     key={i}
-                    className="flex items-center gap-3 p-3 bg-gray-100 rounded-xl"
+                    onClick={() => {
+                      setEditingEvent(event);
+                      setShowEventModal(true);
+                    }}
+                    className="flex items-center gap-3 p-3 bg-gray-100 rounded-xl cursor-pointer hover:bg-gray-200 transition-colors active:scale-[0.98]"
                   >
-                    <div className="w-1 h-10 bg-gray-1000 rounded-full" />
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-800">{event.title}</p>
-                      {event.time && (
-                        <p className="text-xs text-gray-500">{event.time}</p>
+                    <div className={`w-1 h-10 rounded-full ${event.fromGoogle ? 'bg-blue-500' : 'bg-[#A996FF]'}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-800 truncate">{event.title}</p>
+                      {(event.start && event.start !== '00:00') && (
+                        <p className="text-xs text-gray-500">
+                          {event.start}{event.end && event.end !== '23:59' ? ` - ${event.end}` : ''}
+                        </p>
                       )}
                     </div>
                     {event.location && (
                       <div className="flex items-center gap-1 text-xs text-gray-400">
                         <MapPin size={12} />
-                        {event.location}
+                        <span className="truncate max-w-[80px]">{event.location}</span>
                       </div>
                     )}
+                    {event.fromGoogle && (
+                      <div className="flex-shrink-0 w-5 h-5 bg-white rounded flex items-center justify-center shadow-sm">
+                        <span className="text-xs">G</span>
+                      </div>
+                    )}
+                    <ChevronRight size={16} className="text-gray-400 flex-shrink-0" />
                   </div>
                 ))}
               </div>
@@ -5893,21 +5905,29 @@ const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode, onAddEvent, o
             <div className="text-center py-8">
               <div className="text-4xl mb-2">📭</div>
               <p className={textSecondary}>이 날은 일정이 없어요</p>
-              <p className={`text-xs ${textSecondary} mt-1`}>여유로운 하루를 보내세요!</p>
+              <button 
+                onClick={() => { 
+                  setEditingEvent(null); 
+                  setShowEventModal(true); 
+                }}
+                className="mt-3 text-[#A996FF] text-sm font-medium"
+              >
+                + 일정 추가하기
+              </button>
             </div>
           )}
         </div>
         
-        {/* 빠른 추가 버튼 */}
+        {/* 플로팅 추가 버튼 */}
         <button 
           onClick={() => { 
             setEditingEvent(null); 
             setShowEventModal(true); 
           }}
-          className="w-full bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] text-white rounded-xl p-4 flex items-center justify-center gap-2 shadow-lg hover:opacity-90 transition-opacity"
+          className="absolute bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] text-white rounded-full flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-105 transition-all active:scale-95"
+          style={{ zIndex: 10 }}
         >
-          <Plus size={20} />
-          <span className="font-medium">새 일정 추가</span>
+          <Plus size={28} />
         </button>
       </div>
       
