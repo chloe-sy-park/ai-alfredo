@@ -145,6 +145,10 @@ export function useGoogleCalendar() {
       if (response.ok) {
         const info = await response.json();
         setUserInfo(info);
+      } else if (response.status === 401) {
+        // 401 에러시에도 토큰은 유지 (calendar API는 작동할 수 있음)
+        console.warn('⚠️ userinfo 401 - 하지만 calendar는 시도해볼 수 있음');
+        // 사용자 정보만 null로 설정, 로그인 상태는 유지
       }
     } catch (err) {
       console.error('Failed to fetch user info:', err);
