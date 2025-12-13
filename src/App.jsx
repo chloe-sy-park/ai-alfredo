@@ -5943,6 +5943,38 @@ const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode, onAddEvent, o
   );
 };
 
+// === Alfredo Feedback Toast (실시간 피드백) ===
+const AlfredoFeedback = ({ visible, message, type, icon, darkMode }) => {
+  if (!visible) return null;
+  
+  const bgColor = darkMode ? 'bg-gray-800' : 'bg-white';
+  const textColor = darkMode ? 'text-gray-100' : 'text-gray-800';
+  
+  // 타입별 테두리 색상
+  const borderColors = {
+    praise: 'border-[#A996FF]',
+    celebrate: 'border-yellow-400',
+    streak: 'border-orange-400',
+    milestone: 'border-green-400',
+  };
+  
+  const borderColor = borderColors[type] || borderColors.praise;
+  
+  return (
+    <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-top-4 fade-in duration-300">
+      <div className={`${bgColor} ${textColor} px-5 py-3 rounded-2xl shadow-2xl border-2 ${borderColor} flex items-center gap-3`}>
+        <div className="w-10 h-10 bg-gradient-to-br from-[#A996FF] to-[#8B7CF7] rounded-xl flex items-center justify-center text-lg shrink-0 shadow-md">
+          🐧
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xl">{icon}</span>
+          <span className="font-medium">{message}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // === Alfredo Status Bar (항상 보이는 상태바) ===
 const AlfredoStatusBar = ({ 
   completedTasks = 0, 
@@ -12223,6 +12255,7 @@ export default function LifeButlerApp() {
   });
   const [inbox, setInbox] = useState(mockInbox);
   const [toast, setToast] = useState({ visible: false, message: '' });
+  const [alfredoFeedback, setAlfredoFeedback] = useState({ visible: false, message: '', type: 'praise', icon: '🐧' });
   const [focusTask, setFocusTask] = useState(null);
   const [completedTaskInfo, setCompletedTaskInfo] = useState(null);
   const [showQuickCapture, setShowQuickCapture] = useState(false);
@@ -12640,6 +12673,74 @@ export default function LifeButlerApp() {
     setTimeout(() => setToast({ visible: false, message: '' }), 2500);
   };
   
+  // 🐧 알프레도 피드백 표시
+  const showAlfredoFeedback = (message, type = 'praise', icon = '🐧') => {
+    setAlfredoFeedback({ visible: true, message, type, icon });
+    setTimeout(() => setAlfredoFeedback({ visible: false, message: '', type: 'praise', icon: '🐧' }), 3000);
+  };
+  
+  // 🐧 태스크 완료 시 알프레도 반응 메시지
+  const getTaskCompleteFeedback = (task, completedCount, totalCount, isStreak = false) => {
+    // 전체 완료! 🎉
+    if (completedCount === totalCount && totalCount > 0) {
+      const messages = [
+        { msg: "완벽해요! 오늘 할 일 끝!", icon: "🎉" },
+        { msg: "대단해요! 다 끝냈어요!", icon: "✨" },
+        { msg: "오늘의 영웅이에요!", icon: "🏆" },
+      ];
+      return messages[Math.floor(Math.random() * messages.length)];
+    }
+    
+    // 연속 완료 (3개 이상)
+    if (isStreak && completedCount >= 3) {
+      const messages = [
+        { msg: `${completedCount}연속! 흐름 좋아요!`, icon: "🔥" },
+        { msg: `연속 ${completedCount}개! 멈추지 마요!`, icon: "⚡" },
+        { msg: `${completedCount}연타! 달리고 있어요!`, icon: "🚀" },
+      ];
+      return messages[Math.floor(Math.random() * messages.length)];
+    }
+    
+    // 거의 다 완료 (1개 남음)
+    if (completedCount === totalCount - 1 && totalCount > 1) {
+      const messages = [
+        { msg: "마지막 하나! 거의 다 왔어요!", icon: "🏁" },
+        { msg: "하나 남았어요! 조금만 더!", icon: "💪" },
+        { msg: "끝이 보여요! 파이팅!", icon: "✨" },
+      ];
+      return messages[Math.floor(Math.random() * messages.length)];
+    }
+    
+    // 절반 이상
+    if (completedCount === Math.ceil(totalCount / 2)) {
+      const messages = [
+        { msg: "절반 왔어요! 잘하고 있어요!", icon: "👏" },
+        { msg: "반 넘었어요! 이 페이스 좋아요!", icon: "🎯" },
+      ];
+      return messages[Math.floor(Math.random() * messages.length)];
+    }
+    
+    // 첫 번째 완료
+    if (completedCount === 1) {
+      const messages = [
+        { msg: "첫 번째 완료! 시작이 반이에요!", icon: "🌟" },
+        { msg: "좋은 시작이에요! 계속 가요!", icon: "👍" },
+        { msg: "하나 끝! 멋진 출발이에요!", icon: "✨" },
+      ];
+      return messages[Math.floor(Math.random() * messages.length)];
+    }
+    
+    // 일반 완료
+    const messages = [
+      { msg: "잘했어요! 👏", icon: "🐧" },
+      { msg: "멋져요! 다음은 뭐 할까요?", icon: "✨" },
+      { msg: "해냈네요! 💪", icon: "🐧" },
+      { msg: "역시 Boss!", icon: "👑" },
+      { msg: "Good job!", icon: "👍" },
+    ];
+    return messages[Math.floor(Math.random() * messages.length)];
+  };
+  
   // 칭찬 메시지 랜덤 선택
   const getPraiseMessage = (completedCount, total) => {
     if (completedCount === total) {
@@ -12660,10 +12761,14 @@ export default function LifeButlerApp() {
     );
     setTasks(newTasks);
     
-    // 완료했을 때 XP & 토스트
+    // 완료했을 때 XP & 알프레도 피드백
     if (isCompleting && task) {
       handleTaskCompleteWithXP(task, true); // Big3은 항상 true
       const completedCount = newTasks.filter(t => t.status === 'done').length;
+      
+      // 🐧 알프레도 피드백
+      const feedback = getTaskCompleteFeedback(task, completedCount, newTasks.length);
+      showAlfredoFeedback(feedback.msg, 'praise', feedback.icon);
       
       // Big3 전체 완료 보너스
       if (completedCount === newTasks.length) {
@@ -12676,16 +12781,23 @@ export default function LifeButlerApp() {
   const handleToggleAllTask = (taskId) => {
     const task = allTasks.find(t => t.id === taskId);
     const isCompleting = task && task.status !== 'done';
+    const prevCompletedCount = allTasks.filter(t => t.status === 'done').length;
     
-    setAllTasks(allTasks.map(t => 
+    const newTasks = allTasks.map(t => 
       t.id === taskId 
         ? { ...t, status: t.status === 'done' ? 'todo' : 'done' }
         : t
-    ));
+    );
+    setAllTasks(newTasks);
     
-    // 완료했을 때 XP
+    // 완료했을 때 XP & 알프레도 피드백
     if (isCompleting && task) {
       handleTaskCompleteWithXP(task, false);
+      const completedCount = newTasks.filter(t => t.status === 'done').length;
+      
+      // 🐧 알프레도 피드백
+      const feedback = getTaskCompleteFeedback(task, completedCount, newTasks.length);
+      showAlfredoFeedback(feedback.msg, 'praise', feedback.icon);
     }
   };
   
@@ -12866,6 +12978,15 @@ export default function LifeButlerApp() {
     <div className={`w-full h-screen ${bgColor} overflow-hidden flex flex-col font-sans transition-colors duration-300`}>
       {/* Toast */}
       <Toast message={toast.message} visible={toast.visible} darkMode={darkMode} />
+      
+      {/* 🐧 알프레도 피드백 */}
+      <AlfredoFeedback 
+        visible={alfredoFeedback.visible}
+        message={alfredoFeedback.message}
+        type={alfredoFeedback.type}
+        icon={alfredoFeedback.icon}
+        darkMode={darkMode}
+      />
       
       <div className="flex-1 overflow-hidden relative flex flex-col">
         {/* 오프라인 배너 */}
