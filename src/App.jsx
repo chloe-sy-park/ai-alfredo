@@ -5274,6 +5274,8 @@ const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode, onAddEvent, o
         });
         
         // 부모 컴포넌트에 동기화된 일정 전달
+        console.log('📤 onSyncGoogleEvents 호출 시도:', typeof onSyncGoogleEvents);
+        console.log('📊 변환된 일정 샘플:', googleEvents.slice(0, 2));
         onSyncGoogleEvents && onSyncGoogleEvents(googleEvents);
         setLastSyncTime(new Date());
         console.log(`✅ ${googleEvents.length}개 일정 동기화 완료`);
@@ -12555,13 +12557,22 @@ export default function LifeButlerApp() {
   
   // Google Calendar 일정 동기화
   const handleSyncGoogleEvents = (googleEvents) => {
+    console.log('📥 handleSyncGoogleEvents 호출됨!');
+    console.log('📊 받은 일정 수:', googleEvents.length);
+    console.log('📊 샘플:', googleEvents.slice(0, 2));
+    
     setAllEvents(prev => {
+      console.log('📊 기존 일정 수:', prev.length);
       // 기존 Google 일정 제거 (새로 불러온 것으로 대체)
       const localEvents = prev.filter(e => !e.fromGoogle);
       
       // 중복 체크 - 같은 googleEventId가 있으면 로컬 일정 우선
       const localGoogleIds = new Set(localEvents.filter(e => e.googleEventId).map(e => e.googleEventId));
       const newGoogleEvents = googleEvents.filter(ge => !localGoogleIds.has(ge.googleEventId));
+      
+      console.log('📊 로컬 일정:', localEvents.length);
+      console.log('📊 새 Google 일정:', newGoogleEvents.length);
+      console.log('📊 총 결과:', localEvents.length + newGoogleEvents.length);
       
       return [...localEvents, ...newGoogleEvents];
     });
