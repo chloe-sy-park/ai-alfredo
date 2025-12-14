@@ -336,4 +336,4 @@ const AlfredoStatusBar = ({
 };
 
 export default AlfredoStatusBar;
-export { getAlfredoExpression, getStatusMessage };
+export { getStatusMessage };
