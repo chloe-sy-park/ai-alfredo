@@ -35,8 +35,6 @@ import {
 import { TimeAlertToast, AlfredoFeedback, AlfredoFloatingBubble } from './components/alfredo';
 import AlfredoStatusBar from './components/home/AlfredoStatusBar';
 
-// 새로 추가 (Line 36 또는 적절한 위치):
-import AlfredoStatusBar from './components/home/AlfredoStatusBar';
 // === Page Components ===
 import HomePage from './components/home/HomePage';
 import Onboarding from './components/home/Onboarding';
