@@ -1,20 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Settings, Bell, Search, Target, Zap, Calendar, CheckCircle2, Circle, 
-  TrendingUp, TrendingDown, ChevronRight, Plus, Award, Flame, 
-  Clock, MapPin, ArrowRight, Star, Gift, Crown
+  TrendingUp, TrendingDown, ChevronRight, ChevronUp, ChevronDown, Plus, Award, Flame, 
+  Clock, MapPin, ArrowRight, Star, Gift, Crown, Moon
 } from 'lucide-react';
 
-// Common Components
-import { AlfredoAvatar, DomainBadge } from '../common';
-
-// Constants
+// Constants (프로젝트 루트의 constants 폴더)
+import { COLORS } from '../../constants/colors';
 import { LEVEL_CONFIG, BADGES } from '../../constants/gamification';
 
-// Data
+// Data (프로젝트 루트의 data 폴더)
 import { mockDontForget, mockWeather } from '../../data/mockData';
 
-// Home Widgets
+// Common Components (기존 common 폴더)
+import { AlfredoAvatar, DomainBadge, Card } from '../common';
+
+// Home 폴더 내 다른 컴포넌트들
 import { 
   QuickConditionTracker, 
   AlfredoBriefing, 
@@ -23,12 +24,42 @@ import {
   TimelineWidget,
   RoutineWidget 
 } from './widgets';
-
-// Other Components
 import UnifiedTimelineView from './UnifiedTimelineView';
-import EventModal from '../modals/EventModal';
 
-const HomePage = ({ onOpenChat, onOpenSettings, onOpenSearch, onOpenStats, onOpenWeeklyReview, onOpenHabitHeatmap, onOpenEnergyRhythm, onOpenDndModal, onOpenNotifications, onOpenProjectDashboard, notificationCount = 0, doNotDisturb, mood, setMood, energy, setEnergy, oneThing, tasks, onToggleTask, inbox, onStartFocus, darkMode, gameState, events = [], connections = {}, onUpdateTask, onDeleteTask, onSaveEvent, onDeleteEvent, onUpdateTaskTime, onUpdateEventTime, routines = [], onToggleRoutine, onOpenRoutineManager }) => {
+// W1: 새로 추가된 컴포넌트들
+import AlfredoStatusBar, { getAlfredoExpression } from './AlfredoStatusBar';
+import { TomorrowMessageDisplay, EveningWrapUp } from './AlfredoCareSystem';
+
+// W2: 알프레도 모드 시스템 + 바디 더블링
+import { 
+  ALFREDO_MODES,
+  getRecommendedMode,
+  AlfredoModeSelector,
+  NowCard,
+  BodyDoublingMode,
+  TimeBasedGreeting 
+} from './AlfredoModeSystem';
+
+// Modals
+import EventModal from '../modals/EventModal';
+import TaskModal from '../modals/TaskModal';
+
+const HomePage = ({ 
+  onOpenChat, onOpenSettings, onOpenSearch, onOpenStats, onOpenWeeklyReview, 
+  onOpenHabitHeatmap, onOpenEnergyRhythm, onOpenDndModal, onOpenNotifications, 
+  onOpenProjectDashboard, notificationCount = 0, doNotDisturb, mood, setMood, 
+  energy, setEnergy, oneThing, tasks, onToggleTask, inbox, onStartFocus, 
+  darkMode, gameState, events = [], connections = {}, onUpdateTask, onDeleteTask, 
+  onSaveEvent, onDeleteEvent, onUpdateTaskTime, onUpdateEventTime, 
+  routines = [], onToggleRoutine, onOpenRoutineManager,
+  // W1: 새로운 props
+  streak = 0,
+  yesterdayFailed = false,
+  tomorrowMessage = '', // 어젯밤 저장한 메시지
+  onSaveTomorrowMessage,
+  streakProtectionLeft = 3,
+  onUseStreakProtection,
+}) => {
   const [showAllReminders, setShowAllReminders] = useState(false);
   const [showEveningReview, setShowEveningReview] = useState(false);
   const [eveningNote, setEveningNote] = useState('');
@@ -39,6 +70,17 @@ const HomePage = ({ onOpenChat, onOpenSettings, onOpenSearch, onOpenStats, onOpe
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showEventModal, setShowEventModal] = useState(false);
   
+  // W1: 새로운 상태들
+  const [showTomorrowMessage, setShowTomorrowMessage] = useState(!!tomorrowMessage);
+  const [statusBarExpanded, setStatusBarExpanded] = useState(false);
+  
+  // W2: 알프레도 모드 + 바디 더블링 상태
+  const [alfredoMode, setAlfredoMode] = useState('focus');
+  const [showBodyDoubling, setShowBodyDoubling] = useState(false);
+  const [bodyDoublingTask, setBodyDoublingTask] = useState(null);
+  const [focusElapsedMinutes, setFocusElapsedMinutes] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  
   // 동적 날짜/시간
   const now = new Date();
   const hour = now.getHours();
@@ -48,6 +90,26 @@ const HomePage = ({ onOpenChat, onOpenSettings, onOpenSearch, onOpenStats, onOpe
   const isEvening = hour >= 18;
   const isMorning = hour < 12;
   const isAfternoon = hour >= 12 && hour < 18;
+  
+  // W2: 알프레도 모드 자동 추천
+  const recommendedMode = getRecommendedMode({
+    energy,
+    mood,
+    hour,
+    completedTasks: doneTasks?.length || 0,
+    totalTasks: tasks?.length || 0,
+  });
+  
+  // W2: 바디 더블링 타이머 효과
+  useEffect(() => {
+    let timer;
+    if (showBodyDoubling && !isPaused) {
+      timer = setInterval(() => {
+        setFocusElapsedMinutes(prev => prev + 1);
+      }, 60000); // 1분마다
+    }
+    return () => clearInterval(timer);
+  }, [showBodyDoubling, isPaused]);
   
   // 오늘의 통계
   const todoTasks = tasks?.filter(t => t.status !== 'done') || [];
@@ -221,7 +283,32 @@ const HomePage = ({ onOpenChat, onOpenSettings, onOpenSearch, onOpenStats, onOpe
   const borderColor = darkMode ? 'border-gray-700' : 'border-[#A996FF]/20';
   
   return (
-    <div className={`flex-1 overflow-y-auto px-4 pb-32 pt-6 ${bgGradient} transition-colors duration-300`}>
+    <div className={`flex-1 overflow-y-auto ${bgGradient} transition-colors duration-300`}>
+      
+      {/* W1-1: 알프레도 상태바 (상단 고정) */}
+      <AlfredoStatusBar
+        completedTasks={doneTasks.length}
+        totalTasks={tasks?.length || 0}
+        energy={energy}
+        mood={mood}
+        streak={streak}
+        yesterdayFailed={yesterdayFailed}
+        nextEventIn={nextEvent?.totalMins}
+        darkMode={darkMode}
+        expanded={statusBarExpanded}
+        onToggleExpand={() => setStatusBarExpanded(!statusBarExpanded)}
+      />
+      
+      <div className="px-4 pb-32 pt-4">
+      
+      {/* W1-4: 어젯밤 메시지 표시 (아침에만) */}
+      {isMorning && showTomorrowMessage && tomorrowMessage && (
+        <TomorrowMessageDisplay
+          message={tomorrowMessage}
+          onDismiss={() => setShowTomorrowMessage(false)}
+          darkMode={darkMode}
+        />
+      )}
       
       {/* 헤더 */}
       <div className="flex items-start justify-between mb-4">
@@ -275,6 +362,44 @@ const HomePage = ({ onOpenChat, onOpenSettings, onOpenSearch, onOpenStats, onOpe
           </button>
         </div>
       </div>
+      
+      {/* W2-1: 시간대별 인사 */}
+      <TimeBasedGreeting
+        hour={hour}
+        userName="Boss"
+        energy={energy}
+        completedTasks={doneTasks.length}
+        totalTasks={tasks?.length || 0}
+        streak={streak}
+        darkMode={darkMode}
+      />
+      
+      {/* W2-3: 알프레도 모드 선택 */}
+      <AlfredoModeSelector
+        currentMode={alfredoMode}
+        recommendedMode={recommendedMode}
+        onModeChange={setAlfredoMode}
+        darkMode={darkMode}
+      />
+      
+      {/* W2-2: 지금 할 일 카드 */}
+      {topTask && !isEvening && (
+        <NowCard
+          currentTask={topTask}
+          nextEvent={nextEvent}
+          alfredoMode={alfredoMode}
+          energy={energy}
+          onStartTask={(task) => {
+            setBodyDoublingTask(task);
+            setShowBodyDoubling(true);
+            setFocusElapsedMinutes(0);
+          }}
+          onCompleteTask={(task) => onToggleTask?.(task.id)}
+          onSkipTask={(task) => {/* 나중에 처리 */}}
+          onOpenChat={onOpenChat}
+          darkMode={darkMode}
+        />
+      )}
       
       {/* 🐧 알프레도 메인 브리핑 */}
       <div className={`${cardBg} backdrop-blur-xl rounded-xl shadow-lg p-5 mb-4 border ${borderColor} transition-colors duration-300`}>
@@ -876,6 +1001,45 @@ const HomePage = ({ onOpenChat, onOpenSettings, onOpenSearch, onOpenStats, onOpe
           setSelectedEvent(null);
         }}
         googleCalendar={connections?.googleCalendar ? { isSignedIn: true } : null}
+      />
+      
+      {/* W2-4: 바디 더블링 모드 */}
+      <BodyDoublingMode
+        isActive={showBodyDoubling}
+        onClose={() => {
+          setShowBodyDoubling(false);
+          setBodyDoublingTask(null);
+          setFocusElapsedMinutes(0);
+        }}
+        currentTask={bodyDoublingTask}
+        elapsedMinutes={focusElapsedMinutes}
+        onComplete={() => {
+          if (bodyDoublingTask) {
+            onToggleTask?.(bodyDoublingTask.id);
+          }
+          setShowBodyDoubling(false);
+          setBodyDoublingTask(null);
+          setFocusElapsedMinutes(0);
+        }}
+        onPause={() => setIsPaused(!isPaused)}
+        isPaused={isPaused}
+        darkMode={darkMode}
+        alfredoMode={alfredoMode}
+      />
+      
+      {/* W1-3/4: 저녁 마무리 모달 */}
+      <EveningWrapUp
+        isOpen={showEveningReview}
+        onClose={() => setShowEveningReview(false)}
+        completedTasks={doneTasks.length}
+        totalTasks={tasks?.length || 0}
+        streak={streak}
+        focusMinutes={focusElapsedMinutes}
+        tomorrowMessage={eveningNote}
+        onSaveTomorrowMessage={onSaveTomorrowMessage}
+        streakProtectionLeft={streakProtectionLeft}
+        onUseStreakProtection={onUseStreakProtection}
+        darkMode={darkMode}
       />
       
     </div>
