@@ -516,5 +516,4 @@ const RoutineWidget = ({ routines = [], onToggle, onOpenManager, darkMode = fals
 };
 
 export { ROUTINE_TEMPLATES, ROUTINE_ICONS };
-export { ROUTINE_TEMPLATES, ROUTINE_ICONS };
 export default RoutineManagerModal;
