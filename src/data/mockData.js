@@ -28,9 +28,9 @@ export const mockEvents = [
 ];
 
 export const mockBig3 = [
-  { id: 't1', title: '투자 보고서 초안 작성', domain: 'work', deadline: '14:00 전', status: 'todo', priorityChange: 'up', project: '투자 유치' },
-  { id: 't2', title: '팀 위클리 미팅 준비', domain: 'work', deadline: '16:00 전', status: 'todo', project: '팀 관리' },
-  { id: 't3', title: 'PT 세션', domain: 'health', deadline: '18:30', status: 'todo', project: '건강' },
+  { id: 't1', title: '투자 보고서 초안 작성', domain: 'work', deadline: '14:00 전', status: 'todo', priorityChange: 'up', project: '투자 유치', scheduledTime: '10:30', duration: 90 },
+  { id: 't2', title: '팀 위클리 미팅 준비', domain: 'work', deadline: '16:00 전', status: 'todo', project: '팀 관리', scheduledTime: '15:00', duration: 30 },
+  { id: 't3', title: 'PT 세션', domain: 'health', deadline: '18:30', status: 'todo', project: '건강', scheduledTime: '18:30', duration: 60 },
 ];
 
 // WORK 페이지용 전체 태스크
@@ -48,6 +48,7 @@ export const mockAllTasks = [
     priorityReason: '대표님 긴급 요청',
     sparkline: [40, 55, 70, 85, 95],
     duration: 90,
+    scheduledTime: '10:30',
   },
   { 
     id: 't2', 
@@ -62,6 +63,7 @@ export const mockAllTasks = [
     priorityReason: '정기 미팅',
     sparkline: [70, 72, 71, 73, 72],
     duration: 30,
+    scheduledTime: '15:00',
   },
   { 
     id: 't4', 
@@ -75,6 +77,7 @@ export const mockAllTasks = [
     sparkline: [50, 48, 46, 45, 45],
     repeat: 'daily',
     repeatLabel: '매일',
+    // scheduledTime 없음 - 시간 미정
   },
   { 
     id: 't5', 
@@ -89,6 +92,7 @@ export const mockAllTasks = [
     priorityReason: 'Inbox에서 변환됨',
     sparkline: [0, 0, 50, 75, 82],
     duration: 60,
+    // scheduledTime 없음 - 시간 미정
   },
   { 
     id: 't6', 
@@ -103,6 +107,7 @@ export const mockAllTasks = [
     priorityReason: '마감 여유',
     sparkline: [80, 75, 68, 60, 55],
     duration: 45,
+    // scheduledTime 없음 - 시간 미정
   },
   { 
     id: 't7', 
@@ -117,6 +122,7 @@ export const mockAllTasks = [
     priorityReason: '일정 고정',
     sparkline: [65, 67, 68, 68, 68],
     duration: 60,
+    scheduledTime: '17:00',
   },
   { 
     id: 't8', 
