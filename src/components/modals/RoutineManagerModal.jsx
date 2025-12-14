@@ -512,6 +512,9 @@ const RoutineManagerModal = ({
 
 // 루틴 위젯 (홈페이지용)
 const RoutineWidget = ({ routines = [], onToggle, onOpenManager, darkMode = false }) => {
+  return null; // TODO: implement later
+};
 
+export { ROUTINE_TEMPLATES, ROUTINE_ICONS };
 export { ROUTINE_TEMPLATES, ROUTINE_ICONS };
 export default RoutineManagerModal;
