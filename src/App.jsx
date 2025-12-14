@@ -3,7 +3,6 @@ import { Home, Briefcase, Heart, Zap, MessageCircle, Send, ArrowLeft, ArrowRight
 
 // === External Components ===
 import MeetingUploader from './components/MeetingUploader';
-import { useGoogleCalendar } from './hooks/useGoogleCalendar';
 
 // === Constants ===
 import { 
