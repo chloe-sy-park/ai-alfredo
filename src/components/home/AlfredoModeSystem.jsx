@@ -547,7 +547,6 @@ const TimeBasedGreeting = ({
 
 export {
   ALFREDO_MODES,
-  getRecommendedMode,
   AlfredoModeSelector,
   NowCard,
   BodyDoublingMode,
