@@ -63,7 +63,7 @@ import DoNotDisturbModal from './components/modals/DoNotDisturbModal';
 import { LevelUpModal, NewBadgeModal, StatsModal } from './components/modals/StatsModals';
 
 // === Widget Components (직접 import) ===
-import { QuickConditionTracker, AlfredoBriefing, Big3Widget, UrgentWidget, TimelineWidget, RoutineWidget } from './components/home/widgets/index.jsx';
+import { QuickConditionTracker, AlfredoBriefing, Big3Widget, UrgentWidget, TimelineWidget, RoutineWidget } from './components/home/widgets.jsx';
 import UnifiedTimelineView from './components/home/UnifiedTimelineView';
 
 // === Work Components ===
