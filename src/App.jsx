@@ -10395,11 +10395,16 @@ const SettingsPage = ({ userData, onUpdateUserData, onBack, darkMode, setDarkMod
 };
 
 // === Home Page ===
-const HomePage = ({ onOpenChat, onOpenSettings, onOpenSearch, onOpenStats, onOpenWeeklyReview, onOpenHabitHeatmap, onOpenEnergyRhythm, onOpenDndModal, doNotDisturb, mood, setMood, energy, setEnergy, oneThing, tasks, onToggleTask, inbox, onStartFocus, darkMode, gameState, events = [], connections = {} }) => {
+const HomePage = ({ onOpenChat, onOpenSettings, onOpenSearch, onOpenStats, onOpenWeeklyReview, onOpenHabitHeatmap, onOpenEnergyRhythm, onOpenDndModal, doNotDisturb, mood, setMood, energy, setEnergy, oneThing, tasks, onToggleTask, inbox, onStartFocus, darkMode, gameState, events = [], connections = {}, onUpdateTask, onDeleteTask, onSaveEvent, onDeleteEvent }) => {
   const [showAllReminders, setShowAllReminders] = useState(false);
   const [showEveningReview, setShowEveningReview] = useState(false);
   const [eveningNote, setEveningNote] = useState('');
   const [showTaskOptions, setShowTaskOptions] = useState(false);
+  
+  // Phase 3: 모달 상태
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [showEventModal, setShowEventModal] = useState(false);
   
   // 동적 날짜/시간
   const now = new Date();
@@ -10917,8 +10922,13 @@ const HomePage = ({ onOpenChat, onOpenSettings, onOpenSearch, onOpenStats, onOpe
       <UnifiedTimelineView
         events={events}
         tasks={tasks}
-        onEventClick={(event) => console.log('Event clicked:', event)}
-        onTaskClick={(task) => console.log('Task clicked:', task)}
+        onEventClick={(event) => {
+          setSelectedEvent(event);
+          setShowEventModal(true);
+        }}
+        onTaskClick={(task) => {
+          setSelectedTask(task);
+        }}
         onStartFocus={onStartFocus}
         darkMode={darkMode}
       />
@@ -11148,6 +11158,50 @@ const HomePage = ({ onOpenChat, onOpenSettings, onOpenSearch, onOpenStats, onOpe
           </p>
         )}
       </div>
+      
+      {/* Phase 3: 태스크 상세 모달 */}
+      {selectedTask && (
+        <TaskModal
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)}
+          onStartFocus={(task) => {
+            setSelectedTask(null);
+            onStartFocus?.(task);
+          }}
+          onToggle={(taskId) => {
+            onToggleTask?.(taskId);
+            setSelectedTask(null);
+          }}
+          onUpdate={(taskId, updates) => {
+            onUpdateTask?.(taskId, updates);
+          }}
+          onDelete={(taskId) => {
+            onDeleteTask?.(taskId);
+            setSelectedTask(null);
+          }}
+        />
+      )}
+      
+      {/* Phase 3: 이벤트 편집 모달 */}
+      <EventModal
+        isOpen={showEventModal}
+        onClose={() => {
+          setShowEventModal(false);
+          setSelectedEvent(null);
+        }}
+        event={selectedEvent}
+        onSave={(eventData) => {
+          onSaveEvent?.(eventData);
+          setShowEventModal(false);
+          setSelectedEvent(null);
+        }}
+        onDelete={(eventId) => {
+          onDeleteEvent?.(eventId);
+          setShowEventModal(false);
+          setSelectedEvent(null);
+        }}
+        googleCalendar={connections?.googleCalendar ? { isSignedIn: true } : null}
+      />
       
     </div>
   );
@@ -11984,6 +12038,16 @@ export default function LifeButlerApp() {
             gameState={gameState}
             events={allEvents}
             connections={connections}
+            onUpdateTask={handleUpdateTask}
+            onDeleteTask={handleDeleteTask}
+            onSaveEvent={(eventData) => {
+              if (eventData.id) {
+                handleUpdateEvent(eventData.id, eventData);
+              } else {
+                handleAddEvent({ ...eventData, id: `event-${Date.now()}` });
+              }
+            }}
+            onDeleteEvent={handleDeleteEvent}
           />
         )}
         {view === 'SETTINGS' && (
