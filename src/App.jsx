@@ -31,7 +31,7 @@ import {
   PageHeader, ProgressBar, Badge, AlfredoAvatar, Toast,
   StatusIndicator, DomainBadge 
 } from './components/common';
-// Line 35 변경:
+
 import { TimeAlertToast, AlfredoFeedback, AlfredoFloatingBubble } from './components/alfredo';
 import AlfredoStatusBar from './components/home/AlfredoStatusBar';
 
