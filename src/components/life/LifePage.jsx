@@ -1,16 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, Heart, Activity, Pill, Moon, Sun, Droplet, 
-  ChevronRight, Plus, CheckCircle2, Clock, Calendar, Target
+  ChevronRight, Plus, CheckCircle2, Clock, Calendar, Target, Circle
 } from 'lucide-react';
 
 // Common Components
 import { AlfredoAvatar } from '../common';
 
+// Alfredo Components
+import { AlfredoFloatingBubble } from '../alfredo/index.jsx';
+
 // Data
 import { 
   mockHealthCheck, mockMedications, mockRelationships, 
-  mockLifeReminders, mockPersonalSchedule 
+  mockLifeReminders, mockPersonalSchedule, mockRoutines, mockWeather
 } from '../../data/mockData';
 
 // Other Components
@@ -20,7 +23,7 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
   // localStorage 키
   const LIFE_STORAGE_KEYS = {
     medications: 'lifebutler_medications',
-    routines: 'lifebutler_routines',
+    routines: 'lifebutler_life_routines',
     lifeTop3: 'lifebutler_lifeTop3',
     upcomingItems: 'lifebutler_upcomingItems',
     dontForgetItems: 'lifebutler_dontForgetItems',
@@ -50,11 +53,11 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
   const [modalType, setModalType] = useState(null);
   
   // 데이터 상태 (수정 가능하게) - localStorage에서 로드
-  const [lifeTop3, setLifeTop3] = useState(() => loadFromStorage(LIFE_STORAGE_KEYS.lifeTop3, mockLifeReminders.todayTop3));
-  const [upcomingItems, setUpcomingItems] = useState(() => loadFromStorage(LIFE_STORAGE_KEYS.upcomingItems, mockLifeReminders.upcoming));
-  const [dontForgetItems, setDontForgetItems] = useState(() => loadFromStorage(LIFE_STORAGE_KEYS.dontForgetItems, mockLifeReminders.dontForget));
-  const [relationshipItems, setRelationshipItems] = useState(() => loadFromStorage(LIFE_STORAGE_KEYS.relationshipItems, mockLifeReminders.relationships));
-  const [routines, setRoutines] = useState(() => loadFromStorage(LIFE_STORAGE_KEYS.routines, mockRoutines));
+  const [lifeTop3, setLifeTop3] = useState(() => loadFromStorage(LIFE_STORAGE_KEYS.lifeTop3, mockLifeReminders.todayTop3 || []));
+  const [upcomingItems, setUpcomingItems] = useState(() => loadFromStorage(LIFE_STORAGE_KEYS.upcomingItems, mockLifeReminders.upcoming || []));
+  const [dontForgetItems, setDontForgetItems] = useState(() => loadFromStorage(LIFE_STORAGE_KEYS.dontForgetItems, mockLifeReminders.dontForget || []));
+  const [relationshipItems, setRelationshipItems] = useState(() => loadFromStorage(LIFE_STORAGE_KEYS.relationshipItems, mockLifeReminders.relationships || []));
+  const [routines, setRoutines] = useState(() => loadFromStorage(LIFE_STORAGE_KEYS.routines, mockRoutines || []));
   
   // 드래그앤드롭 상태
   const [draggedItem, setDraggedItem] = useState(null);
@@ -101,21 +104,21 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
   const borderColor = darkMode ? 'border-gray-700' : 'border-gray-100';
   
   const hour = new Date().getHours();
-  const { todayTop3, upcoming, dontForget, relationships } = mockLifeReminders;
+  const { todayTop3 = [], upcoming = [], dontForget = [], relationships = [] } = mockLifeReminders || {};
   
   const getAlfredoMessage = () => {
     const checkedCount = checkedItems.length;
     const totalRoutines = routines.length;
     const medicationsDue = medications.filter(m => {
-      const [h] = m.time.split(':').map(Number);
+      const [h] = (m.time || '00:00').split(':').map(Number);
       return h <= hour && !m.taken;
     });
-    const upcomingBirthdays = relationships.filter(r => r.dDay <= 3);
+    const upcomingBirthdays = (relationships || []).filter(r => r.dDay <= 3);
     
     // 약 복용 시간
     if (medicationsDue.length > 0) {
       return {
-        message: `${medicationsDue[0].name} 드실 시간이에요! 💊`,
+        message: medicationsDue[0].name + ' 드실 시간이에요! 💊',
         subMessage: medicationsDue[0].time + '에 복용',
         quickReplies: [
           { label: '복용했어요 ✓', key: 'took_med' },
@@ -129,7 +132,7 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
       const person = upcomingBirthdays[0];
       if (person.dDay === 0) {
         return {
-          message: `오늘 ${person.name} ${person.event}이에요! 🎂`,
+          message: '오늘 ' + person.name + ' ' + person.event + '이에요! 🎂',
           subMessage: '연락하셨나요?',
           quickReplies: [
             { label: '연락했어요!', key: 'contacted' },
@@ -138,7 +141,7 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
         };
       } else {
         return {
-          message: `${person.dDay}일 후 ${person.name} ${person.event}!`,
+          message: person.dDay + '일 후 ' + person.name + ' ' + person.event + '!',
           subMessage: '선물 준비하셨나요?',
           quickReplies: [
             { label: '선물 추천해줘', key: 'gift_idea' },
@@ -172,7 +175,7 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
       };
     }
     
-    if (checkedCount >= totalRoutines) {
+    if (checkedCount >= totalRoutines && totalRoutines > 0) {
       return {
         message: '오늘 루틴 완벽! 👏',
         subMessage: '자기 관리 정말 잘하고 계세요.',
@@ -185,7 +188,7 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
     // 균형 메시지
     return {
       message: '오늘 하루도 나를 위한 시간 가져요.',
-      subMessage: `${totalRoutines - checkedCount}개 루틴이 남았어요.`,
+      subMessage: (totalRoutines - checkedCount) + '개 루틴이 남았어요.',
       quickReplies: [
         { label: '루틴 시작할게', key: 'start' },
         { label: '뭐부터 할까?', key: 'recommend' }
@@ -247,8 +250,8 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
   const takenMeds = medications.filter(m => m.taken).length;
   
   // 오늘 챙길 것 개수
-  const criticalCount = todayTop3.filter(t => t.critical || t.dDay <= 1).length;
-  const upcomingCount = upcoming.length;
+  const criticalCount = (todayTop3 || []).filter(t => t.critical || t.dDay <= 1).length;
+  const upcomingCount = (upcoming || []).length;
   
   // 모달 열기
   const openModal = (item, type) => {
@@ -261,46 +264,46 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
   const handleModalSave = (updatedItem) => {
     switch(modalType) {
       case 'medication':
-      case 'medicationList': // medicationList에서 약 추가 시 medication으로 처리
+      case 'medicationList':
         if (modalItem) {
           setMedications(medications.map(m => m.id === updatedItem.id ? updatedItem : m));
         } else {
-          setMedications([...medications, { ...updatedItem, id: `med-${Date.now()}` }]);
+          setMedications([...medications, { ...updatedItem, id: 'med-' + Date.now() }]);
         }
         break;
       case 'reminder':
         if (modalItem) {
           setLifeTop3(lifeTop3.map(t => t.id === updatedItem.id ? updatedItem : t));
         } else {
-          setLifeTop3([...lifeTop3, { ...updatedItem, id: `lt-${Date.now()}` }]);
+          setLifeTop3([...lifeTop3, { ...updatedItem, id: 'lt-' + Date.now() }]);
         }
         break;
       case 'upcoming':
         if (modalItem) {
           setUpcomingItems(upcomingItems.map(u => u.id === updatedItem.id ? updatedItem : u));
         } else {
-          setUpcomingItems([...upcomingItems, { ...updatedItem, id: `up-${Date.now()}` }]);
+          setUpcomingItems([...upcomingItems, { ...updatedItem, id: 'up-' + Date.now() }]);
         }
         break;
       case 'dontForget':
         if (modalItem) {
           setDontForgetItems(dontForgetItems.map(d => d.id === updatedItem.id ? updatedItem : d));
         } else {
-          setDontForgetItems([...dontForgetItems, { ...updatedItem, id: `df-${Date.now()}` }]);
+          setDontForgetItems([...dontForgetItems, { ...updatedItem, id: 'df-' + Date.now() }]);
         }
         break;
       case 'relationship':
         if (modalItem) {
           setRelationshipItems(relationshipItems.map(r => r.id === updatedItem.id ? updatedItem : r));
         } else {
-          setRelationshipItems([...relationshipItems, { ...updatedItem, id: `rel-${Date.now()}` }]);
+          setRelationshipItems([...relationshipItems, { ...updatedItem, id: 'rel-' + Date.now() }]);
         }
         break;
       case 'routine':
         if (modalItem) {
           setRoutines(routines.map(r => r.id === updatedItem.id ? updatedItem : r));
         } else {
-          setRoutines([...routines, { ...updatedItem, id: `routine-${Date.now()}` }]);
+          setRoutines([...routines, { ...updatedItem, id: 'routine-' + Date.now() }]);
         }
         break;
     }
@@ -335,7 +338,7 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
   // 약 복용 체크
   const handleTakeMed = (medId) => {
     const now = new Date();
-    const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
     setMedications(medications.map(m => 
       m.id === medId ? { ...m, taken: true, takenAt: timeStr } : m
     ));
@@ -344,38 +347,37 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
   // 풍성한 알프레도 브리핑 생성
   const generateLifeBriefing = () => {
     const lines = [];
-    const weather = mockWeather;
-    const routines = mockRoutines;
+    const weather = mockWeather || { temp: 15, condition: 'sunny', rain: false };
     
     // 1. 시간대별 인사 + 날씨 (가장 먼저 알고 싶은 것)
     if (hour < 12) {
       // 아침
-      if (healthCheck.sleep.hours < 6) {
-        lines.push(`어젯밤 ${healthCheck.sleep.hours}시간밖에 못 주무셨네요. 오늘은 무리하지 마세요, Boss. 💤`);
+      if (healthCheck.sleep && healthCheck.sleep.hours < 6) {
+        lines.push('어젯밤 ' + healthCheck.sleep.hours + '시간밖에 못 주무셨네요. 오늘은 무리하지 마세요, Boss. 💤');
       } else {
         lines.push('좋은 아침이에요, Boss! ☀️');
       }
       
       // 날씨 + 옷차림
       if (weather.temp <= 0) {
-        lines.push(`\n오늘 **${weather.temp}°C**까지 떨어져요. ${weather.advice} 꼭 챙기시고, 목도리도요. 🧣`);
+        lines.push('\n오늘 **' + weather.temp + '°C**까지 떨어져요. ' + (weather.advice || '따뜻하게 입으세요') + ' 꼭 챙기시고, 목도리도요. 🧣');
       } else if (weather.rain) {
-        lines.push(`\n오후에 비 온대요. 우산 가방에 넣어두셨죠? ☔`);
+        lines.push('\n오후에 비 온대요. 우산 가방에 넣어두셨죠? ☔');
       } else if (weather.condition === 'sunny') {
-        lines.push(`\n오늘 날씨 좋아요! **${weather.tempHigh}°C**까지 올라가요. 점심에 잠깐 산책 어때요?`);
+        lines.push('\n오늘 날씨 좋아요! **' + (weather.tempHigh || weather.temp) + '°C**까지 올라가요. 점심에 잠깐 산책 어때요?');
       }
       
       // 미세먼지
       if (weather.dust === 'bad' || weather.dust === 'veryBad') {
-        lines.push(`\n미세먼지 **${weather.dustText}**이에요. 마스크 꼭 챙기세요.`);
+        lines.push('\n미세먼지 **' + (weather.dustText || '나쁨') + '**이에요. 마스크 꼭 챙기세요.');
       }
       
     } else if (hour < 17) {
       // 오후
       lines.push('오후도 힘내고 계시죠? ☀️');
       
-      if (healthCheck.water.current < 4) {
-        lines.push(`\n물 ${healthCheck.water.current}잔밖에 안 드셨어요. 지금 한 잔 어때요? 💧`);
+      if (healthCheck.water && healthCheck.water.current < 4) {
+        lines.push('\n물 ' + healthCheck.water.current + '잔밖에 안 드셨어요. 지금 한 잔 어때요? 💧');
       }
       
     } else if (hour < 21) {
@@ -383,15 +385,15 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
       lines.push('하루 마무리 잘 하고 계시죠? 🌆');
       
       if (weather.temp <= 0) {
-        lines.push(`\n밖에 **${weather.temp}°C**예요. 따뜻하게 입고 다니세요.`);
+        lines.push('\n밖에 **' + weather.temp + '°C**예요. 따뜻하게 입고 다니세요.');
       }
       
     } else {
       // 밤
       lines.push('오늘 하루 수고 많으셨어요, Boss. 🌙');
       
-      if (healthCheck.sleep.hours < 7) {
-        lines.push(`\n어제 ${healthCheck.sleep.hours}시간 주무셨잖아요. 오늘은 일찍 주무세요.`);
+      if (healthCheck.sleep && healthCheck.sleep.hours < 7) {
+        lines.push('\n어제 ' + healthCheck.sleep.hours + '시간 주무셨잖아요. 오늘은 일찍 주무세요.');
       }
     }
     
@@ -399,135 +401,136 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
     if (pendingMeds.length > 0) {
       const criticalMed = pendingMeds.find(m => m.critical);
       if (criticalMed) {
-        lines.push(`\n💊 **${criticalMed.name}** 드셨어요? 이건 꼭 챙기셔야 해요.`);
+        lines.push('\n💊 **' + criticalMed.name + '** 드셨어요? 이건 꼭 챙기셔야 해요.');
       } else if (pendingMeds.length === 1) {
-        lines.push(`\n💊 **${pendingMeds[0].name}** 드실 시간이에요.`);
+        lines.push('\n💊 **' + pendingMeds[0].name + '** 드실 시간이에요.');
       } else {
-        lines.push(`\n💊 ${currentTimeSlot === 'morning' ? '아침' : currentTimeSlot === 'afternoon' ? '점심' : currentTimeSlot === 'evening' ? '저녁' : '취침 전'} 약 ${pendingMeds.length}개 아직 안 드셨어요.`);
+        var timeLabel = currentTimeSlot === 'morning' ? '아침' : currentTimeSlot === 'afternoon' ? '점심' : currentTimeSlot === 'evening' ? '저녁' : '취침 전';
+        lines.push('\n💊 ' + timeLabel + ' 약 ' + pendingMeds.length + '개 아직 안 드셨어요.');
       }
     }
     
     // 3. 긴급한 것 (돈 관련은 특별히 강조)
-    const critical = todayTop3.filter(t => t.critical || t.dDay <= 1);
+    var critical = (todayTop3 || []).filter(function(t) { return t.critical || t.dDay <= 1; });
     if (critical.length > 0) {
-      const item = critical[0];
+      var item = critical[0];
       if (item.category === 'money') {
-        lines.push(`\n💰 **${item.title}** ${item.dDay === 0 ? '오늘까지예요!' : '내일까지예요!'} ${item.note ? `${item.note}, ` : ''}이건 진짜 중요한 거 아시죠?`);
+        lines.push('\n💰 **' + item.title + '** ' + (item.dDay === 0 ? '오늘까지예요!' : '내일까지예요!') + ' ' + (item.note ? item.note + ', ' : '') + '이건 진짜 중요한 거 아시죠?');
       } else {
-        lines.push(`\n📌 **${item.title}** ${item.dDay === 0 ? '오늘이에요!' : 'D-1이에요!'} ${item.note ? `(${item.note})` : ''}`);
+        lines.push('\n📌 **' + item.title + '** ' + (item.dDay === 0 ? '오늘이에요!' : 'D-1이에요!') + ' ' + (item.note ? '(' + item.note + ')' : ''));
       }
     }
     
     // 4. 루틴 체크 (못 하고 있는 것)
-    const missedRoutine = routines.find(r => r.current === 0 && r.lastDone);
+    var missedRoutine = routines.find(function(r) { return r.current === 0 && r.lastDone; });
     if (missedRoutine) {
-      lines.push(`\n🔄 **${missedRoutine.title}** ${missedRoutine.lastDone}부터 안 하셨어요. 오늘은 가볍게라도 어때요?`);
+      lines.push('\n🔄 **' + missedRoutine.title + '** ' + missedRoutine.lastDone + '부터 안 하셨어요. 오늘은 가볍게라도 어때요?');
     }
     
     // 5. 관계 챙기기
-    const needContact = relationships.filter(r => r.lastContact >= 7);
+    var needContact = (relationships || []).filter(function(r) { return r.lastContact >= 7; });
     if (needContact.length > 0) {
-      const person = needContact[0];
+      var person = needContact[0];
       if (person.lastContact >= 14) {
-        lines.push(`\n💕 **${person.name}**${person.name.endsWith('님') ? '' : '님'}께 연락한 지 ${person.lastContact}일이나 됐어요. 오늘 잠깐 ${person.suggestion} 어때요?`);
+        lines.push('\n💕 **' + person.name + '**' + (person.name.endsWith('님') ? '' : '님') + '께 연락한 지 ' + person.lastContact + '일이나 됐어요. 오늘 잠깐 ' + person.suggestion + ' 어때요?');
       } else {
-        lines.push(`\n💕 ${person.name}${person.name.endsWith('님') ? '' : '님'}께 ${person.suggestion} 보내는 건 어때요?`);
+        lines.push('\n💕 ' + person.name + (person.name.endsWith('님') ? '' : '님') + '께 ' + person.suggestion + ' 보내는 건 어때요?');
       }
     }
     
     // 6. 이번 주 일정 미리 알림
-    if (upcoming.length > 0) {
-      const event = upcoming[0];
-      lines.push(`\n📅 ${event.date}에 **${event.title}** 있는 거 기억하시죠? ${event.note ? `${event.note}요.` : ''}`);
+    if ((upcoming || []).length > 0) {
+      var event = upcoming[0];
+      lines.push('\n📅 ' + event.date + '에 **' + event.title + '** 있는 거 기억하시죠? ' + (event.note ? event.note + '요.' : ''));
     }
     
     // 7. 컨디션 기반 조언
     if (energy < 30) {
-      lines.push(`\n😌 에너지가 많이 낮아 보여요. 오늘은 급한 것만 하고 쉬세요. 괜찮아요.`);
+      lines.push('\n😌 에너지가 많이 낮아 보여요. 오늘은 급한 것만 하고 쉬세요. 괜찮아요.');
     } else if (energy < 50) {
-      lines.push(`\n😊 컨디션이 보통이네요. 가벼운 것부터 하나씩 해봐요.`);
+      lines.push('\n😊 컨디션이 보통이네요. 가벼운 것부터 하나씩 해봐요.');
     } else if (energy >= 70 && mood === 'upbeat') {
-      lines.push(`\n✨ 오늘 컨디션 좋으시네요! 미뤄둔 거 처리하기 딱 좋아요.`);
+      lines.push('\n✨ 오늘 컨디션 좋으시네요! 미뤄둔 거 처리하기 딱 좋아요.');
     }
     
     // 8. 마무리 - 시간대별로 다르게
     if (hour < 12) {
-      lines.push(`\n\n오늘 하루도 Boss답게 보내요! 제가 옆에서 다 챙길게요. 🐧`);
+      lines.push('\n\n오늘 하루도 Boss답게 보내요! 제가 옆에서 다 챙길게요. 🐧');
     } else if (hour < 18) {
-      lines.push(`\n\n남은 하루도 힘내세요! 필요한 거 있으면 불러주세요. 🐧`);
+      lines.push('\n\n남은 하루도 힘내세요! 필요한 거 있으면 불러주세요. 🐧');
     } else {
-      lines.push(`\n\n오늘도 수고했어요, Boss. 푹 쉬세요. 🐧`);
+      lines.push('\n\n오늘도 수고했어요, Boss. 푹 쉬세요. 🐧');
     }
     
     return lines.join('');
   };
   
   const handleToggleItem = (id) => {
-    setCheckedItems(prev => 
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
+    setCheckedItems(function(prev) {
+      return prev.includes(id) ? prev.filter(function(i) { return i !== id; }) : prev.concat([id]);
+    });
   };
   
   const handleSaveJournal = () => {
     if (journalText.trim()) {
       setJournalSaved(true);
-      setTimeout(() => setJournalSaved(false), 2000);
+      setTimeout(function() { setJournalSaved(false); }, 2000);
     }
   };
   
   const getDDayText = (dDay) => {
     if (dDay === 0) return '오늘';
     if (dDay === 1) return '내일';
-    return `D-${dDay}`;
+    return 'D-' + dDay;
   };
   
   const getDDayColor = (dDay, critical) => {
     if (critical || dDay === 0) return 'bg-red-500 text-white';
-    if (dDay === 1) return 'bg-[#A996FF]500 text-white';
+    if (dDay === 1) return 'bg-[#A996FF] text-white';
     if (dDay <= 3) return 'bg-[#EDE9FE] text-[#7C6CD6]';
     return 'bg-gray-100 text-gray-600';
   };
   
   return (
-    <div className={`flex-1 overflow-y-auto ${darkMode ? 'bg-gray-900' : 'bg-gradient-to-b from-[#FDF8F3] to-[#F5EDE4]'} transition-colors duration-300`}>
+    <div className={"flex-1 overflow-y-auto " + (darkMode ? 'bg-gray-900' : 'bg-gradient-to-b from-[#FDF8F3] to-[#F5EDE4]') + " transition-colors duration-300"}>
       <div className="p-4 space-y-4 pb-32">
         
         {/* 알프레도 브리핑 */}
-        <div className={`${cardBg}/90 backdrop-blur-xl rounded-xl shadow-lg p-5 border ${darkMode ? 'border-gray-700' : 'border-[#EDE9FE]'}`}>
+        <div className={cardBg + "/90 backdrop-blur-xl rounded-xl shadow-lg p-5 border " + (darkMode ? 'border-gray-700' : 'border-[#EDE9FE]')}>
           {/* 헤더: 알프레도 + 날씨 요약 */}
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-start gap-3">
               <AlfredoAvatar size="lg" />
               <div>
-                <p className={`font-bold ${textPrimary}`}>알프레도 🐧</p>
-                <p className={`text-xs ${darkMode ? 'text-[#A996FF]' : 'text-[#A996FF]'}`}>오늘 챙길 것 {criticalCount}개</p>
+                <p className={"font-bold " + textPrimary}>알프레도 🐧</p>
+                <p className={"text-xs " + (darkMode ? 'text-[#A996FF]' : 'text-[#A996FF]')}>오늘 챙길 것 {criticalCount}개</p>
               </div>
             </div>
             {/* 날씨 미니 카드 */}
-            <div className={`flex items-center gap-2 ${darkMode ? 'bg-gray-700' : 'bg-gradient-to-r from-gray-100 to-sky-50'} px-3 py-1.5 rounded-full`}>
+            <div className={"flex items-center gap-2 " + (darkMode ? 'bg-gray-700' : 'bg-gradient-to-r from-gray-100 to-sky-50') + " px-3 py-1.5 rounded-full"}>
               <span className="text-lg">
-                {mockWeather.condition === 'sunny' ? '☀️' : 
-                 mockWeather.condition === 'cloudy' ? '☁️' : 
-                 mockWeather.condition === 'rain' ? '🌧️' : '❄️'}
+                {(mockWeather && mockWeather.condition || 'sunny') === 'sunny' ? '☀️' : 
+                 mockWeather && mockWeather.condition === 'cloudy' ? '☁️' : 
+                 mockWeather && mockWeather.condition === 'rain' ? '🌧️' : '❄️'}
               </span>
-              <span className={`text-sm font-bold ${darkMode ? 'text-gray-400' : 'text-gray-700'}`}>{mockWeather.temp}°</span>
-              {mockWeather.dust === 'bad' && <span className="text-[11px] text-red-500 font-medium">먼지😷</span>}
+              <span className={"text-sm font-bold " + (darkMode ? 'text-gray-400' : 'text-gray-700')}>{mockWeather && mockWeather.temp || 15}°</span>
+              {mockWeather && mockWeather.dust === 'bad' && <span className="text-[11px] text-red-500 font-medium">먼지😷</span>}
             </div>
           </div>
           
           {/* 브리핑 본문 */}
-          <div className={`${darkMode ? 'bg-gray-700' : 'bg-gradient-to-br from-[#F5F3FF] to-[#EDE9FE]'} rounded-xl p-4`}>
-            <p className={`text-sm ${darkMode ? 'text-gray-200' : 'text-gray-700'} leading-relaxed whitespace-pre-line`}>
-              {generateLifeBriefing().split('**').map((part, i) => 
-                i % 2 === 1 ? <strong key={i} className={`${darkMode ? 'text-[#A996FF]' : 'text-[#7C6CD6]'} font-semibold`}>{part}</strong> : part
-              )}
+          <div className={(darkMode ? 'bg-gray-700' : 'bg-gradient-to-br from-[#F5F3FF] to-[#EDE9FE]') + " rounded-xl p-4"}>
+            <p className={"text-sm " + (darkMode ? 'text-gray-200' : 'text-gray-700') + " leading-relaxed whitespace-pre-line"}>
+              {generateLifeBriefing().split('**').map(function(part, i) {
+                return i % 2 === 1 ? <strong key={i} className={(darkMode ? 'text-[#A996FF]' : 'text-[#7C6CD6]') + " font-semibold"}>{part}</strong> : part;
+              })}
             </p>
           </div>
         </div>
         
         {/* 컨디션 & 건강 체크 */}
-        <div className={`${cardBg}/80 backdrop-blur-xl rounded-xl shadow-sm p-4 border ${borderColor}`}>
-          <h3 className={`font-bold ${textPrimary} mb-4 flex items-center gap-2`}>
+        <div className={cardBg + "/80 backdrop-blur-xl rounded-xl shadow-sm p-4 border " + borderColor}>
+          <h3 className={"font-bold " + textPrimary + " mb-4 flex items-center gap-2"}>
             <span className="text-lg">💫</span> 오늘의 컨디션
           </h3>
           
@@ -542,23 +545,25 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
               <div className="h-2.5 bg-[#EDE9FE] rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] rounded-full transition-all duration-500"
-                  style={{ width: `${energy}%` }}
+                  style={{ width: energy + '%' }}
                 />
               </div>
               <div className="flex justify-between mt-3">
-                {[25, 50, 75, 100].map(val => (
-                  <button
-                    key={val}
-                    onClick={() => setEnergy(val)}
-                    className={`w-8 h-8 rounded-full text-xs font-bold transition-all ${
-                      energy === val 
-                        ? 'bg-[#F5F3FF]0 text-white shadow-md scale-110' 
-                        : 'bg-white text-[#8B7CF7] hover:bg-[#F5F3FF]'
-                    }`}
-                  >
-                    {val}
-                  </button>
-                ))}
+                {[25, 50, 75, 100].map(function(val) {
+                  return (
+                    <button
+                      key={val}
+                      onClick={function() { setEnergy(val); }}
+                      className={"w-8 h-8 rounded-full text-xs font-bold transition-all " + (
+                        energy === val 
+                          ? 'bg-[#A996FF] text-white shadow-md scale-110' 
+                          : 'bg-white text-[#8B7CF7] hover:bg-[#F5F3FF]'
+                      )}
+                    >
+                      {val}
+                    </button>
+                  );
+                })}
               </div>
             </div>
             
@@ -570,20 +575,22 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
                   { key: 'down', emoji: '😔', label: '힘듦' },
                   { key: 'light', emoji: '😊', label: '괜찮음' },
                   { key: 'upbeat', emoji: '😄', label: '좋음' },
-                ].map(m => (
-                  <button
-                    key={m.key}
-                    onClick={() => setMood(m.key)}
-                    className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
-                      mood === m.key 
-                        ? 'bg-[#EDE9FE] scale-110' 
-                        : 'hover:bg-[#F5F3FF]'
-                    }`}
-                  >
-                    <span className="text-2xl">{m.emoji}</span>
-                    <span className="text-[11px] text-[#8B7CF7]">{m.label}</span>
-                  </button>
-                ))}
+                ].map(function(m) {
+                  return (
+                    <button
+                      key={m.key}
+                      onClick={function() { setMood(m.key); }}
+                      className={"flex flex-col items-center gap-1 p-2 rounded-xl transition-all " + (
+                        mood === m.key 
+                          ? 'bg-[#EDE9FE] scale-110' 
+                          : 'hover:bg-[#F5F3FF]'
+                      )}
+                    >
+                      <span className="text-2xl">{m.emoji}</span>
+                      <span className="text-[11px] text-[#8B7CF7]">{m.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -592,28 +599,28 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
           <div className="grid grid-cols-4 gap-2">
             <div className="bg-gray-100 rounded-xl p-3 text-center">
               <span className="text-xl">💤</span>
-              <p className="text-[11px] text-gray-600 font-medium mt-1">{healthCheck.sleep.hours}시간</p>
+              <p className="text-[11px] text-gray-600 font-medium mt-1">{healthCheck && healthCheck.sleep && healthCheck.sleep.hours || 7}시간</p>
             </div>
             <div className="bg-gray-50 rounded-xl p-3 text-center">
               <span className="text-xl">💧</span>
-              <p className="text-[11px] text-gray-600 font-medium mt-1">{healthCheck.water.current}/{healthCheck.water.target}잔</p>
+              <p className="text-[11px] text-gray-600 font-medium mt-1">{healthCheck && healthCheck.water && healthCheck.water.current || 0}/{healthCheck && healthCheck.water && healthCheck.water.target || 8}잔</p>
               <button 
-                onClick={() => setHealthCheck({...healthCheck, water: {...healthCheck.water, current: healthCheck.water.current + 1}})}
+                onClick={function() { setHealthCheck({...healthCheck, water: {...(healthCheck && healthCheck.water || {}), current: (healthCheck && healthCheck.water && healthCheck.water.current || 0) + 1}}); }}
                 className="text-[11px] text-gray-500 underline"
               >+1잔</button>
             </div>
             <div className="bg-emerald-50 rounded-xl p-3 text-center">
               <span className="text-xl">🚶</span>
-              <p className="text-[11px] text-emerald-600 font-medium mt-1">{(healthCheck.steps.current / 1000).toFixed(1)}k</p>
+              <p className="text-[11px] text-emerald-600 font-medium mt-1">{((healthCheck && healthCheck.steps && healthCheck.steps.current || 0) / 1000).toFixed(1)}k</p>
             </div>
             <button 
-              onClick={() => openModal(null, 'medicationList')}
-              className={`rounded-xl p-3 text-center transition-all hover:scale-105 ${
+              onClick={function() { openModal(null, 'medicationList'); }}
+              className={"rounded-xl p-3 text-center transition-all hover:scale-105 " + (
                 pendingMeds.length > 0 ? 'bg-[#EDE9FE] ring-2 ring-[#C4B5FD]' : 'bg-[#F5F3FF]'
-              }`}
+              )}
             >
               <span className="text-xl">💊</span>
-              <p className={`text-[11px] font-medium mt-1 ${pendingMeds.length > 0 ? 'text-[#7C3AED]' : 'text-[#F5F3FF]0'}`}>
+              <p className={"text-[11px] font-medium mt-1 " + (pendingMeds.length > 0 ? 'text-[#7C3AED]' : 'text-[#A996FF]')}>
                 {takenMeds}/{totalMeds}
               </p>
               {pendingMeds.length > 0 && (
@@ -624,23 +631,23 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
         </div>
         
         {/* 오늘의 Life Top 3 */}
-        <div className={`${cardBg}/80 backdrop-blur-xl rounded-xl shadow-sm p-4 border ${borderColor}`}>
+        <div className={cardBg + "/80 backdrop-blur-xl rounded-xl shadow-sm p-4 border " + borderColor}>
           <div className="flex items-center justify-between mb-3">
-            <h3 className={`font-bold ${textPrimary} flex items-center gap-2`}>
+            <h3 className={"font-bold " + textPrimary + " flex items-center gap-2"}>
               <span className="text-lg">📌</span> 오늘 꼭 챙길 것
             </h3>
             <div className="flex items-center gap-2">
               {customTop3Order && (
                 <button 
-                  onClick={() => { setCustomTop3Order(null); setLifeTop3(mockLifeReminders.todayTop3); }}
-                  className={`text-[11px] ${darkMode ? 'text-[#A996FF]' : 'text-[#8B7CF7]'} font-medium hover:underline`}
+                  onClick={function() { setCustomTop3Order(null); setLifeTop3(mockLifeReminders && mockLifeReminders.todayTop3 || []); }}
+                  className={"text-[11px] " + (darkMode ? 'text-[#A996FF]' : 'text-[#8B7CF7]') + " font-medium hover:underline"}
                 >
                   순서 초기화
                 </button>
               )}
               <button 
-                onClick={() => openModal(null, 'reminder')}
-                className={`w-7 h-7 ${darkMode ? 'bg-[#A996FF]/30 text-[#A996FF]' : 'bg-[#EDE9FE] text-[#8B7CF7]'} rounded-full flex items-center justify-center text-lg font-bold hover:opacity-80`}
+                onClick={function() { openModal(null, 'reminder'); }}
+                className={"w-7 h-7 " + (darkMode ? 'bg-[#A996FF]/30 text-[#A996FF]' : 'bg-[#EDE9FE] text-[#8B7CF7]') + " rounded-full flex items-center justify-center text-lg font-bold hover:opacity-80"}
               >
                 +
               </button>
@@ -649,92 +656,94 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
           
           {/* 드래그 안내 */}
           {!customTop3Order && lifeTop3.length > 1 && (
-            <p className={`text-[11px] ${textSecondary} mb-2 flex items-center gap-1`}>
+            <p className={"text-[11px] " + textSecondary + " mb-2 flex items-center gap-1"}>
               <span>↕️</span> 드래그해서 순서를 바꿀 수 있어요
             </p>
           )}
           
           <div className="space-y-2">
-            {lifeTop3.map((item, idx) => (
-              <div 
-                key={item.id}
-                draggable
-                onDragStart={(e) => handleDragStart(e, item, idx)}
-                onDragEnd={handleDragEnd}
-                onDragOver={(e) => handleDragOver(e, idx)}
-                onDrop={(e) => handleDrop(e, idx)}
-                onClick={() => openModal(item, 'reminder')}
-                className={`flex items-center gap-3 p-3 rounded-xl transition-all cursor-grab active:cursor-grabbing ${
-                  dragOverIndex === idx && draggedItem?.index !== idx
-                    ? `border-2 border-[#A996FF] ${darkMode ? 'bg-[#A996FF]/20' : 'bg-[#F5F3FF]'}`
-                    : checkedItems.includes(item.id) 
-                      ? `${darkMode ? 'bg-gray-700' : 'bg-gray-50'} opacity-60` 
-                      : `${cardBg} shadow-sm border ${borderColor} hover:shadow-md`
-                }`}
-              >
-                {/* 드래그 핸들 */}
-                <div className={textSecondary + " cursor-grab active:cursor-grabbing"}>
-                  <svg width="12" height="20" viewBox="0 0 12 20" fill="currentColor">
-                    <circle cx="3" cy="4" r="1.5"/>
-                    <circle cx="9" cy="4" r="1.5"/>
-                    <circle cx="3" cy="10" r="1.5"/>
-                    <circle cx="9" cy="10" r="1.5"/>
-                    <circle cx="3" cy="16" r="1.5"/>
-                    <circle cx="9" cy="16" r="1.5"/>
-                  </svg>
-                </div>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); handleToggleItem(item.id); }}
-                  className={`${checkedItems.includes(item.id) ? 'text-emerald-500' : 'text-[#A996FF]'}`}
+            {lifeTop3.map(function(item, idx) {
+              return (
+                <div 
+                  key={item.id}
+                  draggable
+                  onDragStart={function(e) { handleDragStart(e, item, idx); }}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={function(e) { handleDragOver(e, idx); }}
+                  onDrop={function(e) { handleDrop(e, idx); }}
+                  onClick={function() { openModal(item, 'reminder'); }}
+                  className={"flex items-center gap-3 p-3 rounded-xl transition-all cursor-grab active:cursor-grabbing " + (
+                    dragOverIndex === idx && draggedItem && draggedItem.index !== idx
+                      ? "border-2 border-[#A996FF] " + (darkMode ? 'bg-[#A996FF]/20' : 'bg-[#F5F3FF]')
+                      : checkedItems.includes(item.id) 
+                        ? (darkMode ? 'bg-gray-700' : 'bg-gray-50') + " opacity-60" 
+                        : cardBg + " shadow-sm border " + borderColor + " hover:shadow-md"
+                  )}
                 >
-                  {checkedItems.includes(item.id) ? <CheckCircle2 size={22} /> : <Circle size={22} />}
-                </button>
-                <span className="text-xl">{item.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <p className={`font-semibold text-gray-800 ${checkedItems.includes(item.id) ? 'line-through text-gray-400' : ''}`}>
-                    {item.title}
-                  </p>
-                  {item.note && <p className="text-xs text-gray-400 truncate">{item.note}</p>}
+                  {/* 드래그 핸들 */}
+                  <div className={textSecondary + " cursor-grab active:cursor-grabbing"}>
+                    <svg width="12" height="20" viewBox="0 0 12 20" fill="currentColor">
+                      <circle cx="3" cy="4" r="1.5"/>
+                      <circle cx="9" cy="4" r="1.5"/>
+                      <circle cx="3" cy="10" r="1.5"/>
+                      <circle cx="9" cy="10" r="1.5"/>
+                      <circle cx="3" cy="16" r="1.5"/>
+                      <circle cx="9" cy="16" r="1.5"/>
+                    </svg>
+                  </div>
+                  <button 
+                    onClick={function(e) { e.stopPropagation(); handleToggleItem(item.id); }}
+                    className={checkedItems.includes(item.id) ? 'text-emerald-500' : 'text-[#A996FF]'}
+                  >
+                    {checkedItems.includes(item.id) ? <CheckCircle2 size={22} /> : <Circle size={22} />}
+                  </button>
+                  <span className="text-xl">{item.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className={"font-semibold text-gray-800 " + (checkedItems.includes(item.id) ? 'line-through text-gray-400' : '')}>
+                      {item.title}
+                    </p>
+                    {item.note && <p className="text-xs text-gray-400 truncate">{item.note}</p>}
+                  </div>
+                  <span className={"text-[11px] px-2 py-1 rounded-full font-bold " + getDDayColor(item.dDay, item.critical)}>
+                    {getDDayText(item.dDay)}
+                  </span>
                 </div>
-                <span className={`text-[11px] px-2 py-1 rounded-full font-bold ${getDDayColor(item.dDay, item.critical)}`}>
-                  {getDDayText(item.dDay)}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
         
         {/* 🔄 오늘의 루틴 */}
-        <div className={`${cardBg}/90 backdrop-blur-xl border ${borderColor} rounded-xl shadow-sm p-4`}>
+        <div className={cardBg + "/90 backdrop-blur-xl border " + borderColor + " rounded-xl shadow-sm p-4"}>
           <div className="flex items-center justify-between mb-3">
-            <h3 className={`font-bold ${textPrimary} flex items-center gap-2`}>
+            <h3 className={"font-bold " + textPrimary + " flex items-center gap-2"}>
               <span className="text-lg">🔄</span> 오늘의 루틴
             </h3>
             <button 
-              onClick={() => openModal(null, 'routine')}
-              className={`w-7 h-7 ${darkMode ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-600'} rounded-full flex items-center justify-center text-lg font-bold hover:opacity-80`}
+              onClick={function() { openModal(null, 'routine'); }}
+              className={"w-7 h-7 " + (darkMode ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-600') + " rounded-full flex items-center justify-center text-lg font-bold hover:opacity-80"}
             >
               +
             </button>
           </div>
           
           <div className="grid grid-cols-4 gap-2">
-            {routines.map(routine => {
-              const completed = routine.current >= routine.target;
-              const progress = Math.min((routine.current / routine.target) * 100, 100);
+            {routines.map(function(routine) {
+              var completed = routine.current >= routine.target;
+              var progress = Math.min((routine.current / routine.target) * 100, 100);
               
               return (
                 <div 
                   key={routine.id}
-                  onClick={() => openModal(routine, 'routine')}
-                  className={`p-3 rounded-xl text-center transition-all cursor-pointer hover:scale-105 ${
+                  onClick={function() { openModal(routine, 'routine'); }}
+                  className={"p-3 rounded-xl text-center transition-all cursor-pointer hover:scale-105 " + (
                     completed 
                       ? darkMode ? 'bg-emerald-900/30' : 'bg-emerald-50' 
                       : darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-50 hover:bg-gray-100'
-                  }`}
+                  )}
                 >
                   <span className="text-2xl">{routine.icon}</span>
-                  <p className={`text-[11px] font-medium mt-1 ${completed ? (darkMode ? 'text-emerald-400' : 'text-emerald-600') : textSecondary}`}>
+                  <p className={"text-[11px] font-medium mt-1 " + (completed ? (darkMode ? 'text-emerald-400' : 'text-emerald-600') : textSecondary)}>
                     {routine.current}/{routine.target}
                   </p>
                   {routine.streak > 0 && (
@@ -756,7 +765,7 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
               <span className="text-lg">📅</span> 다가오는 것
             </h3>
             <button 
-              onClick={() => openModal(null, 'upcoming')}
+              onClick={function() { openModal(null, 'upcoming'); }}
               className="w-7 h-7 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center text-lg font-bold hover:bg-gray-200"
             >
               +
@@ -765,22 +774,24 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
           
           {/* 일정 */}
           <div className="space-y-2 mb-3">
-            {upcomingItems.map(item => (
-              <div 
-                key={item.id} 
-                onClick={() => openModal(item, 'upcoming')}
-                className="flex items-center gap-3 p-3 bg-gray-100/50 rounded-xl cursor-pointer hover:bg-gray-100/50 transition-all"
-              >
-                <span className="text-xl">{item.icon}</span>
-                <div className="flex-1">
-                  <p className="font-medium text-gray-700">{item.title}</p>
-                  <p className="text-xs text-gray-400">{item.note}</p>
+            {upcomingItems.map(function(item) {
+              return (
+                <div 
+                  key={item.id} 
+                  onClick={function() { openModal(item, 'upcoming'); }}
+                  className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-all"
+                >
+                  <span className="text-xl">{item.icon}</span>
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-700">{item.title}</p>
+                    <p className="text-xs text-gray-400">{item.note}</p>
+                  </div>
+                  <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded-full font-medium">
+                    {item.date}
+                  </span>
                 </div>
-                <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded-full font-medium">
-                  {item.date}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
           
           {/* 구분선 */}
@@ -788,7 +799,7 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
             <div className="flex-1 h-px bg-gray-200" />
             <span className="text-xs text-gray-400">💡 잊지 마세요</span>
             <button 
-              onClick={() => openModal(null, 'dontForget')}
+              onClick={function() { openModal(null, 'dontForget'); }}
               className="w-5 h-5 bg-gray-200 text-gray-600 rounded-full flex items-center justify-center text-sm font-bold hover:bg-gray-300"
             >
               +
@@ -798,24 +809,26 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
           
           {/* 잊지 말 것 */}
           <div className="grid grid-cols-2 gap-2">
-            {dontForgetItems.map(item => (
-              <div 
-                key={item.id} 
-                onClick={() => openModal(item, 'dontForget')}
-                className={`p-3 rounded-xl cursor-pointer transition-all hover:scale-[1.02] ${item.critical ? 'bg-red-50 border border-red-100' : 'bg-gray-50 hover:bg-gray-100'}`}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-lg">{item.icon}</span>
-                  <span className="text-xs text-gray-400">{item.date}</span>
+            {dontForgetItems.map(function(item) {
+              return (
+                <div 
+                  key={item.id} 
+                  onClick={function() { openModal(item, 'dontForget'); }}
+                  className={"p-3 rounded-xl cursor-pointer transition-all hover:scale-[1.02] " + (item.critical ? 'bg-red-50 border border-red-100' : 'bg-gray-50 hover:bg-gray-100')}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">{item.icon}</span>
+                    <span className="text-xs text-gray-400">{item.date}</span>
+                  </div>
+                  <p className={"text-sm font-medium " + (item.critical ? 'text-red-700' : 'text-gray-700')}>
+                    {item.title}
+                  </p>
+                  {item.amount && (
+                    <p className="text-xs text-gray-500 mt-0.5">{item.amount}</p>
+                  )}
                 </div>
-                <p className={`text-sm font-medium ${item.critical ? 'text-red-700' : 'text-gray-700'}`}>
-                  {item.title}
-                </p>
-                {item.amount && (
-                  <p className="text-xs text-gray-500 mt-0.5">{item.amount}</p>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
         
@@ -826,7 +839,7 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
               <span className="text-lg">💕</span> 연락할 때 됐어요
             </h3>
             <button 
-              onClick={() => openModal(null, 'relationship')}
+              onClick={function() { openModal(null, 'relationship'); }}
               className="w-7 h-7 bg-[#EDE9FE] text-[#8B7CF7] rounded-full flex items-center justify-center text-lg font-bold hover:bg-[#DDD6FE]"
             >
               +
@@ -834,25 +847,27 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
           </div>
           
           <div className="space-y-2">
-            {relationshipItems.filter(r => r.lastContact >= 7).map(person => (
-              <div 
-                key={person.id} 
-                onClick={() => openModal(person, 'relationship')}
-                className="flex items-center gap-3 p-3 bg-[#F5F3FF]/50 rounded-xl cursor-pointer hover:bg-[#EDE9FE]/50 transition-all"
-              >
-                <span className="text-2xl">{person.icon}</span>
-                <div className="flex-1">
-                  <p className="font-medium text-gray-700">{person.name}</p>
-                  <p className="text-xs text-gray-400">{person.lastContact}일 전 연락</p>
-                </div>
-                <button 
-                  onClick={(e) => e.stopPropagation()}
-                  className="px-3 py-1.5 bg-[#EDE9FE] text-[#8B7CF7] rounded-full text-xs font-semibold hover:bg-[#DDD6FE]"
+            {relationshipItems.filter(function(r) { return r.lastContact >= 7; }).map(function(person) {
+              return (
+                <div 
+                  key={person.id} 
+                  onClick={function() { openModal(person, 'relationship'); }}
+                  className="flex items-center gap-3 p-3 bg-[#F5F3FF]/50 rounded-xl cursor-pointer hover:bg-[#EDE9FE]/50 transition-all"
                 >
-                  {person.suggestion}
-                </button>
-              </div>
-            ))}
+                  <span className="text-2xl">{person.icon}</span>
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-700">{person.name}</p>
+                    <p className="text-xs text-gray-400">{person.lastContact}일 전 연락</p>
+                  </div>
+                  <button 
+                    onClick={function(e) { e.stopPropagation(); }}
+                    className="px-3 py-1.5 bg-[#EDE9FE] text-[#8B7CF7] rounded-full text-xs font-semibold hover:bg-[#DDD6FE]"
+                  >
+                    {person.suggestion}
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
         
@@ -864,7 +879,7 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
           
           <textarea
             value={journalText}
-            onChange={(e) => setJournalText(e.target.value)}
+            onChange={function(e) { setJournalText(e.target.value); }}
             placeholder="오늘 하루는 어땠나요? 감사한 일, 기억하고 싶은 것..."
             className="w-full h-28 p-3 bg-[#F5F3FF]/50 rounded-xl text-sm text-gray-700 placeholder:text-[#C4B5FD] resize-none focus:outline-none focus:ring-2 focus:ring-[#DDD6FE]"
           />
@@ -873,11 +888,11 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
             <button
               onClick={handleSaveJournal}
               disabled={!journalText.trim()}
-              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+              className={"px-4 py-2 rounded-xl text-sm font-bold transition-all " + (
                 journalText.trim()
-                  ? 'bg-[#F5F3FF]0 text-white shadow-md active:scale-95'
+                  ? 'bg-[#A996FF] text-white shadow-md active:scale-95'
                   : 'bg-gray-100 text-gray-300'
-              }`}
+              )}
             >
               {journalSaved ? '✓ 저장됨' : '저장하기'}
             </button>
@@ -891,7 +906,7 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
         <LifeDetailModal
           item={modalItem}
           type={modalType}
-          onClose={() => setModalOpen(false)}
+          onClose={function() { setModalOpen(false); }}
           onSave={handleModalSave}
           onDelete={handleModalDelete}
           medications={medications}
@@ -911,7 +926,5 @@ const LifePage = ({ mood, setMood, energy, setEnergy, onOpenChat, darkMode = fal
     </div>
   );
 };
-
-// === Work Page ===
 
 export default LifePage;
