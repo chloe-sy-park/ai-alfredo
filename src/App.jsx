@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Home, Briefcase, Heart, Zap, MessageCircle, Send, ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, Plus, Clock, CheckCircle2, Circle, Bell, TrendingUp, TrendingDown, Trophy, Calendar, MapPin, Sun, Moon, Cloud, CloudRain, Sparkles, Settings, RefreshCw, Mic, Battery, Umbrella, Shirt as ShirtIcon, X, FileText, Mail, AlertCircle, Inbox, Trash2, Lightbulb, Search, Award, Target, Flame, Star, Gift, Crown, Database, Upload, FileAudio, Loader2 } from 'lucide-react';
+import { Home, Briefcase, Heart, Zap, MessageCircle, Send, ArrowLeft, ArrowRight, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, Plus, Clock, CheckCircle2, Circle, Bell, TrendingUp, TrendingDown, Trophy, Calendar, MapPin, Sun, Moon, Cloud, CloudRain, Sparkles, Settings, RefreshCw, Mic, Battery, Umbrella, Shirt as ShirtIcon, X, FileText, Mail, AlertCircle, Inbox, Trash2, Lightbulb, Search, Award, Target, Flame, Star, Gift, Crown, Database, Upload, FileAudio, Loader2, GripVertical } from 'lucide-react';
 import MeetingUploader from './components/MeetingUploader';
 import { useGoogleCalendar } from './hooks/useGoogleCalendar';
 
@@ -1859,7 +1859,7 @@ const FocusCompletionScreen = ({ completedTask, nextTask, onStartNext, onTakeBre
   );
 };
 
-// === Phase 3: UnifiedTimelineView ===
+// === Phase 3: UnifiedTimelineView (Drag & Drop 지원) ===
 // 이벤트 + 태스크를 시간순으로 통합한 타임라인 뷰
 const UnifiedTimelineView = ({ 
   events = [], 
@@ -1867,12 +1867,18 @@ const UnifiedTimelineView = ({
   onEventClick, 
   onTaskClick, 
   onStartFocus,
+  onUpdateTaskTime,
+  onUpdateEventTime,
   darkMode = false 
 }) => {
   const now = new Date();
   const currentHour = now.getHours();
   const currentMinute = now.getMinutes();
   const currentTimeStr = currentHour.toString().padStart(2, '0') + ':' + currentMinute.toString().padStart(2, '0');
+  
+  // 드래그 상태
+  const [draggedItem, setDraggedItem] = useState(null);
+  const [dragOverSlot, setDragOverSlot] = useState(null);
   
   // 다크모드 스타일
   const cardBg = darkMode ? 'bg-gray-800/90' : 'bg-white/90';
@@ -1887,6 +1893,13 @@ const UnifiedTimelineView = ({
     return h * 60 + (m || 0);
   };
   
+  // 분을 시간 문자열로 변환
+  const minutesToTimeStr = (minutes) => {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return h.toString().padStart(2, '0') + ':' + m.toString().padStart(2, '0');
+  };
+  
   const currentTotalMin = currentHour * 60 + currentMinute;
   
   // 이벤트와 태스크를 통합 아이템으로 변환
@@ -1896,6 +1909,7 @@ const UnifiedTimelineView = ({
   events.forEach(event => {
     const startMin = parseTime(event.start);
     if (startMin !== null) {
+      const endMin = parseTime(event.end) || (startMin + 60);
       timelineItems.push({
         id: event.id,
         type: 'event',
@@ -1903,6 +1917,8 @@ const UnifiedTimelineView = ({
         startTime: event.start,
         endTime: event.end,
         startMin,
+        endMin,
+        duration: endMin - startMin,
         location: event.location,
         color: event.color || 'bg-[#A996FF]',
         important: event.important,
@@ -1911,18 +1927,20 @@ const UnifiedTimelineView = ({
     }
   });
   
-  // 시간이 있는 태스크 추가 (scheduledTime이 있는 경우)
+  // 시간이 있는 태스크 추가
   tasks.forEach(task => {
     if (task.scheduledTime) {
       const startMin = parseTime(task.scheduledTime);
       if (startMin !== null) {
+        const duration = task.duration || task.estimatedTime || 30;
         timelineItems.push({
           id: task.id,
           type: 'task',
           title: task.title,
           startTime: task.scheduledTime,
           startMin,
-          duration: task.duration || task.estimatedTime || 30,
+          endMin: startMin + duration,
+          duration,
           project: task.project,
           status: task.status,
           importance: task.importance,
@@ -1934,6 +1952,39 @@ const UnifiedTimelineView = ({
   
   // 시간순 정렬
   timelineItems.sort((a, b) => a.startMin - b.startMin);
+  
+  // 빈 시간대 계산 (30분 이상 갭만 표시)
+  const calculateGaps = () => {
+    const gaps = [];
+    const dayStart = 8 * 60; // 8:00 AM
+    const dayEnd = 20 * 60; // 8:00 PM
+    
+    let lastEnd = dayStart;
+    
+    timelineItems.forEach(item => {
+      if (item.startMin > lastEnd && item.startMin - lastEnd >= 30) {
+        gaps.push({
+          startMin: lastEnd,
+          endMin: item.startMin,
+          duration: item.startMin - lastEnd,
+        });
+      }
+      lastEnd = Math.max(lastEnd, item.endMin);
+    });
+    
+    // 마지막 아이템 이후의 빈 시간
+    if (dayEnd > lastEnd && dayEnd - lastEnd >= 30) {
+      gaps.push({
+        startMin: lastEnd,
+        endMin: dayEnd,
+        duration: dayEnd - lastEnd,
+      });
+    }
+    
+    return gaps;
+  };
+  
+  const timeGaps = calculateGaps();
   
   // 시간 미정 태스크
   const unscheduledTasks = tasks.filter(t => 
@@ -1951,9 +2002,7 @@ const UnifiedTimelineView = ({
   // 아이템 상태 확인
   const getItemStatus = (item) => {
     const startMin = item.startMin;
-    const endMin = item.type === 'event' 
-      ? parseTime(item.endTime) || (startMin + 60)
-      : startMin + (item.duration || 30);
+    const endMin = item.endMin || (startMin + (item.duration || 30));
     
     if (currentTotalMin >= startMin && currentTotalMin < endMin) return 'ongoing';
     if (currentTotalMin >= endMin) return 'past';
@@ -1984,6 +2033,82 @@ const UnifiedTimelineView = ({
     item.type === 'task' ? item.original?.status === 'done' : getItemStatus(item) === 'past'
   ).length;
   
+  // === 드래그 앤 드롭 핸들러 ===
+  const handleDragStart = (e, item, isUnscheduled = false) => {
+    setDraggedItem({ ...item, isUnscheduled });
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', item.id);
+  };
+  
+  const handleDragEnd = () => {
+    setDraggedItem(null);
+    setDragOverSlot(null);
+  };
+  
+  const handleDragOver = (e, slotTime) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverSlot(slotTime);
+  };
+  
+  const handleDragLeave = () => {
+    setDragOverSlot(null);
+  };
+  
+  const handleDrop = (e, targetTime) => {
+    e.preventDefault();
+    
+    if (!draggedItem) return;
+    
+    const newTimeStr = minutesToTimeStr(targetTime);
+    
+    if (draggedItem.type === 'task') {
+      onUpdateTaskTime?.(draggedItem.id, newTimeStr);
+    } else if (draggedItem.type === 'event') {
+      onUpdateEventTime?.(draggedItem.id, newTimeStr);
+    }
+    
+    setDraggedItem(null);
+    setDragOverSlot(null);
+  };
+  
+  // 드롭 가능한 시간 슬롯 생성 (30분 단위)
+  const timeSlots = [];
+  for (let min = 7 * 60; min < 22 * 60; min += 30) {
+    timeSlots.push(min);
+  }
+  
+  // 타임라인 아이템과 빈 시간대를 합쳐서 렌더링
+  const renderTimelineContent = () => {
+    const allItems = [];
+    let currentTime = 8 * 60; // 8:00 AM 시작
+    
+    // 아이템과 갭을 시간순으로 정렬
+    const sortedItems = [...timelineItems];
+    let gapIndex = 0;
+    
+    sortedItems.forEach((item, idx) => {
+      // 아이템 전에 빈 시간대 체크
+      const relevantGap = timeGaps.find(g => g.startMin < item.startMin && g.endMin <= item.startMin && g.startMin >= currentTime);
+      if (relevantGap && !allItems.find(a => a.isGap && a.startMin === relevantGap.startMin)) {
+        allItems.push({ ...relevantGap, isGap: true, id: 'gap-' + relevantGap.startMin });
+      }
+      
+      allItems.push(item);
+      currentTime = item.endMin;
+    });
+    
+    // 마지막 갭 추가
+    const lastGap = timeGaps.find(g => g.startMin >= currentTime);
+    if (lastGap && !allItems.find(a => a.isGap && a.startMin === lastGap.startMin)) {
+      allItems.push({ ...lastGap, isGap: true, id: 'gap-' + lastGap.startMin });
+    }
+    
+    return allItems;
+  };
+  
+  const timelineContent = renderTimelineContent();
+  
   return (
     <div className={cardBg + " backdrop-blur-xl rounded-xl shadow-sm border " + borderColor + " overflow-hidden mb-4"}>
       {/* 헤더 */}
@@ -1991,6 +2116,7 @@ const UnifiedTimelineView = ({
         <div className="flex items-center justify-between mb-3">
           <h3 className={"text-sm font-semibold " + textPrimary + " flex items-center gap-2"}>
             <span>📋</span> 오늘 한눈에
+            <span className="text-[10px] px-1.5 py-0.5 bg-[#A996FF]/10 text-[#A996FF] rounded-full font-normal">드래그로 이동</span>
           </h3>
           <div className="flex items-center gap-2">
             <span className={"text-xs " + textSecondary}>
@@ -2041,16 +2167,63 @@ const UnifiedTimelineView = ({
       {/* 타임라인 리스트 */}
       <div className="px-4 pb-2">
         <div className="relative border-l-2 border-[#E5E0FF] ml-3 space-y-0">
-          {timelineItems.map((item) => {
+          {timelineContent.map((item) => {
+            // 빈 시간대 렌더링
+            if (item.isGap) {
+              const gapHours = Math.floor(item.duration / 60);
+              const gapMins = item.duration % 60;
+              const gapText = gapHours > 0 
+                ? gapHours + '시간' + (gapMins > 0 ? ' ' + gapMins + '분' : '')
+                : gapMins + '분';
+              
+              return (
+                <div 
+                  key={item.id}
+                  className="relative pl-5 py-1"
+                  onDragOver={(e) => handleDragOver(e, item.startMin)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, item.startMin)}
+                >
+                  <div className="absolute -left-[5px] top-2 w-2 h-2 rounded-full bg-[#E5E0FF] border border-white"></div>
+                  <div className={"p-2.5 rounded-xl border-2 border-dashed transition-all " + (
+                    dragOverSlot === item.startMin
+                      ? 'border-[#A996FF] bg-[#A996FF]/10'
+                      : (darkMode ? 'border-gray-600 bg-gray-700/30' : 'border-gray-200 bg-gray-50/50')
+                  )}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className={"text-xs " + textSecondary}>
+                          {minutesToTimeStr(item.startMin)} - {minutesToTimeStr(item.endMin)}
+                        </span>
+                        <span className={"text-[10px] px-1.5 py-0.5 rounded " + (darkMode ? 'bg-gray-600 text-gray-300' : 'bg-gray-100 text-gray-500')}>
+                          {gapText} 비어있어요
+                        </span>
+                      </div>
+                      {draggedItem && (
+                        <span className="text-[10px] text-[#A996FF] font-medium animate-pulse">
+                          여기에 드롭!
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+            
+            // 일반 아이템 렌더링
             const status = getItemStatus(item);
             const isPast = status === 'past';
             const isOngoing = status === 'ongoing';
             const isSoon = status === 'soon';
+            const isDragging = draggedItem?.id === item.id;
             
             return (
               <div 
                 key={item.id}
-                className={"relative pl-5 py-2 " + (isPast ? 'opacity-50' : '')}
+                draggable={!isPast}
+                onDragStart={(e) => handleDragStart(e, item)}
+                onDragEnd={handleDragEnd}
+                className={"relative pl-5 py-2 " + (isPast ? 'opacity-50' : '') + (isDragging ? ' opacity-30' : '')}
               >
                 <div className={"absolute -left-[9px] top-3 w-4 h-4 rounded-full border-2 border-white " + (
                   isOngoing ? 'bg-[#A996FF] ring-4 ring-[#A996FF]/20' :
@@ -2063,15 +2236,15 @@ const UnifiedTimelineView = ({
                   )}
                 </div>
                 
-                <button
+                <div
                   onClick={() => item.type === 'event' ? onEventClick?.(item.original) : onTaskClick?.(item.original)}
-                  className={"w-full text-left p-3 rounded-xl transition-all " + (
+                  className={"w-full text-left p-3 rounded-xl transition-all cursor-pointer " + (
                     isOngoing 
                       ? 'bg-[#A996FF]/10 border border-[#A996FF]/30 shadow-sm' 
                       : isSoon
                       ? (darkMode ? 'bg-[#A996FF]/20' : 'bg-[#F5F3FF]')
                       : (darkMode ? 'bg-gray-700/50 hover:bg-gray-700' : 'bg-gray-50 hover:bg-gray-100')
-                  )}
+                  ) + (!isPast ? ' cursor-grab active:cursor-grabbing' : '')}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
@@ -2088,6 +2261,11 @@ const UnifiedTimelineView = ({
                         </span>
                         {item.important && (
                           <span className="text-[10px] px-1.5 py-0.5 bg-red-100 text-red-600 rounded">중요</span>
+                        )}
+                        {!isPast && (
+                          <span className={"text-[10px] " + textSecondary}>
+                            <GripVertical size={12} className="inline opacity-40" />
+                          </span>
                         )}
                       </div>
                       
@@ -2129,16 +2307,27 @@ const UnifiedTimelineView = ({
                       )}
                     </div>
                   </div>
-                </button>
+                </div>
               </div>
             );
           })}
           
           {timelineItems.length === 0 && (
-            <div className="pl-5 py-4">
-              <p className={"text-sm " + textSecondary + " text-center"}>
-                오늘 일정이 없어요 🎉
-              </p>
+            <div 
+              className="pl-5 py-4"
+              onDragOver={(e) => handleDragOver(e, 9 * 60)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, 9 * 60)}
+            >
+              <div className={"p-4 rounded-xl border-2 border-dashed text-center transition-all " + (
+                dragOverSlot === 9 * 60
+                  ? 'border-[#A996FF] bg-[#A996FF]/10'
+                  : (darkMode ? 'border-gray-600' : 'border-gray-200')
+              )}>
+                <p className={"text-sm " + textSecondary}>
+                  {draggedItem ? '여기에 드롭해서 9:00에 배정' : '오늘 일정이 없어요 🎉'}
+                </p>
+              </div>
             </div>
           )}
         </div>
@@ -2151,40 +2340,65 @@ const UnifiedTimelineView = ({
             <p className={"text-xs font-semibold " + textSecondary}>
               📌 시간 미정 ({unscheduledTasks.length})
             </p>
+            <p className={"text-[10px] " + textSecondary}>
+              위로 드래그해서 시간 배정
+            </p>
           </div>
           <div className="space-y-1.5">
-            {unscheduledTasks.slice(0, 3).map(task => (
-              <button
+            {unscheduledTasks.slice(0, 5).map(task => (
+              <div
                 key={task.id}
+                draggable
+                onDragStart={(e) => handleDragStart(e, { 
+                  id: task.id, 
+                  type: 'task', 
+                  title: task.title,
+                  duration: task.duration || 30,
+                  original: task 
+                }, true)}
+                onDragEnd={handleDragEnd}
                 onClick={() => onTaskClick?.(task)}
-                className={"w-full flex items-center justify-between p-2.5 rounded-xl transition-all text-left " + (
+                className={"flex items-center justify-between p-2.5 rounded-xl transition-all cursor-grab active:cursor-grabbing " + (
                   darkMode ? 'bg-gray-700/50 hover:bg-gray-700' : 'bg-gray-50 hover:bg-gray-100'
-                )}
+                ) + (draggedItem?.id === task.id ? ' opacity-30' : '')}
               >
                 <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <GripVertical size={14} className={textSecondary + " opacity-40"} />
                   <div className={"w-1.5 h-1.5 rounded-full " + (
                     task.importance === 'high' ? 'bg-red-400' :
                     task.importance === 'low' ? 'bg-gray-300' : 'bg-[#A996FF]'
                   )}></div>
                   <span className={"text-sm truncate " + textPrimary}>{task.title}</span>
                 </div>
-                {task.deadline && (
-                  <span className={"text-[10px] " + (
-                    task.deadline.includes('오늘') || task.deadline.includes('D-0')
-                      ? 'text-red-500 font-semibold'
-                      : textSecondary
-                  )}>
-                    {task.deadline}
-                  </span>
-                )}
-              </button>
+                <div className="flex items-center gap-2">
+                  {task.duration && (
+                    <span className={"text-[10px] " + textSecondary}>~{task.duration}분</span>
+                  )}
+                  {task.deadline && (
+                    <span className={"text-[10px] " + (
+                      task.deadline.includes('오늘') || task.deadline.includes('D-0')
+                        ? 'text-red-500 font-semibold'
+                        : textSecondary
+                    )}>
+                      {task.deadline}
+                    </span>
+                  )}
+                </div>
+              </div>
             ))}
-            {unscheduledTasks.length > 3 && (
+            {unscheduledTasks.length > 5 && (
               <p className={"text-xs text-center " + textSecondary + " pt-1"}>
-                +{unscheduledTasks.length - 3}개 더
+                +{unscheduledTasks.length - 5}개 더
               </p>
             )}
           </div>
+        </div>
+      )}
+      
+      {/* 드래그 중 안내 오버레이 */}
+      {draggedItem && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-[#A996FF] text-white text-xs rounded-full shadow-lg z-20 pointer-events-none">
+          "{draggedItem.title.length > 15 ? draggedItem.title.slice(0, 15) + '...' : draggedItem.title}" 이동 중...
         </div>
       )}
     </div>
@@ -10395,7 +10609,7 @@ const SettingsPage = ({ userData, onUpdateUserData, onBack, darkMode, setDarkMod
 };
 
 // === Home Page ===
-const HomePage = ({ onOpenChat, onOpenSettings, onOpenSearch, onOpenStats, onOpenWeeklyReview, onOpenHabitHeatmap, onOpenEnergyRhythm, onOpenDndModal, doNotDisturb, mood, setMood, energy, setEnergy, oneThing, tasks, onToggleTask, inbox, onStartFocus, darkMode, gameState, events = [], connections = {}, onUpdateTask, onDeleteTask, onSaveEvent, onDeleteEvent }) => {
+const HomePage = ({ onOpenChat, onOpenSettings, onOpenSearch, onOpenStats, onOpenWeeklyReview, onOpenHabitHeatmap, onOpenEnergyRhythm, onOpenDndModal, doNotDisturb, mood, setMood, energy, setEnergy, oneThing, tasks, onToggleTask, inbox, onStartFocus, darkMode, gameState, events = [], connections = {}, onUpdateTask, onDeleteTask, onSaveEvent, onDeleteEvent, onUpdateTaskTime, onUpdateEventTime }) => {
   const [showAllReminders, setShowAllReminders] = useState(false);
   const [showEveningReview, setShowEveningReview] = useState(false);
   const [eveningNote, setEveningNote] = useState('');
@@ -10930,6 +11144,8 @@ const HomePage = ({ onOpenChat, onOpenSettings, onOpenSearch, onOpenStats, onOpe
           setSelectedTask(task);
         }}
         onStartFocus={onStartFocus}
+        onUpdateTaskTime={onUpdateTaskTime}
+        onUpdateEventTime={onUpdateEventTime}
         darkMode={darkMode}
       />
       
@@ -11954,6 +12170,40 @@ export default function LifeButlerApp() {
     showToast('일정이 삭제되었어요 🗑️');
   };
   
+  // === 드래그 앤 드롭 시간 변경 ===
+  const handleUpdateTaskTime = (taskId, newTime) => {
+    setTasks(tasks.map(t => 
+      t.id === taskId ? { ...t, scheduledTime: newTime } : t
+    ));
+    setAllTasks(allTasks.map(t => 
+      t.id === taskId ? { ...t, scheduledTime: newTime } : t
+    ));
+    showToast(`⏰ ${newTime}에 배정했어요!`);
+  };
+  
+  const handleUpdateEventTime = (eventId, newTime) => {
+    setAllEvents(allEvents.map(e => {
+      if (e.id === eventId) {
+        // 기존 duration 유지하면서 시간만 변경
+        const [oldH, oldM] = (e.start || '09:00').split(':').map(Number);
+        const [newH, newM] = newTime.split(':').map(Number);
+        const oldStartMin = oldH * 60 + oldM;
+        const oldEndMin = e.end ? (() => { const [eh, em] = e.end.split(':').map(Number); return eh * 60 + em; })() : oldStartMin + 60;
+        const duration = oldEndMin - oldStartMin;
+        
+        const newStartMin = newH * 60 + newM;
+        const newEndMin = newStartMin + duration;
+        const newEndH = Math.floor(newEndMin / 60);
+        const newEndM = newEndMin % 60;
+        const newEnd = newEndH.toString().padStart(2, '0') + ':' + newEndM.toString().padStart(2, '0');
+        
+        return { ...e, start: newTime, end: newEnd };
+      }
+      return e;
+    }));
+    showToast(`⏰ ${newTime}으로 이동했어요!`);
+  };
+  
   // Google Calendar 일정 동기화
   const handleSyncGoogleEvents = (googleEvents) => {
     console.log('📥 handleSyncGoogleEvents 호출됨!');
@@ -12048,6 +12298,8 @@ export default function LifeButlerApp() {
               }
             }}
             onDeleteEvent={handleDeleteEvent}
+            onUpdateTaskTime={handleUpdateTaskTime}
+            onUpdateEventTime={handleUpdateEventTime}
           />
         )}
         {view === 'SETTINGS' && (
