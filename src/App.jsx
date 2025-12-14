@@ -30,7 +30,8 @@ import {
 } from './components/common/index.jsx';
 
 // === Alfredo Components (직접 import - 순환 참조 해결) ===
-import { TimeAlertToast, AlfredoFeedback, AlfredoStatusBar, AlfredoFloatingBubble } from './components/alfredo/index.jsx';
+import { TimeAlertToast, AlfredoFeedback, AlfredoFloatingBubble } from './components/alfredo/index.jsx';
+import AlfredoStatusBar from './components/home/AlfredoStatusBar.jsx';
 
 // === Page Components (직접 import) ===
 import HomePage from './components/home/HomePage';
