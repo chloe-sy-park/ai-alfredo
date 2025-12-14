@@ -47,6 +47,9 @@ import HabitHeatmapPage from './components/review/HabitHeatmapPage';
 import EnergyRhythmPage from './components/review/EnergyRhythmPage';
 import { FocusTimer, FocusCompletionScreen } from './components/focus/FocusPage';
 import ProjectDashboardPage from './components/projects/ProjectDashboardPage';
+import LifePage from './components/life/LifePage';
+import SettingsPage from './components/settings/SettingsPage';
+import WidgetGallery from './components/settings/WidgetGallery';
 
 // === Modal Components ===
 import EventModal from './components/modals/EventModal';
@@ -54,23 +57,6 @@ import TaskModal from './components/modals/TaskModal';
 import AddTaskModal from './components/modals/AddTaskModal';
 import RoutineManagerModal from './components/modals/RoutineManagerModal';
 import ProjectEditModal from './components/modals/ProjectEditModal';
-
-// === Widget Components ===
-import { QuickConditionTracker, AlfredoBriefing, Big3Widget, UrgentWidget, TimelineWidget, RoutineWidget } from './components/home/widgets';
-import UnifiedTimelineView from './components/home/UnifiedTimelineView';
-
-// === Notification Components ===
-import { SmartNotificationToast, NotificationCenter, NotificationItem } from './components/notifications';
-
-// === Celebration Components ===
-import { ConfettiEffect, XPFloater, StreakBurst, LevelUpCelebration, CompletionCelebration } from './components/celebrations';
-
-// === Life & Settings ===
-import LifePage from './components/life/LifePage';
-import SettingsPage from './components/settings/SettingsPage';
-import WidgetGallery from './components/settings/WidgetGallery';
-
-// === Additional Modal Components ===
 import SearchModal from './components/modals/SearchModal';
 import LifeDetailModal from './components/modals/LifeDetailModal';
 import GoogleAuthModal from './components/modals/GoogleAuthModal';
@@ -80,6 +66,10 @@ import NaturalLanguageQuickAdd from './components/modals/NaturalLanguageQuickAdd
 import DoNotDisturbModal from './components/modals/DoNotDisturbModal';
 import { LevelUpModal, NewBadgeModal, StatsModal } from './components/modals/StatsModals';
 
+// === Widget Components ===
+import { QuickConditionTracker, AlfredoBriefing, Big3Widget, UrgentWidget, TimelineWidget, RoutineWidget } from './components/home/widgets';
+import UnifiedTimelineView from './components/home/UnifiedTimelineView';
+
 // === Work Components ===
 import InboxPage from './components/work/InboxPage';
 import SwipeableTaskItem from './components/work/SwipeableTaskItem';
@@ -87,6 +77,12 @@ import { Sparkline, PriorityIndicator } from './components/work/TaskWidgets';
 
 // === Home Components ===
 import AlfredoContextActions from './components/home/AlfredoContextActions';
+
+// === Notification Components ===
+import { SmartNotificationToast, NotificationCenter, NotificationItem } from './components/notifications';
+
+// === Celebration Components ===
+import { ConfettiEffect, XPFloater, StreakBurst, LevelUpCelebration, CompletionCelebration } from './components/celebrations';
 
 // === Banner Components ===
 import { DoNotDisturbBanner, OfflineBanner, PWAInstallBanner } from './components/common/Banners';
