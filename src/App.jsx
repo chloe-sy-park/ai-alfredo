@@ -2448,6 +2448,1441 @@ const RoutineWidget = ({ routines = [], onToggle, onOpenManager, darkMode = fals
   );
 };
 
+// === Phase 9: 스마트 알림 시스템 ===
+
+// 알림 우선순위 상수
+const NOTIFICATION_PRIORITY = {
+  URGENT: 1,      // 긴급 (마감 임박)
+  HIGH: 2,        // 높음 (오늘 마감)
+  MEDIUM: 3,      // 보통 (루틴, 미팅 준비)
+  LOW: 4,         // 낮음 (일반 리마인더)
+};
+
+// 스마트 알림 생성 훅
+const useSmartNotifications = ({ tasks = [], events = [], routines = [], energy = 70 }) => {
+  const [notifications, setNotifications] = useState([]);
+  const [dismissedIds, setDismissedIds] = useState(new Set());
+  
+  useEffect(() => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const todayStr = now.toISOString().split('T')[0];
+    const newNotifications = [];
+    
+    // 1. 마감 임박 알림 (D-1, D-day)
+    tasks.filter(t => t.status !== 'done' && t.deadline).forEach(task => {
+      const deadline = new Date(task.deadline);
+      const daysUntil = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+      
+      if (daysUntil === 0) {
+        newNotifications.push({
+          id: `deadline-today-${task.id}`,
+          type: 'deadline',
+          priority: NOTIFICATION_PRIORITY.URGENT,
+          icon: '🔴',
+          title: '오늘 마감!',
+          message: task.title,
+          action: { label: '지금 처리', type: 'start-focus', data: task },
+          color: 'red',
+        });
+      } else if (daysUntil === 1) {
+        newNotifications.push({
+          id: `deadline-tomorrow-${task.id}`,
+          type: 'deadline',
+          priority: NOTIFICATION_PRIORITY.HIGH,
+          icon: '🟠',
+          title: '내일 마감',
+          message: task.title,
+          action: { label: '오늘 시작하기', type: 'start-focus', data: task },
+          color: 'orange',
+        });
+      }
+    });
+    
+    // 2. 미완료 루틴 저녁 리마인더 (18시 이후)
+    if (currentHour >= 18 && currentHour < 22) {
+      const today = now.getDay();
+      const incompleteRoutines = routines.filter(r => {
+        if (r.current >= r.target) return false;
+        if (r.repeatType === 'daily') return true;
+        if (r.repeatType === 'weekdays') return today >= 1 && today <= 5;
+        if (r.repeatType === 'custom') return r.repeatDays?.includes(today);
+        return true;
+      });
+      
+      if (incompleteRoutines.length > 0 && currentHour >= 19) {
+        newNotifications.push({
+          id: `routine-evening-${todayStr}`,
+          type: 'routine',
+          priority: NOTIFICATION_PRIORITY.MEDIUM,
+          icon: '🌙',
+          title: '오늘의 루틴',
+          message: `${incompleteRoutines.length}개 남았어요`,
+          action: { label: '확인하기', type: 'open-routines' },
+          color: 'purple',
+        });
+      }
+    }
+    
+    // 3. 집중 세션 시작 제안 (오전/오후 피크 시간)
+    const isPeakHour = (currentHour >= 9 && currentHour <= 11) || (currentHour >= 14 && currentHour <= 16);
+    const unfinishedImportant = tasks.find(t => t.status !== 'done' && t.importance === 'high');
+    
+    if (isPeakHour && unfinishedImportant && energy >= 60) {
+      newNotifications.push({
+        id: `focus-suggest-${currentHour}`,
+        type: 'focus',
+        priority: NOTIFICATION_PRIORITY.MEDIUM,
+        icon: '⚡',
+        title: '지금이 집중하기 좋아요',
+        message: `"${unfinishedImportant.title}" 시작해볼까요?`,
+        action: { label: '집중 시작', type: 'start-focus', data: unfinishedImportant },
+        color: 'blue',
+      });
+    }
+    
+    // 4. 에너지 낮을 때 휴식 제안
+    if (energy <= 40 && currentHour >= 10 && currentHour <= 18) {
+      newNotifications.push({
+        id: `energy-low-${currentHour}`,
+        type: 'energy',
+        priority: NOTIFICATION_PRIORITY.LOW,
+        icon: '☕',
+        title: '에너지 충전 필요',
+        message: '잠깐 쉬어가는 건 어때요?',
+        action: { label: '5분 휴식', type: 'break' },
+        color: 'teal',
+      });
+    }
+    
+    // 5. 다가오는 미팅 알림 (30분, 10분 전)
+    events.filter(e => e.date === todayStr && e.start).forEach(event => {
+      const [hours, mins] = event.start.split(':').map(Number);
+      const eventMinutes = hours * 60 + mins;
+      const minutesUntil = eventMinutes - currentMinutes;
+      
+      if (minutesUntil > 0 && minutesUntil <= 30) {
+        const urgency = minutesUntil <= 10 ? NOTIFICATION_PRIORITY.URGENT : NOTIFICATION_PRIORITY.HIGH;
+        newNotifications.push({
+          id: `meeting-${event.id}-${minutesUntil <= 10 ? '10' : '30'}`,
+          type: 'meeting',
+          priority: urgency,
+          icon: minutesUntil <= 10 ? '🔴' : '📅',
+          title: minutesUntil <= 10 ? '곧 시작!' : '30분 후 일정',
+          message: event.title,
+          action: { label: event.location ? '위치 확인' : '준비하기', type: 'view-event', data: event },
+          color: minutesUntil <= 10 ? 'red' : 'blue',
+        });
+      }
+    });
+    
+    // 6. 아침 브리핑 (9시)
+    if (currentHour === 9 && now.getMinutes() < 30) {
+      const todayTasks = tasks.filter(t => t.status !== 'done').length;
+      const todayEvents = events.filter(e => e.date === todayStr).length;
+      
+      newNotifications.push({
+        id: `morning-briefing-${todayStr}`,
+        type: 'briefing',
+        priority: NOTIFICATION_PRIORITY.LOW,
+        icon: '🌅',
+        title: '좋은 아침이에요!',
+        message: `오늘 할 일 ${todayTasks}개, 일정 ${todayEvents}개`,
+        action: { label: '오늘 계획 보기', type: 'view-today' },
+        color: 'yellow',
+      });
+    }
+    
+    // dismissed 제외하고 우선순위 정렬
+    const filtered = newNotifications
+      .filter(n => !dismissedIds.has(n.id))
+      .sort((a, b) => a.priority - b.priority);
+    
+    setNotifications(filtered);
+  }, [tasks, events, routines, energy, dismissedIds]);
+  
+  const dismissNotification = (id) => {
+    setDismissedIds(prev => new Set([...prev, id]));
+  };
+  
+  const dismissAll = () => {
+    setDismissedIds(prev => new Set([...prev, ...notifications.map(n => n.id)]));
+  };
+  
+  return { notifications, dismissNotification, dismissAll };
+};
+
+// 스마트 알림 토스트 컴포넌트
+const SmartNotificationToast = ({ 
+  notifications = [], 
+  onDismiss, 
+  onAction,
+  darkMode = false,
+  maxShow = 2 
+}) => {
+  const visibleNotifications = notifications.slice(0, maxShow);
+  
+  if (visibleNotifications.length === 0) return null;
+  
+  const colorMap = {
+    red: { bg: 'bg-red-50 dark:bg-red-900/30', border: 'border-red-200 dark:border-red-800', text: 'text-red-700 dark:text-red-300' },
+    orange: { bg: 'bg-orange-50 dark:bg-orange-900/30', border: 'border-orange-200 dark:border-orange-800', text: 'text-orange-700 dark:text-orange-300' },
+    yellow: { bg: 'bg-yellow-50 dark:bg-yellow-900/30', border: 'border-yellow-200 dark:border-yellow-800', text: 'text-yellow-700 dark:text-yellow-300' },
+    blue: { bg: 'bg-blue-50 dark:bg-blue-900/30', border: 'border-blue-200 dark:border-blue-800', text: 'text-blue-700 dark:text-blue-300' },
+    purple: { bg: 'bg-purple-50 dark:bg-purple-900/30', border: 'border-purple-200 dark:border-purple-800', text: 'text-purple-700 dark:text-purple-300' },
+    teal: { bg: 'bg-teal-50 dark:bg-teal-900/30', border: 'border-teal-200 dark:border-teal-800', text: 'text-teal-700 dark:text-teal-300' },
+  };
+  
+  return (
+    <div className="fixed top-4 left-4 right-4 z-50 space-y-2">
+      {visibleNotifications.map((notification, index) => {
+        const colors = colorMap[notification.color] || colorMap.blue;
+        
+        return (
+          <div
+            key={notification.id}
+            className={`${colors.bg} ${colors.border} border rounded-xl p-3 shadow-lg backdrop-blur-sm animate-slide-in-from-top`}
+            style={{ animationDelay: `${index * 100}ms` }}
+          >
+            <div className="flex items-start gap-3">
+              <span className="text-xl shrink-0">{notification.icon}</span>
+              <div className="flex-1 min-w-0">
+                <p className={`font-semibold text-sm ${colors.text}`}>{notification.title}</p>
+                <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'} truncate`}>
+                  {notification.message}
+                </p>
+              </div>
+              <button 
+                onClick={() => onDismiss?.(notification.id)}
+                className={`p-1 hover:bg-black/10 rounded ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}
+              >
+                <X size={14} />
+              </button>
+            </div>
+            
+            {notification.action && (
+              <button
+                onClick={() => onAction?.(notification.action, notification)}
+                className={`mt-2 w-full py-2 rounded-lg text-xs font-semibold ${colors.text} bg-white/50 dark:bg-white/10 hover:bg-white/80 dark:hover:bg-white/20 transition-colors`}
+              >
+                {notification.action.label}
+              </button>
+            )}
+          </div>
+        );
+      })}
+      
+      {notifications.length > maxShow && (
+        <div className={`text-center text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+          +{notifications.length - maxShow}개 더
+        </div>
+      )}
+      
+      <style>{`
+        @keyframes slide-in-from-top {
+          from { transform: translateY(-20px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        .animate-slide-in-from-top {
+          animation: slide-in-from-top 0.3s ease-out forwards;
+        }
+      `}</style>
+    </div>
+  );
+};
+
+// 알림 센터 컴포넌트 (전체 알림 목록)
+const NotificationCenter = ({ 
+  isOpen, 
+  onClose, 
+  notifications = [],
+  onDismiss,
+  onDismissAll,
+  onAction,
+  darkMode = false 
+}) => {
+  if (!isOpen) return null;
+  
+  const cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
+  const textPrimary = darkMode ? 'text-gray-100' : 'text-gray-800';
+  const textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  
+  // 알림 그룹화
+  const grouped = {
+    urgent: notifications.filter(n => n.priority === NOTIFICATION_PRIORITY.URGENT),
+    today: notifications.filter(n => n.priority === NOTIFICATION_PRIORITY.HIGH || n.priority === NOTIFICATION_PRIORITY.MEDIUM),
+    other: notifications.filter(n => n.priority === NOTIFICATION_PRIORITY.LOW),
+  };
+  
+  return (
+    <div 
+      className="fixed inset-0 z-50 flex items-start justify-center pt-16 bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div 
+        onClick={e => e.stopPropagation()}
+        className={`w-full max-w-md mx-4 ${cardBg} rounded-2xl shadow-2xl max-h-[70vh] overflow-hidden flex flex-col`}
+      >
+        {/* 헤더 */}
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Bell size={20} className="text-[#A996FF]" />
+            <h2 className={`font-bold ${textPrimary}`}>알림</h2>
+            {notifications.length > 0 && (
+              <span className="px-2 py-0.5 bg-[#A996FF] text-white text-xs rounded-full">
+                {notifications.length}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {notifications.length > 0 && (
+              <button 
+                onClick={onDismissAll}
+                className={`text-xs ${textSecondary} hover:text-[#A996FF]`}
+              >
+                모두 지우기
+              </button>
+            )}
+            <button onClick={onClose} className={`p-1 ${textSecondary}`}>
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+        
+        {/* 알림 목록 */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {notifications.length === 0 ? (
+            <div className="text-center py-8">
+              <span className="text-4xl">🔔</span>
+              <p className={`mt-2 ${textSecondary}`}>새로운 알림이 없어요</p>
+            </div>
+          ) : (
+            <>
+              {/* 긴급 */}
+              {grouped.urgent.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-red-500 mb-2">🔴 긴급</p>
+                  <div className="space-y-2">
+                    {grouped.urgent.map(n => (
+                      <NotificationItem 
+                        key={n.id} 
+                        notification={n} 
+                        onDismiss={onDismiss}
+                        onAction={onAction}
+                        darkMode={darkMode}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* 오늘 */}
+              {grouped.today.length > 0 && (
+                <div>
+                  <p className={`text-xs font-semibold ${textSecondary} mb-2`}>📅 오늘</p>
+                  <div className="space-y-2">
+                    {grouped.today.map(n => (
+                      <NotificationItem 
+                        key={n.id} 
+                        notification={n} 
+                        onDismiss={onDismiss}
+                        onAction={onAction}
+                        darkMode={darkMode}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* 기타 */}
+              {grouped.other.length > 0 && (
+                <div>
+                  <p className={`text-xs font-semibold ${textSecondary} mb-2`}>💡 참고</p>
+                  <div className="space-y-2">
+                    {grouped.other.map(n => (
+                      <NotificationItem 
+                        key={n.id} 
+                        notification={n} 
+                        onDismiss={onDismiss}
+                        onAction={onAction}
+                        darkMode={darkMode}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 알림 아이템 컴포넌트
+const NotificationItem = ({ notification, onDismiss, onAction, darkMode }) => {
+  const textPrimary = darkMode ? 'text-gray-100' : 'text-gray-800';
+  const textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  const itemBg = darkMode ? 'bg-gray-700' : 'bg-gray-50';
+  
+  return (
+    <div className={`${itemBg} rounded-xl p-3`}>
+      <div className="flex items-start gap-3">
+        <span className="text-lg">{notification.icon}</span>
+        <div className="flex-1 min-w-0">
+          <p className={`font-medium text-sm ${textPrimary}`}>{notification.title}</p>
+          <p className={`text-xs ${textSecondary} truncate`}>{notification.message}</p>
+        </div>
+        <button 
+          onClick={() => onDismiss?.(notification.id)}
+          className={`p-1 ${textSecondary} hover:bg-gray-200 dark:hover:bg-gray-600 rounded`}
+        >
+          <X size={14} />
+        </button>
+      </div>
+      {notification.action && (
+        <button
+          onClick={() => onAction?.(notification.action, notification)}
+          className="mt-2 w-full py-2 bg-[#A996FF]/20 text-[#A996FF] rounded-lg text-xs font-semibold hover:bg-[#A996FF]/30 transition-colors"
+        >
+          {notification.action.label}
+        </button>
+      )}
+    </div>
+  );
+};
+
+// === Phase 10: 프로젝트 관리 강화 ===
+
+// 프로젝트 대시보드 페이지
+const ProjectDashboardPage = ({ 
+  onBack, 
+  projects = [], 
+  allTasks = [],
+  onOpenProject,
+  onAddProject,
+  onEditProject,
+  onDeleteProject,
+  darkMode = false 
+}) => {
+  const [viewMode, setViewMode] = useState('grid'); // 'grid', 'timeline'
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  
+  const bgColor = darkMode ? 'bg-gray-900' : 'bg-[#F0EBFF]';
+  const cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
+  const textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+  const textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  
+  // 프로젝트별 태스크 통계 계산
+  const getProjectStats = (project) => {
+    const projectTasks = allTasks.filter(t => t.project === project.name);
+    const completed = projectTasks.filter(t => t.status === 'done').length;
+    const total = projectTasks.length;
+    const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+    
+    // 마감까지 남은 일수
+    let daysLeft = null;
+    if (project.deadline) {
+      const deadlineDate = new Date(project.deadline);
+      const today = new Date();
+      daysLeft = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24));
+    }
+    
+    // 우선순위 태스크
+    const highPriority = projectTasks.filter(t => t.importance === 'high' && t.status !== 'done').length;
+    
+    return { completed, total, progress, daysLeft, highPriority, tasks: projectTasks };
+  };
+  
+  // 전체 통계
+  const totalStats = {
+    projects: projects.length,
+    activeProjects: projects.filter(p => p.status === 'active').length,
+    totalTasks: allTasks.length,
+    completedTasks: allTasks.filter(t => t.status === 'done').length,
+  };
+  
+  return (
+    <div className={`flex-1 overflow-y-auto ${bgColor}`}>
+      {/* 헤더 */}
+      <div className="sticky top-0 z-10 bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] text-white p-4 pb-6">
+        <div className="flex items-center justify-between mb-4">
+          <button 
+            onClick={onBack}
+            className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-all"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <h1 className="text-lg font-bold">프로젝트 관리</h1>
+          <button 
+            onClick={() => { setSelectedProject(null); setShowProjectModal(true); }}
+            className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-all"
+          >
+            <Plus size={20} />
+          </button>
+        </div>
+        
+        {/* 전체 통계 */}
+        <div className="grid grid-cols-4 gap-2">
+          <div className="bg-white/20 rounded-xl p-2 text-center">
+            <p className="text-xl font-bold">{totalStats.projects}</p>
+            <p className="text-[10px] text-white/80">전체</p>
+          </div>
+          <div className="bg-white/20 rounded-xl p-2 text-center">
+            <p className="text-xl font-bold">{totalStats.activeProjects}</p>
+            <p className="text-[10px] text-white/80">진행중</p>
+          </div>
+          <div className="bg-white/20 rounded-xl p-2 text-center">
+            <p className="text-xl font-bold">{totalStats.completedTasks}</p>
+            <p className="text-[10px] text-white/80">완료</p>
+          </div>
+          <div className="bg-white/20 rounded-xl p-2 text-center">
+            <p className="text-xl font-bold">{totalStats.totalTasks - totalStats.completedTasks}</p>
+            <p className="text-[10px] text-white/80">남음</p>
+          </div>
+        </div>
+      </div>
+      
+      <div className="p-4 space-y-4 pb-32">
+        {/* 뷰 모드 토글 */}
+        <div className="flex gap-2 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
+          <button
+            onClick={() => setViewMode('grid')}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+              viewMode === 'grid'
+                ? 'bg-white dark:bg-gray-700 shadow-sm text-[#A996FF]'
+                : textSecondary
+            }`}
+          >
+            <Database size={16} /> 카드뷰
+          </button>
+          <button
+            onClick={() => setViewMode('timeline')}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+              viewMode === 'timeline'
+                ? 'bg-white dark:bg-gray-700 shadow-sm text-[#A996FF]'
+                : textSecondary
+            }`}
+          >
+            <Calendar size={16} /> 타임라인
+          </button>
+        </div>
+        
+        {/* 카드뷰 */}
+        {viewMode === 'grid' && (
+          <div className="space-y-3">
+            {projects.length === 0 ? (
+              <div className="text-center py-12">
+                <span className="text-5xl">📁</span>
+                <p className={`mt-4 font-medium ${textPrimary}`}>아직 프로젝트가 없어요</p>
+                <p className={`text-sm ${textSecondary} mb-4`}>새 프로젝트를 만들어보세요!</p>
+                <button
+                  onClick={() => setShowProjectModal(true)}
+                  className="px-6 py-3 bg-[#A996FF] text-white rounded-xl font-medium"
+                >
+                  + 새 프로젝트
+                </button>
+              </div>
+            ) : (
+              projects.map(project => {
+                const stats = getProjectStats(project);
+                const isOverdue = stats.daysLeft !== null && stats.daysLeft < 0;
+                const isUrgent = stats.daysLeft !== null && stats.daysLeft <= 3 && stats.daysLeft >= 0;
+                
+                return (
+                  <div 
+                    key={project.id}
+                    className={`${cardBg} rounded-xl p-4 shadow-sm ${isOverdue ? 'ring-2 ring-red-400' : isUrgent ? 'ring-2 ring-orange-400' : ''}`}
+                  >
+                    <div className="flex items-start gap-3">
+                      {/* 아이콘 */}
+                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${project.color || 'from-[#A996FF] to-[#8B7CF7]'} flex items-center justify-center text-xl shadow-md`}>
+                        {project.icon || '📁'}
+                      </div>
+                      
+                      {/* 정보 */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className={`font-bold ${textPrimary} truncate`}>{project.name}</h3>
+                          {isOverdue && <span className="text-[10px] px-1.5 py-0.5 bg-red-100 text-red-600 rounded">마감초과</span>}
+                          {isUrgent && !isOverdue && <span className="text-[10px] px-1.5 py-0.5 bg-orange-100 text-orange-600 rounded">D-{stats.daysLeft}</span>}
+                          {stats.highPriority > 0 && <span className="text-[10px] px-1.5 py-0.5 bg-red-50 text-red-500 rounded">🔥 {stats.highPriority}</span>}
+                        </div>
+                        
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className={`text-sm ${textSecondary}`}>
+                            {stats.completed}/{stats.total} 완료
+                          </span>
+                          {project.deadline && (
+                            <span className={`text-sm ${isOverdue ? 'text-red-500' : textSecondary}`}>
+                              📅 {project.deadline}
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* 진행률 바 */}
+                        <div className="mt-2">
+                          <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full rounded-full transition-all ${
+                                stats.progress === 100 
+                                  ? 'bg-emerald-500' 
+                                  : isOverdue 
+                                    ? 'bg-red-500' 
+                                    : 'bg-gradient-to-r from-[#A996FF] to-[#8B7CF7]'
+                              }`}
+                              style={{ width: `${stats.progress}%` }}
+                            />
+                          </div>
+                          <div className="flex justify-between mt-1">
+                            <span className={`text-xs ${textSecondary}`}>{stats.progress}%</span>
+                            {stats.progress === 100 && <span className="text-xs text-emerald-500">✓ 완료!</span>}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* 액션 버튼 */}
+                      <button
+                        onClick={() => { setSelectedProject(project); setShowProjectModal(true); }}
+                        className={`p-2 ${textSecondary} hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg`}
+                      >
+                        <Settings size={16} />
+                      </button>
+                    </div>
+                    
+                    {/* 마일스톤 (있을 경우) */}
+                    {project.milestones && project.milestones.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                        <p className={`text-xs font-medium ${textSecondary} mb-2`}>마일스톤</p>
+                        <div className="flex gap-2 overflow-x-auto">
+                          {project.milestones.slice(0, 3).map((ms, i) => (
+                            <div 
+                              key={i}
+                              className={`flex-shrink-0 px-2 py-1 rounded-lg text-xs ${
+                                ms.completed 
+                                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' 
+                                  : 'bg-gray-100 dark:bg-gray-700 ' + textSecondary
+                              }`}
+                            >
+                              {ms.completed ? '✓ ' : '○ '}{ms.title}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+        
+        {/* 타임라인 (간트차트 스타일) */}
+        {viewMode === 'timeline' && (
+          <ProjectTimeline 
+            projects={projects} 
+            allTasks={allTasks}
+            darkMode={darkMode}
+          />
+        )}
+      </div>
+      
+      {/* 프로젝트 편집 모달 */}
+      <ProjectEditModal
+        isOpen={showProjectModal}
+        onClose={() => { setShowProjectModal(false); setSelectedProject(null); }}
+        project={selectedProject}
+        onSave={(data) => {
+          if (selectedProject) {
+            onEditProject?.(data);
+          } else {
+            onAddProject?.(data);
+          }
+          setShowProjectModal(false);
+          setSelectedProject(null);
+        }}
+        onDelete={onDeleteProject}
+        darkMode={darkMode}
+      />
+    </div>
+  );
+};
+
+// 프로젝트 타임라인 (간트차트 스타일)
+const ProjectTimeline = ({ projects = [], allTasks = [], darkMode = false }) => {
+  const textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+  const textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  const cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
+  
+  // 날짜 범위 계산 (오늘부터 30일)
+  const today = new Date();
+  const days = Array.from({ length: 30 }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    return d;
+  });
+  
+  // 프로젝트별 타임라인 데이터
+  const projectsWithTimeline = projects.map(project => {
+    const projectTasks = allTasks.filter(t => t.project === project.name);
+    const completed = projectTasks.filter(t => t.status === 'done').length;
+    const total = projectTasks.length;
+    
+    // 마감일 계산
+    let endDay = 30;
+    if (project.deadline) {
+      const deadline = new Date(project.deadline);
+      const diffDays = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
+      endDay = Math.min(Math.max(diffDays, 0), 30);
+    }
+    
+    return {
+      ...project,
+      completed,
+      total,
+      progress: total > 0 ? Math.round((completed / total) * 100) : 0,
+      endDay,
+    };
+  });
+  
+  return (
+    <div className={`${cardBg} rounded-xl p-4 shadow-sm overflow-x-auto`}>
+      <h3 className={`font-bold ${textPrimary} mb-4 flex items-center gap-2`}>
+        <Calendar size={18} className="text-[#A996FF]" /> 프로젝트 타임라인
+      </h3>
+      
+      {/* 날짜 헤더 */}
+      <div className="min-w-[600px]">
+        <div className="flex mb-2">
+          <div className="w-32 shrink-0" />
+          <div className="flex-1 flex">
+            {days.filter((_, i) => i % 5 === 0).map((d, i) => (
+              <div key={i} className="flex-1 text-center">
+                <span className={`text-[10px] ${textSecondary}`}>
+                  {d.getMonth() + 1}/{d.getDate()}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        {/* 프로젝트 바 */}
+        <div className="space-y-2">
+          {projectsWithTimeline.map(project => (
+            <div key={project.id} className="flex items-center gap-2">
+              {/* 프로젝트 이름 */}
+              <div className="w-32 shrink-0 flex items-center gap-2">
+                <span className="text-lg">{project.icon}</span>
+                <span className={`text-sm font-medium ${textPrimary} truncate`}>{project.name}</span>
+              </div>
+              
+              {/* 타임라인 바 */}
+              <div className="flex-1 h-8 bg-gray-100 dark:bg-gray-700 rounded-lg relative">
+                {/* 진행 바 */}
+                <div 
+                  className={`absolute left-0 top-0 h-full rounded-lg bg-gradient-to-r ${project.color || 'from-[#A996FF] to-[#8B7CF7]'} opacity-80`}
+                  style={{ width: `${(project.endDay / 30) * 100}%` }}
+                >
+                  {/* 완료된 부분 */}
+                  <div 
+                    className="h-full bg-emerald-500/50 rounded-l-lg"
+                    style={{ width: `${project.progress}%` }}
+                  />
+                </div>
+                
+                {/* 오늘 마커 */}
+                <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-red-500" />
+                
+                {/* 진행률 텍스트 */}
+                <div className="absolute inset-0 flex items-center px-2">
+                  <span className="text-xs font-medium text-white drop-shadow">
+                    {project.progress}% ({project.completed}/{project.total})
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        {/* 범례 */}
+        <div className={`flex gap-4 mt-4 pt-4 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 bg-red-500 rounded-sm" />
+            <span className={`text-xs ${textSecondary}`}>오늘</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 bg-[#A996FF] rounded-sm" />
+            <span className={`text-xs ${textSecondary}`}>남은 기간</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 bg-emerald-500 rounded-sm" />
+            <span className={`text-xs ${textSecondary}`}>완료</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 프로젝트 편집 모달 (마일스톤 포함)
+const ProjectEditModal = ({ isOpen, onClose, project, onSave, onDelete, darkMode = false }) => {
+  const [name, setName] = useState('');
+  const [icon, setIcon] = useState('📁');
+  const [deadline, setDeadline] = useState('');
+  const [color, setColor] = useState('from-[#A996FF] to-[#8B7CF7]');
+  const [milestones, setMilestones] = useState([]);
+  const [newMilestone, setNewMilestone] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
+  const cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
+  const textPrimary = darkMode ? 'text-gray-100' : 'text-gray-800';
+  const textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  const inputBg = darkMode ? 'bg-gray-700' : 'bg-gray-50';
+  
+  useEffect(() => {
+    if (project) {
+      setName(project.name || '');
+      setIcon(project.icon || '📁');
+      setDeadline(project.deadline || '');
+      setColor(project.color || 'from-[#A996FF] to-[#8B7CF7]');
+      setMilestones(project.milestones || []);
+    } else {
+      setName('');
+      setIcon('📁');
+      setDeadline('');
+      setColor('from-[#A996FF] to-[#8B7CF7]');
+      setMilestones([]);
+    }
+  }, [project, isOpen]);
+  
+  if (!isOpen) return null;
+  
+  const projectIcons = ['📁', '💰', '🚀', '🎯', '📊', '💡', '🔥', '⭐', '🎨', '📱', '💻', '🌱', '🏆', '📈', '🛠️', '🎮'];
+  const colorOptions = [
+    'from-[#A996FF] to-[#8B7CF7]',
+    'from-blue-400 to-blue-600',
+    'from-emerald-400 to-emerald-600',
+    'from-orange-400 to-orange-600',
+    'from-pink-400 to-pink-600',
+    'from-yellow-400 to-yellow-600',
+    'from-red-400 to-red-600',
+    'from-teal-400 to-teal-600',
+  ];
+  
+  const handleAddMilestone = () => {
+    if (!newMilestone.trim()) return;
+    setMilestones([...milestones, { id: `ms-${Date.now()}`, title: newMilestone, completed: false }]);
+    setNewMilestone('');
+  };
+  
+  const handleToggleMilestone = (msId) => {
+    setMilestones(milestones.map(ms => 
+      ms.id === msId ? { ...ms, completed: !ms.completed } : ms
+    ));
+  };
+  
+  const handleDeleteMilestone = (msId) => {
+    setMilestones(milestones.filter(ms => ms.id !== msId));
+  };
+  
+  const handleSave = () => {
+    if (!name.trim()) return;
+    onSave?.({
+      id: project?.id || `p-${Date.now()}`,
+      name,
+      icon,
+      deadline,
+      color,
+      milestones,
+      status: 'active',
+      totalTasks: project?.totalTasks || 0,
+      completedTasks: project?.completedTasks || 0,
+    });
+  };
+  
+  return (
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div 
+        onClick={e => e.stopPropagation()}
+        className={`w-full max-w-md ${cardBg} rounded-2xl shadow-2xl max-h-[85vh] overflow-hidden flex flex-col`}
+      >
+        {/* 헤더 */}
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <h2 className={`font-bold ${textPrimary}`}>
+            {project ? '프로젝트 수정' : '새 프로젝트'}
+          </h2>
+          <button onClick={onClose} className={`p-2 ${textSecondary}`}>
+            <X size={20} />
+          </button>
+        </div>
+        
+        {/* 컨텐츠 */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* 아이콘 선택 */}
+          <div>
+            <label className={`block text-sm font-medium ${textSecondary} mb-2`}>아이콘</label>
+            <div className="flex flex-wrap gap-2">
+              {projectIcons.map(ic => (
+                <button
+                  key={ic}
+                  onClick={() => setIcon(ic)}
+                  className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center transition-all ${
+                    icon === ic
+                      ? 'bg-[#A996FF] ring-2 ring-[#A996FF] ring-offset-2'
+                      : `${inputBg}`
+                  }`}
+                >
+                  {ic}
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          {/* 이름 */}
+          <div>
+            <label className={`block text-sm font-medium ${textSecondary} mb-2`}>프로젝트 이름</label>
+            <input
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="프로젝트 이름을 입력하세요"
+              className={`w-full px-4 py-3 ${inputBg} ${textPrimary} rounded-xl focus:outline-none focus:ring-2 focus:ring-[#A996FF]`}
+            />
+          </div>
+          
+          {/* 마감일 */}
+          <div>
+            <label className={`block text-sm font-medium ${textSecondary} mb-2`}>마감일</label>
+            <input
+              type="date"
+              value={deadline}
+              onChange={e => setDeadline(e.target.value)}
+              className={`w-full px-4 py-3 ${inputBg} ${textPrimary} rounded-xl focus:outline-none focus:ring-2 focus:ring-[#A996FF]`}
+            />
+          </div>
+          
+          {/* 색상 */}
+          <div>
+            <label className={`block text-sm font-medium ${textSecondary} mb-2`}>테마 색상</label>
+            <div className="flex gap-2">
+              {colorOptions.map(c => (
+                <button
+                  key={c}
+                  onClick={() => setColor(c)}
+                  className={`w-8 h-8 rounded-lg bg-gradient-to-br ${c} ${
+                    color === c ? 'ring-2 ring-offset-2 ring-gray-400' : ''
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+          
+          {/* 마일스톤 */}
+          <div>
+            <label className={`block text-sm font-medium ${textSecondary} mb-2`}>마일스톤</label>
+            
+            {/* 마일스톤 목록 */}
+            {milestones.length > 0 && (
+              <div className="space-y-2 mb-3">
+                {milestones.map(ms => (
+                  <div key={ms.id} className={`flex items-center gap-2 ${inputBg} rounded-lg p-2`}>
+                    <button
+                      onClick={() => handleToggleMilestone(ms.id)}
+                      className={ms.completed ? 'text-emerald-500' : textSecondary}
+                    >
+                      {ms.completed ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                    </button>
+                    <span className={`flex-1 text-sm ${ms.completed ? 'line-through text-gray-400' : textPrimary}`}>
+                      {ms.title}
+                    </span>
+                    <button
+                      onClick={() => handleDeleteMilestone(ms.id)}
+                      className={`p-1 ${textSecondary} hover:text-red-500`}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* 새 마일스톤 입력 */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newMilestone}
+                onChange={e => setNewMilestone(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAddMilestone()}
+                placeholder="마일스톤 추가..."
+                className={`flex-1 px-3 py-2 ${inputBg} ${textPrimary} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#A996FF]`}
+              />
+              <button
+                onClick={handleAddMilestone}
+                className="px-3 py-2 bg-[#A996FF] text-white rounded-lg text-sm font-medium"
+              >
+                추가
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        {/* 푸터 */}
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+          {showDeleteConfirm ? (
+            <div className="space-y-2">
+              <p className={`text-sm ${textPrimary} text-center`}>정말 삭제하시겠어요?</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className={`flex-1 py-3 ${inputBg} ${textSecondary} rounded-xl font-medium`}
+                >
+                  취소
+                </button>
+                <button
+                  onClick={() => { onDelete?.(project.id); onClose(); }}
+                  className="flex-1 py-3 bg-red-500 text-white rounded-xl font-medium"
+                >
+                  삭제
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              {project && (
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="px-4 py-3 bg-red-100 text-red-600 rounded-xl font-medium"
+                >
+                  삭제
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className={`flex-1 py-3 ${inputBg} ${textSecondary} rounded-xl font-medium`}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={!name.trim()}
+                className="flex-1 py-3 bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] text-white rounded-xl font-semibold disabled:opacity-50"
+              >
+                {project ? '수정' : '생성'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 프로젝트 시간 추적 위젯
+const ProjectTimeWidget = ({ project, tasks = [], darkMode = false }) => {
+  const textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+  const textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  const cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
+  
+  // 프로젝트 태스크들의 시간 합계 (예시 - 실제로는 태스크에 timeSpent 필드가 있어야 함)
+  const projectTasks = tasks.filter(t => t.project === project?.name);
+  const totalMinutes = projectTasks.reduce((sum, t) => sum + (t.timeSpent || 0), 0);
+  const hours = Math.floor(totalMinutes / 60);
+  const mins = totalMinutes % 60;
+  
+  const completedTasks = projectTasks.filter(t => t.status === 'done').length;
+  const avgTimePerTask = completedTasks > 0 ? Math.round(totalMinutes / completedTasks) : 0;
+  
+  return (
+    <div className={`${cardBg} rounded-xl p-4 shadow-sm`}>
+      <div className="flex items-center gap-2 mb-3">
+        <Clock size={18} className="text-[#A996FF]" />
+        <h3 className={`font-semibold ${textPrimary}`}>시간 추적</h3>
+      </div>
+      
+      <div className="grid grid-cols-3 gap-3">
+        <div className="text-center p-3 bg-[#F5F3FF] dark:bg-[#A996FF]/20 rounded-xl">
+          <p className="text-xl font-bold text-[#A996FF]">{hours}h {mins}m</p>
+          <p className={`text-xs ${textSecondary}`}>총 시간</p>
+        </div>
+        <div className="text-center p-3 bg-gray-100 dark:bg-gray-700 rounded-xl">
+          <p className={`text-xl font-bold ${textPrimary}`}>{completedTasks}</p>
+          <p className={`text-xs ${textSecondary}`}>완료</p>
+        </div>
+        <div className="text-center p-3 bg-gray-100 dark:bg-gray-700 rounded-xl">
+          <p className={`text-xl font-bold ${textPrimary}`}>{avgTimePerTask}분</p>
+          <p className={`text-xs ${textSecondary}`}>평균</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// === Phase 11: 캘린더 뷰 강화 ===
+
+// 아젠다 뷰 컴포넌트
+const CalendarAgendaView = ({
+  events = [],
+  tasks = [],
+  darkMode = false,
+  onSelectDate,
+  onEditEvent,
+  onDragTask,
+  onDragEvent,
+}) => {
+  const [draggedItem, setDraggedItem] = useState(null);
+  const [dragOverDate, setDragOverDate] = useState(null);
+  
+  const cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
+  const textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+  const textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  
+  // 14일간의 아젠다 생성
+  const today = new Date();
+  const agendaDays = Array.from({ length: 14 }, (_, i) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
+    return date;
+  });
+  
+  const formatDateStr = (date) => date.toISOString().split('T')[0];
+  const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
+  
+  // 날짜별 아이템 그룹화
+  const getItemsForDate = (dateStr) => {
+    const dayEvents = events.filter(e => e.date === dateStr);
+    const dayTasks = tasks.filter(t => {
+      if (t.deadline) return t.deadline.startsWith(dateStr);
+      if (t.scheduledDate) return t.scheduledDate === dateStr;
+      return false;
+    });
+    return { events: dayEvents, tasks: dayTasks };
+  };
+  
+  // 드래그 핸들러
+  const handleDragStart = (e, item, type) => {
+    setDraggedItem({ item, type });
+    e.dataTransfer.effectAllowed = 'move';
+  };
+  
+  const handleDragOver = (e, dateStr) => {
+    e.preventDefault();
+    setDragOverDate(dateStr);
+  };
+  
+  const handleDragLeave = () => {
+    setDragOverDate(null);
+  };
+  
+  const handleDrop = (e, dateStr) => {
+    e.preventDefault();
+    setDragOverDate(null);
+    
+    if (!draggedItem) return;
+    
+    if (draggedItem.type === 'task') {
+      onDragTask?.({ ...draggedItem.item, deadline: dateStr });
+    } else if (draggedItem.type === 'event') {
+      onDragEvent?.({ ...draggedItem.item, date: dateStr });
+    }
+    
+    setDraggedItem(null);
+  };
+  
+  return (
+    <div className="space-y-3">
+      {agendaDays.map((date, idx) => {
+        const dateStr = formatDateStr(date);
+        const isToday = idx === 0;
+        const isTomorrow = idx === 1;
+        const { events: dayEvents, tasks: dayTasks } = getItemsForDate(dateStr);
+        const hasItems = dayEvents.length > 0 || dayTasks.length > 0;
+        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+        const isDragOver = dragOverDate === dateStr;
+        
+        return (
+          <div
+            key={dateStr}
+            className={`${cardBg} rounded-xl overflow-hidden shadow-sm transition-all ${
+              isDragOver ? 'ring-2 ring-[#A996FF] ring-offset-2' : ''
+            }`}
+            onDragOver={(e) => handleDragOver(e, dateStr)}
+            onDragLeave={handleDragLeave}
+            onDrop={(e) => handleDrop(e, dateStr)}
+          >
+            {/* 날짜 헤더 */}
+            <div 
+              className={`px-4 py-3 flex items-center justify-between ${
+                isToday 
+                  ? 'bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] text-white' 
+                  : isTomorrow 
+                    ? darkMode ? 'bg-gray-700' : 'bg-gray-100'
+                    : ''
+              }`}
+              onClick={() => onSelectDate?.(date)}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`text-center ${isToday ? '' : ''}`}>
+                  <p className={`text-2xl font-bold ${isToday ? 'text-white' : isWeekend ? (date.getDay() === 0 ? 'text-red-400' : 'text-gray-500') : textPrimary}`}>
+                    {date.getDate()}
+                  </p>
+                  <p className={`text-xs ${isToday ? 'text-white/80' : textSecondary}`}>
+                    {weekDays[date.getDay()]}
+                  </p>
+                </div>
+                <div>
+                  <p className={`font-medium ${isToday ? 'text-white' : textPrimary}`}>
+                    {isToday ? '오늘' : isTomorrow ? '내일' : `${date.getMonth() + 1}월 ${date.getDate()}일`}
+                  </p>
+                  {hasItems && (
+                    <p className={`text-xs ${isToday ? 'text-white/70' : textSecondary}`}>
+                      {dayEvents.length > 0 && `일정 ${dayEvents.length}개`}
+                      {dayEvents.length > 0 && dayTasks.length > 0 && ' · '}
+                      {dayTasks.length > 0 && `할 일 ${dayTasks.length}개`}
+                    </p>
+                  )}
+                </div>
+              </div>
+              
+              {hasItems && (
+                <div className="flex -space-x-1">
+                  {dayEvents.slice(0, 3).map((_, i) => (
+                    <div key={`e-${i}`} className="w-2 h-2 rounded-full bg-blue-500 border border-white" />
+                  ))}
+                  {dayTasks.filter(t => t.importance === 'high' && t.status !== 'done').slice(0, 2).map((_, i) => (
+                    <div key={`t-${i}`} className="w-2 h-2 rounded-full bg-red-500 border border-white" />
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            {/* 아이템 목록 */}
+            {hasItems && (
+              <div className="px-4 py-2 space-y-2">
+                {/* 이벤트 */}
+                {dayEvents.map((event, i) => (
+                  <div
+                    key={`event-${i}`}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, event, 'event')}
+                    onClick={() => onEditEvent?.(event)}
+                    className={`flex items-center gap-3 p-2 rounded-lg cursor-move hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                      draggedItem?.item?.id === event.id ? 'opacity-50' : ''
+                    }`}
+                  >
+                    <div className={`w-1 h-8 rounded-full ${event.color || 'bg-blue-500'}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className={`font-medium text-sm ${textPrimary} truncate`}>{event.title}</p>
+                      <p className={`text-xs ${textSecondary}`}>
+                        {event.start && event.end ? `${event.start} - ${event.end}` : '종일'}
+                        {event.location && ` · ${event.location}`}
+                      </p>
+                    </div>
+                    <GripVertical size={14} className={textSecondary} />
+                  </div>
+                ))}
+                
+                {/* 태스크 */}
+                {dayTasks.map((task, i) => (
+                  <div
+                    key={`task-${i}`}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, task, 'task')}
+                    className={`flex items-center gap-3 p-2 rounded-lg cursor-move hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                      draggedItem?.item?.id === task.id ? 'opacity-50' : ''
+                    }`}
+                  >
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      task.status === 'done' 
+                        ? 'bg-emerald-500 border-emerald-500 text-white' 
+                        : task.importance === 'high' 
+                          ? 'border-red-400' 
+                          : 'border-[#A996FF]'
+                    }`}>
+                      {task.status === 'done' && <CheckCircle2 size={12} />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm ${task.status === 'done' ? 'line-through text-gray-400' : textPrimary} truncate`}>
+                        {task.title}
+                      </p>
+                      {task.project && (
+                        <p className={`text-xs ${textSecondary}`}>{task.project}</p>
+                      )}
+                    </div>
+                    {task.importance === 'high' && task.status !== 'done' && (
+                      <span className="text-xs text-red-500">!</span>
+                    )}
+                    <GripVertical size={14} className={textSecondary} />
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* 빈 날짜 드롭존 */}
+            {!hasItems && isDragOver && (
+              <div className="px-4 py-4 text-center">
+                <p className={`text-sm ${textSecondary}`}>여기에 놓으세요</p>
+              </div>
+            )}
+          </div>
+        );
+      })}
+      
+      <style>{`
+        [draggable="true"] {
+          user-select: none;
+        }
+      `}</style>
+    </div>
+  );
+};
+
+// 미니 주간 타임라인 (홈 위젯용)
+const MiniWeekTimeline = ({
+  events = [],
+  tasks = [],
+  darkMode = false,
+  onSelectDay,
+}) => {
+  const cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
+  const textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+  const textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  
+  const today = new Date();
+  const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
+  
+  // 이번 주 (오늘부터 7일)
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
+    return date;
+  });
+  
+  const formatDateStr = (date) => date.toISOString().split('T')[0];
+  
+  // 날짜별 아이템 개수
+  const getItemCount = (dateStr) => {
+    const eventCount = events.filter(e => e.date === dateStr).length;
+    const taskCount = tasks.filter(t => {
+      if (t.deadline) return t.deadline.startsWith(dateStr);
+      if (t.scheduledDate) return t.scheduledDate === dateStr;
+      return false;
+    }).length;
+    return eventCount + taskCount;
+  };
+  
+  return (
+    <div className={`${cardBg} rounded-xl p-4 shadow-sm`}>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className={`font-semibold ${textPrimary} flex items-center gap-2`}>
+          <Calendar size={16} className="text-[#A996FF]" /> 이번 주
+        </h3>
+      </div>
+      
+      <div className="flex justify-between">
+        {days.map((date, i) => {
+          const dateStr = formatDateStr(date);
+          const isToday = i === 0;
+          const count = getItemCount(dateStr);
+          const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+          
+          return (
+            <button
+              key={dateStr}
+              onClick={() => onSelectDay?.(date)}
+              className="flex flex-col items-center gap-1 flex-1"
+            >
+              <span className={`text-xs ${isWeekend ? (date.getDay() === 0 ? 'text-red-400' : 'text-gray-500') : textSecondary}`}>
+                {weekDays[date.getDay()]}
+              </span>
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
+                isToday 
+                  ? 'bg-gradient-to-br from-[#A996FF] to-[#8B7CF7] text-white shadow-md' 
+                  : count > 0 
+                    ? darkMode ? 'bg-gray-700' : 'bg-gray-100'
+                    : ''
+              }`}>
+                <span className={`text-sm font-medium ${isToday ? 'text-white' : textPrimary}`}>
+                  {date.getDate()}
+                </span>
+              </div>
+              {count > 0 && (
+                <div className="flex gap-0.5">
+                  {Array.from({ length: Math.min(count, 3) }).map((_, j) => (
+                    <div 
+                      key={j} 
+                      className={`w-1 h-1 rounded-full ${isToday ? 'bg-[#A996FF]' : 'bg-gray-400'}`} 
+                    />
+                  ))}
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// 드래그 가능한 캘린더 아이템
+const DraggableCalendarItem = ({
+  item,
+  type, // 'event' | 'task'
+  darkMode = false,
+  onDragStart,
+  onClick,
+}) => {
+  const textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+  const textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  
+  if (type === 'event') {
+    return (
+      <div
+        draggable
+        onDragStart={(e) => onDragStart?.(e, item, 'event')}
+        onClick={() => onClick?.(item)}
+        className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg cursor-move hover:shadow-md transition-all"
+      >
+        <div className={`w-1 h-6 rounded-full ${item.color || 'bg-blue-500'}`} />
+        <div className="flex-1 min-w-0">
+          <p className={`text-sm font-medium ${textPrimary} truncate`}>{item.title}</p>
+          <p className={`text-xs ${textSecondary}`}>{item.start || '종일'}</p>
+        </div>
+        <GripVertical size={12} className="text-gray-400" />
+      </div>
+    );
+  }
+  
+  return (
+    <div
+      draggable
+      onDragStart={(e) => onDragStart?.(e, item, 'task')}
+      onClick={() => onClick?.(item)}
+      className={`flex items-center gap-2 p-2 rounded-lg cursor-move hover:shadow-md transition-all ${
+        item.importance === 'high' 
+          ? 'bg-red-50 dark:bg-red-900/30' 
+          : 'bg-[#F5F3FF] dark:bg-[#A996FF]/20'
+      }`}
+    >
+      <div className={`w-4 h-4 rounded-full border-2 ${
+        item.status === 'done' 
+          ? 'bg-emerald-500 border-emerald-500' 
+          : item.importance === 'high' 
+            ? 'border-red-400' 
+            : 'border-[#A996FF]'
+      }`} />
+      <p className={`flex-1 text-sm ${item.status === 'done' ? 'line-through text-gray-400' : textPrimary} truncate`}>
+        {item.title}
+      </p>
+      <GripVertical size={12} className="text-gray-400" />
+    </div>
+  );
+};
+
 // === Phase 6: 완료 피드백 강화 ===
 
 // Confetti 애니메이션 컴포넌트
@@ -5518,34 +6953,312 @@ const WeeklyReviewPage = ({ onBack, gameState, allTasks, darkMode }) => {
           )}
         </div>
         
-        {/* 다음 목표 */}
-        <div className="bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] rounded-xl p-5 text-white">
-          <h3 className="font-bold mb-3 flex items-center gap-2">
-            <Target size={18} /> 다음 목표
+        {/* Phase 8: 생산성 피크 시간 분석 */}
+        <div className={`${cardBg} rounded-xl p-5 shadow-sm`}>
+          <h3 className={`font-bold ${textPrimary} mb-4 flex items-center gap-2`}>
+            <Clock size={18} className="text-[#A996FF]" /> 생산성 피크 시간
           </h3>
-          <div className="space-y-2">
-            {levelInfo.requiredXP - levelInfo.currentXP <= 100 && (
-              <div className="flex items-center gap-2 bg-white/20 rounded-xl p-3">
-                <span>⬆️</span>
-                <span>레벨 {levelInfo.level + 1}까지 {levelInfo.requiredXP - levelInfo.currentXP} XP</span>
+          
+          {(() => {
+            // 시간대별 생산성 데이터 (실제로는 태스크 완료 시간을 추적해야 함)
+            const hourlyProductivity = [
+              { hour: '9-10', label: '오전', value: 65, emoji: '🌅' },
+              { hour: '10-12', label: '오전', value: 90, emoji: '⚡' },
+              { hour: '14-16', label: '오후', value: 55, emoji: '😴' },
+              { hour: '16-18', label: '오후', value: 75, emoji: '💪' },
+              { hour: '19-21', label: '저녁', value: 40, emoji: '🌙' },
+            ];
+            
+            const peakHour = hourlyProductivity.reduce((max, h) => h.value > max.value ? h : max, hourlyProductivity[0]);
+            const lowHour = hourlyProductivity.reduce((min, h) => h.value < min.value ? h : min, hourlyProductivity[0]);
+            
+            return (
+              <>
+                <div className="space-y-3 mb-4">
+                  {hourlyProductivity.map((h, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <span className="text-sm w-16 text-right font-medium" style={{ color: darkMode ? '#9CA3AF' : '#6B7280' }}>
+                        {h.hour}
+                      </span>
+                      <div className="flex-1 h-6 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden relative">
+                        <div 
+                          className={`h-full rounded-full transition-all ${
+                            h.value === peakHour.value 
+                              ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' 
+                              : h.value === lowHour.value
+                                ? 'bg-gray-400'
+                                : 'bg-gradient-to-r from-[#A996FF] to-[#8B7CF7]'
+                          }`}
+                          style={{ width: `${h.value}%` }}
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-medium text-white">
+                          {h.emoji}
+                        </span>
+                      </div>
+                      <span className={`text-sm font-bold w-10 ${h.value === peakHour.value ? 'text-emerald-500' : textSecondary}`}>
+                        {h.value}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className={`p-3 rounded-xl ${darkMode ? 'bg-emerald-900/30' : 'bg-emerald-50'} border ${darkMode ? 'border-emerald-800' : 'border-emerald-200'}`}>
+                  <p className="text-sm text-emerald-600 dark:text-emerald-400">
+                    <span className="font-bold">💡 인사이트:</span> {peakHour.hour}시가 가장 생산적이에요! 
+                    중요한 일은 이 시간에 배치해보세요.
+                  </p>
+                </div>
+              </>
+            );
+          })()}
+        </div>
+        
+        {/* Phase 8: 요일별 완료 패턴 */}
+        <div className={`${cardBg} rounded-xl p-5 shadow-sm`}>
+          <h3 className={`font-bold ${textPrimary} mb-4 flex items-center gap-2`}>
+            <Calendar size={18} className="text-[#A996FF]" /> 요일별 완료 패턴
+          </h3>
+          
+          {(() => {
+            // 요일별 완료 수 계산
+            const dayCompletions = weeklyXP.map((xp, i) => ({
+              day: weekDays[i],
+              xp,
+              tasks: Math.round(xp / 15), // XP를 태스크 수로 대략 변환
+              isToday: i === today,
+              isWeekend: i === 0 || i === 6,
+            }));
+            
+            const bestDay = dayCompletions.reduce((max, d) => d.xp > max.xp ? d : max, dayCompletions[0]);
+            const worstDay = dayCompletions.filter(d => !d.isWeekend).reduce((min, d) => d.xp < min.xp ? d : min, dayCompletions[1]);
+            const weekdayAvg = Math.round(dayCompletions.filter(d => !d.isWeekend).reduce((sum, d) => sum + d.xp, 0) / 5);
+            const weekendAvg = Math.round(dayCompletions.filter(d => d.isWeekend).reduce((sum, d) => sum + d.xp, 0) / 2);
+            
+            return (
+              <>
+                <div className="flex justify-between items-end h-32 mb-4 px-2">
+                  {dayCompletions.map((d, i) => (
+                    <div key={i} className="flex flex-col items-center gap-1 flex-1">
+                      <div className="relative w-full flex justify-center">
+                        <div 
+                          className={`w-8 rounded-t-lg transition-all ${
+                            d.xp === bestDay.xp && d.xp > 0
+                              ? 'bg-gradient-to-t from-[#A996FF] to-[#8B7CF7]' 
+                              : d.isWeekend 
+                                ? 'bg-gray-300 dark:bg-gray-600'
+                                : 'bg-[#A996FF]/60'
+                          }`}
+                          style={{ height: `${Math.max((d.xp / Math.max(bestDay.xp, 1)) * 100, 8)}px` }}
+                        />
+                        {d.xp === bestDay.xp && d.xp > 0 && (
+                          <span className="absolute -top-5 text-sm">👑</span>
+                        )}
+                      </div>
+                      <span className={`text-xs font-medium ${d.isToday ? 'text-[#A996FF] font-bold' : textSecondary}`}>
+                        {d.day}
+                      </span>
+                      <span className={`text-[10px] ${textSecondary}`}>{d.tasks}개</span>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div className={`p-3 rounded-xl ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                    <p className={`text-xs ${textSecondary} mb-1`}>평일 평균</p>
+                    <p className={`font-bold ${textPrimary}`}>{weekdayAvg} XP</p>
+                  </div>
+                  <div className={`p-3 rounded-xl ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                    <p className={`text-xs ${textSecondary} mb-1`}>주말 평균</p>
+                    <p className={`font-bold ${textPrimary}`}>{weekendAvg} XP</p>
+                  </div>
+                </div>
+                
+                {bestDay.xp > 0 && (
+                  <p className={`text-sm ${textSecondary} mt-3 text-center`}>
+                    {bestDay.day}요일이 가장 생산적이에요! 
+                    {weekdayAvg > weekendAvg * 1.5 ? ' 주말에는 좀 쉬어가는 편이네요 😊' : ''}
+                  </p>
+                )}
+              </>
+            );
+          })()}
+        </div>
+        
+        {/* Phase 8: 알프레도 주간 인사이트 (강화) */}
+        <div className={`${cardBg} rounded-xl p-5 shadow-sm border-2 border-[#A996FF]/30`}>
+          <div className="flex items-start gap-3 mb-4">
+            <div className="w-14 h-14 bg-gradient-to-br from-[#A996FF] to-[#8B7CF7] rounded-xl flex items-center justify-center text-2xl shrink-0 shadow-lg">
+              🐧
+            </div>
+            <div>
+              <p className={`font-bold ${textPrimary} text-lg`}>알프레도의 주간 분석</p>
+              <p className={`text-xs ${textSecondary}`}>이번 주 데이터를 분석했어요</p>
+            </div>
+          </div>
+          
+          {(() => {
+            // 분석 인사이트 생성
+            const insights = [];
+            
+            // 완료율 기반
+            if (completionRate >= 80) {
+              insights.push({ icon: '🏆', text: '완료율이 80%를 넘었어요! 정말 대단해요!' });
+            } else if (completionRate >= 50) {
+              insights.push({ icon: '💪', text: '절반 이상 해냈어요! 조금만 더 힘내봐요.' });
+            } else {
+              insights.push({ icon: '🌱', text: '천천히 성장하고 있어요. 작은 것부터 시작해볼까요?' });
+            }
+            
+            // 스트릭 기반
+            if (gameState.streak >= 7) {
+              insights.push({ icon: '🔥', text: `${gameState.streak}일 연속! 습관이 만들어지고 있어요!` });
+            } else if (gameState.streak >= 3) {
+              insights.push({ icon: '⚡', text: '3일 이상 연속 달성! 이 흐름을 유지해봐요.' });
+            }
+            
+            // XP 기반
+            if (totalWeeklyXP >= 700) {
+              insights.push({ icon: '⭐', text: '이번 주 XP가 700을 넘었어요! 최고의 한 주!' });
+            } else if (avgDailyXP >= 80) {
+              insights.push({ icon: '📈', text: '일평균 XP가 높아요! 꾸준함이 빛나요.' });
+            }
+            
+            // 집중 세션 기반
+            if (gameState.focusSessions >= 10) {
+              insights.push({ icon: '🎯', text: '집중 세션 10회 이상! 딥워크 마스터!' });
+            } else if (gameState.focusMinutes >= 180) {
+              insights.push({ icon: '🧘', text: '3시간 이상 집중했어요! 집중력이 좋아요.' });
+            }
+            
+            // 최소 2개는 보여주기
+            if (insights.length < 2) {
+              insights.push({ icon: '💫', text: '다음 주는 더 좋은 결과가 있을 거예요!' });
+            }
+            
+            return (
+              <div className="space-y-3">
+                {insights.slice(0, 3).map((insight, i) => (
+                  <div 
+                    key={i}
+                    className={`flex items-center gap-3 p-3 rounded-xl ${
+                      darkMode ? 'bg-gray-700' : 'bg-gradient-to-r from-[#F5F3FF] to-[#EDE9FE]'
+                    }`}
+                  >
+                    <span className="text-xl">{insight.icon}</span>
+                    <p className={`text-sm ${textPrimary}`}>{insight.text}</p>
+                  </div>
+                ))}
               </div>
-            )}
-            {gameState.streak < 7 && (
-              <div className="flex items-center gap-2 bg-white/20 rounded-xl p-3">
-                <span>🔥</span>
-                <span>7일 연속 달성까지 {7 - gameState.streak}일</span>
+            );
+          })()}
+        </div>
+        
+        {/* Phase 8: 다음 주 추천 목표 (강화) */}
+        <div className="bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] rounded-xl p-5 text-white">
+          <h3 className="font-bold mb-4 flex items-center gap-2">
+            <Target size={18} /> 다음 주 추천 목표
+          </h3>
+          
+          {(() => {
+            const goals = [];
+            
+            // 레벨업 목표
+            const xpToNextLevel = levelInfo.requiredXP - levelInfo.currentXP;
+            if (xpToNextLevel <= avgDailyXP * 7) {
+              goals.push({
+                icon: '⬆️',
+                title: `레벨 ${levelInfo.level + 1} 달성`,
+                desc: `${xpToNextLevel} XP만 더 모으면 돼요!`,
+                difficulty: 'easy',
+              });
+            }
+            
+            // 스트릭 목표
+            if (gameState.streak < 7) {
+              goals.push({
+                icon: '🔥',
+                title: '7일 연속 달성',
+                desc: `${7 - gameState.streak}일만 더 이어가면 일주일 완성!`,
+                difficulty: gameState.streak >= 3 ? 'easy' : 'medium',
+              });
+            } else if (gameState.streak < 14) {
+              goals.push({
+                icon: '🔥',
+                title: '14일 연속 달성',
+                desc: '2주 연속이면 완전한 습관이 돼요!',
+                difficulty: 'medium',
+              });
+            }
+            
+            // 완료율 목표
+            if (completionRate < 80) {
+              goals.push({
+                icon: '📊',
+                title: '완료율 80% 달성',
+                desc: '매일 조금씩 더 해보면 가능해요!',
+                difficulty: completionRate >= 60 ? 'easy' : 'hard',
+              });
+            }
+            
+            // 집중 세션 목표
+            if (gameState.focusSessions < 10) {
+              goals.push({
+                icon: '🧘',
+                title: '집중 세션 10회',
+                desc: '하루 2회씩이면 충분해요!',
+                difficulty: 'medium',
+              });
+            }
+            
+            // XP 목표
+            goals.push({
+              icon: '⚡',
+              title: `${Math.ceil((totalWeeklyXP + 100) / 100) * 100} XP 달성`,
+              desc: '이번 주보다 조금만 더!',
+              difficulty: 'easy',
+            });
+            
+            const difficultyColors = {
+              easy: 'bg-emerald-400/30',
+              medium: 'bg-yellow-400/30',
+              hard: 'bg-red-400/30',
+            };
+            
+            const difficultyLabels = {
+              easy: '쉬움',
+              medium: '보통',
+              hard: '도전',
+            };
+            
+            return (
+              <div className="space-y-3">
+                {goals.slice(0, 3).map((goal, i) => (
+                  <div 
+                    key={i}
+                    className="flex items-center gap-3 bg-white/20 rounded-xl p-3"
+                  >
+                    <span className="text-2xl">{goal.icon}</span>
+                    <div className="flex-1">
+                      <p className="font-semibold">{goal.title}</p>
+                      <p className="text-xs text-white/80">{goal.desc}</p>
+                    </div>
+                    <span className={`text-[10px] px-2 py-1 rounded-full font-medium ${difficultyColors[goal.difficulty]}`}>
+                      {difficultyLabels[goal.difficulty]}
+                    </span>
+                  </div>
+                ))}
               </div>
-            )}
-            {gameState.totalCompleted < 50 && (
-              <div className="flex items-center gap-2 bg-white/20 rounded-xl p-3">
-                <span>🎖️</span>
-                <span>50개 태스크 완료까지 {50 - gameState.totalCompleted}개</span>
-              </div>
-            )}
+            );
+          })()}
+          
+          <div className="mt-4 pt-4 border-t border-white/20 text-center">
+            <p className="text-sm text-white/80">
+              🐧 알프레도가 다음 주도 응원할게요!
+            </p>
           </div>
         </div>
         
-        {/* 알프레도 응원 */}
+        {/* 알프레도 응원 (기존) */}
         <div className={`${cardBg} rounded-xl p-5 shadow-sm`}>
           <div className="flex items-start gap-3">
             <div className="w-12 h-12 bg-gradient-to-br from-[#A996FF] to-[#8B7CF7] rounded-xl flex items-center justify-center text-xl shrink-0">
@@ -6337,7 +8050,7 @@ const EnergyRhythmPage = ({ onBack, gameState, userData, darkMode }) => {
 };
 
 // === Calendar Page ===
-const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode, onAddEvent, onUpdateEvent, onDeleteEvent, onSyncGoogleEvents }) => {
+const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode, onAddEvent, onUpdateEvent, onDeleteEvent, onUpdateTask, onSyncGoogleEvents }) => {
   // Google Calendar 훅
   const googleCalendar = useGoogleCalendar();
   
@@ -6746,7 +8459,7 @@ const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode, onAddEvent, o
           <div className="bg-white/20 rounded-full p-1 flex">
             <button
               onClick={() => setViewMode('month')}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
                 viewMode === 'month' ? 'bg-white text-[#8B7CF7]' : 'text-white/80'
               }`}
             >
@@ -6754,11 +8467,19 @@ const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode, onAddEvent, o
             </button>
             <button
               onClick={() => setViewMode('week')}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
                 viewMode === 'week' ? 'bg-white text-[#8B7CF7]' : 'text-white/80'
               }`}
             >
               주간
+            </button>
+            <button
+              onClick={() => setViewMode('agenda')}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                viewMode === 'agenda' ? 'bg-white text-[#8B7CF7]' : 'text-white/80'
+              }`}
+            >
+              아젠다
             </button>
           </div>
         </div>
@@ -6852,7 +8573,21 @@ const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode, onAddEvent, o
           </button>
         </div>
         
+        {/* 아젠다 뷰 */}
+        {viewMode === 'agenda' && (
+          <CalendarAgendaView
+            events={events}
+            tasks={allTasks}
+            darkMode={darkMode}
+            onSelectDate={(date) => setSelectedDate(date)}
+            onEditEvent={(event) => { setEditingEvent(event); setShowEventModal(true); }}
+            onDragTask={onUpdateTask}
+            onDragEvent={onUpdateEvent}
+          />
+        )}
+        
         {/* 달력 그리드 */}
+        {viewMode !== 'agenda' && (
         <div className={`${cardBg} rounded-xl p-4 shadow-sm`}>
           {/* 요일 헤더 */}
           <div className="grid grid-cols-7 mb-2">
@@ -6913,8 +8648,10 @@ const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode, onAddEvent, o
             })}
           </div>
         </div>
+        )}
         
         {/* 선택된 날짜의 일정 */}
+        {viewMode !== 'agenda' && (
         <div className={`${cardBg} rounded-xl p-4 shadow-sm`}>
           <div className="flex items-center justify-between mb-4">
             <h3 className={`font-bold ${textPrimary}`}>
@@ -7071,6 +8808,7 @@ const CalendarPage = ({ onBack, tasks, allTasks, events, darkMode, onAddEvent, o
             </div>
           )}
         </div>
+        )}
       </div>
       
       {/* Event Modal */}
@@ -9200,6 +10938,31 @@ const WorkPage = ({ tasks, onToggleTask, onStartFocus, onReflect, inbox, onConve
       setProjects([...projects, project]);
     }
     setEditingProject(null);
+  };
+  
+  // Phase 10: 프로젝트 추가
+  const handleAddProject = (projectData) => {
+    const newProject = {
+      ...projectData,
+      id: `p-${Date.now()}`,
+      totalTasks: 0,
+      completedTasks: 0,
+      status: 'active',
+    };
+    const updated = [...projects, newProject];
+    setProjects(updated);
+    saveToStorage('lifebutler_projects', updated);
+    showToast(`📁 "${newProject.name}" 프로젝트가 생성되었어요!`);
+  };
+  
+  // Phase 10: 프로젝트 수정
+  const handleEditProject = (projectData) => {
+    const updated = projects.map(p => 
+      p.id === projectData.id ? { ...p, ...projectData } : p
+    );
+    setProjects(updated);
+    saveToStorage('lifebutler_projects', updated);
+    showToast(`📁 "${projectData.name}" 프로젝트가 수정되었어요!`);
   };
   
   // 프로젝트 삭제
@@ -12249,7 +14012,7 @@ const SettingsPage = ({ userData, onUpdateUserData, onBack, darkMode, setDarkMod
 };
 
 // === Home Page ===
-const HomePage = ({ onOpenChat, onOpenSettings, onOpenSearch, onOpenStats, onOpenWeeklyReview, onOpenHabitHeatmap, onOpenEnergyRhythm, onOpenDndModal, doNotDisturb, mood, setMood, energy, setEnergy, oneThing, tasks, onToggleTask, inbox, onStartFocus, darkMode, gameState, events = [], connections = {}, onUpdateTask, onDeleteTask, onSaveEvent, onDeleteEvent, onUpdateTaskTime, onUpdateEventTime, routines = [], onToggleRoutine, onOpenRoutineManager }) => {
+const HomePage = ({ onOpenChat, onOpenSettings, onOpenSearch, onOpenStats, onOpenWeeklyReview, onOpenHabitHeatmap, onOpenEnergyRhythm, onOpenDndModal, onOpenNotifications, onOpenProjectDashboard, notificationCount = 0, doNotDisturb, mood, setMood, energy, setEnergy, oneThing, tasks, onToggleTask, inbox, onStartFocus, darkMode, gameState, events = [], connections = {}, onUpdateTask, onDeleteTask, onSaveEvent, onDeleteEvent, onUpdateTaskTime, onUpdateEventTime, routines = [], onToggleRoutine, onOpenRoutineManager }) => {
   const [showAllReminders, setShowAllReminders] = useState(false);
   const [showEveningReview, setShowEveningReview] = useState(false);
   const [eveningNote, setEveningNote] = useState('');
@@ -12476,6 +14239,17 @@ const HomePage = ({ onOpenChat, onOpenSettings, onOpenSearch, onOpenStats, onOpe
             className={`w-9 h-9 rounded-full ${darkMode ? 'bg-gray-700/70 border-gray-600' : 'bg-white/70 border-white/50'} border shadow-sm flex items-center justify-center ${textSecondary} hover:bg-[#F5F3FF] hover:text-[#A996FF] transition-all`}
           >
             <Search size={16} />
+          </button>
+          <button 
+            onClick={onOpenNotifications}
+            className={`w-9 h-9 rounded-full ${darkMode ? 'bg-gray-700/70 border-gray-600' : 'bg-white/70 border-white/50'} border shadow-sm flex items-center justify-center ${textSecondary} relative`}
+          >
+            <Bell size={16} />
+            {notificationCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                {notificationCount > 9 ? '9+' : notificationCount}
+              </span>
+            )}
           </button>
           <button 
             onClick={onOpenSettings}
@@ -12874,7 +14648,7 @@ const HomePage = ({ onOpenChat, onOpenSettings, onOpenSearch, onOpenStats, onOpe
       {/* 📊 인사이트 섹션 (통합) */}
       <div className={`${cardBg} backdrop-blur-xl rounded-xl shadow-sm p-4 border ${borderColor}`}>
         <p className={`text-xs font-semibold ${textSecondary} mb-3`}>📊 나의 인사이트</p>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           <button
             onClick={onOpenWeeklyReview}
             className={`flex flex-col items-center p-3 ${darkMode ? 'bg-[#A996FF]/10 hover:bg-[#A996FF]/20' : 'bg-gradient-to-br from-[#A996FF]/10 to-[#8B7CF7]/10 hover:from-[#A996FF]/20 hover:to-[#8B7CF7]/20'} rounded-xl transition-all`}
@@ -12892,7 +14666,7 @@ const HomePage = ({ onOpenChat, onOpenSettings, onOpenSearch, onOpenStats, onOpe
             <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center text-base shadow-md mb-2">
               🟩
             </div>
-            <p className={`text-xs font-medium ${textPrimary}`}>습관 히트맵</p>
+            <p className={`text-xs font-medium ${textPrimary}`}>습관</p>
           </button>
           
           <button
@@ -12902,7 +14676,17 @@ const HomePage = ({ onOpenChat, onOpenSettings, onOpenSearch, onOpenStats, onOpe
             <div className="w-10 h-10 bg-gradient-to-br from-[#A996FF] to-[#EDE9FE]0 rounded-xl flex items-center justify-center text-base shadow-md mb-2">
               ⚡
             </div>
-            <p className={`text-xs font-medium ${textPrimary}`}>에너지 리듬</p>
+            <p className={`text-xs font-medium ${textPrimary}`}>에너지</p>
+          </button>
+          
+          <button
+            onClick={onOpenProjectDashboard}
+            className={`flex flex-col items-center p-3 ${darkMode ? 'bg-blue-900/30 hover:bg-blue-900/50' : 'bg-gradient-to-br from-blue-50 to-blue-50 hover:from-blue-100 hover:to-blue-100'} rounded-xl transition-all`}
+          >
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center text-base shadow-md mb-2">
+              📁
+            </div>
+            <p className={`text-xs font-medium ${textPrimary}`}>프로젝트</p>
           </button>
         </div>
       </div>
@@ -13141,6 +14925,9 @@ export default function LifeButlerApp() {
   });
   const [showRoutineManager, setShowRoutineManager] = useState(false);
   
+  // Phase 9: 스마트 알림 상태
+  const [showNotificationCenter, setShowNotificationCenter] = useState(false);
+  
   // Phase 2: 시간 트래킹 상태
   const [currentWorkingTask, setCurrentWorkingTask] = useState(null); // 현재 작업 중인 태스크
   
@@ -13174,6 +14961,44 @@ export default function LifeButlerApp() {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [showPWAInstall, setShowPWAInstall] = useState(false);
   const [pwaInstallDismissed, setPWAInstallDismissed] = useState(false);
+  
+  // Phase 9: 스마트 알림 훅 사용
+  const smartNotifications = useSmartNotifications({
+    tasks: allTasks,
+    events: allEvents,
+    routines: routines,
+    energy: userData.energy || 70,
+  });
+  
+  // Phase 9: 알림 액션 핸들러
+  const handleNotificationAction = useCallback((action, notification) => {
+    switch (action.type) {
+      case 'start-focus':
+        if (action.data) {
+          setFocusTask(action.data);
+          setCurrentWorkingTask(action.data);
+          setView('FOCUS');
+        }
+        break;
+      case 'open-routines':
+        setShowRoutineManager(true);
+        break;
+      case 'view-event':
+        // TODO: 이벤트 상세 보기
+        showToast(`📅 ${action.data?.title || '일정'} 확인`);
+        break;
+      case 'view-today':
+        setView('HOME');
+        break;
+      case 'break':
+        setView('CHAT');
+        setChatInitialMessage({ type: 'break', message: '5분 휴식 타이머 시작해줘' });
+        break;
+      default:
+        break;
+    }
+    smartNotifications.dismissNotification(notification.id);
+  }, [smartNotifications]);
   
   // allEvents 변경 시 localStorage에 저장
   useEffect(() => {
@@ -14102,7 +15927,10 @@ export default function LifeButlerApp() {
             onOpenWeeklyReview={() => setView('WEEKLY_REVIEW')}
             onOpenHabitHeatmap={() => setView('HABIT_HEATMAP')}
             onOpenEnergyRhythm={() => setView('ENERGY_RHYTHM')}
+            onOpenProjectDashboard={() => setView('PROJECT_DASHBOARD')}
             onOpenDndModal={() => setShowDndModal(true)}
+            onOpenNotifications={() => setShowNotificationCenter(true)}
+            notificationCount={smartNotifications.notifications.length}
             doNotDisturb={doNotDisturb}
             mood={userData.mood} 
             setMood={m => setUserData({...userData, mood: m})}
@@ -14157,6 +15985,17 @@ export default function LifeButlerApp() {
             darkMode={darkMode}
           />
         )}
+        {view === 'PROJECT_DASHBOARD' && (
+          <ProjectDashboardPage 
+            onBack={() => setView('HOME')}
+            projects={projects}
+            allTasks={allTasks}
+            onAddProject={handleAddProject}
+            onEditProject={handleEditProject}
+            onDeleteProject={handleDeleteProject}
+            darkMode={darkMode}
+          />
+        )}
         {view === 'WEEKLY_REVIEW' && (
           <WeeklyReviewPage 
             onBack={() => setView('HOME')}
@@ -14190,6 +16029,7 @@ export default function LifeButlerApp() {
             onAddEvent={handleAddEvent}
             onUpdateEvent={handleUpdateEvent}
             onDeleteEvent={handleDeleteEvent}
+            onUpdateTask={handleUpdateTask}
             onSyncGoogleEvents={handleSyncGoogleEvents}
           />
         )}
@@ -14405,6 +16245,28 @@ export default function LifeButlerApp() {
         onUpdateRoutine={handleUpdateRoutine}
         onDeleteRoutine={handleDeleteRoutine}
         onToggleRoutine={handleToggleRoutine}
+        darkMode={darkMode}
+      />
+      
+      {/* Phase 9: 스마트 알림 토스트 */}
+      {!doNotDisturb && view !== 'FOCUS' && (
+        <SmartNotificationToast
+          notifications={smartNotifications.notifications}
+          onDismiss={smartNotifications.dismissNotification}
+          onAction={handleNotificationAction}
+          darkMode={darkMode}
+          maxShow={2}
+        />
+      )}
+      
+      {/* Phase 9: 알림 센터 */}
+      <NotificationCenter
+        isOpen={showNotificationCenter}
+        onClose={() => setShowNotificationCenter(false)}
+        notifications={smartNotifications.notifications}
+        onDismiss={smartNotifications.dismissNotification}
+        onDismissAll={smartNotifications.dismissAll}
+        onAction={handleNotificationAction}
         darkMode={darkMode}
       />
       
