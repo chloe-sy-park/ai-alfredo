@@ -107,6 +107,334 @@ const INPUT_STYLES = (darkMode) => `
   transition-all duration-200
 `;
 
+// === Phase 2: Time Management System ===
+// 시간 관리 설정
+const TIME_CONFIG = {
+  // 예상 시간 초과 알림 임계값 (배수)
+  overtimeThreshold: 1.5, // 예상 시간의 1.5배 초과 시 알림
+  // 다음 일정 알림 시간 (분)
+  eventAlertTimes: [30, 10], // 30분, 10분 전
+  // 휴식 권유 시간 (분)
+  breakReminderTime: 120, // 2시간 연속 작업 시
+  // 식사 시간대 (시작 시간)
+  mealTimes: {
+    lunch: { start: 11, end: 13, label: '점심' },
+    dinner: { start: 17, end: 19, label: '저녁' },
+  },
+  // 알림 쿨다운 (분) - 같은 알림 반복 방지
+  alertCooldown: 5,
+};
+
+// 시간 트래킹 훅
+const useTimeTracking = (currentTask, events = [], onAlert) => {
+  const [trackingState, setTrackingState] = useState({
+    taskStartTime: null,           // 현재 태스크 시작 시간
+    sessionStartTime: null,        // 세션 시작 시간 (연속 작업 추적)
+    totalSessionMinutes: 0,        // 연속 작업 시간 (분)
+    lastBreakTime: null,           // 마지막 휴식 시간
+    alertHistory: {},              // 알림 히스토리 (쿨다운용)
+    dismissedAlerts: new Set(),    // 닫은 알림들
+  });
+  
+  const [activeAlert, setActiveAlert] = useState(null);
+  
+  // 시간 포맷 헬퍼
+  const formatDuration = (minutes) => {
+    const hrs = Math.floor(minutes / 60);
+    const mins = Math.round(minutes % 60);
+    if (hrs > 0) return `${hrs}시간 ${mins}분`;
+    return `${mins}분`;
+  };
+  
+  // 태스크 시작
+  const startTaskTracking = useCallback((task) => {
+    const now = Date.now();
+    setTrackingState(prev => ({
+      ...prev,
+      taskStartTime: now,
+      sessionStartTime: prev.sessionStartTime || now,
+    }));
+  }, []);
+  
+  // 태스크 완료/중단
+  const stopTaskTracking = useCallback(() => {
+    setTrackingState(prev => ({
+      ...prev,
+      taskStartTime: null,
+    }));
+  }, []);
+  
+  // 휴식 기록
+  const recordBreak = useCallback(() => {
+    const now = Date.now();
+    setTrackingState(prev => ({
+      ...prev,
+      sessionStartTime: null,
+      totalSessionMinutes: 0,
+      lastBreakTime: now,
+    }));
+    setActiveAlert(null);
+  }, []);
+  
+  // 알림 닫기
+  const dismissAlert = useCallback((alertId) => {
+    setTrackingState(prev => ({
+      ...prev,
+      dismissedAlerts: new Set([...prev.dismissedAlerts, alertId]),
+    }));
+    setActiveAlert(null);
+  }, []);
+  
+  // 알림 표시 가능 여부 체크 (쿨다운)
+  const canShowAlert = useCallback((alertType, alertId) => {
+    const now = Date.now();
+    const lastShown = trackingState.alertHistory[alertId];
+    if (lastShown && (now - lastShown) < TIME_CONFIG.alertCooldown * 60 * 1000) {
+      return false;
+    }
+    if (trackingState.dismissedAlerts.has(alertId)) {
+      return false;
+    }
+    return true;
+  }, [trackingState.alertHistory, trackingState.dismissedAlerts]);
+  
+  // 알림 기록
+  const recordAlert = useCallback((alertId) => {
+    setTrackingState(prev => ({
+      ...prev,
+      alertHistory: {
+        ...prev.alertHistory,
+        [alertId]: Date.now(),
+      },
+    }));
+  }, []);
+  
+  // 메인 시간 체크 로직 (1분마다 실행)
+  useEffect(() => {
+    const checkTimeAlerts = () => {
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      
+      // 1. 예상 시간 초과 체크
+      if (currentTask && trackingState.taskStartTime && currentTask.estimatedMinutes) {
+        const elapsedMinutes = (Date.now() - trackingState.taskStartTime) / (1000 * 60);
+        const threshold = currentTask.estimatedMinutes * TIME_CONFIG.overtimeThreshold;
+        
+        if (elapsedMinutes >= threshold) {
+          const alertId = `overtime_${currentTask.id}`;
+          if (canShowAlert('overtime', alertId)) {
+            setActiveAlert({
+              id: alertId,
+              type: 'overtime',
+              title: '예상 시간 초과',
+              message: `"${currentTask.title}"이 ${formatDuration(currentTask.estimatedMinutes)} 예상이었는데 ${formatDuration(elapsedMinutes)} 지났어요.`,
+              subMessage: '계속할 수도 있어요. 그냥 알려드리는 거예요.',
+              icon: '⏰',
+              actions: [
+                { label: '계속하기', action: 'continue' },
+                { label: '휴식하기', action: 'break' },
+              ],
+            });
+            recordAlert(alertId);
+          }
+        }
+      }
+      
+      // 2. 다음 일정 알림 체크
+      const todayStr = now.toISOString().split('T')[0];
+      const todayEvents = events
+        .filter(e => e.date === todayStr && e.start)
+        .map(e => {
+          const [h, m] = e.start.split(':').map(Number);
+          const eventMinutes = h * 60 + m;
+          return { ...e, eventMinutes, minutesUntil: eventMinutes - currentMinutes };
+        })
+        .filter(e => e.minutesUntil > 0 && e.minutesUntil <= 30)
+        .sort((a, b) => a.minutesUntil - b.minutesUntil);
+      
+      if (todayEvents.length > 0) {
+        const nextEvent = todayEvents[0];
+        TIME_CONFIG.eventAlertTimes.forEach(alertTime => {
+          if (nextEvent.minutesUntil <= alertTime && nextEvent.minutesUntil > alertTime - 2) {
+            const alertId = `event_${nextEvent.id}_${alertTime}`;
+            if (canShowAlert('event', alertId)) {
+              const urgency = alertTime <= 10 ? 'high' : 'medium';
+              setActiveAlert({
+                id: alertId,
+                type: 'event',
+                urgency,
+                title: alertTime <= 10 ? '일정 곧 시작!' : '다음 일정 알림',
+                message: `"${nextEvent.title}"이 ${nextEvent.minutesUntil}분 후예요.`,
+                subMessage: nextEvent.location ? `📍 ${nextEvent.location}` : null,
+                icon: alertTime <= 10 ? '🔔' : '⏰',
+                actions: [
+                  { label: '확인', action: 'dismiss' },
+                  { label: '지금 마무리', action: 'wrapup' },
+                ],
+              });
+              recordAlert(alertId);
+            }
+          }
+        });
+      }
+      
+      // 3. 휴식 리마인더 체크 (2시간 연속 작업)
+      if (trackingState.sessionStartTime) {
+        const sessionMinutes = (Date.now() - trackingState.sessionStartTime) / (1000 * 60);
+        
+        if (sessionMinutes >= TIME_CONFIG.breakReminderTime) {
+          const alertId = `break_${Math.floor(sessionMinutes / TIME_CONFIG.breakReminderTime)}`;
+          if (canShowAlert('break', alertId)) {
+            setActiveAlert({
+              id: alertId,
+              type: 'break',
+              title: '휴식 시간?',
+              message: `${formatDuration(sessionMinutes)}째 작업 중이에요.`,
+              subMessage: '물 한 잔 어때요? 계속해도 괜찮아요.',
+              icon: '☕',
+              actions: [
+                { label: '5분 휴식', action: 'break' },
+                { label: '나중에', action: 'later' },
+              ],
+            });
+            recordAlert(alertId);
+          }
+        }
+      }
+      
+      // 4. 식사 시간 리마인더
+      const hour = now.getHours();
+      Object.entries(TIME_CONFIG.mealTimes).forEach(([meal, config]) => {
+        if (hour >= config.start && hour < config.end) {
+          const alertId = `meal_${meal}_${todayStr}`;
+          if (canShowAlert('meal', alertId) && trackingState.sessionStartTime) {
+            const sessionMinutes = (Date.now() - trackingState.sessionStartTime) / (1000 * 60);
+            if (sessionMinutes >= 30) { // 30분 이상 작업 중일 때만
+              setActiveAlert({
+                id: alertId,
+                type: 'meal',
+                title: `${config.label} 시간이에요`,
+                message: '밥 먹었어요? 챙겨 먹어요!',
+                subMessage: '바쁘면 나중에 먹어도 괜찮아요.',
+                icon: meal === 'lunch' ? '🍱' : '🍽️',
+                actions: [
+                  { label: '먹었어요', action: 'dismiss' },
+                  { label: '나중에', action: 'later' },
+                ],
+              });
+              recordAlert(alertId);
+            }
+          }
+        }
+      });
+    };
+    
+    // 즉시 체크 + 1분마다 체크
+    checkTimeAlerts();
+    const interval = setInterval(checkTimeAlerts, 60000);
+    
+    return () => clearInterval(interval);
+  }, [currentTask, events, trackingState.sessionStartTime, trackingState.taskStartTime, canShowAlert, recordAlert]);
+  
+  // 현재 태스크 변경 시 트래킹 시작
+  useEffect(() => {
+    if (currentTask) {
+      startTaskTracking(currentTask);
+    } else {
+      stopTaskTracking();
+    }
+  }, [currentTask, startTaskTracking, stopTaskTracking]);
+  
+  return {
+    trackingState,
+    activeAlert,
+    dismissAlert,
+    recordBreak,
+    formatDuration,
+    getElapsedTime: () => {
+      if (!trackingState.taskStartTime) return 0;
+      return (Date.now() - trackingState.taskStartTime) / (1000 * 60);
+    },
+    getSessionTime: () => {
+      if (!trackingState.sessionStartTime) return 0;
+      return (Date.now() - trackingState.sessionStartTime) / (1000 * 60);
+    },
+  };
+};
+
+// === Time Alert Toast Component ===
+const TimeAlertToast = ({ alert, onAction, onDismiss, darkMode = false }) => {
+  if (!alert) return null;
+  
+  const bgColor = darkMode ? 'bg-gray-800' : 'bg-white';
+  const textColor = darkMode ? 'text-white' : 'text-gray-800';
+  const subTextColor = darkMode ? 'text-gray-400' : 'text-gray-500';
+  const borderColor = alert.urgency === 'high' 
+    ? 'border-red-400' 
+    : alert.type === 'break' || alert.type === 'meal'
+      ? 'border-emerald-400'
+      : 'border-[#A996FF]';
+  
+  const handleAction = (action) => {
+    if (action === 'dismiss' || action === 'continue' || action === 'later') {
+      onDismiss(alert.id);
+    } else {
+      onAction(action, alert);
+    }
+  };
+  
+  return (
+    <div className="fixed top-4 left-4 right-4 z-50 animate-in slide-in-from-top-4 duration-300">
+      <div className={`${bgColor} rounded-xl shadow-2xl border-l-4 ${borderColor} p-4 mx-auto max-w-md`}>
+        <div className="flex items-start gap-3">
+          {/* 아이콘 */}
+          <div className="w-10 h-10 bg-[#F5F3FF] rounded-xl flex items-center justify-center text-xl shrink-0">
+            {alert.icon}
+          </div>
+          
+          {/* 내용 */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <p className={`font-bold ${textColor}`}>{alert.title}</p>
+              <button 
+                onClick={() => onDismiss(alert.id)}
+                className={`${subTextColor} hover:text-gray-700 p-1`}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <p className={`text-sm ${textColor} mt-1`}>{alert.message}</p>
+            {alert.subMessage && (
+              <p className={`text-xs ${subTextColor} mt-1`}>{alert.subMessage}</p>
+            )}
+            
+            {/* 액션 버튼 */}
+            {alert.actions && (
+              <div className="flex gap-2 mt-3">
+                {alert.actions.map((action, idx) => (
+                  <button
+                    key={action.action}
+                    onClick={() => handleAction(action.action)}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                      idx === 0
+                        ? 'bg-[#A996FF] text-white hover:bg-[#8B7CF7]'
+                        : darkMode 
+                          ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {action.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // === Gamification System ===
 const LEVEL_CONFIG = {
   // XP 필요량: 레벨 * 100
@@ -5986,11 +6314,23 @@ const AlfredoStatusBar = ({
   lastActivityMinutes = 0, // 마지막 활동 후 경과 시간 (분)
   mood = null,           // 사용자 무드
   energy = null,         // 사용자 에너지
+  // Phase 2: 시간 트래킹 정보
+  taskElapsedMinutes = 0,    // 현재 태스크 경과 시간 (분)
+  taskEstimatedMinutes = 0,  // 현재 태스크 예상 시간 (분)
+  sessionMinutes = 0,        // 연속 작업 시간 (분)
   onOpenChat,
   darkMode = false
 }) => {
   const hour = new Date().getHours();
   const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  
+  // 시간 포맷 헬퍼
+  const formatTime = (minutes) => {
+    if (minutes < 60) return `${Math.round(minutes)}분`;
+    const hrs = Math.floor(minutes / 60);
+    const mins = Math.round(minutes % 60);
+    return mins > 0 ? `${hrs}시간 ${mins}분` : `${hrs}시간`;
+  };
   
   // 메시지 풀 (같은 상황에서 랜덤하게 선택)
   const messagePools = {
@@ -6003,6 +6343,30 @@ const AlfredoStatusBar = ({
       `"${task}" 응원 중!`,
       `"${task}" 같이 보고 있어요 👀`,
       `"${task}" 파이팅! 💪`,
+    ],
+    // Phase 2: 작업 시간 트래킹 메시지
+    workingWithTime: (task, elapsed) => [
+      `"${task}" ${formatTime(elapsed)}째 👀`,
+      `${formatTime(elapsed)}째 "${task}" 진행 중!`,
+      `"${task}" 열심히 하는 중 (${formatTime(elapsed)})`,
+    ],
+    // Phase 2: 예상 시간 초과 메시지 (부드러운 톤)
+    overtime: (task, estimated, elapsed) => [
+      `"${task}" ${formatTime(estimated)} 예상인데 ${formatTime(elapsed)} 됐어요. 괜찮아요, 천천히!`,
+      `${formatTime(elapsed)}째예요. 계속해도 되고, 쉬어도 괜찮아요.`,
+      `열심히 하고 있네요! ${formatTime(elapsed)} 지났어요.`,
+    ],
+    // Phase 2: 다음 일정 10분 전 (긴급)
+    eventVeryClose: (event, mins) => [
+      `⚠️ "${event}" ${mins}분 뒤! 준비하세요!`,
+      `곧 "${event}"! 마무리하고 이동할 시간이에요.`,
+      `"${event}" ${mins}분 전이에요! 🔔`,
+    ],
+    // Phase 2: 연속 작업 휴식 권유
+    needBreak: (sessionMins) => [
+      `${formatTime(sessionMins)}째 작업 중! 물 한 잔 어때요? ☕`,
+      `열심히 하네요! ${formatTime(sessionMins)} 됐어요. 잠깐 쉬어도 괜찮아요.`,
+      `${formatTime(sessionMins)} 연속! 스트레칭 한번 해볼까요? 🧘`,
     ],
     almostDone: [
       "거의 다 왔어요! 마지막 스퍼트 💪",
@@ -6093,59 +6457,81 @@ const AlfredoStatusBar = ({
       return { text: pickMessage(messagePools.celebrate), mood: "celebrate", icon: "🎉" };
     }
     
-    // 2. 다음 일정 임박 (30분 이내) ⏰
+    // 2. 다음 일정 10분 이내 (긴급!) ⚠️
+    if (nextEvent && nextEvent.minutesUntil <= 10) {
+      const msgs = messagePools.eventVeryClose(nextEvent.title, nextEvent.minutesUntil);
+      return { text: pickMessage(msgs), mood: "urgent", icon: "⚠️" };
+    }
+    
+    // 3. 다음 일정 30분 이내 ⏰
     if (nextEvent && nextEvent.minutesUntil <= 30) {
       const msgs = messagePools.nextEventSoon(nextEvent.title, nextEvent.minutesUntil);
       return { text: pickMessage(msgs), mood: "alert", icon: "⏰" };
     }
     
-    // 3. 마감 임박 태스크 🔔
+    // 4. 마감 임박 태스크 🔔
     if (urgentTask) {
       const msgs = messagePools.urgentDeadline(urgentTask.title);
       return { text: pickMessage(msgs), mood: "urgent", icon: "🔔" };
     }
     
-    // 4. 연속 완료 (3개 이상) 🔥
+    // 5. 연속 작업 2시간 이상 - 휴식 권유 ☕
+    if (sessionMinutes >= 120) {
+      const msgs = messagePools.needBreak(sessionMinutes);
+      return { text: pickMessage(msgs), mood: "break", icon: "☕" };
+    }
+    
+    // 6. 예상 시간 초과 (1.5배 이상) ⏰
+    if (currentTask && taskEstimatedMinutes > 0 && taskElapsedMinutes >= taskEstimatedMinutes * 1.5) {
+      const msgs = messagePools.overtime(currentTask, taskEstimatedMinutes, taskElapsedMinutes);
+      return { text: pickMessage(msgs), mood: "overtime", icon: "⏰" };
+    }
+    
+    // 7. 연속 완료 (3개 이상) 🔥
     if (streak >= 3) {
       const msgs = messagePools.streak(streak);
       return { text: pickMessage(msgs), mood: "streak", icon: "🔥" };
     }
     
-    // 5. 현재 작업 중인 태스크
+    // 8. 현재 작업 중인 태스크 (시간 표시 포함)
     if (currentTask) {
+      if (taskElapsedMinutes >= 5) {
+        const msgs = messagePools.workingWithTime(currentTask, taskElapsedMinutes);
+        return { text: pickMessage(msgs), mood: "working", icon: "💪" };
+      }
       const msgs = messagePools.working(currentTask);
       return { text: pickMessage(msgs), mood: "working", icon: "💪" };
     }
     
-    // 6. 오래 쉬고 있을 때 (30분 이상)
+    // 9. 오래 쉬고 있을 때 (30분 이상)
     if (lastActivityMinutes >= 30 && completedTasks > 0 && completedTasks < totalTasks) {
       return { text: pickMessage(messagePools.longBreak), mood: "rest", icon: "☕" };
     }
     
-    // 7. 에너지 낮을 때
+    // 10. 에너지 낮을 때
     if (energy !== null && energy < 30) {
       return { text: pickMessage(messagePools.lowEnergy), mood: "lowEnergy", icon: "🌿" };
     }
     
-    // 8. 거의 완료 (1개 남음)
+    // 11. 거의 완료 (1개 남음)
     if (completedTasks >= totalTasks - 1 && totalTasks > 1) {
       return { text: pickMessage(messagePools.almostDone), mood: "almost", icon: "🏁" };
     }
     
-    // 9. 진행 중 (1개 이상 완료)
+    // 12. 진행 중 (1개 이상 완료)
     if (completedTasks >= 1) {
       const msgs = messagePools.progress(completedTasks);
       return { text: pickMessage(msgs), mood: "progress", icon: "✨" };
     }
     
-    // 10. 시작 전 (시간대별)
+    // 13. 시작 전 (시간대별)
     if (completedTasks === 0 && totalTasks > 0) {
       if (hour < 12) return { text: pickMessage(messagePools.morningStart), mood: "morning", icon: "☀️" };
       if (hour < 17) return { text: pickMessage(messagePools.afternoonStart), mood: "afternoon", icon: "🌤️" };
       return { text: pickMessage(messagePools.eveningStart), mood: "evening", icon: "🌅" };
     }
     
-    // 11. 기본 메시지 (시간대별)
+    // 14. 기본 메시지 (시간대별)
     if (hour < 12) return { text: pickMessage(messagePools.morningDefault), mood: "morning", icon: "☀️" };
     if (hour < 17) return { text: pickMessage(messagePools.afternoonDefault), mood: "afternoon", icon: "🌤️" };
     if (hour < 21) return { text: pickMessage(messagePools.eveningDefault), mood: "evening", icon: "🌅" };
@@ -12273,6 +12659,35 @@ export default function LifeButlerApp() {
   const [showMeetingUploader, setShowMeetingUploader] = useState(false); // 회의록 정리 모달
   const [chatInitialMessage, setChatInitialMessage] = useState(null); // 채팅 초기 메시지
   
+  // Phase 2: 시간 트래킹 상태
+  const [currentWorkingTask, setCurrentWorkingTask] = useState(null); // 현재 작업 중인 태스크
+  
+  // Phase 2: 시간 트래킹 훅 사용
+  const timeTracking = useTimeTracking(
+    currentWorkingTask,
+    allEvents,
+    (alertType, data) => {
+      // 알림 콜백 처리
+      console.log('Time alert:', alertType, data);
+    }
+  );
+  
+  // Phase 2: 알림 액션 핸들러
+  const handleTimeAlertAction = useCallback((action, alert) => {
+    switch (action) {
+      case 'break':
+        timeTracking.recordBreak();
+        setCurrentWorkingTask(null);
+        showToast('☕ 휴식 시간! 5분 후에 다시 시작해요.');
+        break;
+      case 'wrapup':
+        showToast('🏁 마무리 중! 곧 다음 일정으로 이동하세요.');
+        break;
+      default:
+        timeTracking.dismissAlert(alert.id);
+    }
+  }, [timeTracking]);
+  
   // PWA 상태
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [showPWAInstall, setShowPWAInstall] = useState(false);
@@ -12810,12 +13225,16 @@ export default function LifeButlerApp() {
   // 집중 모드 시작
   const handleStartFocus = (task) => {
     setFocusTask(task);
+    setCurrentWorkingTask(task); // Phase 2: 시간 트래킹용
     setView('FOCUS');
   };
   
   // 집중 모드 완료 → 완료 화면으로 이동
   const handleFocusComplete = () => {
     if (focusTask) {
+      // Phase 2: 시간 트래킹 중지
+      setCurrentWorkingTask(null);
+      
       // 태스크 완료 처리
       setAllTasks(allTasks.map(t => 
         t.id === focusTask.id ? { ...t, status: 'done' } : t
@@ -13252,6 +13671,16 @@ export default function LifeButlerApp() {
         currentDuration={25}
       />
       
+      {/* Phase 2: 시간 알림 토스트 */}
+      {!doNotDisturb && (
+        <TimeAlertToast
+          alert={timeTracking.activeAlert}
+          onAction={handleTimeAlertAction}
+          onDismiss={timeTracking.dismissAlert}
+          darkMode={darkMode}
+        />
+      )}
+      
       {/* 알프레도 상태바 */}
       {showNav && (() => {
         // 다음 일정 계산 (오늘, 현재 시간 이후)
@@ -13290,6 +13719,10 @@ export default function LifeButlerApp() {
             urgentTask={urgentTask ? { title: urgentTask.title } : null}
             energy={userData.energy}
             mood={userData.mood}
+            // Phase 2: 시간 트래킹 props
+            taskElapsedMinutes={timeTracking.getElapsedTime()}
+            taskEstimatedMinutes={currentWorkingTask?.estimatedMinutes || currentWorkingTask?.duration || 0}
+            sessionMinutes={timeTracking.getSessionTime()}
             onOpenChat={() => setView('CHAT')}
             darkMode={darkMode}
           />
