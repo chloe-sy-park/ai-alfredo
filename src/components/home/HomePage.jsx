@@ -959,6 +959,8 @@ const HomePage = ({
         )}
       </div>
       
+      </div>{/* End of px-4 pb-32 pt-4 content wrapper */}
+      
       {/* Phase 3: 태스크 상세 모달 */}
       {selectedTask && (
         <TaskModal
