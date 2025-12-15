@@ -3,7 +3,7 @@ import {
   Heart, Droplets, Moon, Footprints, Pill, Users, BookOpen,
   ChevronRight, Plus, Check, Calendar, Clock, Phone, MessageCircle,
   Sparkles, Sun, Cloud, CloudRain, Coffee, Zap, Target, AlertCircle,
-  Activity, Smile, Frown, Meh, TrendingUp, Bell, Star
+  Activity, Smile, Frown, Meh, TrendingUp, Bell, Star, Edit3
 } from 'lucide-react';
 import { mockRoutines, mockWeather } from '../../data/mockData';
 import { AlfredoEmptyState } from '../common/AlfredoEmptyState';
@@ -140,6 +140,7 @@ var HealthCard = function(props) {
   var darkMode = props.darkMode;
   var healthData = props.healthData || {};
   var onUpdate = props.onUpdate;
+  var onEditHealth = props.onEditHealth;
   
   var cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
   var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
@@ -183,7 +184,13 @@ var HealthCard = function(props) {
         React.createElement(Heart, { size: 18, className: 'text-red-400' }),
         '오늘의 건강'
       ),
-      React.createElement('button', { className: textSecondary + ' text-xs' }, '편집')
+      React.createElement('button', { 
+        onClick: onEditHealth,
+        className: textSecondary + ' text-xs flex items-center gap-1 hover:text-[#A996FF] transition-colors' 
+      }, 
+        React.createElement(Edit3, { size: 12 }),
+        '편집'
+      )
     ),
     React.createElement('div', { className: 'grid grid-cols-4 gap-3' },
       items.map(function(item, idx) {
@@ -234,7 +241,7 @@ var RoutineCard = function(props) {
       ),
       React.createElement('button', { 
         onClick: onOpenRoutines,
-        className: textSecondary + ' text-xs flex items-center gap-1' 
+        className: textSecondary + ' text-xs flex items-center gap-1 hover:text-[#A996FF] transition-colors' 
       }, 
         '전체 보기',
         React.createElement(ChevronRight, { size: 14 })
@@ -305,6 +312,12 @@ var RelationshipsCard = function(props) {
         React.createElement('h3', { className: textPrimary + ' font-bold flex items-center gap-2' },
           React.createElement(Users, { size: 18, className: 'text-pink-500' }),
           '소중한 사람들'
+        ),
+        React.createElement('button', { 
+          onClick: onAddRelationship,
+          className: 'w-8 h-8 rounded-full bg-[#A996FF] text-white flex items-center justify-center'
+        },
+          React.createElement(Plus, { size: 16 })
         )
       ),
       React.createElement(AlfredoEmptyState, {
@@ -324,6 +337,12 @@ var RelationshipsCard = function(props) {
         React.createElement('h3', { className: textPrimary + ' font-bold flex items-center gap-2' },
           React.createElement(Users, { size: 18, className: 'text-pink-500' }),
           '소중한 사람들'
+        ),
+        React.createElement('button', { 
+          onClick: onAddRelationship,
+          className: 'w-8 h-8 rounded-full bg-[#A996FF] text-white flex items-center justify-center'
+        },
+          React.createElement(Plus, { size: 16 })
         )
       ),
       React.createElement('div', { className: 'text-center py-4' },
@@ -342,6 +361,12 @@ var RelationshipsCard = function(props) {
       React.createElement('h3', { className: textPrimary + ' font-bold flex items-center gap-2' },
         React.createElement(Users, { size: 18, className: 'text-pink-500' }),
         '연락할 때가 됐어요'
+      ),
+      React.createElement('button', { 
+        onClick: onAddRelationship,
+        className: 'w-8 h-8 rounded-full bg-[#A996FF] text-white flex items-center justify-center'
+      },
+        React.createElement(Plus, { size: 16 })
       )
     ),
     React.createElement('div', { className: 'space-y-2' },
@@ -393,6 +418,7 @@ var LifePage = function(props) {
   var onOpenJournal = props.onOpenJournal;
   var onOpenMoodLog = props.onOpenMoodLog;
   var onAddRelationship = props.onAddRelationship;
+  var onEditHealth = props.onEditHealth;
   var weather = props.weather || mockWeather;
   var userName = props.userName;
 
@@ -415,12 +441,15 @@ var LifePage = function(props) {
   };
 
   var handleUpdateHealth = function(type) {
-    // 건강 데이터 업데이트 모달 열기
-    console.log('Update health:', type);
+    // 건강 데이터 업데이트 - 편집 모달 열기
+    if (onEditHealth) {
+      onEditHealth();
+    }
   };
 
   var handleContact = function(person, method) {
     console.log('Contact', person.name, 'via', method);
+    // 여기에 실제 연락 기능 구현 (전화/메시지 앱 열기 등)
   };
 
   var bgColor = darkMode ? 'bg-gray-900' : 'bg-[#F0EBFF]';
@@ -464,7 +493,8 @@ var LifePage = function(props) {
       React.createElement(HealthCard, {
         darkMode: darkMode,
         healthData: healthData,
-        onUpdate: handleUpdateHealth
+        onUpdate: handleUpdateHealth,
+        onEditHealth: onEditHealth
       }),
       
       // 오늘의 루틴
