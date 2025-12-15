@@ -146,6 +146,7 @@ export function useGoogleCalendar() {
     disconnect,
     fetchEvents,
     createEvent,
+    addEvent: createEvent, // alias for backward compatibility
     updateEvent,
     deleteEvent,
     syncEvents,
