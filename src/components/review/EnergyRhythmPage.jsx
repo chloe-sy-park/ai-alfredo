@@ -1,25 +1,20 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Battery, Zap, Moon, Sun, TrendingUp, TrendingDown } from 'lucide-react';
+import { ArrowLeft, Battery, Zap, Moon, Sun, TrendingUp, TrendingDown, Clock, Cloud, Sparkles, Lightbulb } from 'lucide-react';
 
 // Common Components
 import { AlfredoAvatar } from '../common';
 
 const EnergyRhythmPage = ({ onBack, gameState, userData, darkMode }) => {
-  // 오늘 날짜
   const today = new Date();
   const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
   
-  // 시간대별 에너지 데이터 (실제로는 저장된 데이터에서 가져와야 함)
-  // 현재는 시뮬레이션
   const [energyLog, setEnergyLog] = useState(() => {
-    // 최근 7일 데이터 생성
     const logs = [];
     for (let d = 6; d >= 0; d--) {
       const date = new Date(today);
       date.setDate(today.getDate() - d);
       const dateStr = date.toISOString().split('T')[0];
       
-      // 시간대별 에너지 (0-4 스케일)
       const seed = dateStr.split('-').reduce((a, b) => a + parseInt(b), 0);
       logs.push({
         date: dateStr,
@@ -33,39 +28,32 @@ const EnergyRhythmPage = ({ onBack, gameState, userData, darkMode }) => {
     return logs;
   });
   
-  // 현재 에너지 (userData에서)
   const currentEnergy = userData?.energy || 3;
   const currentMood = userData?.mood || 'good';
   
-  // 에너지 레벨 색상
   const getEnergyColor = (level) => {
     const colors = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e'];
     return colors[Math.min(level, 4)];
   };
   
-  // 무드 아이콘
   const getMoodIcon = (mood) => {
     const icons = { great: '😄', good: '🙂', okay: '😐', tired: '😔', stressed: '😰' };
     return icons[mood] || '🙂';
   };
   
-  // 무드 라벨
   const getMoodLabel = (mood) => {
     const labels = { great: '아주 좋음', good: '좋음', okay: '보통', tired: '피곤', stressed: '스트레스' };
     return labels[mood] || '보통';
   };
   
-  // 시간대별 평균 계산
   const avgMorning = Math.round(energyLog.reduce((sum, d) => sum + d.morning, 0) / energyLog.length * 10) / 10;
   const avgAfternoon = Math.round(energyLog.reduce((sum, d) => sum + d.afternoon, 0) / energyLog.length * 10) / 10;
   const avgEvening = Math.round(energyLog.reduce((sum, d) => sum + d.evening, 0) / energyLog.length * 10) / 10;
   
-  // 최적 시간대 찾기
   const bestTime = avgMorning >= avgAfternoon && avgMorning >= avgEvening ? 'morning' :
                    avgAfternoon >= avgEvening ? 'afternoon' : 'evening';
   const bestTimeLabel = { morning: '오전', afternoon: '오후', evening: '저녁' }[bestTime];
   
-  // 에너지 패턴 분석
   const getPatternInsight = () => {
     if (avgMorning > avgAfternoon && avgAfternoon > avgEvening) {
       return '아침형 인간이에요! 중요한 일은 오전에 처리하는 게 좋아요.';
@@ -78,7 +66,6 @@ const EnergyRhythmPage = ({ onBack, gameState, userData, darkMode }) => {
     }
   };
   
-  // 스타일
   const bgColor = darkMode ? 'bg-gray-900' : 'bg-[#F0EBFF]';
   const cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
   const textPrimary = darkMode ? 'text-white' : 'text-gray-800';
@@ -87,7 +74,7 @@ const EnergyRhythmPage = ({ onBack, gameState, userData, darkMode }) => {
   return (
     <div className={`flex-1 overflow-y-auto ${bgColor}`}>
       {/* 헤더 */}
-      <div className="sticky top-0 z-10 bg-gradient-to-r from-[#F5F3FF]0 to-[#EDE9FE]0 text-white p-4 pb-6">
+      <div className="sticky top-0 z-10 bg-gradient-to-r from-amber-400 to-orange-500 text-white p-4 pb-6">
         <div className="flex items-center justify-between mb-2">
           <button 
             onClick={onBack}
@@ -106,7 +93,6 @@ const EnergyRhythmPage = ({ onBack, gameState, userData, darkMode }) => {
         <div className={`${cardBg} rounded-xl p-5 shadow-sm`}>
           <h3 className={`font-bold ${textPrimary} mb-4`}>지금 내 상태</h3>
           <div className="flex items-center gap-4">
-            {/* 에너지 게이지 */}
             <div className="flex-1">
               <div className="flex items-center justify-between mb-2">
                 <span className={textSecondary}>에너지</span>
@@ -127,7 +113,6 @@ const EnergyRhythmPage = ({ onBack, gameState, userData, darkMode }) => {
               </div>
             </div>
             
-            {/* 무드 */}
             <div className="text-center px-4 border-l border-gray-200">
               <div className="text-3xl mb-1">{getMoodIcon(currentMood)}</div>
               <span className={`text-sm ${textSecondary}`}>{getMoodLabel(currentMood)}</span>
@@ -138,27 +123,23 @@ const EnergyRhythmPage = ({ onBack, gameState, userData, darkMode }) => {
         {/* 오늘의 에너지 곡선 */}
         <div className={`${cardBg} rounded-xl p-5 shadow-sm`}>
           <h3 className={`font-bold ${textPrimary} mb-4 flex items-center gap-2`}>
-            <Zap size={18} className="text-[#A996FF]" /> 오늘의 에너지 곡선
+            <Zap size={18} className="text-amber-500" /> 오늘의 에너지 곡선
           </h3>
           
           <div className="relative h-40">
-            {/* Y축 라벨 */}
             <div className="absolute left-0 top-0 bottom-0 w-8 flex flex-col justify-between text-xs text-gray-400">
               <span>높음</span>
               <span>보통</span>
               <span>낮음</span>
             </div>
             
-            {/* 그래프 영역 */}
             <div className="ml-10 h-full relative">
-              {/* 배경 그리드 */}
               <div className="absolute inset-0 flex flex-col justify-between">
                 {[0, 1, 2].map(i => (
                   <div key={i} className="border-b border-gray-100 border-dashed" />
                 ))}
               </div>
               
-              {/* 곡선 (SVG) */}
               <svg className="w-full h-full" viewBox="0 0 300 100" preserveAspectRatio="none">
                 <defs>
                   <linearGradient id="energyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -167,7 +148,6 @@ const EnergyRhythmPage = ({ onBack, gameState, userData, darkMode }) => {
                   </linearGradient>
                 </defs>
                 
-                {/* 영역 채우기 */}
                 <path
                   d={`M 0 ${100 - (energyLog[6]?.morning || 2) * 20} 
                       Q 75 ${100 - (energyLog[6]?.morning || 2) * 22} 100 ${100 - ((energyLog[6]?.morning + energyLog[6]?.afternoon) / 2 || 2) * 20}
@@ -178,7 +158,6 @@ const EnergyRhythmPage = ({ onBack, gameState, userData, darkMode }) => {
                   fill="url(#energyGradient)"
                 />
                 
-                {/* 선 */}
                 <path
                   d={`M 0 ${100 - (energyLog[6]?.morning || 2) * 20} 
                       Q 75 ${100 - (energyLog[6]?.morning || 2) * 22} 100 ${100 - ((energyLog[6]?.morning + energyLog[6]?.afternoon) / 2 || 2) * 20}
@@ -191,13 +170,11 @@ const EnergyRhythmPage = ({ onBack, gameState, userData, darkMode }) => {
                   strokeLinecap="round"
                 />
                 
-                {/* 포인트 */}
                 <circle cx="50" cy={100 - (energyLog[6]?.morning || 2) * 20} r="6" fill="#f59e0b" />
                 <circle cx="150" cy={100 - (energyLog[6]?.afternoon || 2) * 20} r="6" fill="#f59e0b" />
                 <circle cx="250" cy={100 - (energyLog[6]?.evening || 2) * 20} r="6" fill="#f59e0b" />
               </svg>
               
-              {/* X축 라벨 */}
               <div className="flex justify-between mt-2 text-xs text-gray-400">
                 <span>오전</span>
                 <span>오후</span>
@@ -214,11 +191,10 @@ const EnergyRhythmPage = ({ onBack, gameState, userData, darkMode }) => {
           </h3>
           
           <div className="space-y-4">
-            {/* 오전 */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
-                  <Sun size={16} className="text-[#A996FF]" />
+                  <Sun size={16} className="text-amber-500" />
                   <span className={textPrimary}>오전</span>
                   {bestTime === 'morning' && <span className="text-xs bg-[#EDE9FE] text-[#8B7CF7] px-2 py-0.5 rounded-full">🏆 베스트</span>}
                 </div>
@@ -232,7 +208,6 @@ const EnergyRhythmPage = ({ onBack, gameState, userData, darkMode }) => {
               </div>
             </div>
             
-            {/* 오후 */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
@@ -250,11 +225,10 @@ const EnergyRhythmPage = ({ onBack, gameState, userData, darkMode }) => {
               </div>
             </div>
             
-            {/* 저녁 */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
-                  <Moon size={16} className="text-[#A996FF]" />
+                  <Moon size={16} className="text-indigo-500" />
                   <span className={textPrimary}>저녁</span>
                   {bestTime === 'evening' && <span className="text-xs bg-[#EDE9FE] text-[#8B7CF7] px-2 py-0.5 rounded-full">🏆 베스트</span>}
                 </div>
@@ -287,12 +261,12 @@ const EnergyRhythmPage = ({ onBack, gameState, userData, darkMode }) => {
                   <div 
                     className={`w-full rounded-t-lg transition-all ${
                       isToday 
-                        ? 'bg-gradient-to-t from-[#F5F3FF]0 to-[#C4B5FD]' 
+                        ? 'bg-gradient-to-t from-amber-400 to-amber-300' 
                         : 'bg-gradient-to-t from-gray-300 to-gray-200'
                     }`}
                     style={{ height: `${(avgEnergy / 4) * 80 + 20}%` }}
                   />
-                  <span className={`text-xs mt-2 ${isToday ? 'font-bold text-[#A996FF]' : textSecondary}`}>
+                  <span className={`text-xs mt-2 ${isToday ? 'font-bold text-amber-500' : textSecondary}`}>
                     {dayNames[day.dayOfWeek]}
                   </span>
                 </div>
@@ -330,7 +304,7 @@ const EnergyRhythmPage = ({ onBack, gameState, userData, darkMode }) => {
         </div>
         
         {/* 인사이트 */}
-        <div className="bg-gradient-to-r from-[#F5F3FF]0 to-[#EDE9FE]0 rounded-xl p-5 text-white">
+        <div className="bg-gradient-to-r from-amber-400 to-orange-500 rounded-xl p-5 text-white">
           <h3 className="font-bold mb-3 flex items-center gap-2">
             <Lightbulb size={18} /> 에너지 인사이트
           </h3>
@@ -357,7 +331,7 @@ const EnergyRhythmPage = ({ onBack, gameState, userData, darkMode }) => {
         {/* 알프레도 응원 */}
         <div className={`${cardBg} rounded-xl p-5 shadow-sm`}>
           <div className="flex items-start gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-[#A996FF] to-[#EDE9FE]0 rounded-xl flex items-center justify-center text-xl shrink-0">
+            <div className="w-12 h-12 bg-gradient-to-br from-[#A996FF] to-[#8B7CF7] rounded-xl flex items-center justify-center text-xl shrink-0">
               🐧
             </div>
             <div>
@@ -376,7 +350,5 @@ const EnergyRhythmPage = ({ onBack, gameState, userData, darkMode }) => {
     </div>
   );
 };
-
-// === Calendar Page ===
 
 export default EnergyRhythmPage;

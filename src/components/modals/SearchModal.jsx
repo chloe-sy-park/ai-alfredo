@@ -4,9 +4,9 @@ import { X, Search, Clock, Calendar, CheckCircle2, Circle, ChevronRight } from '
 // Common Components
 import { DomainBadge } from '../common';
 
-const SearchModal = ({ isOpen, onClose, tasks, events, onSelectTask, onSelectEvent }) => {
+const SearchModal = ({ isOpen, onClose, tasks, events, lifeReminders, onSelectTask, onSelectEvent }) => {
   const [query, setQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState('all'); // all, tasks, events, life
+  const [activeFilter, setActiveFilter] = useState('all');
   const inputRef = useRef(null);
   
   useEffect(() => {
@@ -16,6 +16,9 @@ const SearchModal = ({ isOpen, onClose, tasks, events, onSelectTask, onSelectEve
   }, [isOpen]);
   
   if (!isOpen) return null;
+  
+  // Default empty lifeReminders if not provided
+  const safeLifeReminders = lifeReminders || { todayTop3: [], upcoming: [], dontForget: [] };
   
   const searchResults = () => {
     if (!query.trim()) return { tasks: [], events: [], life: [] };
@@ -32,11 +35,11 @@ const SearchModal = ({ isOpen, onClose, tasks, events, onSelectTask, onSelectEve
       e.location?.toLowerCase().includes(q)
     ) || [];
     
-    // Life items (mockLifeReminders)
+    // Life items from props (lifeReminders)
     const lifeItems = [
-      ...mockLifeReminders.todayTop3.filter(i => i.title?.toLowerCase().includes(q)),
-      ...mockLifeReminders.upcoming.filter(i => i.title?.toLowerCase().includes(q)),
-      ...mockLifeReminders.dontForget.filter(i => i.title?.toLowerCase().includes(q)),
+      ...(safeLifeReminders.todayTop3 || []).filter(i => i.title?.toLowerCase().includes(q)),
+      ...(safeLifeReminders.upcoming || []).filter(i => i.title?.toLowerCase().includes(q)),
+      ...(safeLifeReminders.dontForget || []).filter(i => i.title?.toLowerCase().includes(q)),
     ];
     
     return { tasks: matchedTasks, events: matchedEvents, life: lifeItems };
@@ -222,7 +225,5 @@ const SearchModal = ({ isOpen, onClose, tasks, events, onSelectTask, onSelectEve
     </div>
   );
 };
-
-// === Inbox Page ===
 
 export default SearchModal;

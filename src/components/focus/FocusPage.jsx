@@ -4,15 +4,17 @@ import { ArrowLeft, RefreshCw, CheckCircle2, Zap } from 'lucide-react';
 // Common Components
 import { AlfredoAvatar } from '../common';
 
-const FocusTimer = ({ task, onComplete, onExit }) => {
+const FocusTimer = ({ task, onComplete, onExit, onCancel }) => {
+  // Support both onExit and onCancel for backwards compatibility
+  const handleBack = onExit || onCancel;
+  
   const [duration] = useState(task?.duration ? task.duration * 60 : 25 * 60);
   const [timeLeft, setTimeLeft] = useState(task?.duration ? task.duration * 60 : 25 * 60);
   const [isActive, setIsActive] = useState(false);
   const [showBreakReminder, setShowBreakReminder] = useState(false);
-  const [totalFocusTime, setTotalFocusTime] = useState(0); // 총 집중 시간 (초)
-  const [breakReminderShown, setBreakReminderShown] = useState({}); // 이미 보여준 리마인더 추적
+  const [totalFocusTime, setTotalFocusTime] = useState(0);
+  const [breakReminderShown, setBreakReminderShown] = useState({});
   
-  // 휴식 리마인더 시점 (분 단위)
   const breakPoints = [25, 50, 90];
   
   useEffect(() => {
@@ -29,26 +31,24 @@ const FocusTimer = ({ task, onComplete, onExit }) => {
     return () => clearInterval(interval);
   }, [isActive, timeLeft]);
   
-  // 휴식 리마인더 체크
   useEffect(() => {
     const focusMinutes = Math.floor(totalFocusTime / 60);
     breakPoints.forEach(point => {
       if (focusMinutes >= point && !breakReminderShown[point]) {
         setShowBreakReminder(true);
         setBreakReminderShown(prev => ({ ...prev, [point]: true }));
-        setIsActive(false); // 타이머 일시정지
+        setIsActive(false);
       }
     });
   }, [totalFocusTime]);
   
   const handleDismissBreak = () => {
     setShowBreakReminder(false);
-    setIsActive(true); // 타이머 재개
+    setIsActive(true);
   };
   
   const handleTakeBreak = () => {
     setShowBreakReminder(false);
-    // 5분 후 자동 재개는 FocusCompletionScreen의 휴식과 유사하게 처리
   };
   
   const toggleTimer = () => setIsActive(!isActive);
@@ -66,7 +66,6 @@ const FocusTimer = ({ task, onComplete, onExit }) => {
   const progress = ((duration - timeLeft) / duration) * 100;
   const focusMinutes = Math.floor(totalFocusTime / 60);
   
-  // 휴식 리마인더 팝업
   if (showBreakReminder) {
     return (
       <div className="h-full bg-[#F0EBFF] flex flex-col items-center justify-center p-6">
@@ -115,7 +114,10 @@ const FocusTimer = ({ task, onComplete, onExit }) => {
     <div className="h-full bg-[#F0EBFF] text-gray-800 flex flex-col relative overflow-hidden">
       {/* Back Button */}
       <div className="absolute top-6 left-6 z-30">
-        <button onClick={onExit} className="p-3 bg-white/80 backdrop-blur-md rounded-full text-gray-500 hover:text-gray-800 shadow-sm border border-white/50 transition-all">
+        <button 
+          onClick={handleBack} 
+          className="p-3 bg-white/80 backdrop-blur-md rounded-full text-gray-500 hover:text-gray-800 shadow-sm border border-white/50 transition-all"
+        >
           <ArrowLeft size={20} />
         </button>
       </div>
@@ -207,10 +209,10 @@ const FocusTimer = ({ task, onComplete, onExit }) => {
   );
 };
 
-// === Focus Completion Screen (다음 추천) ===
+// === Focus Completion Screen ===
 const FocusCompletionScreen = ({ completedTask, nextTask, onStartNext, onTakeBreak, onGoHome, stats }) => {
   const [showBreakTimer, setShowBreakTimer] = useState(false);
-  const [breakTimeLeft, setBreakTimeLeft] = useState(5 * 60); // 5분
+  const [breakTimeLeft, setBreakTimeLeft] = useState(5 * 60);
   
   useEffect(() => {
     let interval = null;
@@ -230,7 +232,6 @@ const FocusCompletionScreen = ({ completedTask, nextTask, onStartNext, onTakeBre
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
   
-  // 휴식 화면
   if (showBreakTimer) {
     return (
       <div className="h-full bg-gradient-to-b from-[#F0FDF4] to-[#DCFCE7] flex flex-col items-center justify-center p-6">
@@ -266,13 +267,11 @@ const FocusCompletionScreen = ({ completedTask, nextTask, onStartNext, onTakeBre
   
   return (
     <div className="h-full bg-[#F0EBFF] flex flex-col p-6">
-      {/* 축하 헤더 */}
       <div className="flex-1 flex flex-col items-center justify-center">
         <div className="text-6xl mb-4 animate-bounce">🎉</div>
         <h1 className="text-2xl font-bold text-gray-800 mb-2">완료!</h1>
         <p className="text-gray-500 mb-6">"{completedTask?.title}"</p>
         
-        {/* 통계 */}
         <div className="flex gap-6 mb-8">
           <div className="text-center">
             <p className="text-2xl font-bold text-[#A996FF]">{stats?.focusTime || 25}분</p>
@@ -288,7 +287,6 @@ const FocusCompletionScreen = ({ completedTask, nextTask, onStartNext, onTakeBre
           </div>
         </div>
         
-        {/* 알프레도 메시지 */}
         <div className="bg-white/90 backdrop-blur-xl rounded-xl p-4 max-w-sm w-full mb-6 shadow-sm">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-[#A996FF] to-[#8B7CF7] rounded-xl flex items-center justify-center text-lg">
@@ -304,7 +302,6 @@ const FocusCompletionScreen = ({ completedTask, nextTask, onStartNext, onTakeBre
           </div>
         </div>
         
-        {/* 다음 추천 */}
         {nextTask && (
           <div className="w-full max-w-sm">
             <p className="text-xs text-gray-400 font-medium mb-2 text-center">다음은 이거 어때요?</p>
@@ -346,7 +343,6 @@ const FocusCompletionScreen = ({ completedTask, nextTask, onStartNext, onTakeBre
         )}
       </div>
       
-      {/* 하단 버튼 */}
       <div className="pt-4">
         <button
           onClick={onGoHome}
@@ -358,8 +354,6 @@ const FocusCompletionScreen = ({ completedTask, nextTask, onStartNext, onTakeBre
     </div>
   );
 };
-
-// === Phase 7: 반복 일정/루틴 시스템 ===
 
 export { FocusTimer, FocusCompletionScreen };
 export default FocusTimer;
