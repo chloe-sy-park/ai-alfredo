@@ -247,7 +247,7 @@ var AlfredoNudge = function(props) {
   var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
   
   return React.createElement('div', {
-    className: 'fixed right-4 bottom-44 z-50 animate-bounce-in'
+    className: 'fixed right-4 bottom-44 z-50 transition-all duration-300 ease-out'
   },
     // 말풍선 화살표
     React.createElement('div', {
