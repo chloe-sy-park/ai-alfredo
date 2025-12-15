@@ -1,5 +1,5 @@
 // useGoogleCalendar.js - Google Calendar 실제 연동 훅
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 
 // Google OAuth 설정
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1042496826498-3t0uuv38l48n8tgj23e0c3oknkrn8m4j.apps.googleusercontent.com';
@@ -19,7 +19,161 @@ export function useGoogleCalendar() {
   const [error, setError] = useState(null);
   const [events, setEvents] = useState([]);
   const [userEmail, setUserEmail] = useState(null);
-  const [tokenClient, setTokenClient] = useState(null);
+  
+  // tokenClient를 ref로 저장 (re-render 방지)
+  const tokenClientRef = useRef(null);
+  const isInitializedRef = useRef(false);
+
+  // 저장된 인증 정보 삭제
+  const clearStoredAuth = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+    localStorage.removeItem(STORAGE_KEYS.TOKEN_EXPIRY);
+    localStorage.removeItem(STORAGE_KEYS.USER_EMAIL);
+  }, []);
+
+  // 액세스 토큰 가져오기
+  const getAccessToken = useCallback(() => {
+    const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+    const expiry = localStorage.getItem(STORAGE_KEYS.TOKEN_EXPIRY);
+    
+    if (token && expiry && Date.now() < parseInt(expiry, 10)) {
+      return token;
+    }
+    return null;
+  }, []);
+
+  // 사용자 정보 가져오기
+  const fetchUserInfo = async (accessToken) => {
+    try {
+      const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (e) {
+      console.warn('Failed to fetch user info:', e);
+    }
+    return null;
+  };
+
+  // 내부 이벤트 가져오기 함수
+  const fetchEventsInternal = useCallback(async (accessToken) => {
+    try {
+      // 오늘부터 30일간의 이벤트 가져오기
+      const now = new Date();
+      const timeMin = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+      const timeMax = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+      const response = await fetch('/api/calendar', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          action: 'list',
+          timeMin,
+          timeMax,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || '이벤트를 가져오는데 실패했습니다');
+      }
+
+      const data = await response.json();
+      const formattedEvents = (data.events || []).map(formatGoogleEvent).filter(Boolean);
+      
+      setEvents(formattedEvents);
+      localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(formattedEvents));
+      
+      return formattedEvents;
+    } catch (err) {
+      console.error('Fetch events error:', err);
+      setError(err.message);
+      return [];
+    }
+  }, []);
+
+  // 토큰 응답 처리
+  const handleTokenResponse = useCallback(async (response) => {
+    console.log('Token response received:', response.error ? 'Error' : 'Success');
+    
+    if (response.error) {
+      console.error('OAuth error:', response.error);
+      setError(response.error_description || response.error);
+      setIsLoading(false);
+      return;
+    }
+
+    const accessToken = response.access_token;
+    const expiresIn = response.expires_in || 3600;
+    const expiryTime = Date.now() + (expiresIn * 1000);
+
+    // localStorage에 저장
+    localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, accessToken);
+    localStorage.setItem(STORAGE_KEYS.TOKEN_EXPIRY, expiryTime.toString());
+
+    setIsConnected(true);
+    setError(null);
+
+    // 사용자 정보 가져오기
+    const userInfo = await fetchUserInfo(accessToken);
+    if (userInfo?.email) {
+      setUserEmail(userInfo.email);
+      localStorage.setItem(STORAGE_KEYS.USER_EMAIL, userInfo.email);
+    }
+
+    // 이벤트 가져오기
+    await fetchEventsInternal(accessToken);
+    setIsLoading(false);
+  }, [fetchEventsInternal]);
+
+  // Google Identity Services 초기화
+  const initializeGIS = useCallback(() => {
+    if (isInitializedRef.current) return;
+    
+    const createClient = () => {
+      if (typeof google === 'undefined' || !google.accounts?.oauth2) {
+        return false;
+      }
+
+      try {
+        tokenClientRef.current = google.accounts.oauth2.initTokenClient({
+          client_id: GOOGLE_CLIENT_ID,
+          scope: SCOPES,
+          callback: (response) => {
+            // 최신 handleTokenResponse 호출
+            handleTokenResponse(response);
+          },
+        });
+        isInitializedRef.current = true;
+        console.log('Google OAuth initialized successfully');
+        return true;
+      } catch (e) {
+        console.error('Failed to initialize Google OAuth:', e);
+        return false;
+      }
+    };
+
+    // 즉시 시도
+    if (createClient()) return;
+
+    // 스크립트 로드 대기
+    let attempts = 0;
+    const maxAttempts = 50; // 5초
+    const checkGIS = setInterval(() => {
+      attempts++;
+      if (createClient() || attempts >= maxAttempts) {
+        clearInterval(checkGIS);
+        if (attempts >= maxAttempts && !isInitializedRef.current) {
+          console.warn('Google Identity Services failed to load');
+        }
+      }
+    }, 100);
+  }, [handleTokenResponse]);
 
   // 초기화 - localStorage에서 상태 복원
   useEffect(() => {
@@ -49,103 +203,7 @@ export function useGoogleCalendar() {
 
     // Google Identity Services 초기화
     initializeGIS();
-  }, []);
-
-  // Google Identity Services 초기화
-  const initializeGIS = useCallback(() => {
-    if (typeof google === 'undefined' || !google.accounts) {
-      console.warn('Google Identity Services not loaded yet');
-      // 스크립트 로드 대기
-      const checkGIS = setInterval(() => {
-        if (typeof google !== 'undefined' && google.accounts) {
-          clearInterval(checkGIS);
-          createTokenClient();
-        }
-      }, 100);
-      
-      // 5초 후 타임아웃
-      setTimeout(() => clearInterval(checkGIS), 5000);
-      return;
-    }
-    createTokenClient();
-  }, []);
-
-  // Token Client 생성
-  const createTokenClient = useCallback(() => {
-    if (typeof google === 'undefined' || !google.accounts) return;
-
-    const client = google.accounts.oauth2.initTokenClient({
-      client_id: GOOGLE_CLIENT_ID,
-      scope: SCOPES,
-      callback: handleTokenResponse,
-    });
-    setTokenClient(client);
-  }, []);
-
-  // 토큰 응답 처리
-  const handleTokenResponse = useCallback(async (response) => {
-    if (response.error) {
-      setError(response.error);
-      setIsLoading(false);
-      return;
-    }
-
-    const accessToken = response.access_token;
-    const expiresIn = response.expires_in || 3600;
-    const expiryTime = Date.now() + (expiresIn * 1000);
-
-    // localStorage에 저장
-    localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, accessToken);
-    localStorage.setItem(STORAGE_KEYS.TOKEN_EXPIRY, expiryTime.toString());
-
-    setIsConnected(true);
-    setError(null);
-
-    // 사용자 정보 가져오기
-    try {
-      const userInfo = await fetchUserInfo(accessToken);
-      if (userInfo?.email) {
-        setUserEmail(userInfo.email);
-        localStorage.setItem(STORAGE_KEYS.USER_EMAIL, userInfo.email);
-      }
-    } catch (e) {
-      console.warn('Failed to fetch user info:', e);
-    }
-
-    // 이벤트 가져오기
-    await fetchEventsInternal(accessToken);
-    setIsLoading(false);
-  }, []);
-
-  // 사용자 정보 가져오기
-  const fetchUserInfo = async (accessToken) => {
-    const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: { 'Authorization': `Bearer ${accessToken}` }
-    });
-    if (response.ok) {
-      return await response.json();
-    }
-    return null;
-  };
-
-  // 저장된 인증 정보 삭제
-  const clearStoredAuth = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
-    localStorage.removeItem(STORAGE_KEYS.TOKEN_EXPIRY);
-    localStorage.removeItem(STORAGE_KEYS.USER_EMAIL);
-    // 이벤트는 유지 (오프라인 캐시)
-  }, []);
-
-  // 액세스 토큰 가져오기
-  const getAccessToken = useCallback(() => {
-    const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
-    const expiry = localStorage.getItem(STORAGE_KEYS.TOKEN_EXPIRY);
-    
-    if (token && expiry && Date.now() < parseInt(expiry, 10)) {
-      return token;
-    }
-    return null;
-  }, []);
+  }, [clearStoredAuth, initializeGIS]);
 
   // Google 연결
   const connect = useCallback(async () => {
@@ -153,88 +211,57 @@ export function useGoogleCalendar() {
     setError(null);
 
     try {
-      if (!tokenClient) {
-        // Token Client가 아직 없으면 초기화 대기
-        await new Promise((resolve) => {
+      // Token Client가 아직 없으면 초기화 대기
+      if (!tokenClientRef.current) {
+        let attempts = 0;
+        await new Promise((resolve, reject) => {
           const checkClient = setInterval(() => {
-            if (tokenClient) {
+            attempts++;
+            if (tokenClientRef.current) {
               clearInterval(checkClient);
               resolve();
+            } else if (attempts >= 30) {
+              clearInterval(checkClient);
+              reject(new Error('Google OAuth 초기화 타임아웃'));
             }
           }, 100);
-          setTimeout(() => {
-            clearInterval(checkClient);
-            resolve();
-          }, 3000);
         });
       }
 
-      if (tokenClient) {
-        tokenClient.requestAccessToken();
+      if (tokenClientRef.current) {
+        console.log('Requesting access token...');
+        tokenClientRef.current.requestAccessToken();
       } else {
         throw new Error('Google OAuth가 초기화되지 않았습니다. 페이지를 새로고침해주세요.');
       }
     } catch (err) {
+      console.error('Connect error:', err);
       setError(err.message);
       setIsLoading(false);
       return false;
     }
     return true;
-  }, [tokenClient]);
+  }, []);
 
   // Google 연결 해제
   const disconnect = useCallback(() => {
     const token = getAccessToken();
-    if (token && typeof google !== 'undefined' && google.accounts) {
-      google.accounts.oauth2.revoke(token, () => {
-        console.log('Token revoked');
-      });
+    if (token && typeof google !== 'undefined' && google.accounts?.oauth2) {
+      try {
+        google.accounts.oauth2.revoke(token, () => {
+          console.log('Token revoked');
+        });
+      } catch (e) {
+        console.warn('Failed to revoke token:', e);
+      }
     }
     
     clearStoredAuth();
     setIsConnected(false);
     setEvents([]);
     setUserEmail(null);
+    setError(null);
   }, [getAccessToken, clearStoredAuth]);
-
-  // 내부 이벤트 가져오기 함수
-  const fetchEventsInternal = useCallback(async (accessToken) => {
-    try {
-      // 오늘부터 30일간의 이벤트 가져오기
-      const now = new Date();
-      const timeMin = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-      const timeMax = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
-
-      const response = await fetch('/api/calendar', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          action: 'list',
-          timeMin,
-          timeMax,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('이벤트를 가져오는데 실패했습니다');
-      }
-
-      const data = await response.json();
-      const formattedEvents = (data.events || []).map(formatGoogleEvent);
-      
-      setEvents(formattedEvents);
-      localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(formattedEvents));
-      
-      return formattedEvents;
-    } catch (err) {
-      console.error('Fetch events error:', err);
-      setError(err.message);
-      return [];
-    }
-  }, []);
 
   // 이벤트 가져오기 (외부용)
   const fetchEvents = useCallback(async () => {
@@ -259,7 +286,7 @@ export function useGoogleCalendar() {
   const addEvent = useCallback(async (eventData) => {
     const token = getAccessToken();
     if (!token) {
-      console.warn('Not connected to Google Calendar');
+      setError('Google Calendar에 연결되어 있지 않습니다');
       return null;
     }
 
@@ -278,18 +305,22 @@ export function useGoogleCalendar() {
       });
 
       if (!response.ok) {
-        throw new Error('이벤트 추가에 실패했습니다');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || '이벤트 추가에 실패했습니다');
       }
 
       const data = await response.json();
       const newEvent = formatGoogleEvent(data.event);
       
-      const updatedEvents = [...events, newEvent];
-      setEvents(updatedEvents);
-      localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(updatedEvents));
+      if (newEvent) {
+        const updatedEvents = [...events, newEvent];
+        setEvents(updatedEvents);
+        localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(updatedEvents));
+      }
       
       return newEvent;
     } catch (err) {
+      console.error('Add event error:', err);
       setError(err.message);
       return null;
     } finally {
@@ -301,7 +332,7 @@ export function useGoogleCalendar() {
   const updateEvent = useCallback(async (eventId, updates) => {
     const token = getAccessToken();
     if (!token) {
-      console.warn('Not connected to Google Calendar');
+      setError('Google Calendar에 연결되어 있지 않습니다');
       return false;
     }
 
@@ -321,20 +352,24 @@ export function useGoogleCalendar() {
       });
 
       if (!response.ok) {
-        throw new Error('이벤트 수정에 실패했습니다');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || '이벤트 수정에 실패했습니다');
       }
 
       const data = await response.json();
       const updatedEvent = formatGoogleEvent(data.event);
       
-      const updatedEvents = events.map(e => 
-        e.id === eventId ? updatedEvent : e
-      );
-      setEvents(updatedEvents);
-      localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(updatedEvents));
+      if (updatedEvent) {
+        const updatedEvents = events.map(e => 
+          e.id === eventId ? updatedEvent : e
+        );
+        setEvents(updatedEvents);
+        localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(updatedEvents));
+      }
       
       return true;
     } catch (err) {
+      console.error('Update event error:', err);
       setError(err.message);
       return false;
     } finally {
@@ -346,7 +381,7 @@ export function useGoogleCalendar() {
   const deleteEvent = useCallback(async (eventId) => {
     const token = getAccessToken();
     if (!token) {
-      console.warn('Not connected to Google Calendar');
+      setError('Google Calendar에 연결되어 있지 않습니다');
       return false;
     }
 
@@ -365,7 +400,8 @@ export function useGoogleCalendar() {
       });
 
       if (!response.ok) {
-        throw new Error('이벤트 삭제에 실패했습니다');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || '이벤트 삭제에 실패했습니다');
       }
 
       const updatedEvents = events.filter(e => e.id !== eventId);
@@ -374,6 +410,7 @@ export function useGoogleCalendar() {
       
       return true;
     } catch (err) {
+      console.error('Delete event error:', err);
       setError(err.message);
       return false;
     } finally {
@@ -404,6 +441,9 @@ function formatGoogleEvent(googleEvent) {
 
   const startDateTime = googleEvent.start?.dateTime || googleEvent.start?.date;
   const endDateTime = googleEvent.end?.dateTime || googleEvent.end?.date;
+  
+  if (!startDateTime) return null;
+  
   const isAllDay = !googleEvent.start?.dateTime;
 
   let start = '';
