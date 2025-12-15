@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   BarChart3, Calendar, Zap, FolderKanban, Settings,
   ChevronRight, ExternalLink, Check, X, RefreshCw,
-  Mail, Database, MessageSquare, Bell, Shield, HelpCircle,
+  Mail, HardDrive, MessageSquare, Bell, Shield, HelpCircle,
   Sparkles, Trophy, TrendingUp, Heart
 } from 'lucide-react';
 
@@ -46,7 +46,7 @@ var MorePage = function(props) {
     {
       id: 'notion',
       name: 'Notion',
-      icon: Database,
+      icon: HardDrive,
       color: 'from-gray-700 to-gray-800',
       description: '메모/문서 연동'
     },
