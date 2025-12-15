@@ -26,9 +26,9 @@ import useSmartNotifications, { NOTIFICATION_PRIORITY } from './hooks/useSmartNo
 import { Button, Card, Toggle, SectionHeader, EmptyState, Modal, PageHeader, ProgressBar, Badge, AlfredoAvatar, Toast, StatusIndicator, DomainBadge } from './components/common/index.jsx';
 
 // === Alfredo Components ===
-import { TimeAlertToast, AlfredoFeedback, AlfredoStatusBar, AlfredoFloatingBubble } from './components/alfredo/index.jsx';
+import { TimeAlertToast, AlfredoFeedback } from './components/alfredo/index.jsx';
 
-// === Page Components (직접 파일 import) ===
+// === Page Components ===
 import HomePage from './components/home/HomePage';
 import Onboarding from './components/home/Onboarding';
 import WorkPage from './components/work/WorkPage';
@@ -58,7 +58,7 @@ import NaturalLanguageQuickAdd from './components/modals/NaturalLanguageQuickAdd
 import DoNotDisturbModal from './components/modals/DoNotDisturbModal';
 import { LevelUpModal, NewBadgeModal, StatsModal } from './components/modals/StatsModals';
 
-// === Widget Components (직접 파일 import) ===
+// === Widget Components ===
 import { QuickConditionTracker, AlfredoBriefing, Big3Widget, UrgentWidget, TimelineWidget, RoutineWidget } from './components/home/widgets.jsx';
 import UnifiedTimelineView from './components/home/UnifiedTimelineView';
 
@@ -81,11 +81,23 @@ import { DoNotDisturbBanner, OfflineBanner, PWAInstallBanner } from './component
 
 // === Main App ===
 export default function LifeButlerApp() {
-  const [view, setView] = useState('HOME');
-  const [userData, setUserData] = useState({ mood: 'light', energy: 68, oneThing: '투자 보고서 완성', memo: '' });
-  const [tasks, setTasks] = useState(mockBig3);
-  const [allTasks, setAllTasks] = useState(mockAllTasks);
-  const [allEvents, setAllEvents] = useState(function() {
+  var viewState = useState('HOME');
+  var view = viewState[0];
+  var setView = viewState[1];
+  
+  var userDataState = useState({ mood: 'light', energy: 68, oneThing: '투자 보고서 완성', memo: '' });
+  var userData = userDataState[0];
+  var setUserData = userDataState[1];
+  
+  var tasksState = useState(mockBig3);
+  var tasks = tasksState[0];
+  var setTasks = tasksState[1];
+  
+  var allTasksState = useState(mockAllTasks);
+  var allTasks = allTasksState[0];
+  var setAllTasks = allTasksState[1];
+  
+  var allEventsState = useState(function() {
     try {
       var saved = localStorage.getItem('allEvents');
       if (saved) {
@@ -97,30 +109,102 @@ export default function LifeButlerApp() {
     }
     return mockEvents;
   });
-  const [inbox, setInbox] = useState(mockInbox);
-  const [toast, setToast] = useState({ visible: false, message: '' });
-  const [alfredoFeedback, setAlfredoFeedback] = useState({ visible: false, message: '', type: 'praise', icon: '🐧' });
-  const [focusTask, setFocusTask] = useState(null);
-  const [completedTaskInfo, setCompletedTaskInfo] = useState(null);
-  const [showQuickCapture, setShowQuickCapture] = useState(false);
-  const [showNLQuickAdd, setShowNLQuickAdd] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
-  const [showSearchModal, setShowSearchModal] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [gameState, setGameState] = useState(initialGameState);
-  const [showLevelUp, setShowLevelUp] = useState(null);
-  const [showNewBadge, setShowNewBadge] = useState(null);
-  const [showStatsModal, setShowStatsModal] = useState(false);
-  const [doNotDisturb, setDoNotDisturb] = useState(false);
-  const [dndEndTime, setDndEndTime] = useState(null);
-  const [dndRemainingTime, setDndRemainingTime] = useState(null);
-  const [showDndModal, setShowDndModal] = useState(false);
-  const [showMeetingUploader, setShowMeetingUploader] = useState(false);
-  const [chatInitialMessage, setChatInitialMessage] = useState(null);
-  const [celebration, setCelebration] = useState({ visible: false, type: null, data: null });
-  const [completionStreak, setCompletionStreak] = useState(0);
-  const [lastCompletionTime, setLastCompletionTime] = useState(null);
-  const [routines, setRoutines] = useState(function() {
+  var allEvents = allEventsState[0];
+  var setAllEvents = allEventsState[1];
+  
+  var inboxState = useState(mockInbox);
+  var inbox = inboxState[0];
+  var setInbox = inboxState[1];
+  
+  var toastState = useState({ visible: false, message: '' });
+  var toast = toastState[0];
+  var setToast = toastState[1];
+  
+  var alfredoFeedbackState = useState({ visible: false, message: '', type: 'praise', icon: '🐧' });
+  var alfredoFeedback = alfredoFeedbackState[0];
+  var setAlfredoFeedback = alfredoFeedbackState[1];
+  
+  var focusTaskState = useState(null);
+  var focusTask = focusTaskState[0];
+  var setFocusTask = focusTaskState[1];
+  
+  var completedTaskInfoState = useState(null);
+  var completedTaskInfo = completedTaskInfoState[0];
+  var setCompletedTaskInfo = completedTaskInfoState[1];
+  
+  var showQuickCaptureState = useState(false);
+  var showQuickCapture = showQuickCaptureState[0];
+  var setShowQuickCapture = showQuickCaptureState[1];
+  
+  var showNLQuickAddState = useState(false);
+  var showNLQuickAdd = showNLQuickAddState[0];
+  var setShowNLQuickAdd = showNLQuickAddState[1];
+  
+  var darkModeState = useState(false);
+  var darkMode = darkModeState[0];
+  var setDarkMode = darkModeState[1];
+  
+  var showSearchModalState = useState(false);
+  var showSearchModal = showSearchModalState[0];
+  var setShowSearchModal = showSearchModalState[1];
+  
+  var isInitializedState = useState(false);
+  var isInitialized = isInitializedState[0];
+  var setIsInitialized = isInitializedState[1];
+  
+  var gameStateState = useState(initialGameState);
+  var gameState = gameStateState[0];
+  var setGameState = gameStateState[1];
+  
+  var showLevelUpState = useState(null);
+  var showLevelUp = showLevelUpState[0];
+  var setShowLevelUp = showLevelUpState[1];
+  
+  var showNewBadgeState = useState(null);
+  var showNewBadge = showNewBadgeState[0];
+  var setShowNewBadge = showNewBadgeState[1];
+  
+  var showStatsModalState = useState(false);
+  var showStatsModal = showStatsModalState[0];
+  var setShowStatsModal = showStatsModalState[1];
+  
+  var doNotDisturbState = useState(false);
+  var doNotDisturb = doNotDisturbState[0];
+  var setDoNotDisturb = doNotDisturbState[1];
+  
+  var dndEndTimeState = useState(null);
+  var dndEndTime = dndEndTimeState[0];
+  var setDndEndTime = dndEndTimeState[1];
+  
+  var dndRemainingTimeState = useState(null);
+  var dndRemainingTime = dndRemainingTimeState[0];
+  var setDndRemainingTime = dndRemainingTimeState[1];
+  
+  var showDndModalState = useState(false);
+  var showDndModal = showDndModalState[0];
+  var setShowDndModal = showDndModalState[1];
+  
+  var showMeetingUploaderState = useState(false);
+  var showMeetingUploader = showMeetingUploaderState[0];
+  var setShowMeetingUploader = showMeetingUploaderState[1];
+  
+  var chatInitialMessageState = useState(null);
+  var chatInitialMessage = chatInitialMessageState[0];
+  var setChatInitialMessage = chatInitialMessageState[1];
+  
+  var celebrationState = useState({ visible: false, type: null, data: null });
+  var celebration = celebrationState[0];
+  var setCelebration = celebrationState[1];
+  
+  var completionStreakState = useState(0);
+  var completionStreak = completionStreakState[0];
+  var setCompletionStreak = completionStreakState[1];
+  
+  var lastCompletionTimeState = useState(null);
+  var lastCompletionTime = lastCompletionTimeState[0];
+  var setLastCompletionTime = lastCompletionTimeState[1];
+  
+  var routinesState = useState(function() {
     var saved = localStorage.getItem('lifebutler_routines');
     if (saved) {
       return JSON.parse(saved);
@@ -129,13 +213,36 @@ export default function LifeButlerApp() {
       return Object.assign({}, r, { repeatType: 'daily', repeatDays: [0,1,2,3,4,5,6], reminder: true, history: [] });
     });
   });
-  const [showRoutineManager, setShowRoutineManager] = useState(false);
-  const [showNotificationCenter, setShowNotificationCenter] = useState(false);
-  const [currentWorkingTask, setCurrentWorkingTask] = useState(null);
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
-  const [showPWAInstall, setShowPWAInstall] = useState(false);
-  const [pwaInstallDismissed, setPWAInstallDismissed] = useState(false);
-  const [connections, setConnections] = useState({ googleCalendar: true, gmail: true, notion: false, slack: false });
+  var routines = routinesState[0];
+  var setRoutines = routinesState[1];
+  
+  var showRoutineManagerState = useState(false);
+  var showRoutineManager = showRoutineManagerState[0];
+  var setShowRoutineManager = showRoutineManagerState[1];
+  
+  var showNotificationCenterState = useState(false);
+  var showNotificationCenter = showNotificationCenterState[0];
+  var setShowNotificationCenter = showNotificationCenterState[1];
+  
+  var currentWorkingTaskState = useState(null);
+  var currentWorkingTask = currentWorkingTaskState[0];
+  var setCurrentWorkingTask = currentWorkingTaskState[1];
+  
+  var isOfflineState = useState(!navigator.onLine);
+  var isOffline = isOfflineState[0];
+  var setIsOffline = isOfflineState[1];
+  
+  var showPWAInstallState = useState(false);
+  var showPWAInstall = showPWAInstallState[0];
+  var setShowPWAInstall = showPWAInstallState[1];
+  
+  var pwaInstallDismissedState = useState(false);
+  var pwaInstallDismissed = pwaInstallDismissedState[0];
+  var setPWAInstallDismissed = pwaInstallDismissedState[1];
+  
+  var connectionsState = useState({ googleCalendar: true, gmail: true, notion: false, slack: false });
+  var connections = connectionsState[0];
+  var setConnections = connectionsState[1];
 
   var timeTracking = useTimeTracking(currentWorkingTask, allEvents, function(alertType, data) { console.log('Time alert:', alertType, data); });
   var smartNotifications = useSmartNotifications({ tasks: allTasks, events: allEvents, routines: routines, energy: userData.energy || 70 });
@@ -404,12 +511,12 @@ export default function LifeButlerApp() {
     smartNotifications.dismissNotification(notification.id);
   }, [smartNotifications]);
 
+  // 네비게이션 - 집중 탭 제거 (4개만)
   var navItems = [
     { view: 'HOME', icon: Home, label: '홈' },
     { view: 'CALENDAR', icon: Calendar, label: '캘린더' },
     { view: 'WORK', icon: Briefcase, label: '업무' },
-    { view: 'LIFE', icon: Heart, label: '일상' },
-    { view: 'FOCUS', icon: Zap, label: '집중' }
+    { view: 'LIFE', icon: Heart, label: '일상' }
   ];
 
   var showNav = ['ONBOARDING', 'CHAT', 'FOCUS', 'FOCUS_COMPLETE', 'SETTINGS'].indexOf(view) === -1;
@@ -441,12 +548,14 @@ export default function LifeButlerApp() {
         {view === 'LIFE' && <LifePage mood={userData.mood} setMood={function(m) { setUserData(Object.assign({}, userData, { mood: m })); }} energy={userData.energy} setEnergy={function(e) { setUserData(Object.assign({}, userData, { energy: e })); }} onOpenChat={function(m) { setChatInitialMessage(m); setView('CHAT'); }} darkMode={darkMode} />}
       </div>
 
+      {/* 🐧 알프레도 버튼 - 하나만! */}
       {showNav && (
-        <div className="fixed bottom-36 right-4 z-30 flex flex-col items-end gap-3">
-          <button onClick={function() { setShowNLQuickAdd(true); }} className="w-12 h-12 rounded-full bg-white shadow-lg flex items-center justify-center border border-gray-200 hover:scale-105 transition-all" title="빠른 추가"><Sparkles size={20} className="text-[#A996FF]" /></button>
-          <button onClick={function() { setShowQuickCapture(true); }} className="w-10 h-10 rounded-full bg-white/80 shadow-md flex items-center justify-center border border-gray-100 hover:scale-105 transition-all" title="빠른 기록"><Plus size={18} className="text-gray-500" /></button>
-          <button onClick={function() { setView('CHAT'); }} className="w-14 h-14 rounded-full bg-gradient-to-br from-[#A996FF] to-[#8B7BE8] shadow-xl flex items-center justify-center ring-4 ring-white/30"><span className="text-2xl">🐧</span></button>
-        </div>
+        <button 
+          onClick={function() { setView('CHAT'); }} 
+          className="fixed bottom-28 right-4 z-30 w-14 h-14 rounded-full bg-gradient-to-br from-[#A996FF] to-[#8B7BE8] shadow-xl flex items-center justify-center ring-4 ring-white/30 hover:scale-105 active:scale-95 transition-all"
+        >
+          <span className="text-2xl">🐧</span>
+        </button>
       )}
 
       {showNLQuickAdd && <NaturalLanguageQuickAdd isOpen={showNLQuickAdd} onClose={function() { setShowNLQuickAdd(false); }} onAddTask={function(t) { setTasks([t].concat(tasks)); setAllTasks([t].concat(allTasks)); showToast('✅ 할 일 추가!'); }} onAddEvent={function(e) { setAllEvents([e].concat(allEvents)); showToast('📅 일정 추가!'); }} darkMode={darkMode} />}
@@ -465,16 +574,6 @@ export default function LifeButlerApp() {
       {!doNotDisturb && view !== 'FOCUS' && <SmartNotificationToast notifications={smartNotifications.notifications} onDismiss={smartNotifications.dismissNotification} onAction={handleNotificationAction} darkMode={darkMode} maxShow={2} />}
       <NotificationCenter isOpen={showNotificationCenter} onClose={function() { setShowNotificationCenter(false); }} notifications={smartNotifications.notifications} onDismiss={smartNotifications.dismissNotification} onDismissAll={smartNotifications.dismissAll} onAction={handleNotificationAction} darkMode={darkMode} />
       {!doNotDisturb && <TimeAlertToast alert={timeTracking.activeAlert} onAction={handleTimeAlertAction} onDismiss={timeTracking.dismissAlert} darkMode={darkMode} />}
-
-      {showNav && (function() {
-        var now = new Date();
-        var todayStr = now.toISOString().split('T')[0];
-        var currentMin = now.getHours() * 60 + now.getMinutes();
-        var todayEvents = allEvents.filter(function(e) { return e.date === todayStr && e.start; }).map(function(e) { var p = e.start.split(':'); return Object.assign({}, e, { minutesUntil: (parseInt(p[0]) * 60 + parseInt(p[1])) - currentMin }); }).filter(function(e) { return e.minutesUntil > 0; }).sort(function(a,b) { return a.minutesUntil - b.minutesUntil; });
-        var nextEvent = todayEvents[0] ? { title: todayEvents[0].title, start: todayEvents[0].start, minutesUntil: todayEvents[0].minutesUntil } : null;
-        var urgentTask = allTasks.find(function(t) { return !t.completed && t.deadline === todayStr; });
-        return <AlfredoStatusBar completedTasks={allTasks.filter(function(t) { return t.completed; }).length} totalTasks={allTasks.length} currentTask={focusTask ? focusTask.title : null} nextEvent={nextEvent} urgentTask={urgentTask ? { title: urgentTask.title } : null} energy={userData.energy} mood={userData.mood} taskElapsedMinutes={timeTracking.getElapsedTime()} taskEstimatedMinutes={currentWorkingTask ? (currentWorkingTask.estimatedMinutes || currentWorkingTask.duration || 0) : 0} sessionMinutes={timeTracking.getSessionTime()} onOpenChat={function() { setView('CHAT'); }} darkMode={darkMode} />;
-      })()}
 
       {showNav && (
         <nav className={"h-20 " + (darkMode ? "bg-gray-800/90 border-gray-700" : "bg-white/90 border-black/5") + " backdrop-blur-xl border-t flex items-center justify-around px-4 pb-4"}>
