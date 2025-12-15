@@ -6,6 +6,7 @@ import {
   Activity, Smile, Frown, Meh, TrendingUp, Bell, Star
 } from 'lucide-react';
 import { mockRoutines, mockWeather } from '../../data/mockData';
+import { AlfredoEmptyState } from '../common/AlfredoEmptyState';
 
 // 알프레도 브리핑 컴포넌트 (일상 버전)
 var AlfredoBriefing = function(props) {
@@ -240,7 +241,13 @@ var RoutineCard = function(props) {
       )
     ),
     todayRoutines.length === 0 
-      ? React.createElement('p', { className: textSecondary + ' text-sm text-center py-4' }, '오늘은 예정된 루틴이 없어요')
+      ? React.createElement(AlfredoEmptyState, {
+          variant: 'noRoutines',
+          darkMode: darkMode,
+          onAction: onOpenRoutines,
+          compact: true,
+          showSuggestion: false
+        })
       : React.createElement('div', { className: 'space-y-2' },
           todayRoutines.map(function(routine, idx) {
             return React.createElement('button', {
@@ -276,6 +283,7 @@ var RelationshipsCard = function(props) {
   var darkMode = props.darkMode;
   var relationships = props.relationships || [];
   var onContact = props.onContact;
+  var onAddRelationship = props.onAddRelationship;
   
   var cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
   var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
@@ -290,7 +298,44 @@ var RelationshipsCard = function(props) {
     return daysSince > (r.contactFrequency || 30);
   }).slice(0, 3);
   
-  if (needContact.length === 0) return null;
+  // 관계 데이터가 없는 경우
+  if (relationships.length === 0) {
+    return React.createElement('div', { className: cardBg + ' rounded-2xl p-4 mb-4 border ' + borderColor },
+      React.createElement('div', { className: 'flex items-center justify-between mb-3' },
+        React.createElement('h3', { className: textPrimary + ' font-bold flex items-center gap-2' },
+          React.createElement(Users, { size: 18, className: 'text-pink-500' }),
+          '소중한 사람들'
+        )
+      ),
+      React.createElement(AlfredoEmptyState, {
+        variant: 'noRelationships',
+        darkMode: darkMode,
+        onAction: onAddRelationship,
+        compact: true,
+        showSuggestion: false
+      })
+    );
+  }
+  
+  // 연락 필요한 사람이 없는 경우
+  if (needContact.length === 0) {
+    return React.createElement('div', { className: cardBg + ' rounded-2xl p-4 mb-4 border ' + borderColor },
+      React.createElement('div', { className: 'flex items-center justify-between mb-3' },
+        React.createElement('h3', { className: textPrimary + ' font-bold flex items-center gap-2' },
+          React.createElement(Users, { size: 18, className: 'text-pink-500' }),
+          '소중한 사람들'
+        )
+      ),
+      React.createElement('div', { className: 'text-center py-4' },
+        React.createElement('div', { className: 'flex items-center justify-center gap-2 mb-2' },
+          React.createElement('span', { className: 'text-2xl' }, '💝'),
+          React.createElement('span', { className: 'text-lg' }, '🐧')
+        ),
+        React.createElement('p', { className: textPrimary + ' font-medium text-sm' }, '모든 분들께 잘 연락하고 계세요!'),
+        React.createElement('p', { className: textSecondary + ' text-xs mt-1' }, '관계 관리 잘 하고 계시네요 👍')
+      )
+    );
+  }
   
   return React.createElement('div', { className: cardBg + ' rounded-2xl p-4 mb-4 border ' + borderColor },
     React.createElement('div', { className: 'flex items-center justify-between mb-3' },
@@ -347,6 +392,7 @@ var LifePage = function(props) {
   var onOpenRoutines = props.onOpenRoutines;
   var onOpenJournal = props.onOpenJournal;
   var onOpenMoodLog = props.onOpenMoodLog;
+  var onAddRelationship = props.onAddRelationship;
   var weather = props.weather || mockWeather;
   var userName = props.userName;
 
@@ -433,7 +479,8 @@ var LifePage = function(props) {
       React.createElement(RelationshipsCard, {
         darkMode: darkMode,
         relationships: relationships,
-        onContact: handleContact
+        onContact: handleContact,
+        onAddRelationship: onAddRelationship
       })
     )
   );
