@@ -28,9 +28,8 @@ import SearchModal from './components/modals/SearchModal';
 import QuickCaptureModal from './components/modals/QuickCaptureModal';
 import GoogleAuthModal from './components/modals/GoogleAuthModal';
 
-// 알림 및 축하
+// 알림
 import { SmartNotificationToast, NotificationCenter } from './components/notifications';
-import { CelebrationOverlay, LevelUpModal, AchievementToast } from './components/celebrations';
 
 // 훅
 import { useGoogleCalendar } from './hooks/useGoogleCalendar';
@@ -42,7 +41,6 @@ import { mockTasks, mockProjects, mockRoutines, mockWeather, mockRelationships }
 
 // 상수
 import { COLORS } from './constants/colors';
-import { GAMIFICATION } from './constants/gamification';
 
 // 기분 기록 모달 컴포넌트
 var MoodLogModal = function(props) {

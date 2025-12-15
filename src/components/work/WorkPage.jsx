@@ -7,7 +7,7 @@ import {
   Umbrella, Users, FileText, Bell
 } from 'lucide-react';
 import SwipeableTaskItem from './SwipeableTaskItem';
-import { TaskWidgets } from './TaskWidgets';
+import { Sparkline, PriorityIndicator } from './TaskWidgets';
 import { useGoogleCalendar } from '../../hooks/useGoogleCalendar';
 import { AlfredoEmptyState } from '../common/AlfredoEmptyState';
 
