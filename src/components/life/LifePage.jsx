@@ -1,614 +1,441 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Heart, Activity, Pill, Moon, Sun, Droplet, 
-  ChevronRight, Plus, CheckCircle2, Clock, Calendar, Target, Circle
+  Heart, Droplets, Moon, Footprints, Pill, Users, BookOpen,
+  ChevronRight, Plus, Check, Calendar, Clock, Phone, MessageCircle,
+  Sparkles, Sun, Cloud, CloudRain, Coffee, Zap, Target, AlertCircle,
+  Activity, Smile, Frown, Meh, TrendingUp, Bell, Star
 } from 'lucide-react';
+import { mockRoutines, mockWeather } from '../../data/mockData';
 
-// Common Components
-import { AlfredoAvatar } from '../common';
-
-// Data
-import { 
-  mockHealthCheck, mockMedications, mockRelationships, 
-  mockLifeReminders, mockRoutines
-} from '../../data/mockData';
-
-// Other Components
-import LifeDetailModal from '../modals/LifeDetailModal';
-
-var LifePage = function(props) {
+// 알프레도 브리핑 컴포넌트 (일상 버전)
+var AlfredoBriefing = function(props) {
+  var darkMode = props.darkMode;
+  var healthData = props.healthData || {};
+  var relationships = props.relationships || [];
+  var routines = props.routines || [];
   var mood = props.mood;
-  var setMood = props.setMood;
   var energy = props.energy;
-  var setEnergy = props.setEnergy;
-  var onOpenChat = props.onOpenChat;
-  var darkMode = props.darkMode || false;
-  
-  // localStorage 키
-  var LIFE_STORAGE_KEYS = {
-    medications: 'lifebutler_medications',
-    routines: 'lifebutler_life_routines',
-    lifeTop3: 'lifebutler_lifeTop3',
-    upcomingItems: 'lifebutler_upcomingItems',
-    dontForgetItems: 'lifebutler_dontForgetItems',
-    relationshipItems: 'lifebutler_relationshipItems',
-    healthCheck: 'lifebutler_healthCheck',
-  };
-  
-  // 초기값 로드 함수
-  var loadFromStorage = function(key, defaultValue) {
-    try {
-      var saved = localStorage.getItem(key);
-      return saved ? JSON.parse(saved) : defaultValue;
-    } catch (e) {
-      return defaultValue;
-    }
-  };
-  
-  var journalTextState = useState('');
-  var journalText = journalTextState[0];
-  var setJournalText = journalTextState[1];
-  
-  var journalSavedState = useState(false);
-  var journalSaved = journalSavedState[0];
-  var setJournalSaved = journalSavedState[1];
-  
-  var checkedItemsState = useState([]);
-  var checkedItems = checkedItemsState[0];
-  var setCheckedItems = checkedItemsState[1];
-  
-  var healthCheckState = useState(function() { return loadFromStorage(LIFE_STORAGE_KEYS.healthCheck, mockHealthCheck); });
-  var healthCheck = healthCheckState[0];
-  var setHealthCheck = healthCheckState[1];
-  
-  var medicationsState = useState(function() { return loadFromStorage(LIFE_STORAGE_KEYS.medications, mockMedications); });
-  var medications = medicationsState[0];
-  var setMedications = medicationsState[1];
-  
-  // 모달 상태
-  var modalOpenState = useState(false);
-  var modalOpen = modalOpenState[0];
-  var setModalOpen = modalOpenState[1];
-  
-  var modalItemState = useState(null);
-  var modalItem = modalItemState[0];
-  var setModalItem = modalItemState[1];
-  
-  var modalTypeState = useState(null);
-  var modalType = modalTypeState[0];
-  var setModalType = modalTypeState[1];
-  
-  // 데이터 상태
-  var lifeTop3State = useState(function() { return loadFromStorage(LIFE_STORAGE_KEYS.lifeTop3, mockLifeReminders.todayTop3 || []); });
-  var lifeTop3 = lifeTop3State[0];
-  var setLifeTop3 = lifeTop3State[1];
-  
-  var upcomingItemsState = useState(function() { return loadFromStorage(LIFE_STORAGE_KEYS.upcomingItems, mockLifeReminders.upcoming || []); });
-  var upcomingItems = upcomingItemsState[0];
-  var setUpcomingItems = upcomingItemsState[1];
-  
-  var dontForgetItemsState = useState(function() { return loadFromStorage(LIFE_STORAGE_KEYS.dontForgetItems, mockLifeReminders.dontForget || []); });
-  var dontForgetItems = dontForgetItemsState[0];
-  var setDontForgetItems = dontForgetItemsState[1];
-  
-  var relationshipItemsState = useState(function() { return loadFromStorage(LIFE_STORAGE_KEYS.relationshipItems, mockLifeReminders.relationships || []); });
-  var relationshipItems = relationshipItemsState[0];
-  var setRelationshipItems = relationshipItemsState[1];
-  
-  var routinesState = useState(function() { return loadFromStorage(LIFE_STORAGE_KEYS.routines, mockRoutines || []); });
-  var routines = routinesState[0];
-  var setRoutines = routinesState[1];
-  
-  // localStorage 저장
-  useEffect(function() {
-    try { localStorage.setItem(LIFE_STORAGE_KEYS.medications, JSON.stringify(medications)); } catch (e) {}
-  }, [medications]);
-  
-  useEffect(function() {
-    try { localStorage.setItem(LIFE_STORAGE_KEYS.routines, JSON.stringify(routines)); } catch (e) {}
-  }, [routines]);
-  
-  useEffect(function() {
-    try { localStorage.setItem(LIFE_STORAGE_KEYS.lifeTop3, JSON.stringify(lifeTop3)); } catch (e) {}
-  }, [lifeTop3]);
-  
-  useEffect(function() {
-    try { localStorage.setItem(LIFE_STORAGE_KEYS.upcomingItems, JSON.stringify(upcomingItems)); } catch (e) {}
-  }, [upcomingItems]);
-  
-  useEffect(function() {
-    try { localStorage.setItem(LIFE_STORAGE_KEYS.dontForgetItems, JSON.stringify(dontForgetItems)); } catch (e) {}
-  }, [dontForgetItems]);
-  
-  useEffect(function() {
-    try { localStorage.setItem(LIFE_STORAGE_KEYS.relationshipItems, JSON.stringify(relationshipItems)); } catch (e) {}
-  }, [relationshipItems]);
-  
-  useEffect(function() {
-    try { localStorage.setItem(LIFE_STORAGE_KEYS.healthCheck, JSON.stringify(healthCheck)); } catch (e) {}
-  }, [healthCheck]);
-  
-  // 스타일
-  var cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
-  var textPrimary = darkMode ? 'text-gray-100' : 'text-gray-800';
-  var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
-  var borderColor = darkMode ? 'border-gray-700' : 'border-gray-100';
+  var weather = props.weather;
+  var userName = props.userName || 'Boss';
   
   var hour = new Date().getHours();
   
-  // 현재 시간대
-  var getCurrentTimeSlot = function() {
-    if (hour < 10) return 'morning';
-    if (hour < 15) return 'afternoon';
-    if (hour < 20) return 'evening';
-    return 'night';
-  };
-  var currentTimeSlot = getCurrentTimeSlot();
-  
-  // 약 복용 현황
-  var currentMeds = medications.filter(function(m) { return m.time === currentTimeSlot; });
-  var pendingMeds = currentMeds.filter(function(m) { return !m.taken; });
-  var totalMeds = medications.length;
-  var takenMeds = medications.filter(function(m) { return m.taken; }).length;
-  
-  // 모달 열기
-  var openModal = function(item, type) {
-    setModalItem(item);
-    setModalType(type);
-    setModalOpen(true);
+  // 시간대별 인사 (일상 버전)
+  var getGreeting = function() {
+    if (hour < 6) return '새벽이에요, 푹 주무셨나요?';
+    if (hour < 10) return '좋은 아침이에요! 오늘 컨디션은 어떠세요?';
+    if (hour < 12) return '활기찬 오전 보내고 계신가요?';
+    if (hour < 14) return '점심 맛있게 드셨나요?';
+    if (hour < 18) return '오후도 건강하게 보내세요!';
+    if (hour < 21) return '저녁 시간이에요, 하루 마무리 잘 하세요';
+    return '편안한 밤 되세요 😴';
   };
   
-  // 모달에서 저장
-  var handleModalSave = function(updatedItem) {
-    switch(modalType) {
-      case 'medication':
-      case 'medicationList':
-        if (modalItem) {
-          setMedications(medications.map(function(m) { return m.id === updatedItem.id ? updatedItem : m; }));
-        } else {
-          setMedications(medications.concat([Object.assign({}, updatedItem, { id: 'med-' + Date.now() })]));
-        }
-        break;
-      case 'reminder':
-        if (modalItem) {
-          setLifeTop3(lifeTop3.map(function(t) { return t.id === updatedItem.id ? updatedItem : t; }));
-        } else {
-          setLifeTop3(lifeTop3.concat([Object.assign({}, updatedItem, { id: 'lt-' + Date.now() })]));
-        }
-        break;
-      case 'upcoming':
-        if (modalItem) {
-          setUpcomingItems(upcomingItems.map(function(u) { return u.id === updatedItem.id ? updatedItem : u; }));
-        } else {
-          setUpcomingItems(upcomingItems.concat([Object.assign({}, updatedItem, { id: 'up-' + Date.now() })]));
-        }
-        break;
-      case 'dontForget':
-        if (modalItem) {
-          setDontForgetItems(dontForgetItems.map(function(d) { return d.id === updatedItem.id ? updatedItem : d; }));
-        } else {
-          setDontForgetItems(dontForgetItems.concat([Object.assign({}, updatedItem, { id: 'df-' + Date.now() })]));
-        }
-        break;
-      case 'relationship':
-        if (modalItem) {
-          setRelationshipItems(relationshipItems.map(function(r) { return r.id === updatedItem.id ? updatedItem : r; }));
-        } else {
-          setRelationshipItems(relationshipItems.concat([Object.assign({}, updatedItem, { id: 'rel-' + Date.now() })]));
-        }
-        break;
-      case 'routine':
-        if (modalItem) {
-          setRoutines(routines.map(function(r) { return r.id === updatedItem.id ? updatedItem : r; }));
-        } else {
-          setRoutines(routines.concat([Object.assign({}, updatedItem, { id: 'routine-' + Date.now() })]));
-        }
-        break;
+  // 오늘 완료한 루틴
+  var completedRoutines = routines.filter(function(r) { return r.completed; }).length;
+  var totalRoutines = routines.length;
+  
+  // 연락 필요한 사람
+  var needContact = relationships.filter(function(r) {
+    if (!r.lastContact) return true;
+    var lastDate = new Date(r.lastContact);
+    var daysSince = Math.floor((new Date() - lastDate) / (1000 * 60 * 60 * 24));
+    return daysSince > (r.contactFrequency || 30);
+  });
+  
+  // 건강 요약
+  var waterGoal = healthData.waterGoal || 8;
+  var waterIntake = healthData.waterIntake || 0;
+  var steps = healthData.steps || 0;
+  var sleepHours = healthData.sleepHours || 0;
+  
+  var cardBg = darkMode ? 'bg-gradient-to-br from-[#2D2640] to-[#1F1833]' : 'bg-gradient-to-br from-[#A996FF]/20 to-[#8B7CF7]/10';
+  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+  var textSecondary = darkMode ? 'text-gray-300' : 'text-gray-600';
+  
+  return React.createElement('div', { className: cardBg + ' rounded-2xl p-4 mb-4 border ' + (darkMode ? 'border-[#A996FF]/20' : 'border-[#A996FF]/30') },
+    // 헤더
+    React.createElement('div', { className: 'flex items-start gap-3 mb-3' },
+      React.createElement('div', { className: 'text-2xl' }, '🐧'),
+      React.createElement('div', { className: 'flex-1' },
+        React.createElement('p', { className: textPrimary + ' font-medium text-sm' }, getGreeting()),
+        React.createElement('p', { className: textSecondary + ' text-xs mt-0.5' },
+          '오늘의 건강과 일상을 챙겨드릴게요'
+        )
+      )
+    ),
+    
+    // 건강 통계
+    React.createElement('div', { className: 'flex items-center gap-4 mb-3 text-xs' },
+      React.createElement('div', { className: 'flex items-center gap-1 ' + (waterIntake >= waterGoal ? 'text-blue-400' : textSecondary) },
+        React.createElement(Droplets, { size: 12 }),
+        React.createElement('span', null, waterIntake + '/' + waterGoal + '잔')
+      ),
+      React.createElement('div', { className: 'flex items-center gap-1 ' + (steps >= 10000 ? 'text-emerald-400' : textSecondary) },
+        React.createElement(Footprints, { size: 12 }),
+        React.createElement('span', null, steps.toLocaleString() + '걸음')
+      ),
+      React.createElement('div', { className: 'flex items-center gap-1 ' + (sleepHours >= 7 ? 'text-purple-400' : textSecondary) },
+        React.createElement(Moon, { size: 12 }),
+        React.createElement('span', null, sleepHours + '시간 수면')
+      ),
+      completedRoutines > 0 && React.createElement('div', { className: 'flex items-center gap-1 text-amber-400' },
+        React.createElement(Check, { size: 12 }),
+        React.createElement('span', null, completedRoutines + '/' + totalRoutines + ' 루틴')
+      )
+    ),
+    
+    // 알림 메시지
+    React.createElement('div', { className: 'flex items-center justify-between text-xs ' + textSecondary },
+      needContact.length > 0 && React.createElement('div', { className: 'flex items-center gap-1 text-pink-400' },
+        React.createElement(Heart, { size: 12 }),
+        React.createElement('span', null, needContact[0].name + '님께 연락할 때가 됐어요')
+      ),
+      mood && React.createElement('div', { className: 'flex items-center gap-1' },
+        mood >= 4 ? React.createElement(Smile, { size: 12, className: 'text-emerald-400' }) :
+        mood >= 3 ? React.createElement(Meh, { size: 12, className: 'text-amber-400' }) :
+        React.createElement(Frown, { size: 12, className: 'text-red-400' }),
+        React.createElement('span', null, '기분 ' + mood + '/5')
+      )
+    )
+  );
+};
+
+// 퀵 액션 버튼들 (일상 버전)
+var QuickActions = function(props) {
+  var darkMode = props.darkMode;
+  var onLogWater = props.onLogWater;
+  var onLogMood = props.onLogMood;
+  var onOpenRoutines = props.onOpenRoutines;
+  var onOpenJournal = props.onOpenJournal;
+  
+  var btnClass = darkMode 
+    ? 'bg-gray-800 hover:bg-gray-700 text-white border-gray-700' 
+    : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200';
+  
+  var actions = [
+    { icon: Droplets, label: '물 +1', onClick: onLogWater, color: 'text-blue-500' },
+    { icon: Smile, label: '기분 기록', onClick: onLogMood, color: 'text-amber-500' },
+    { icon: Activity, label: '루틴', onClick: onOpenRoutines, color: 'text-emerald-500' },
+    { icon: BookOpen, label: '일기', onClick: onOpenJournal, color: 'text-purple-500' }
+  ];
+  
+  return React.createElement('div', { className: 'flex gap-2 mb-4 overflow-x-auto pb-2' },
+    actions.map(function(action, idx) {
+      return React.createElement('button', {
+        key: idx,
+        onClick: action.onClick,
+        className: btnClass + ' flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium whitespace-nowrap transition-all'
+      },
+        React.createElement(action.icon, { size: 16, className: action.color }),
+        React.createElement('span', null, action.label)
+      );
+    })
+  );
+};
+
+// 건강 트래킹 카드
+var HealthCard = function(props) {
+  var darkMode = props.darkMode;
+  var healthData = props.healthData || {};
+  var onUpdate = props.onUpdate;
+  
+  var cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
+  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+  var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  var borderColor = darkMode ? 'border-gray-700' : 'border-gray-200';
+  
+  var items = [
+    { 
+      icon: Droplets, 
+      label: '물', 
+      value: (healthData.waterIntake || 0) + '/' + (healthData.waterGoal || 8) + '잔',
+      color: 'text-blue-500',
+      progress: (healthData.waterIntake || 0) / (healthData.waterGoal || 8)
+    },
+    { 
+      icon: Moon, 
+      label: '수면', 
+      value: (healthData.sleepHours || 0) + '시간',
+      color: 'text-purple-500',
+      progress: (healthData.sleepHours || 0) / 8
+    },
+    { 
+      icon: Footprints, 
+      label: '걸음', 
+      value: (healthData.steps || 0).toLocaleString(),
+      color: 'text-emerald-500',
+      progress: (healthData.steps || 0) / 10000
+    },
+    { 
+      icon: Pill, 
+      label: '약', 
+      value: healthData.medication ? '완료' : '미완료',
+      color: 'text-amber-500',
+      progress: healthData.medication ? 1 : 0
     }
-    setModalOpen(false);
-  };
+  ];
   
-  // 모달에서 삭제
-  var handleModalDelete = function(id) {
-    switch(modalType) {
-      case 'medication':
-        setMedications(medications.filter(function(m) { return m.id !== id; }));
-        break;
-      case 'reminder':
-        setLifeTop3(lifeTop3.filter(function(t) { return t.id !== id; }));
-        break;
-      case 'upcoming':
-        setUpcomingItems(upcomingItems.filter(function(u) { return u.id !== id; }));
-        break;
-      case 'dontForget':
-        setDontForgetItems(dontForgetItems.filter(function(d) { return d.id !== id; }));
-        break;
-      case 'relationship':
-        setRelationshipItems(relationshipItems.filter(function(r) { return r.id !== id; }));
-        break;
-      case 'routine':
-        setRoutines(routines.filter(function(r) { return r.id !== id; }));
-        break;
+  return React.createElement('div', { className: cardBg + ' rounded-2xl p-4 mb-4 border ' + borderColor },
+    React.createElement('div', { className: 'flex items-center justify-between mb-3' },
+      React.createElement('h3', { className: textPrimary + ' font-bold flex items-center gap-2' },
+        React.createElement(Heart, { size: 18, className: 'text-red-400' }),
+        '오늘의 건강'
+      ),
+      React.createElement('button', { className: textSecondary + ' text-xs' }, '편집')
+    ),
+    React.createElement('div', { className: 'grid grid-cols-4 gap-3' },
+      items.map(function(item, idx) {
+        return React.createElement('button', {
+          key: idx,
+          onClick: function() { if (onUpdate) onUpdate(item.label); },
+          className: 'flex flex-col items-center p-2 rounded-xl ' + (darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50') + ' transition-all'
+        },
+          React.createElement('div', { 
+            className: 'w-10 h-10 rounded-full flex items-center justify-center mb-1 ' +
+              (item.progress >= 1 ? 'bg-emerald-500/20' : (darkMode ? 'bg-gray-700' : 'bg-gray-100'))
+          },
+            React.createElement(item.icon, { size: 18, className: item.progress >= 1 ? 'text-emerald-500' : item.color })
+          ),
+          React.createElement('span', { className: textSecondary + ' text-[10px]' }, item.label),
+          React.createElement('span', { className: textPrimary + ' text-xs font-medium' }, item.value)
+        );
+      })
+    )
+  );
+};
+
+// 루틴 카드
+var RoutineCard = function(props) {
+  var darkMode = props.darkMode;
+  var routines = props.routines || mockRoutines || [];
+  var onToggle = props.onToggle;
+  var onOpenRoutines = props.onOpenRoutines;
+  
+  var cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
+  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+  var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  var borderColor = darkMode ? 'border-gray-700' : 'border-gray-200';
+  
+  // 오늘 해당하는 루틴만
+  var dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+  var today = dayNames[new Date().getDay()];
+  var todayRoutines = routines.filter(function(r) {
+    if (!r.days) return true;
+    return r.days.includes(today);
+  }).slice(0, 4);
+  
+  return React.createElement('div', { className: cardBg + ' rounded-2xl p-4 mb-4 border ' + borderColor },
+    React.createElement('div', { className: 'flex items-center justify-between mb-3' },
+      React.createElement('h3', { className: textPrimary + ' font-bold flex items-center gap-2' },
+        React.createElement(Activity, { size: 18, className: 'text-emerald-500' }),
+        '오늘의 루틴'
+      ),
+      React.createElement('button', { 
+        onClick: onOpenRoutines,
+        className: textSecondary + ' text-xs flex items-center gap-1' 
+      }, 
+        '전체 보기',
+        React.createElement(ChevronRight, { size: 14 })
+      )
+    ),
+    todayRoutines.length === 0 
+      ? React.createElement('p', { className: textSecondary + ' text-sm text-center py-4' }, '오늘은 예정된 루틴이 없어요')
+      : React.createElement('div', { className: 'space-y-2' },
+          todayRoutines.map(function(routine, idx) {
+            return React.createElement('button', {
+              key: idx,
+              onClick: function() { if (onToggle) onToggle(routine.id); },
+              className: 'w-full flex items-center gap-3 p-2 rounded-xl ' + 
+                (darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50') + ' transition-all'
+            },
+              React.createElement('div', { 
+                className: 'w-8 h-8 rounded-full flex items-center justify-center ' +
+                  (routine.completed 
+                    ? 'bg-emerald-500 text-white' 
+                    : (darkMode ? 'bg-gray-700 border border-gray-600' : 'bg-gray-100 border border-gray-200'))
+              },
+                routine.completed 
+                  ? React.createElement(Check, { size: 16 }) 
+                  : React.createElement('span', { className: 'text-sm' }, routine.icon || '📌')
+              ),
+              React.createElement('div', { className: 'flex-1 text-left' },
+                React.createElement('p', { 
+                  className: textPrimary + ' text-sm ' + (routine.completed ? 'line-through opacity-50' : '')
+                }, routine.title || routine.name),
+                routine.time && React.createElement('p', { className: textSecondary + ' text-xs' }, routine.time)
+              )
+            );
+          })
+        )
+  );
+};
+
+// 관계 카드
+var RelationshipsCard = function(props) {
+  var darkMode = props.darkMode;
+  var relationships = props.relationships || [];
+  var onContact = props.onContact;
+  
+  var cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
+  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+  var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  var borderColor = darkMode ? 'border-gray-700' : 'border-gray-200';
+  
+  // 연락 필요한 사람들
+  var needContact = relationships.filter(function(r) {
+    if (!r.lastContact) return true;
+    var lastDate = new Date(r.lastContact);
+    var daysSince = Math.floor((new Date() - lastDate) / (1000 * 60 * 60 * 24));
+    return daysSince > (r.contactFrequency || 30);
+  }).slice(0, 3);
+  
+  if (needContact.length === 0) return null;
+  
+  return React.createElement('div', { className: cardBg + ' rounded-2xl p-4 mb-4 border ' + borderColor },
+    React.createElement('div', { className: 'flex items-center justify-between mb-3' },
+      React.createElement('h3', { className: textPrimary + ' font-bold flex items-center gap-2' },
+        React.createElement(Users, { size: 18, className: 'text-pink-500' }),
+        '연락할 때가 됐어요'
+      )
+    ),
+    React.createElement('div', { className: 'space-y-2' },
+      needContact.map(function(person, idx) {
+        var lastDate = person.lastContact ? new Date(person.lastContact) : null;
+        var daysSince = lastDate ? Math.floor((new Date() - lastDate) / (1000 * 60 * 60 * 24)) : '?';
+        
+        return React.createElement('div', {
+          key: idx,
+          className: 'flex items-center justify-between p-2 rounded-xl ' + (darkMode ? 'bg-gray-700/50' : 'bg-gray-50')
+        },
+          React.createElement('div', { className: 'flex items-center gap-3' },
+            React.createElement('div', { className: 'w-10 h-10 rounded-full bg-gradient-to-br from-pink-400 to-purple-400 flex items-center justify-center text-white font-bold text-sm' },
+              (person.name || '?')[0]
+            ),
+            React.createElement('div', null,
+              React.createElement('p', { className: textPrimary + ' text-sm font-medium' }, person.name),
+              React.createElement('p', { className: textSecondary + ' text-xs' }, daysSince + '일 전 연락')
+            )
+          ),
+          React.createElement('div', { className: 'flex gap-2' },
+            React.createElement('button', {
+              onClick: function() { if (onContact) onContact(person, 'call'); },
+              className: 'w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center'
+            }, React.createElement(Phone, { size: 14 })),
+            React.createElement('button', {
+              onClick: function() { if (onContact) onContact(person, 'message'); },
+              className: 'w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center'
+            }, React.createElement(MessageCircle, { size: 14 }))
+          )
+        );
+      })
+    )
+  );
+};
+
+var LifePage = function(props) {
+  var darkMode = props.darkMode;
+  var healthData = props.healthData || {};
+  var setHealthData = props.setHealthData;
+  var routines = props.routines || mockRoutines || [];
+  var setRoutines = props.setRoutines;
+  var relationships = props.relationships || [];
+  var mood = props.mood;
+  var energy = props.energy;
+  var setMood = props.setMood;
+  var setEnergy = props.setEnergy;
+  var onOpenRoutines = props.onOpenRoutines;
+  var onOpenJournal = props.onOpenJournal;
+  var onOpenMoodLog = props.onOpenMoodLog;
+  var weather = props.weather || mockWeather;
+  var userName = props.userName;
+
+  var handleLogWater = function() {
+    if (setHealthData) {
+      var current = healthData.waterIntake || 0;
+      setHealthData(Object.assign({}, healthData, { waterIntake: current + 1 }));
     }
-    setModalOpen(false);
   };
-  
-  // 약 복용 체크
-  var handleTakeMed = function(medId) {
-    var now = new Date();
-    var timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
-    setMedications(medications.map(function(m) {
-      return m.id === medId ? Object.assign({}, m, { taken: true, takenAt: timeStr }) : m;
-    }));
-  };
-  
-  var handleToggleItem = function(id) {
-    setCheckedItems(function(prev) {
-      return prev.includes(id) ? prev.filter(function(i) { return i !== id; }) : prev.concat([id]);
-    });
-  };
-  
-  var handleSaveJournal = function() {
-    if (journalText.trim()) {
-      setJournalSaved(true);
-      setTimeout(function() { setJournalSaved(false); }, 2000);
+
+  var handleToggleRoutine = function(routineId) {
+    if (setRoutines) {
+      setRoutines(routines.map(function(r) {
+        if (r.id === routineId) {
+          return Object.assign({}, r, { completed: !r.completed });
+        }
+        return r;
+      }));
     }
   };
-  
-  var getDDayText = function(dDay) {
-    if (dDay === 0) return '오늘';
-    if (dDay === 1) return '내일';
-    return 'D-' + dDay;
+
+  var handleUpdateHealth = function(type) {
+    // 건강 데이터 업데이트 모달 열기
+    console.log('Update health:', type);
   };
-  
-  var getDDayColor = function(dDay, critical) {
-    if (critical || dDay === 0) return 'bg-red-500 text-white';
-    if (dDay === 1) return 'bg-[#A996FF] text-white';
-    if (dDay <= 3) return 'bg-[#EDE9FE] text-[#7C6CD6]';
-    return 'bg-gray-100 text-gray-600';
+
+  var handleContact = function(person, method) {
+    console.log('Contact', person.name, 'via', method);
   };
-  
-  return (
-    <div className={"flex-1 overflow-y-auto " + (darkMode ? 'bg-gray-900' : 'bg-gradient-to-b from-[#FDF8F3] to-[#F5EDE4]') + " transition-colors duration-300"}>
-      <div className="p-4 space-y-4 pb-32">
-        
-        {/* 헤더 */}
-        <div className="flex items-center justify-between pt-2">
-          <div>
-            <h1 className={"text-xl font-bold " + textPrimary}>나를 위한 시간</h1>
-            <p className={textSecondary + " text-sm"}>건강, 루틴, 소중한 사람들</p>
-          </div>
-          <div className={"px-3 py-1.5 rounded-full text-sm " + (darkMode ? 'bg-gray-800' : 'bg-white/80')}>
-            <span className="text-lg mr-1">{energy >= 70 ? '😊' : energy >= 40 ? '😐' : '😴'}</span>
-            <span className={textSecondary}>{energy}%</span>
-          </div>
-        </div>
-        
-        {/* 건강 트래킹 (간소화) */}
-        <div className={cardBg + "/90 backdrop-blur-xl rounded-2xl shadow-sm p-4 border " + borderColor}>
-          <h3 className={"font-bold " + textPrimary + " mb-3 flex items-center gap-2"}>
-            <span className="text-lg">💪</span> 오늘의 건강
-          </h3>
-          
-          <div className="grid grid-cols-4 gap-3">
-            {/* 수면 */}
-            <button 
-              onClick={function() { 
-                var newHours = prompt('어젯밤 몇 시간 주무셨어요?', (healthCheck && healthCheck.sleep && healthCheck.sleep.hours) || '7');
-                if (newHours) {
-                  setHealthCheck(Object.assign({}, healthCheck, { sleep: Object.assign({}, (healthCheck && healthCheck.sleep) || {}, { hours: parseInt(newHours) }) }));
-                }
-              }}
-              className={(darkMode ? 'bg-indigo-900/30' : 'bg-indigo-50') + " rounded-xl p-3 text-center hover:scale-105 transition-all"}
-            >
-              <span className="text-2xl">💤</span>
-              <p className={(darkMode ? 'text-indigo-300' : 'text-indigo-600') + " text-sm font-bold mt-1"}>
-                {(healthCheck && healthCheck.sleep && healthCheck.sleep.hours) || 7}h
-              </p>
-              <p className={"text-[10px] " + textSecondary}>수면</p>
-            </button>
-            
-            {/* 물 */}
-            <button 
-              onClick={function() { 
-                setHealthCheck(Object.assign({}, healthCheck, { 
-                  water: Object.assign({}, (healthCheck && healthCheck.water) || {}, { 
-                    current: ((healthCheck && healthCheck.water && healthCheck.water.current) || 0) + 1 
-                  }) 
-                }));
-              }}
-              className={(darkMode ? 'bg-sky-900/30' : 'bg-sky-50') + " rounded-xl p-3 text-center hover:scale-105 transition-all"}
-            >
-              <span className="text-2xl">💧</span>
-              <p className={(darkMode ? 'text-sky-300' : 'text-sky-600') + " text-sm font-bold mt-1"}>
-                {(healthCheck && healthCheck.water && healthCheck.water.current) || 0}/{(healthCheck && healthCheck.water && healthCheck.water.target) || 8}
-              </p>
-              <p className={"text-[10px] " + textSecondary}>물 +1</p>
-            </button>
-            
-            {/* 걸음 */}
-            <div className={(darkMode ? 'bg-emerald-900/30' : 'bg-emerald-50') + " rounded-xl p-3 text-center"}>
-              <span className="text-2xl">🚶</span>
-              <p className={(darkMode ? 'text-emerald-300' : 'text-emerald-600') + " text-sm font-bold mt-1"}>
-                {(((healthCheck && healthCheck.steps && healthCheck.steps.current) || 0) / 1000).toFixed(1)}k
-              </p>
-              <p className={"text-[10px] " + textSecondary}>걸음</p>
-            </div>
-            
-            {/* 약 */}
-            <button 
-              onClick={function() { openModal(null, 'medicationList'); }}
-              className={((pendingMeds.length > 0) ? (darkMode ? 'bg-purple-900/50 ring-2 ring-purple-500' : 'bg-purple-100 ring-2 ring-purple-300') : (darkMode ? 'bg-purple-900/30' : 'bg-purple-50')) + " rounded-xl p-3 text-center hover:scale-105 transition-all"}
-            >
-              <span className="text-2xl">💊</span>
-              <p className={(darkMode ? 'text-purple-300' : 'text-purple-600') + " text-sm font-bold mt-1"}>
-                {takenMeds}/{totalMeds}
-              </p>
-              <p className={"text-[10px] " + (pendingMeds.length > 0 ? (darkMode ? 'text-purple-400 font-bold' : 'text-purple-600 font-bold') : textSecondary)}>
-                {pendingMeds.length > 0 ? '지금!' : '약'}
-              </p>
-            </button>
-          </div>
-        </div>
-        
-        {/* 오늘의 루틴 */}
-        <div className={cardBg + "/90 backdrop-blur-xl rounded-2xl shadow-sm p-4 border " + borderColor}>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className={"font-bold " + textPrimary + " flex items-center gap-2"}>
-              <span className="text-lg">🔄</span> 오늘의 루틴
-            </h3>
-            <button 
-              onClick={function() { openModal(null, 'routine'); }}
-              className={(darkMode ? 'bg-emerald-900/50 text-emerald-400' : 'bg-emerald-100 text-emerald-600') + " w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold hover:opacity-80"}
-            >
-              +
-            </button>
-          </div>
-          
-          <div className="grid grid-cols-4 gap-2">
-            {routines.map(function(routine) {
-              var completed = routine.current >= routine.target;
-              
-              return (
-                <button 
-                  key={routine.id}
-                  onClick={function() { openModal(routine, 'routine'); }}
-                  className={"p-3 rounded-xl text-center transition-all hover:scale-105 " + (
-                    completed 
-                      ? darkMode ? 'bg-emerald-900/30' : 'bg-emerald-50' 
-                      : darkMode ? 'bg-gray-700' : 'bg-gray-50'
-                  )}
-                >
-                  <span className="text-2xl">{routine.icon}</span>
-                  <p className={"text-xs font-bold mt-1 " + (completed ? (darkMode ? 'text-emerald-400' : 'text-emerald-600') : textSecondary)}>
-                    {routine.current}/{routine.target}
-                  </p>
-                  {routine.streak > 0 && (
-                    <p className="text-[10px] text-orange-500 font-medium">🔥{routine.streak}</p>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        
-        {/* 오늘 꼭 챙길 것 */}
-        <div className={cardBg + "/90 backdrop-blur-xl rounded-2xl shadow-sm p-4 border " + borderColor}>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className={"font-bold " + textPrimary + " flex items-center gap-2"}>
-              <span className="text-lg">📌</span> 오늘 꼭 챙길 것
-            </h3>
-            <button 
-              onClick={function() { openModal(null, 'reminder'); }}
-              className={(darkMode ? 'bg-[#A996FF]/30 text-[#A996FF]' : 'bg-[#EDE9FE] text-[#8B7CF7]') + " w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold hover:opacity-80"}
-            >
-              +
-            </button>
-          </div>
-          
-          <div className="space-y-2">
-            {lifeTop3.map(function(item) {
-              var isChecked = checkedItems.includes(item.id);
-              return (
-                <div 
-                  key={item.id}
-                  className={"flex items-center gap-3 p-3 rounded-xl transition-all " + (
-                    isChecked 
-                      ? (darkMode ? 'bg-gray-700 opacity-60' : 'bg-gray-50 opacity-60')
-                      : (darkMode ? 'bg-gray-700/50 hover:bg-gray-700' : 'bg-white hover:bg-gray-50') + " shadow-sm"
-                  )}
-                >
-                  <button 
-                    onClick={function() { handleToggleItem(item.id); }}
-                    className={isChecked ? 'text-emerald-500' : 'text-[#A996FF]'}
-                  >
-                    {isChecked ? <CheckCircle2 size={22} /> : <Circle size={22} />}
-                  </button>
-                  <span className="text-xl">{item.icon}</span>
-                  <div 
-                    className="flex-1 min-w-0 cursor-pointer"
-                    onClick={function() { openModal(item, 'reminder'); }}
-                  >
-                    <p className={"font-semibold " + (isChecked ? 'line-through ' + textSecondary : textPrimary)}>
-                      {item.title}
-                    </p>
-                    {item.note && <p className={"text-xs " + textSecondary + " truncate"}>{item.note}</p>}
-                  </div>
-                  <span className={"text-[11px] px-2 py-1 rounded-full font-bold " + getDDayColor(item.dDay, item.critical)}>
-                    {getDDayText(item.dDay)}
-                  </span>
-                </div>
-              );
-            })}
-            
-            {lifeTop3.length === 0 && (
-              <p className={textSecondary + " text-center py-4 text-sm"}>오늘 챙길 것을 추가해보세요</p>
-            )}
-          </div>
-        </div>
-        
-        {/* 다가오는 것 */}
-        <div className={cardBg + "/90 backdrop-blur-xl rounded-2xl shadow-sm p-4 border " + borderColor}>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className={"font-bold " + textPrimary + " flex items-center gap-2"}>
-              <span className="text-lg">📅</span> 다가오는 것
-            </h3>
-            <button 
-              onClick={function() { openModal(null, 'upcoming'); }}
-              className={(darkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-600') + " w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold hover:opacity-80"}
-            >
-              +
-            </button>
-          </div>
-          
-          <div className="space-y-2">
-            {upcomingItems.map(function(item) {
-              return (
-                <div 
-                  key={item.id} 
-                  onClick={function() { openModal(item, 'upcoming'); }}
-                  className={"flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all " + (darkMode ? 'bg-gray-700/50 hover:bg-gray-700' : 'bg-gray-50 hover:bg-gray-100')}
-                >
-                  <span className="text-xl">{item.icon}</span>
-                  <div className="flex-1">
-                    <p className={"font-medium " + textPrimary}>{item.title}</p>
-                    {item.note && <p className={"text-xs " + textSecondary}>{item.note}</p>}
-                  </div>
-                  <span className={"text-xs px-2 py-1 rounded-full font-medium " + (darkMode ? 'bg-gray-600 text-gray-300' : 'bg-gray-100 text-gray-600')}>
-                    {item.date}
-                  </span>
-                </div>
-              );
-            })}
-            
-            {upcomingItems.length === 0 && (
-              <p className={textSecondary + " text-center py-4 text-sm"}>예정된 일정이 없어요</p>
-            )}
-          </div>
-          
-          {/* 잊지 말 것 */}
-          {dontForgetItems.length > 0 && (
-            <>
-              <div className="flex items-center gap-2 my-3">
-                <div className={"flex-1 h-px " + (darkMode ? 'bg-gray-700' : 'bg-gray-200')} />
-                <span className={"text-xs " + textSecondary}>💡 잊지 마세요</span>
-                <div className={"flex-1 h-px " + (darkMode ? 'bg-gray-700' : 'bg-gray-200')} />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-2">
-                {dontForgetItems.map(function(item) {
-                  return (
-                    <div 
-                      key={item.id} 
-                      onClick={function() { openModal(item, 'dontForget'); }}
-                      className={"p-3 rounded-xl cursor-pointer transition-all hover:scale-[1.02] " + (
-                        item.critical 
-                          ? (darkMode ? 'bg-red-900/30 border border-red-800' : 'bg-red-50 border border-red-100')
-                          : (darkMode ? 'bg-gray-700/50 hover:bg-gray-700' : 'bg-gray-50 hover:bg-gray-100')
-                      )}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-lg">{item.icon}</span>
-                        <span className={"text-xs " + textSecondary}>{item.date}</span>
-                      </div>
-                      <p className={"text-sm font-medium " + (item.critical ? (darkMode ? 'text-red-400' : 'text-red-700') : textPrimary)}>
-                        {item.title}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
-        
-        {/* 관계 챙기기 */}
-        <div className={cardBg + "/90 backdrop-blur-xl rounded-2xl shadow-sm p-4 border " + borderColor}>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className={"font-bold " + textPrimary + " flex items-center gap-2"}>
-              <span className="text-lg">💕</span> 연락할 때 됐어요
-            </h3>
-            <button 
-              onClick={function() { openModal(null, 'relationship'); }}
-              className={(darkMode ? 'bg-pink-900/30 text-pink-400' : 'bg-pink-100 text-pink-600') + " w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold hover:opacity-80"}
-            >
-              +
-            </button>
-          </div>
-          
-          <div className="space-y-2">
-            {relationshipItems.filter(function(r) { return r.lastContact >= 7; }).map(function(person) {
-              return (
-                <div 
-                  key={person.id} 
-                  onClick={function() { openModal(person, 'relationship'); }}
-                  className={"flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all " + (darkMode ? 'bg-pink-900/20 hover:bg-pink-900/30' : 'bg-pink-50/50 hover:bg-pink-100/50')}
-                >
-                  <span className="text-2xl">{person.icon}</span>
-                  <div className="flex-1">
-                    <p className={"font-medium " + textPrimary}>{person.name}</p>
-                    <p className={"text-xs " + textSecondary}>{person.lastContact}일 전 연락</p>
-                  </div>
-                  <span className={"px-3 py-1.5 rounded-full text-xs font-semibold " + (darkMode ? 'bg-pink-900/50 text-pink-300' : 'bg-pink-100 text-pink-600')}>
-                    {person.suggestion}
-                  </span>
-                </div>
-              );
-            })}
-            
-            {relationshipItems.filter(function(r) { return r.lastContact >= 7; }).length === 0 && (
-              <p className={textSecondary + " text-center py-4 text-sm"}>모두 최근에 연락했어요 👍</p>
-            )}
-          </div>
-        </div>
-        
-        {/* 오늘 하루 기록 */}
-        <div className={cardBg + "/90 backdrop-blur-xl rounded-2xl shadow-sm p-4 border " + borderColor}>
-          <h3 className={"font-bold " + textPrimary + " mb-3 flex items-center gap-2"}>
-            <span className="text-lg">📝</span> 오늘 하루 기록
-          </h3>
-          
-          <textarea
-            value={journalText}
-            onChange={function(e) { setJournalText(e.target.value); }}
-            placeholder="오늘 하루는 어땠나요? 감사한 일, 기억하고 싶은 것..."
-            className={"w-full h-24 p-3 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 " + (
-              darkMode 
-                ? 'bg-gray-700 text-gray-200 placeholder:text-gray-500 focus:ring-gray-600' 
-                : 'bg-[#F5F3FF]/50 text-gray-700 placeholder:text-[#C4B5FD] focus:ring-[#DDD6FE]'
-            )}
-          />
-          
-          <div className="flex justify-end mt-2">
-            <button
-              onClick={handleSaveJournal}
-              disabled={!journalText.trim()}
-              className={"px-4 py-2 rounded-xl text-sm font-bold transition-all " + (
-                journalText.trim()
-                  ? 'bg-[#A996FF] text-white shadow-md active:scale-95'
-                  : (darkMode ? 'bg-gray-700 text-gray-500' : 'bg-gray-100 text-gray-300')
-              )}
-            >
-              {journalSaved ? '✓ 저장됨' : '저장하기'}
-            </button>
-          </div>
-        </div>
-        
-      </div>
+
+  var bgColor = darkMode ? 'bg-gray-900' : 'bg-[#F0EBFF]';
+  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+
+  return React.createElement('div', { className: bgColor + ' min-h-screen pb-24' },
+    React.createElement('div', { className: 'px-4 pt-4' },
+      // 헤더
+      React.createElement('div', { className: 'flex items-center justify-between mb-4' },
+        React.createElement('h1', { className: textPrimary + ' text-2xl font-bold' }, '일상'),
+        React.createElement('button', {
+          onClick: onOpenRoutines,
+          className: 'w-10 h-10 bg-[#A996FF] rounded-full flex items-center justify-center text-white shadow-lg'
+        },
+          React.createElement(Plus, { size: 20 })
+        )
+      ),
       
-      {/* Life Detail Modal */}
-      {modalOpen && (
-        <LifeDetailModal
-          item={modalItem}
-          type={modalType}
-          onClose={function() { setModalOpen(false); }}
-          onSave={handleModalSave}
-          onDelete={handleModalDelete}
-          medications={medications}
-          onTakeMed={handleTakeMed}
-        />
-      )}
-    </div>
+      // 알프레도 브리핑
+      React.createElement(AlfredoBriefing, {
+        darkMode: darkMode,
+        healthData: healthData,
+        relationships: relationships,
+        routines: routines,
+        mood: mood,
+        energy: energy,
+        weather: weather,
+        userName: userName
+      }),
+      
+      // 퀵 액션 버튼
+      React.createElement(QuickActions, {
+        darkMode: darkMode,
+        onLogWater: handleLogWater,
+        onLogMood: onOpenMoodLog,
+        onOpenRoutines: onOpenRoutines,
+        onOpenJournal: onOpenJournal
+      }),
+      
+      // 건강 트래킹
+      React.createElement(HealthCard, {
+        darkMode: darkMode,
+        healthData: healthData,
+        onUpdate: handleUpdateHealth
+      }),
+      
+      // 오늘의 루틴
+      React.createElement(RoutineCard, {
+        darkMode: darkMode,
+        routines: routines,
+        onToggle: handleToggleRoutine,
+        onOpenRoutines: onOpenRoutines
+      }),
+      
+      // 연락할 사람들
+      React.createElement(RelationshipsCard, {
+        darkMode: darkMode,
+        relationships: relationships,
+        onContact: handleContact
+      })
+    )
   );
 };
 
