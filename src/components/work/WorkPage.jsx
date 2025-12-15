@@ -10,6 +10,7 @@ import SwipeableTaskItem from './SwipeableTaskItem';
 import { Sparkline, PriorityIndicator } from './TaskWidgets';
 import { useGoogleCalendar } from '../../hooks/useGoogleCalendar';
 import { AlfredoEmptyState } from '../common/AlfredoEmptyState';
+import { mockTasks as fallbackTasks } from '../../data/mockData';
 
 // 알프레도 브리핑 컴포넌트
 var AlfredoBriefing = function(props) {
@@ -32,9 +33,9 @@ var AlfredoBriefing = function(props) {
   };
   
   // 통계 계산
-  var todayTasks = tasks.filter(function(t) { return !t.completed; });
-  var completedTasks = tasks.filter(function(t) { return t.completed; });
-  var urgentTasks = todayTasks.filter(function(t) { return t.priority === 'high' || t.urgent; });
+  var todayTasks = tasks.filter(function(t) { return !t.completed && t.status !== 'done'; });
+  var completedTasks = tasks.filter(function(t) { return t.completed || t.status === 'done'; });
+  var urgentTasks = todayTasks.filter(function(t) { return t.importance === 'high' || t.priority === 'high' || t.urgent; });
   var todayMeetings = events.filter(function(e) {
     var eventDate = new Date(e.start);
     var today = new Date();
@@ -147,7 +148,8 @@ var QuickActions = function(props) {
 
 var WorkPage = function(props) {
   var darkMode = props.darkMode;
-  var tasks = props.tasks || [];
+  // Use props.tasks if available, otherwise use fallback
+  var tasks = (props.tasks && props.tasks.length > 0) ? props.tasks : fallbackTasks;
   var setTasks = props.setTasks;
   var events = props.events || [];
   var projects = props.projects || [];
@@ -161,7 +163,7 @@ var WorkPage = function(props) {
   var weather = props.weather;
   var userName = props.userName;
   
-  var tabState = useState('today');
+  var tabState = useState('all'); // Default to 'all' tab
   var activeTab = tabState[0];
   var setActiveTab = tabState[1];
   
@@ -171,50 +173,48 @@ var WorkPage = function(props) {
 
   // 필터링된 태스크
   var filteredTasks = useMemo(function() {
-    var today = new Date();
-    today.setHours(0, 0, 0, 0);
-    var tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    var weekLater = new Date(today);
-    weekLater.setDate(weekLater.getDate() + 7);
-    
-    var result = tasks;
+    var result = tasks || [];
     
     // 검색 필터
     if (searchQuery) {
       var query = searchQuery.toLowerCase();
       result = result.filter(function(t) {
         return (t.title && t.title.toLowerCase().includes(query)) ||
-               (t.description && t.description.toLowerCase().includes(query));
+               (t.description && t.description.toLowerCase().includes(query)) ||
+               (t.project && t.project.toLowerCase().includes(query));
       });
     }
     
     // 탭 필터
     if (activeTab === 'today') {
       result = result.filter(function(t) {
-        if (!t.dueDate) return false;
-        var due = new Date(t.dueDate);
-        due.setHours(0, 0, 0, 0);
-        return due.getTime() === today.getTime();
+        // Check deadline field (string like "14:00 전", "오늘", "내일 10:00")
+        var deadline = t.deadline || '';
+        return deadline.includes('오늘') || 
+               deadline.includes('전') || 
+               deadline.includes(':') && !deadline.includes('내일') && !deadline.includes('금') && !deadline.includes('수');
       });
     } else if (activeTab === 'upcoming') {
       result = result.filter(function(t) {
-        if (!t.dueDate) return false;
-        var due = new Date(t.dueDate);
-        due.setHours(0, 0, 0, 0);
-        return due > today && due <= weekLater;
+        var deadline = t.deadline || '';
+        return deadline.includes('내일') || 
+               deadline.includes('금') || 
+               deadline.includes('수') ||
+               deadline.includes('주');
       });
-    } else if (activeTab === 'all') {
-      // 모든 태스크
     }
+    // 'all' tab shows everything
     
     // 완료되지 않은 것 먼저, 우선순위순
     result = result.slice().sort(function(a, b) {
-      if (a.completed !== b.completed) return a.completed ? 1 : -1;
-      var priorityOrder = { high: 0, medium: 1, low: 2 };
-      var aPriority = priorityOrder[a.priority] !== undefined ? priorityOrder[a.priority] : 1;
-      var bPriority = priorityOrder[b.priority] !== undefined ? priorityOrder[b.priority] : 1;
-      return aPriority - bPriority;
+      var aCompleted = a.completed || a.status === 'done';
+      var bCompleted = b.completed || b.status === 'done';
+      if (aCompleted !== bCompleted) return aCompleted ? 1 : -1;
+      
+      // priorityScore 기준 정렬 (높을수록 먼저)
+      var aScore = a.priorityScore || 50;
+      var bScore = b.priorityScore || 50;
+      return bScore - aScore;
     });
     
     return result;
@@ -224,7 +224,11 @@ var WorkPage = function(props) {
     if (setTasks) {
       setTasks(tasks.map(function(t) {
         if (t.id === taskId) {
-          return Object.assign({}, t, { completed: !t.completed });
+          var newCompleted = !(t.completed || t.status === 'done');
+          return Object.assign({}, t, { 
+            completed: newCompleted,
+            status: newCompleted ? 'done' : 'todo'
+          });
         }
         return t;
       }));
@@ -240,7 +244,7 @@ var WorkPage = function(props) {
   // 검색 결과 없음 vs 할 일 완료 vs 할 일 없음 구분
   var getEmptyStateVariant = function() {
     if (searchQuery) return 'noResults';
-    var incompleteTasks = tasks.filter(function(t) { return !t.completed; });
+    var incompleteTasks = tasks.filter(function(t) { return !t.completed && t.status !== 'done'; });
     if (tasks.length > 0 && incompleteTasks.length === 0) return 'allDone';
     return 'noTasks';
   };
