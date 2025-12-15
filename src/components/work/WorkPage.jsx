@@ -9,6 +9,7 @@ import {
 import SwipeableTaskItem from './SwipeableTaskItem';
 import { TaskWidgets } from './TaskWidgets';
 import { useGoogleCalendar } from '../../hooks/useGoogleCalendar';
+import { AlfredoEmptyState } from '../common/AlfredoEmptyState';
 
 // 알프레도 브리핑 컴포넌트
 var AlfredoBriefing = function(props) {
@@ -236,6 +237,14 @@ var WorkPage = function(props) {
     }
   };
 
+  // 검색 결과 없음 vs 할 일 완료 vs 할 일 없음 구분
+  var getEmptyStateVariant = function() {
+    if (searchQuery) return 'noResults';
+    var incompleteTasks = tasks.filter(function(t) { return !t.completed; });
+    if (tasks.length > 0 && incompleteTasks.length === 0) return 'allDone';
+    return 'noTasks';
+  };
+
   var bgColor = darkMode ? 'bg-gray-900' : 'bg-[#F0EBFF]';
   var cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
   var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
@@ -309,17 +318,17 @@ var WorkPage = function(props) {
       // 태스크 목록
       React.createElement('div', { className: 'space-y-2' },
         filteredTasks.length === 0 
-          ? React.createElement('div', { className: cardBg + ' rounded-xl p-8 text-center border ' + borderColor },
-              React.createElement('div', { className: 'text-4xl mb-3' }, '🎉'),
-              React.createElement('p', { className: textPrimary + ' font-medium' }, 
-                activeTab === 'today' ? '오늘 할 일을 모두 완료했어요!' : '할 일이 없어요'
-              ),
-              React.createElement('p', { className: textSecondary + ' text-sm mt-1' }, '새로운 할 일을 추가해보세요'),
-              React.createElement('button', {
-                onClick: onOpenAddTask,
-                className: 'mt-4 px-4 py-2 bg-[#A996FF] text-white rounded-xl text-sm font-medium'
-              }, '+ 할 일 추가')
-            )
+          ? React.createElement(AlfredoEmptyState, {
+              variant: getEmptyStateVariant(),
+              darkMode: darkMode,
+              onAction: onOpenAddTask,
+              title: activeTab === 'today' && getEmptyStateVariant() === 'allDone' 
+                ? '오늘 업무 완료!' 
+                : undefined,
+              message: activeTab === 'today' && getEmptyStateVariant() === 'allDone'
+                ? '오늘 할 일을 모두 해치웠어요!'
+                : undefined
+            })
           : filteredTasks.map(function(task) {
               return React.createElement(SwipeableTaskItem, {
                 key: task.id,
