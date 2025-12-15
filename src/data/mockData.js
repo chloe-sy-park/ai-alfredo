@@ -137,6 +137,9 @@ export const mockAllTasks = [
   },
 ];
 
+// App.jsx 호환용 alias
+export const mockTasks = mockAllTasks;
+
 // 프로젝트 데이터
 export const mockProjects = [
   { 
