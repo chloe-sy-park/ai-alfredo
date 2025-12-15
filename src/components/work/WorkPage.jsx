@@ -4,7 +4,7 @@ import {
   Star, Flag, Calendar, FolderKanban, Inbox, Filter, Search,
   Sparkles, TrendingUp, TrendingDown, Minus, MoreHorizontal,
   Sun, Cloud, CloudRain, Zap, Coffee, Moon, Target, MessageSquare,
-  Umbrella, Users, FileText, Bell
+  Umbrella, Users, FileText, Bell, Play
 } from 'lucide-react';
 import SwipeableTaskItem from './SwipeableTaskItem';
 import { Sparkline, PriorityIndicator } from './TaskWidgets';
@@ -12,24 +12,26 @@ import { useGoogleCalendar } from '../../hooks/useGoogleCalendar';
 import { AlfredoEmptyState } from '../common/AlfredoEmptyState';
 import { mockTasks as fallbackTasks } from '../../data/mockData';
 
-// 알프레도 브리핑 컴포넌트
+// 알프레도 브리핑 컴포넌트 (업무 버전)
 var AlfredoBriefing = function(props) {
   var darkMode = props.darkMode;
   var tasks = props.tasks || [];
   var events = props.events || [];
   var weather = props.weather;
   var userName = props.userName || 'Boss';
+  var onOpenChat = props.onOpenChat;
   
   var hour = new Date().getHours();
   
-  // 시간대별 인사
+  // 시간대별 인사 (업무 맥락)
   var getGreeting = function() {
-    if (hour < 6) return '새벽이에요, ' + userName + '님';
-    if (hour < 12) return '좋은 아침이에요, ' + userName + '님';
-    if (hour < 14) return '점심 맛있게 드셨나요?';
-    if (hour < 18) return '오후도 화이팅이에요!';
-    if (hour < 22) return '오늘 하루 수고하셨어요';
-    return '늦은 시간이네요, ' + userName + '님';
+    if (hour < 6) return '새벽 근무 중이시네요 💪';
+    if (hour < 9) return '일찍 시작하셨네요! ☀️';
+    if (hour < 12) return '오전 업무 화이팅! 📋';
+    if (hour < 14) return '점심 드시고 오셨나요? 🍚';
+    if (hour < 18) return '오후 업무도 힘내세요! 💼';
+    if (hour < 22) return '야근 중이시네요, 수고하세요 🌙';
+    return '늦은 시간까지 고생이 많으세요 🌛';
   };
   
   // 통계 계산
@@ -51,9 +53,27 @@ var AlfredoBriefing = function(props) {
   });
   var nextEvent = upcomingEvents[0];
   
+  // 업무 관련 브리핑 메시지
+  var getBriefingMessage = function() {
+    if (urgentTasks.length > 0) {
+      return '긴급 업무 ' + urgentTasks.length + '개가 있어요. 먼저 처리해볼까요?';
+    }
+    if (todayMeetings.length > 0 && nextEvent) {
+      var meetingTime = new Date(nextEvent.start).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+      return meetingTime + '에 미팅이 있어요. 준비되셨나요?';
+    }
+    if (todayTasks.length === 0 && completedTasks.length > 0) {
+      return '오늘 업무를 모두 완료했어요! 🎉';
+    }
+    if (todayTasks.length > 0) {
+      return '오늘 처리할 업무가 ' + todayTasks.length + '개 있어요';
+    }
+    return '오늘 업무 현황을 알려드릴게요';
+  };
+  
   // 날씨 아이콘
   var getWeatherIcon = function() {
-    if (!weather) return React.createElement(Sun, { size: 16 });
+    if (!weather) return React.createElement(Sun, { size: 16, className: "text-yellow-400" });
     var condition = weather.condition || '';
     if (condition.includes('rain') || condition.includes('비')) return React.createElement(CloudRain, { size: 16, className: "text-blue-400" });
     if (condition.includes('cloud') || condition.includes('구름')) return React.createElement(Cloud, { size: 16, className: "text-gray-400" });
@@ -64,16 +84,18 @@ var AlfredoBriefing = function(props) {
   var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
   var textSecondary = darkMode ? 'text-gray-300' : 'text-gray-600';
   
-  return React.createElement('div', { className: cardBg + ' rounded-2xl p-4 mb-4 border ' + (darkMode ? 'border-[#A996FF]/20' : 'border-[#A996FF]/30') },
+  return React.createElement('div', { 
+    className: cardBg + ' rounded-2xl p-4 mb-4 border ' + (darkMode ? 'border-[#A996FF]/20' : 'border-[#A996FF]/30'),
+    onClick: onOpenChat
+  },
     // 헤더: 펭귄 + 인사
     React.createElement('div', { className: 'flex items-start gap-3 mb-3' },
       React.createElement('div', { className: 'text-2xl' }, '🐧'),
       React.createElement('div', { className: 'flex-1' },
         React.createElement('p', { className: textPrimary + ' font-medium text-sm' }, getGreeting()),
-        React.createElement('p', { className: textSecondary + ' text-xs mt-0.5' },
-          '오늘 업무 현황을 알려드릴게요'
-        )
-      )
+        React.createElement('p', { className: textSecondary + ' text-xs mt-0.5' }, getBriefingMessage())
+      ),
+      React.createElement(ChevronRight, { size: 18, className: textSecondary })
     ),
     
     // 통계 바
@@ -113,13 +135,13 @@ var AlfredoBriefing = function(props) {
   );
 };
 
-// 퀵 액션 버튼들
+// 퀵 액션 버튼들 (업무 맥락)
 var QuickActions = function(props) {
   var darkMode = props.darkMode;
   var onAddTask = props.onAddTask;
+  var onOpenProject = props.onOpenProject;
+  var onStartFocus = props.onStartFocus;
   var onOpenInbox = props.onOpenInbox;
-  var onOpenCalendar = props.onOpenCalendar;
-  var onOpenChat = props.onOpenChat;
   
   var btnClass = darkMode 
     ? 'bg-gray-800 hover:bg-gray-700 text-white border-gray-700' 
@@ -127,9 +149,9 @@ var QuickActions = function(props) {
   
   var actions = [
     { icon: Plus, label: '할일 추가', onClick: onAddTask, color: 'text-[#A996FF]' },
-    { icon: Inbox, label: '인박스', onClick: onOpenInbox, color: 'text-blue-500' },
-    { icon: Calendar, label: '캘린더', onClick: onOpenCalendar, color: 'text-emerald-500' },
-    { icon: MessageSquare, label: '알프레도', onClick: onOpenChat, color: 'text-purple-500' }
+    { icon: FolderKanban, label: '프로젝트', onClick: onOpenProject, color: 'text-amber-500' },
+    { icon: Target, label: '집중모드', onClick: onStartFocus, color: 'text-emerald-500' },
+    { icon: Inbox, label: '인박스', onClick: onOpenInbox, color: 'text-blue-500' }
   ];
   
   return React.createElement('div', { className: 'flex gap-2 mb-4 overflow-x-auto pb-2' },
@@ -157,8 +179,8 @@ var WorkPage = function(props) {
   var onOpenTask = props.onOpenTask;
   var onOpenProject = props.onOpenProject;
   var onOpenInbox = props.onOpenInbox;
-  var onOpenCalendar = props.onOpenCalendar;
   var onOpenChat = props.onOpenChat;
+  var onStartFocus = props.onStartFocus;
   var setView = props.setView;
   var weather = props.weather;
   var userName = props.userName;
@@ -274,22 +296,23 @@ var WorkPage = function(props) {
         )
       ),
       
-      // 알프레도 브리핑
+      // 알프레도 브리핑 (업무 버전)
       React.createElement(AlfredoBriefing, {
         darkMode: darkMode,
         tasks: tasks,
         events: events,
         weather: weather,
-        userName: userName
+        userName: userName,
+        onOpenChat: onOpenChat
       }),
       
-      // 퀵 액션 버튼
+      // 퀵 액션 버튼 (업무 맥락)
       React.createElement(QuickActions, {
         darkMode: darkMode,
         onAddTask: onOpenAddTask,
-        onOpenInbox: onOpenInbox,
-        onOpenCalendar: function() { if (setView) setView('CALENDAR'); },
-        onOpenChat: function() { if (setView) setView('CHAT'); }
+        onOpenProject: onOpenProject,
+        onStartFocus: onStartFocus,
+        onOpenInbox: onOpenInbox
       }),
       
       // 검색바
