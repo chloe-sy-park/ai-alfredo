@@ -38,7 +38,26 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        // 즉시 새 버전 활성화
+        skipWaiting: true,
+        clientsClaim: true,
+        // 캐시 버전 강제 업데이트
+        cleanupOutdatedCaches: true,
+        // 런타임 캐싱 - 네트워크 우선
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/.*\.js$/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'js-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 // 1시간
+              }
+            }
+          }
+        ]
       }
     })
   ],
