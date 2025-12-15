@@ -7,6 +7,7 @@ import {
   Heart, Users, Activity, Smile
 } from 'lucide-react';
 import UnifiedTimelineView from './UnifiedTimelineView';
+import { AlfredoEmptyState } from '../common/AlfredoEmptyState';
 
 // 알프레도 브리핑 컴포넌트
 var AlfredoBriefing = function(props) {
@@ -336,6 +337,7 @@ var NowCard = function(props) {
   var events = props.events || [];
   var onStartTask = props.onStartTask;
   var onOpenTask = props.onOpenTask;
+  var onAddTask = props.onAddTask;
   
   var cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
   var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
@@ -350,8 +352,10 @@ var NowCard = function(props) {
     return start <= now && now <= end;
   });
   
-  var topTask = tasks
-    .filter(function(t) { return !t.completed; })
+  var incompleteTasks = tasks.filter(function(t) { return !t.completed; });
+  var completedTasks = tasks.filter(function(t) { return t.completed; });
+  
+  var topTask = incompleteTasks
     .sort(function(a, b) {
       var priorityOrder = { high: 0, medium: 1, low: 2 };
       var aPriority = priorityOrder[a.priority] !== undefined ? priorityOrder[a.priority] : 1;
@@ -361,24 +365,37 @@ var NowCard = function(props) {
   
   var currentItem = currentEvent || topTask;
   
-  if (!currentItem) {
-    return React.createElement('div', { className: cardBg + ' rounded-2xl p-6 mb-4 border ' + borderColor + ' text-center' },
-      React.createElement('div', { className: 'text-4xl mb-2' }, '🎉'),
-      React.createElement('p', { className: textPrimary + ' font-bold' }, '모든 할 일을 완료했어요!'),
-      React.createElement('p', { className: textSecondary + ' text-sm mt-1' }, '잠시 쉬어가도 좋아요')
-    );
+  // 할 일이 없는 경우
+  if (tasks.length === 0) {
+    return React.createElement(AlfredoEmptyState, {
+      variant: 'noTasks',
+      darkMode: darkMode,
+      onAction: onAddTask,
+      compact: false
+    });
   }
   
-  var isEvent = currentItem.start !== undefined;
-  var title = currentItem.title || currentItem.summary || '';
+  // 모든 할 일 완료
+  if (incompleteTasks.length === 0 && completedTasks.length > 0) {
+    return React.createElement(AlfredoEmptyState, {
+      variant: 'allDone',
+      darkMode: darkMode,
+      onAction: onAddTask,
+      compact: false
+    });
+  }
+  
+  // 현재 할 일이 있는 경우
+  var isEvent = currentItem && currentItem.start !== undefined;
+  var title = currentItem ? (currentItem.title || currentItem.summary || '') : '';
   var subtitle = isEvent 
     ? new Date(currentItem.start).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) + ' - ' +
       new Date(currentItem.end || currentItem.start).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
-    : currentItem.project || '개인';
+    : (currentItem ? (currentItem.project || '개인') : '');
   
   return React.createElement('div', { 
     className: 'bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] rounded-2xl p-4 mb-4 text-white shadow-lg',
-    onClick: function() { if (onOpenTask && !isEvent) onOpenTask(currentItem); }
+    onClick: function() { if (onOpenTask && !isEvent && currentItem) onOpenTask(currentItem); }
   },
     React.createElement('div', { className: 'flex items-center gap-2 text-white/70 text-xs mb-2' },
       React.createElement(Target, { size: 14 }),
@@ -386,7 +403,7 @@ var NowCard = function(props) {
     ),
     React.createElement('h2', { className: 'text-lg font-bold mb-1 truncate' }, title),
     React.createElement('p', { className: 'text-white/70 text-sm mb-3' }, subtitle),
-    !isEvent && React.createElement('button', {
+    !isEvent && currentItem && React.createElement('button', {
       onClick: function(e) { 
         e.stopPropagation();
         if (onStartTask) onStartTask(currentItem); 
@@ -426,6 +443,12 @@ var HomePage = function(props) {
     month: 'long', 
     day: 'numeric', 
     weekday: 'long' 
+  });
+
+  // 오늘 이벤트만 필터
+  var todayEvents = events.filter(function(e) {
+    var eventDate = new Date(e.start);
+    return eventDate.toDateString() === today.toDateString();
   });
 
   return React.createElement('div', { className: bgColor + ' min-h-screen pb-24' },
@@ -497,7 +520,8 @@ var HomePage = function(props) {
         tasks: tasks,
         events: events,
         onStartTask: onStartFocus,
-        onOpenTask: onOpenTask
+        onOpenTask: onOpenTask,
+        onAddTask: onOpenAddTask
       }),
       
       // 오늘 일정 타임라인
@@ -506,14 +530,22 @@ var HomePage = function(props) {
           React.createElement(Calendar, { size: 18, className: 'text-emerald-500' }),
           '오늘 일정'
         ),
-        React.createElement(UnifiedTimelineView, {
-          darkMode: darkMode,
-          events: events,
-          tasks: tasks,
-          onEventClick: onOpenEvent,
-          onTaskClick: onOpenTask,
-          compact: true
-        })
+        todayEvents.length > 0 
+          ? React.createElement(UnifiedTimelineView, {
+              darkMode: darkMode,
+              events: events,
+              tasks: tasks,
+              onEventClick: onOpenEvent,
+              onTaskClick: onOpenTask,
+              compact: true
+            })
+          : React.createElement(AlfredoEmptyState, {
+              variant: 'noEvents',
+              darkMode: darkMode,
+              onAction: function() { if (setView) setView('CALENDAR'); },
+              compact: true,
+              showSuggestion: false
+            })
       )
     )
   );
