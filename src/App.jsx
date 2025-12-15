@@ -776,9 +776,18 @@ var App = function() {
           onBack: function() { setView('MORE'); },
           userName: userName,
           setUserName: setUserName,
-          isConnected: isConnected,
-          onConnectGoogle: function() { setShowGoogleAuth(true); },
-          onDisconnectGoogle: disconnectGoogle
+          connections: {
+            googleCalendar: isConnected,
+            gmail: false,
+            notion: false,
+            slack: false
+          },
+          onConnect: function(service) { 
+            if (service === 'googleCalendar') setShowGoogleAuth(true);
+          },
+          onDisconnect: function(service) {
+            if (service === 'googleCalendar') disconnectGoogle();
+          }
         }));
         
       case 'WEEKLY_REVIEW':
