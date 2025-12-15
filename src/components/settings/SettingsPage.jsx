@@ -1,13 +1,23 @@
 import React, { useState } from 'react';
 import { 
-  ArrowLeft, User, Bell, Moon, Palette, Shield, ChevronRight,
-  LogOut, Trash2, Database, Cloud, RefreshCw
+  ArrowLeft, User, Bell, Moon, Sun, Palette, Shield, ChevronRight,
+  LogOut, Trash2, Database, Cloud, RefreshCw, Settings, Zap, Plus
 } from 'lucide-react';
 
 // Other Components
 import GoogleAuthModal from '../modals/GoogleAuthModal';
 
-const SettingsPage = ({ userData, onUpdateUserData, onBack, darkMode, setDarkMode, onOpenWidgetGallery, connections, onConnect, onDisconnect }) => {
+const SettingsPage = ({ 
+  userName, 
+  setUserName,
+  onBack, 
+  darkMode, 
+  setDarkMode, 
+  onOpenWidgetGallery, 
+  connections, 
+  onConnect, 
+  onDisconnect 
+}) => {
   const [settings, setSettings] = useState({
     morningBriefing: true,
     briefingTime: '08:00',
@@ -23,11 +33,18 @@ const SettingsPage = ({ userData, onUpdateUserData, onBack, darkMode, setDarkMod
   // Google Auth Modal state
   const [authModal, setAuthModal] = useState({ isOpen: false, service: null });
   
+  // 다크모드 색상
+  const bgColor = darkMode ? 'bg-gray-900' : 'bg-[#F0EBFF]';
+  const cardBg = darkMode ? 'bg-gray-800' : 'bg-white/70';
+  const textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+  const textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  const borderColor = darkMode ? 'border-gray-700' : 'border-gray-200';
+  
   const ToggleSwitch = ({ enabled, onChange }) => (
     <button
       onClick={() => onChange(!enabled)}
       className={`w-12 h-7 rounded-full transition-all duration-200 ${
-        enabled ? 'bg-[#A996FF]' : 'bg-gray-200'
+        enabled ? 'bg-[#A996FF]' : (darkMode ? 'bg-gray-600' : 'bg-gray-200')
       }`}
     >
       <div className={`w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-200 ${
@@ -39,12 +56,12 @@ const SettingsPage = ({ userData, onUpdateUserData, onBack, darkMode, setDarkMod
   const SettingItem = ({ icon, title, description, children }) => (
     <div className="flex items-center justify-between py-4">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-[#F5F3FF] flex items-center justify-center text-lg">
+        <div className={`w-10 h-10 rounded-xl ${darkMode ? 'bg-gray-700' : 'bg-[#F5F3FF]'} flex items-center justify-center text-lg`}>
           {icon}
         </div>
         <div>
-          <p className="font-semibold text-gray-800">{title}</p>
-          {description && <p className="text-xs text-gray-400 mt-0.5">{description}</p>}
+          <p className={`font-semibold ${textPrimary}`}>{title}</p>
+          {description && <p className={`text-xs ${textSecondary} mt-0.5`}>{description}</p>}
         </div>
       </div>
       {children}
@@ -56,16 +73,22 @@ const SettingsPage = ({ userData, onUpdateUserData, onBack, darkMode, setDarkMod
       <div className="flex items-center gap-3">
         <span className="text-2xl">{icon}</span>
         <div>
-          <span className="font-medium text-gray-700">{name}</span>
-          {connected && <p className="text-xs text-emerald-500">user@gmail.com</p>}
+          <span className={`font-medium ${textPrimary}`}>{name}</span>
+          {connected && <p className="text-xs text-emerald-500">연결됨</p>}
         </div>
       </div>
       <button
-        onClick={() => setAuthModal({ isOpen: true, service: serviceKey })}
+        onClick={() => {
+          if (connected && onDisconnect) {
+            onDisconnect(serviceKey);
+          } else {
+            setAuthModal({ isOpen: true, service: serviceKey });
+          }
+        }}
         className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all ${
           connected 
             ? 'bg-emerald-50 text-emerald-600' 
-            : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+            : (darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-500 hover:bg-gray-200')
         }`}
       >
         {connected ? '연결됨 ✓' : '연결하기'}
@@ -74,44 +97,44 @@ const SettingsPage = ({ userData, onUpdateUserData, onBack, darkMode, setDarkMod
   );
   
   return (
-    <div className="flex-1 overflow-y-auto bg-[#F0EBFF]">
+    <div className={`flex-1 overflow-y-auto ${bgColor}`}>
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-4 bg-white/80 backdrop-blur-xl border-b border-black/5">
+      <div className={`flex items-center gap-3 px-4 py-4 ${darkMode ? 'bg-gray-800/80' : 'bg-white/80'} backdrop-blur-xl border-b ${borderColor}`}>
         <button 
           onClick={onBack}
-          className="w-10 h-10 rounded-full hover:bg-black/5 flex items-center justify-center text-gray-500"
+          className={`w-10 h-10 rounded-full ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-black/5'} flex items-center justify-center ${textSecondary}`}
         >
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-xl font-bold text-gray-800">설정</h1>
+        <h1 className={`text-xl font-bold ${textPrimary}`}>설정</h1>
       </div>
       
       <div className="p-4 pb-32 space-y-4">
         
         {/* 프로필 섹션 */}
-        <div className="bg-white/70 backdrop-blur-xl rounded-xl p-4">
+        <div className={`${cardBg} backdrop-blur-xl rounded-xl p-4`}>
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#A996FF] to-[#8B7BE8] flex items-center justify-center text-2xl text-white font-bold shadow-lg">
-              {userData?.name?.[0] || 'B'}
+              {userName?.[0] || 'B'}
             </div>
             <div className="flex-1">
-              <h2 className="text-lg font-bold text-gray-800">{userData?.name || 'Boss'}</h2>
-              <p className="text-sm text-gray-500">Life Butler 사용자</p>
+              <h2 className={`text-lg font-bold ${textPrimary}`}>{userName || 'Boss'}</h2>
+              <p className={`text-sm ${textSecondary}`}>Life Butler 사용자</p>
             </div>
-            <button className="p-2 rounded-full hover:bg-gray-100">
-              <Settings size={20} className="text-gray-400" />
+            <button className={`p-2 rounded-full ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
+              <Settings size={20} className={textSecondary} />
             </button>
           </div>
         </div>
         
         {/* 외관 설정 */}
-        <div className="bg-white/70 backdrop-blur-xl rounded-xl p-4">
-          <h3 className="font-bold text-gray-700 mb-2 flex items-center gap-2">
+        <div className={`${cardBg} backdrop-blur-xl rounded-xl p-4`}>
+          <h3 className={`font-bold ${textPrimary} mb-2 flex items-center gap-2`}>
             {darkMode ? <Moon size={18} className="text-[#A996FF]" /> : <Sun size={18} className="text-[#A996FF]" />}
             외관
           </h3>
           
-          <div className="divide-y divide-gray-100">
+          <div className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-100'}`}>
             <SettingItem 
               icon={darkMode ? "🌙" : "☀️"} 
               title="다크 모드" 
@@ -123,29 +146,31 @@ const SettingsPage = ({ userData, onUpdateUserData, onBack, darkMode, setDarkMod
               />
             </SettingItem>
             
-            <button 
-              onClick={onOpenWidgetGallery}
-              className="w-full"
-            >
-              <SettingItem 
-                icon="📱" 
-                title="위젯 갤러리" 
-                description="다양한 크기의 위젯 미리보기"
+            {onOpenWidgetGallery && (
+              <button 
+                onClick={onOpenWidgetGallery}
+                className="w-full"
               >
-                <ChevronRight size={20} className="text-gray-400" />
-              </SettingItem>
-            </button>
+                <SettingItem 
+                  icon="📱" 
+                  title="위젯 갤러리" 
+                  description="다양한 크기의 위젯 미리보기"
+                >
+                  <ChevronRight size={20} className={textSecondary} />
+                </SettingItem>
+              </button>
+            )}
           </div>
         </div>
         
         {/* 알림 설정 */}
-        <div className="bg-white/70 backdrop-blur-xl rounded-xl p-4">
-          <h3 className="font-bold text-gray-700 mb-2 flex items-center gap-2">
+        <div className={`${cardBg} backdrop-blur-xl rounded-xl p-4`}>
+          <h3 className={`font-bold ${textPrimary} mb-2 flex items-center gap-2`}>
             <Bell size={18} className="text-[#A996FF]" />
             알림 설정
           </h3>
           
-          <div className="divide-y divide-gray-100">
+          <div className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-100'}`}>
             <SettingItem 
               icon="🌅" 
               title="아침 브리핑" 
@@ -193,13 +218,13 @@ const SettingsPage = ({ userData, onUpdateUserData, onBack, darkMode, setDarkMod
         </div>
         
         {/* 연동 관리 */}
-        <div className="bg-white/70 backdrop-blur-xl rounded-xl p-4">
-          <h3 className="font-bold text-gray-700 mb-2 flex items-center gap-2">
+        <div className={`${cardBg} backdrop-blur-xl rounded-xl p-4`}>
+          <h3 className={`font-bold ${textPrimary} mb-2 flex items-center gap-2`}>
             <Zap size={18} className="text-[#A996FF]" />
             연동 서비스
           </h3>
           
-          <div className="divide-y divide-gray-100">
+          <div className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-100'}`}>
             <ConnectionItem 
               icon="📅" 
               name="Google Calendar" 
@@ -226,7 +251,7 @@ const SettingsPage = ({ userData, onUpdateUserData, onBack, darkMode, setDarkMod
             />
           </div>
           
-          <p className="text-xs text-gray-400 mt-3 text-center">
+          <p className={`text-xs ${textSecondary} mt-3 text-center`}>
             연동된 서비스에서 자동으로 일정과 태스크를 가져와요
           </p>
         </div>
@@ -239,16 +264,17 @@ const SettingsPage = ({ userData, onUpdateUserData, onBack, darkMode, setDarkMod
           isConnected={connections?.[authModal.service]}
           onConnect={onConnect}
           onDisconnect={onDisconnect}
+          darkMode={darkMode}
         />
         
         {/* 집중 모드 설정 */}
-        <div className="bg-white/70 backdrop-blur-xl rounded-xl p-4">
-          <h3 className="font-bold text-gray-700 mb-2 flex items-center gap-2">
+        <div className={`${cardBg} backdrop-blur-xl rounded-xl p-4`}>
+          <h3 className={`font-bold ${textPrimary} mb-2 flex items-center gap-2`}>
             <Zap size={18} className="text-[#A996FF]" />
             집중 모드
           </h3>
           
-          <div className="divide-y divide-gray-100">
+          <div className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-100'}`}>
             <SettingItem 
               icon="⏱️" 
               title="기본 집중 시간" 
@@ -279,29 +305,29 @@ const SettingsPage = ({ userData, onUpdateUserData, onBack, darkMode, setDarkMod
         </div>
         
         {/* 앱 정보 */}
-        <div className="bg-white/70 backdrop-blur-xl rounded-xl p-4">
-          <h3 className="font-bold text-gray-700 mb-2">앱 정보</h3>
+        <div className={`${cardBg} backdrop-blur-xl rounded-xl p-4`}>
+          <h3 className={`font-bold ${textPrimary} mb-2`}>앱 정보</h3>
           
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
-              <span className="text-gray-500">버전</span>
-              <span className="text-gray-700 font-medium">1.0.0 (Beta)</span>
+              <span className={textSecondary}>버전</span>
+              <span className={`${textPrimary} font-medium`}>1.0.0 (Beta)</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">빌드</span>
-              <span className="text-gray-700 font-medium">2024.12</span>
+              <span className={textSecondary}>빌드</span>
+              <span className={`${textPrimary} font-medium`}>2024.12</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">플랫폼</span>
-              <span className="text-gray-700 font-medium">PWA</span>
+              <span className={textSecondary}>플랫폼</span>
+              <span className={`${textPrimary} font-medium`}>PWA</span>
             </div>
           </div>
           
-          <div className="mt-4 pt-4 border-t border-gray-100 flex gap-2">
-            <button className="flex-1 py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-200">
+          <div className={`mt-4 pt-4 border-t ${borderColor} flex gap-2`}>
+            <button className={`flex-1 py-2.5 ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'} rounded-xl text-sm font-semibold hover:opacity-80`}>
               피드백 보내기
             </button>
-            <button className="flex-1 py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-200">
+            <button className={`flex-1 py-2.5 ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'} rounded-xl text-sm font-semibold hover:opacity-80`}>
               도움말
             </button>
           </div>
@@ -345,19 +371,19 @@ const SettingsPage = ({ userData, onUpdateUserData, onBack, darkMode, setDarkMod
         </div>
         
         {/* 데이터 관리 */}
-        <div className="bg-white/70 backdrop-blur-xl rounded-xl p-4">
-          <h3 className="font-bold text-gray-700 mb-2 flex items-center gap-2">
-            <Database size={18} className="text-gray-500" />
+        <div className={`${cardBg} backdrop-blur-xl rounded-xl p-4`}>
+          <h3 className={`font-bold ${textPrimary} mb-2 flex items-center gap-2`}>
+            <Database size={18} className={textSecondary} />
             데이터 관리
           </h3>
           
           <div className="space-y-3 text-sm mb-4">
             <div className="flex justify-between items-center">
-              <span className="text-gray-500">저장된 데이터</span>
-              <span className="text-gray-700 font-medium">로컬 저장소</span>
+              <span className={textSecondary}>저장된 데이터</span>
+              <span className={`${textPrimary} font-medium`}>로컬 저장소</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-500">자동 저장</span>
+              <span className={textSecondary}>자동 저장</span>
               <span className="text-emerald-600 font-medium flex items-center gap-1">
                 <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
                 활성화
@@ -404,7 +430,5 @@ const SettingsPage = ({ userData, onUpdateUserData, onBack, darkMode, setDarkMod
     </div>
   );
 };
-
-// === Home Page ===
 
 export default SettingsPage;
