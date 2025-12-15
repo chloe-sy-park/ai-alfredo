@@ -25,9 +25,16 @@ var CalendarPage = function(props) {
   var onDeleteEvent = props.onDeleteEvent;
   var onUpdateTask = props.onUpdateTask;
   var onSyncGoogleEvents = props.onSyncGoogleEvents;
+  // App.jsx에서 전달되는 props
+  var isConnectedProp = props.isConnected;
+  var onConnectProp = props.onConnect;
 
   // Google Calendar 훅
   var googleCalendar = useGoogleCalendar();
+  // 훅의 실제 속성명 사용
+  var isGoogleConnected = googleCalendar.isConnected;
+  var connectGoogle = googleCalendar.connect;
+  var syncEvents = googleCalendar.syncEvents;
   
   var viewModeState = useState('month');
   var viewMode = viewModeState[0];
@@ -73,71 +80,46 @@ var CalendarPage = function(props) {
 
   // Google Calendar에서 일정 불러오기
   var syncFromGoogle = useCallback(function() {
-    if (!googleCalendar.isSignedIn) {
-      googleCalendar.signIn();
+    if (!isGoogleConnected) {
+      // 연결되지 않았으면 App.jsx의 onConnect를 호출 (모달 열기)
+      if (onConnectProp) {
+        onConnectProp();
+      } else {
+        connectGoogle();
+      }
       return;
     }
     
     setIsSyncing(true);
     
-    var timeMin = new Date();
-    timeMin.setMonth(timeMin.getMonth() - 1);
-    timeMin.setDate(1);
-    timeMin.setHours(0, 0, 0, 0);
-    
-    var timeMax = new Date();
-    timeMax.setMonth(timeMax.getMonth() + 2);
-    timeMax.setDate(0);
-    timeMax.setHours(23, 59, 59, 999);
-    
-    googleCalendar.listEvents(
-      timeMin.toISOString(),
-      timeMax.toISOString()
-    ).then(function(result) {
-      if (result.events && result.events.length > 0) {
-        var googleEvents = result.events.map(function(gEvent) {
-          var startDateTime = gEvent.start && gEvent.start.dateTime ? gEvent.start.dateTime : (gEvent.start && gEvent.start.date ? gEvent.start.date : null);
-          var endDateTime = gEvent.end && gEvent.end.dateTime ? gEvent.end.dateTime : (gEvent.end && gEvent.end.date ? gEvent.end.date : null);
-          
-          var date, start, end;
-          if (gEvent.start && gEvent.start.dateTime) {
-            var startDateObj = new Date(startDateTime);
-            var endDateObj = new Date(endDateTime);
-            date = startDateObj.toISOString().split('T')[0];
-            start = startDateObj.toTimeString().slice(0, 5);
-            end = endDateObj.toTimeString().slice(0, 5);
-          } else {
-            date = startDateTime;
-            start = '00:00';
-            end = '23:59';
-          }
-          
-          return {
-            id: 'google-' + gEvent.id,
-            googleEventId: gEvent.id,
-            title: gEvent.summary || '(제목 없음)',
-            date: date,
-            start: start,
-            end: end,
-            location: gEvent.location || null,
-            color: 'bg-blue-500',
-            important: false,
-            fromGoogle: true,
-            description: gEvent.description || '',
-          };
-        });
-        
-        if (onSyncGoogleEvents) {
-          onSyncGoogleEvents(googleEvents);
-        }
+    // syncEvents 호출 (useGoogleCalendar 훅의 함수)
+    if (syncEvents) {
+      syncEvents().then(function() {
         setLastSyncTime(new Date());
-      }
-    }).catch(function(err) {
-      console.error('Google Calendar 동기화 실패:', err);
-    }).finally(function() {
+      }).catch(function(err) {
+        console.error('Google Calendar 동기화 실패:', err);
+      }).finally(function() {
+        setIsSyncing(false);
+      });
+    } else {
       setIsSyncing(false);
-    });
-  }, [googleCalendar, onSyncGoogleEvents]);
+    }
+  }, [isGoogleConnected, syncEvents, onConnectProp, connectGoogle]);
+
+  // 연결 버튼 클릭 핸들러
+  var handleConnectClick = function() {
+    if (isGoogleConnected) {
+      // 이미 연결됐으면 동기화
+      syncFromGoogle();
+    } else {
+      // 연결 안됐으면 모달 열기 (App.jsx의 onConnect 호출)
+      if (onConnectProp) {
+        onConnectProp();
+      } else {
+        connectGoogle();
+      }
+    }
+  };
 
   // 이벤트 저장
   var handleSaveEvent = function(event) {
@@ -359,9 +341,9 @@ var CalendarPage = function(props) {
         <div className={cardBg + " rounded-xl p-3 shadow-sm"}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className={"w-2 h-2 rounded-full " + (googleCalendar.isSignedIn ? 'bg-green-500' : 'bg-gray-400')} />
+              <div className={"w-2 h-2 rounded-full " + (isGoogleConnected ? 'bg-green-500' : 'bg-gray-400')} />
               <span className={"text-sm " + textPrimary}>
-                {googleCalendar.isSignedIn ? 'Google Calendar 연결됨' : 'Google Calendar 연결 안됨'}
+                {isGoogleConnected ? 'Google Calendar 연결됨' : 'Google Calendar 연결 안됨'}
               </span>
               {lastSyncTime && (
                 <span className={"text-xs " + textSecondary}>
@@ -370,14 +352,14 @@ var CalendarPage = function(props) {
               )}
             </div>
             <button
-              onClick={googleCalendar.isSignedIn ? syncFromGoogle : googleCalendar.signIn}
+              onClick={handleConnectClick}
               disabled={isSyncing}
               className={"flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all " + 
-                (googleCalendar.isSignedIn ? 'bg-[#A996FF]/10 text-[#8B7CF7] hover:bg-[#A996FF]/20' : 'bg-blue-500 text-white hover:bg-blue-600') + 
+                (isGoogleConnected ? 'bg-[#A996FF]/10 text-[#8B7CF7] hover:bg-[#A996FF]/20' : 'bg-blue-500 text-white hover:bg-blue-600') + 
                 (isSyncing ? ' opacity-50' : '')}
             >
               <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
-              {isSyncing ? '동기화 중...' : googleCalendar.isSignedIn ? '동기화' : '연결'}
+              {isSyncing ? '동기화 중...' : isGoogleConnected ? '동기화' : '연결'}
             </button>
           </div>
         </div>
