@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Home, Calendar, Briefcase, Heart, MoreHorizontal, MessageSquare,
-  Settings, X, Menu
+  Settings, X, Menu, Smile, Zap, Battery, Users, Plus
 } from 'lucide-react';
 
 // 페이지 컴포넌트
@@ -43,6 +43,212 @@ import { mockTasks, mockProjects, mockRoutines, mockWeather, mockRelationships }
 // 상수
 import { COLORS } from './constants/colors';
 import { GAMIFICATION } from './constants/gamification';
+
+// 기분 기록 모달 컴포넌트
+var MoodLogModal = function(props) {
+  var isOpen = props.isOpen;
+  var onClose = props.onClose;
+  var darkMode = props.darkMode;
+  var mood = props.mood;
+  var energy = props.energy;
+  var setMood = props.setMood;
+  var setEnergy = props.setEnergy;
+  
+  if (!isOpen) return null;
+  
+  var moods = [
+    { value: 1, emoji: '😫', label: '힘듦' },
+    { value: 2, emoji: '😔', label: '별로' },
+    { value: 3, emoji: '😐', label: '보통' },
+    { value: 4, emoji: '🙂', label: '좋음' },
+    { value: 5, emoji: '😄', label: '최고' }
+  ];
+  
+  var energyLevels = [
+    { value: 1, label: '방전', color: 'text-red-400' },
+    { value: 2, label: '부족', color: 'text-amber-400' },
+    { value: 3, label: '보통', color: 'text-yellow-400' },
+    { value: 4, label: '충분', color: 'text-emerald-400' },
+    { value: 5, label: '최고', color: 'text-green-400' }
+  ];
+  
+  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+  var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  
+  return React.createElement('div', {
+    className: 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4',
+    onClick: onClose
+  },
+    React.createElement('div', {
+      className: (darkMode ? 'bg-gray-800' : 'bg-white') + ' rounded-2xl p-6 max-w-sm w-full',
+      onClick: function(e) { e.stopPropagation(); }
+    },
+      // 헤더
+      React.createElement('div', { className: 'flex items-center justify-between mb-6' },
+        React.createElement('h3', { className: textPrimary + ' text-xl font-bold flex items-center gap-2' },
+          React.createElement('span', null, '🐧'),
+          '오늘 컨디션 기록'
+        ),
+        React.createElement('button', { onClick: onClose, className: textSecondary },
+          React.createElement(X, { size: 20 })
+        )
+      ),
+      
+      // 기분
+      React.createElement('div', { className: 'mb-6' },
+        React.createElement('p', { className: textSecondary + ' text-sm mb-3' }, '기분이 어때요?'),
+        React.createElement('div', { className: 'flex justify-between' },
+          moods.map(function(m) {
+            var isSelected = mood === m.value;
+            return React.createElement('button', {
+              key: m.value,
+              onClick: function() { if (setMood) setMood(m.value); },
+              className: 'flex flex-col items-center p-3 rounded-xl transition-all ' +
+                (isSelected 
+                  ? 'bg-[#A996FF]/20 scale-110 ring-2 ring-[#A996FF]' 
+                  : (darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'))
+            },
+              React.createElement('span', { className: 'text-2xl' }, m.emoji),
+              React.createElement('span', { className: textSecondary + ' text-xs mt-1' }, m.label)
+            );
+          })
+        )
+      ),
+      
+      // 에너지
+      React.createElement('div', { className: 'mb-6' },
+        React.createElement('p', { className: textSecondary + ' text-sm mb-3' }, '에너지 레벨은요?'),
+        React.createElement('div', { className: 'flex justify-between' },
+          energyLevels.map(function(e) {
+            var isSelected = energy === e.value;
+            return React.createElement('button', {
+              key: e.value,
+              onClick: function() { if (setEnergy) setEnergy(e.value); },
+              className: 'flex flex-col items-center p-3 rounded-xl transition-all ' +
+                (isSelected 
+                  ? 'bg-[#A996FF]/20 scale-110 ring-2 ring-[#A996FF]' 
+                  : (darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'))
+            },
+              React.createElement(e.value <= 2 ? Battery : Zap, { 
+                size: 24, 
+                className: isSelected ? e.color : textSecondary 
+              }),
+              React.createElement('span', { className: textSecondary + ' text-xs mt-1' }, e.label)
+            );
+          })
+        )
+      ),
+      
+      // 저장 버튼
+      React.createElement('button', {
+        onClick: onClose,
+        className: 'w-full py-3 bg-[#A996FF] text-white rounded-xl font-bold hover:bg-[#8B7CF7] transition-all'
+      }, '저장하기')
+    )
+  );
+};
+
+// 연락처 추가 모달 컴포넌트
+var AddRelationshipModal = function(props) {
+  var isOpen = props.isOpen;
+  var onClose = props.onClose;
+  var darkMode = props.darkMode;
+  var onAdd = props.onAdd;
+  
+  var nameState = useState('');
+  var name = nameState[0];
+  var setName = nameState[1];
+  
+  var relationState = useState('친구');
+  var relation = relationState[0];
+  var setRelation = relationState[1];
+  
+  if (!isOpen) return null;
+  
+  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+  var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  var inputBg = darkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200';
+  
+  var relations = ['가족', '친구', '직장동료', '지인', '기타'];
+  
+  var handleAdd = function() {
+    if (name.trim() && onAdd) {
+      onAdd({
+        id: 'rel-' + Date.now(),
+        name: name.trim(),
+        relation: relation,
+        lastContact: new Date().toISOString(),
+        contactFrequency: 30
+      });
+      setName('');
+      onClose();
+    }
+  };
+  
+  return React.createElement('div', {
+    className: 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4',
+    onClick: onClose
+  },
+    React.createElement('div', {
+      className: (darkMode ? 'bg-gray-800' : 'bg-white') + ' rounded-2xl p-6 max-w-sm w-full',
+      onClick: function(e) { e.stopPropagation(); }
+    },
+      // 헤더
+      React.createElement('div', { className: 'flex items-center justify-between mb-6' },
+        React.createElement('h3', { className: textPrimary + ' text-xl font-bold flex items-center gap-2' },
+          React.createElement(Users, { size: 20, className: 'text-pink-500' }),
+          '연락처 추가'
+        ),
+        React.createElement('button', { onClick: onClose, className: textSecondary },
+          React.createElement(X, { size: 20 })
+        )
+      ),
+      
+      // 이름 입력
+      React.createElement('div', { className: 'mb-4' },
+        React.createElement('label', { className: textSecondary + ' text-sm mb-2 block' }, '이름'),
+        React.createElement('input', {
+          type: 'text',
+          value: name,
+          onChange: function(e) { setName(e.target.value); },
+          placeholder: '이름을 입력하세요',
+          className: inputBg + ' border rounded-xl px-4 py-3 w-full outline-none focus:ring-2 focus:ring-[#A996FF] ' + textPrimary
+        })
+      ),
+      
+      // 관계 선택
+      React.createElement('div', { className: 'mb-6' },
+        React.createElement('label', { className: textSecondary + ' text-sm mb-2 block' }, '관계'),
+        React.createElement('div', { className: 'flex flex-wrap gap-2' },
+          relations.map(function(r) {
+            var isSelected = relation === r;
+            return React.createElement('button', {
+              key: r,
+              onClick: function() { setRelation(r); },
+              className: 'px-4 py-2 rounded-full text-sm font-medium transition-all ' +
+                (isSelected 
+                  ? 'bg-[#A996FF] text-white' 
+                  : (darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'))
+            }, r);
+          })
+        )
+      ),
+      
+      // 버튼
+      React.createElement('div', { className: 'flex gap-3' },
+        React.createElement('button', {
+          onClick: onClose,
+          className: 'flex-1 py-3 ' + (darkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-700') + ' rounded-xl font-medium'
+        }, '취소'),
+        React.createElement('button', {
+          onClick: handleAdd,
+          disabled: !name.trim(),
+          className: 'flex-1 py-3 bg-[#A996FF] text-white rounded-xl font-bold hover:bg-[#8B7CF7] transition-all disabled:opacity-50'
+        }, '추가')
+      )
+    )
+  );
+};
 
 var App = function() {
   // 기본 상태
@@ -132,6 +338,15 @@ var App = function() {
   var showReminderModalState = useState(false);
   var showReminderModal = showReminderModalState[0];
   var setShowReminderModal = showReminderModalState[1];
+  
+  // 새로 추가된 모달 상태
+  var showMoodLogModalState = useState(false);
+  var showMoodLogModal = showMoodLogModalState[0];
+  var setShowMoodLogModal = showMoodLogModalState[1];
+  
+  var showAddRelationshipModalState = useState(false);
+  var showAddRelationshipModal = showAddRelationshipModalState[0];
+  var setShowAddRelationshipModal = showAddRelationshipModalState[1];
   
   // 선택된 아이템
   var selectedEventState = useState(null);
@@ -263,6 +478,11 @@ var App = function() {
     setSelectedEvent(null);
   };
   
+  // 핸들러: 연락처 추가
+  var handleAddRelationship = function(newRelationship) {
+    setRelationships([newRelationship].concat(relationships));
+  };
+  
   // 네비게이션 아이템
   var navItems = [
     { view: 'HOME', icon: Home, label: '홈' },
@@ -341,8 +561,9 @@ var App = function() {
           setRoutines: setRoutines,
           relationships: relationships,
           onOpenRoutines: handleOpenRoutines,
-          onOpenJournal: function() { console.log('Open journal'); },
-          onOpenMoodLog: function() { console.log('Open mood log'); }
+          onOpenJournal: function() { setView('WEEKLY_REVIEW'); },
+          onOpenMoodLog: function() { setShowMoodLogModal(true); },
+          onAddRelationship: function() { setShowAddRelationshipModal(true); }
         }));
         
       case 'MORE':
@@ -533,6 +754,25 @@ var App = function() {
       onClose: function() { setShowGoogleAuth(false); },
       onConnect: connectGoogle,
       darkMode: darkMode
+    }),
+    
+    // 기분 기록 모달
+    React.createElement(MoodLogModal, {
+      isOpen: showMoodLogModal,
+      onClose: function() { setShowMoodLogModal(false); },
+      darkMode: darkMode,
+      mood: mood,
+      energy: energy,
+      setMood: setMood,
+      setEnergy: setEnergy
+    }),
+    
+    // 연락처 추가 모달
+    React.createElement(AddRelationshipModal, {
+      isOpen: showAddRelationshipModal,
+      onClose: function() { setShowAddRelationshipModal(false); },
+      darkMode: darkMode,
+      onAdd: handleAddRelationship
     }),
     
     // 리마인더 모달
