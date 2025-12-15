@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Send, Sparkles, Calendar, Target, Clock, Zap, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Send, Sparkles, Calendar, Target, Clock, Zap, CheckCircle2, RefreshCw, Plus } from 'lucide-react';
 
 // Common Components
 import { AlfredoAvatar } from '../common';

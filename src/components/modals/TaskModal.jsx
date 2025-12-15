@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   X, Clock, Target, Calendar, Zap, Play, Trash2, CheckCircle2, 
-  TrendingUp, TrendingDown, ChevronRight
+  TrendingUp, TrendingDown, ChevronRight, FileText, Briefcase, Sparkles, RefreshCw
 } from 'lucide-react';
 
 // Common Components

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
-  Plus, CheckCircle2, Circle, Clock, AlertCircle, ChevronRight, 
+  Plus, CheckCircle2, Circle, Clock, AlertCircle, ChevronRight, ChevronLeft,
   Star, Flag, Calendar, FolderKanban, Inbox, Filter, Search,
   Sparkles, TrendingUp, TrendingDown, Minus, MoreHorizontal,
   Sun, Cloud, CloudRain, Zap, Coffee, Moon, Target, MessageSquare,
