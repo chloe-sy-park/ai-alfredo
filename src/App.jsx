@@ -569,7 +569,7 @@ var App = function() {
   // 핸들러: 태스크 추가
   var handleAddTask = function(newTask) {
     var task = Object.assign({}, newTask, {
-      id: 'task-' + Date.now(),
+      id: newTask.id || ('task-' + Date.now()),
       createdAt: new Date().toISOString(),
       completed: false
     });
@@ -577,10 +577,26 @@ var App = function() {
     setShowAddTaskModal(false);
   };
   
-  // 핸들러: 태스크 업데이트
-  var handleUpdateTask = function(updatedTask) {
+  // 핸들러: 태스크 토글 (완료/미완료)
+  var handleToggleTask = function(taskId) {
     setTasks(tasks.map(function(t) {
-      return t.id === updatedTask.id ? updatedTask : t;
+      if (t.id === taskId) {
+        return Object.assign({}, t, { 
+          completed: !t.completed,
+          status: t.status === 'done' ? 'todo' : 'done'
+        });
+      }
+      return t;
+    }));
+  };
+  
+  // 핸들러: 태스크 업데이트
+  var handleUpdateTask = function(taskId, updates) {
+    setTasks(tasks.map(function(t) {
+      if (t.id === taskId) {
+        return Object.assign({}, t, updates);
+      }
+      return t;
     }));
     setShowTaskModal(false);
     setSelectedTask(null);
@@ -631,7 +647,7 @@ var App = function() {
   ];
   
   // 네비게이션 숨김 여부
-  var hideNavViews = ['CHAT', 'FOCUS', 'SETTINGS', 'WEEKLY_REVIEW', 'HABIT_HEATMAP', 'ENERGY_RHYTHM', 'PROJECT_DASHBOARD', 'INBOX'];
+  var hideNavViews = ['CHAT', 'FOCUS', 'SETTINGS', 'WEEKLY_REVIEW', 'HABIT_HEATMAP', 'ENERGY_RHYTHM', 'PROJECT_DASHBOARD', 'INBOX', 'JOURNAL'];
   var showNav = hideNavViews.indexOf(view) === -1;
   
   // 배경색
@@ -700,7 +716,7 @@ var App = function() {
           setRoutines: setRoutines,
           relationships: relationships,
           onOpenRoutines: handleOpenRoutines,
-          onOpenJournal: function() { setView('WEEKLY_REVIEW'); },
+          onOpenJournal: function() { setShowMoodLogModal(true); },
           onOpenMoodLog: function() { setShowMoodLogModal(true); },
           onAddRelationship: function() { setShowAddRelationshipModal(true); },
           onEditHealth: function() { setShowEditHealthModal(true); }
@@ -740,7 +756,7 @@ var App = function() {
           task: focusTask,
           onComplete: function() { 
             if (focusTask) {
-              handleUpdateTask(Object.assign({}, focusTask, { completed: true }));
+              handleToggleTask(focusTask.id);
             }
             setView('HOME');
           },
@@ -849,21 +865,20 @@ var App = function() {
       darkMode: darkMode
     }),
     
-    showTaskModal && React.createElement(TaskModal, {
-      isOpen: showTaskModal,
-      onClose: function() { setShowTaskModal(false); setSelectedTask(null); },
+    showTaskModal && selectedTask && React.createElement(TaskModal, {
       task: selectedTask,
-      onSave: handleUpdateTask,
-      onDelete: function() { handleDeleteTask(selectedTask.id); },
-      onStartFocus: function() { handleStartFocus(selectedTask); setShowTaskModal(false); },
-      projects: projects,
+      onClose: function() { setShowTaskModal(false); setSelectedTask(null); },
+      onToggle: handleToggleTask,
+      onUpdate: handleUpdateTask,
+      onDelete: handleDeleteTask,
+      onStartFocus: function(task) { handleStartFocus(task); setShowTaskModal(false); },
       darkMode: darkMode
     }),
     
     showAddTaskModal && React.createElement(AddTaskModal, {
       isOpen: showAddTaskModal,
       onClose: function() { setShowAddTaskModal(false); },
-      onSave: handleAddTask,
+      onAdd: handleAddTask,
       projects: projects,
       darkMode: darkMode
     }),
