@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Home, Calendar, Briefcase, Heart, MoreHorizontal, MessageSquare,
-  Settings, X, Menu, Smile, Zap, Battery, Users, Plus
+  Settings, X, Menu, Smile, Zap, Battery, Users, Plus, Edit3
 } from 'lucide-react';
 
 // 페이지 컴포넌트
@@ -250,6 +250,137 @@ var AddRelationshipModal = function(props) {
   );
 };
 
+// 건강 편집 모달 컴포넌트
+var EditHealthModal = function(props) {
+  var isOpen = props.isOpen;
+  var onClose = props.onClose;
+  var darkMode = props.darkMode;
+  var healthData = props.healthData || {};
+  var onSave = props.onSave;
+  
+  var waterState = useState(healthData.waterIntake || 0);
+  var water = waterState[0];
+  var setWater = waterState[1];
+  
+  var sleepState = useState(healthData.sleepHours || 7);
+  var sleep = sleepState[0];
+  var setSleep = sleepState[1];
+  
+  var stepsState = useState(healthData.steps || 0);
+  var steps = stepsState[0];
+  var setSteps = stepsState[1];
+  
+  var medicationState = useState(healthData.medication || false);
+  var medication = medicationState[0];
+  var setMedication = medicationState[1];
+  
+  if (!isOpen) return null;
+  
+  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+  var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  var inputBg = darkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200';
+  
+  var handleSave = function() {
+    if (onSave) {
+      onSave({
+        waterIntake: water,
+        waterGoal: healthData.waterGoal || 8,
+        sleepHours: sleep,
+        steps: steps,
+        medication: medication
+      });
+    }
+    onClose();
+  };
+  
+  return React.createElement('div', {
+    className: 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4',
+    onClick: onClose
+  },
+    React.createElement('div', {
+      className: (darkMode ? 'bg-gray-800' : 'bg-white') + ' rounded-2xl p-6 max-w-sm w-full',
+      onClick: function(e) { e.stopPropagation(); }
+    },
+      // 헤더
+      React.createElement('div', { className: 'flex items-center justify-between mb-6' },
+        React.createElement('h3', { className: textPrimary + ' text-xl font-bold flex items-center gap-2' },
+          React.createElement('span', null, '❤️'),
+          '건강 데이터 편집'
+        ),
+        React.createElement('button', { onClick: onClose, className: textSecondary },
+          React.createElement(X, { size: 20 })
+        )
+      ),
+      
+      // 물 섭취량
+      React.createElement('div', { className: 'mb-4' },
+        React.createElement('label', { className: textSecondary + ' text-sm mb-2 block' }, '물 섭취량 (잔)'),
+        React.createElement('div', { className: 'flex items-center gap-3' },
+          React.createElement('button', {
+            onClick: function() { setWater(Math.max(0, water - 1)); },
+            className: 'w-10 h-10 rounded-full ' + (darkMode ? 'bg-gray-700' : 'bg-gray-100') + ' flex items-center justify-center text-lg font-bold ' + textPrimary
+          }, '-'),
+          React.createElement('span', { className: textPrimary + ' text-2xl font-bold flex-1 text-center' }, water),
+          React.createElement('button', {
+            onClick: function() { setWater(water + 1); },
+            className: 'w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center text-lg font-bold'
+          }, '+')
+        )
+      ),
+      
+      // 수면 시간
+      React.createElement('div', { className: 'mb-4' },
+        React.createElement('label', { className: textSecondary + ' text-sm mb-2 block' }, '수면 시간'),
+        React.createElement('div', { className: 'flex items-center gap-3' },
+          React.createElement('button', {
+            onClick: function() { setSleep(Math.max(0, sleep - 0.5)); },
+            className: 'w-10 h-10 rounded-full ' + (darkMode ? 'bg-gray-700' : 'bg-gray-100') + ' flex items-center justify-center text-lg font-bold ' + textPrimary
+          }, '-'),
+          React.createElement('span', { className: textPrimary + ' text-2xl font-bold flex-1 text-center' }, sleep + '시간'),
+          React.createElement('button', {
+            onClick: function() { setSleep(sleep + 0.5); },
+            className: 'w-10 h-10 rounded-full bg-purple-500 text-white flex items-center justify-center text-lg font-bold'
+          }, '+')
+        )
+      ),
+      
+      // 걸음 수
+      React.createElement('div', { className: 'mb-4' },
+        React.createElement('label', { className: textSecondary + ' text-sm mb-2 block' }, '걸음 수'),
+        React.createElement('input', {
+          type: 'number',
+          value: steps,
+          onChange: function(e) { setSteps(parseInt(e.target.value) || 0); },
+          className: inputBg + ' border rounded-xl px-4 py-3 w-full outline-none focus:ring-2 focus:ring-[#A996FF] ' + textPrimary
+        })
+      ),
+      
+      // 약 복용
+      React.createElement('div', { className: 'mb-6' },
+        React.createElement('button', {
+          onClick: function() { setMedication(!medication); },
+          className: 'w-full flex items-center justify-between p-3 rounded-xl ' + (darkMode ? 'bg-gray-700' : 'bg-gray-100')
+        },
+          React.createElement('span', { className: textPrimary + ' font-medium' }, '약 복용 완료'),
+          React.createElement('div', {
+            className: (medication ? 'bg-emerald-500' : (darkMode ? 'bg-gray-600' : 'bg-gray-300')) + ' w-12 h-7 rounded-full relative transition-colors'
+          },
+            React.createElement('div', {
+              className: 'absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ' + (medication ? 'translate-x-5' : 'translate-x-0.5')
+            })
+          )
+        )
+      ),
+      
+      // 저장 버튼
+      React.createElement('button', {
+        onClick: handleSave,
+        className: 'w-full py-3 bg-[#A996FF] text-white rounded-xl font-bold hover:bg-[#8B7CF7] transition-all'
+      }, '저장하기')
+    )
+  );
+};
+
 var App = function() {
   // 기본 상태
   var viewState = useState('HOME');
@@ -347,6 +478,10 @@ var App = function() {
   var showAddRelationshipModalState = useState(false);
   var showAddRelationshipModal = showAddRelationshipModalState[0];
   var setShowAddRelationshipModal = showAddRelationshipModalState[1];
+  
+  var showEditHealthModalState = useState(false);
+  var showEditHealthModal = showEditHealthModalState[0];
+  var setShowEditHealthModal = showEditHealthModalState[1];
   
   // 선택된 아이템
   var selectedEventState = useState(null);
@@ -483,6 +618,11 @@ var App = function() {
     setRelationships([newRelationship].concat(relationships));
   };
   
+  // 핸들러: 건강 데이터 저장
+  var handleSaveHealth = function(newHealthData) {
+    setHealthData(newHealthData);
+  };
+  
   // 네비게이션 아이템
   var navItems = [
     { view: 'HOME', icon: Home, label: '홈' },
@@ -549,6 +689,7 @@ var App = function() {
           onOpenEvent: handleOpenEvent,
           onOpenTask: handleOpenTask,
           onAddEvent: function() { setSelectedEvent(null); setShowEventModal(true); },
+          onBack: function() { setView('HOME'); },
           isConnected: isConnected,
           onConnect: function() { setShowGoogleAuth(true); }
         }));
@@ -563,7 +704,8 @@ var App = function() {
           onOpenRoutines: handleOpenRoutines,
           onOpenJournal: function() { setView('WEEKLY_REVIEW'); },
           onOpenMoodLog: function() { setShowMoodLogModal(true); },
-          onAddRelationship: function() { setShowAddRelationshipModal(true); }
+          onAddRelationship: function() { setShowAddRelationshipModal(true); },
+          onEditHealth: function() { setShowEditHealthModal(true); }
         }));
         
       case 'MORE':
@@ -773,6 +915,15 @@ var App = function() {
       onClose: function() { setShowAddRelationshipModal(false); },
       darkMode: darkMode,
       onAdd: handleAddRelationship
+    }),
+    
+    // 건강 편집 모달
+    React.createElement(EditHealthModal, {
+      isOpen: showEditHealthModal,
+      onClose: function() { setShowEditHealthModal(false); },
+      darkMode: darkMode,
+      healthData: healthData,
+      onSave: handleSaveHealth
     }),
     
     // 리마인더 모달
