@@ -42,6 +42,38 @@ import { mockTasks, mockProjects, mockRoutines, mockWeather, mockRelationships }
 // 상수
 import { COLORS } from './constants/colors';
 
+// localStorage 키
+var STORAGE_KEYS = {
+  TASKS: 'lifebutler_tasks',
+  ROUTINES: 'lifebutler_routines',
+  HEALTH: 'lifebutler_health',
+  RELATIONSHIPS: 'lifebutler_relationships',
+  USER_SETTINGS: 'lifebutler_user_settings',
+  MOOD_ENERGY: 'lifebutler_mood_energy'
+};
+
+// localStorage에서 데이터 로드
+function loadFromStorage(key, defaultValue) {
+  try {
+    var stored = localStorage.getItem(key);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (e) {
+    console.warn('Failed to load from localStorage:', key, e);
+  }
+  return defaultValue;
+}
+
+// localStorage에 데이터 저장
+function saveToStorage(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    console.warn('Failed to save to localStorage:', key, e);
+  }
+}
+
 // 기분 기록 모달 컴포넌트
 var MoodLogModal = function(props) {
   var isOpen = props.isOpen;
@@ -385,25 +417,35 @@ var App = function() {
   var view = viewState[0];
   var setView = viewState[1];
   
-  var darkModeState = useState(false);
+  var darkModeState = useState(function() {
+    return loadFromStorage(STORAGE_KEYS.USER_SETTINGS, {}).darkMode || false;
+  });
   var darkMode = darkModeState[0];
   var setDarkMode = darkModeState[1];
   
   // 사용자 데이터
-  var userNameState = useState('Boss');
+  var userNameState = useState(function() {
+    return loadFromStorage(STORAGE_KEYS.USER_SETTINGS, {}).userName || 'Boss';
+  });
   var userName = userNameState[0];
   var setUserName = userNameState[1];
   
-  var moodState = useState(3);
+  var moodState = useState(function() {
+    return loadFromStorage(STORAGE_KEYS.MOOD_ENERGY, {}).mood || 3;
+  });
   var mood = moodState[0];
   var setMood = moodState[1];
   
-  var energyState = useState(3);
+  var energyState = useState(function() {
+    return loadFromStorage(STORAGE_KEYS.MOOD_ENERGY, {}).energy || 3;
+  });
   var energy = energyState[0];
   var setEnergy = energyState[1];
   
-  // 태스크 & 이벤트
-  var tasksState = useState(mockTasks || []);
+  // 태스크 & 이벤트 (localStorage에서 로드, 없으면 mockData 사용)
+  var tasksState = useState(function() {
+    return loadFromStorage(STORAGE_KEYS.TASKS, null) || mockTasks || [];
+  });
   var tasks = tasksState[0];
   var setTasks = tasksState[1];
   
@@ -411,21 +453,27 @@ var App = function() {
   var projects = projectsState[0];
   var setProjects = projectsState[1];
   
-  var routinesState = useState(mockRoutines || []);
+  var routinesState = useState(function() {
+    return loadFromStorage(STORAGE_KEYS.ROUTINES, null) || mockRoutines || [];
+  });
   var routines = routinesState[0];
   var setRoutines = routinesState[1];
   
-  var relationshipsState = useState(mockRelationships || []);
+  var relationshipsState = useState(function() {
+    return loadFromStorage(STORAGE_KEYS.RELATIONSHIPS, null) || mockRelationships || [];
+  });
   var relationships = relationshipsState[0];
   var setRelationships = relationshipsState[1];
   
   // 건강 데이터
-  var healthDataState = useState({
-    waterIntake: 3,
-    waterGoal: 8,
-    sleepHours: 7,
-    steps: 5234,
-    medication: false
+  var healthDataState = useState(function() {
+    return loadFromStorage(STORAGE_KEYS.HEALTH, null) || {
+      waterIntake: 3,
+      waterGoal: 8,
+      sleepHours: 7,
+      steps: 5234,
+      medication: false
+    };
   });
   var healthData = healthDataState[0];
   var setHealthData = healthDataState[1];
@@ -508,6 +556,7 @@ var App = function() {
   var addEvent = googleCalendar.addEvent;
   var updateEvent = googleCalendar.updateEvent;
   var deleteEvent = googleCalendar.deleteEvent;
+  var userEmail = googleCalendar.userEmail;
   
   // 알림 훅
   var smartNotifications = useSmartNotifications({
@@ -516,6 +565,38 @@ var App = function() {
     mood: mood,
     energy: energy
   });
+  
+  // localStorage 저장 효과
+  useEffect(function() {
+    saveToStorage(STORAGE_KEYS.TASKS, tasks);
+  }, [tasks]);
+  
+  useEffect(function() {
+    saveToStorage(STORAGE_KEYS.ROUTINES, routines);
+  }, [routines]);
+  
+  useEffect(function() {
+    saveToStorage(STORAGE_KEYS.HEALTH, healthData);
+  }, [healthData]);
+  
+  useEffect(function() {
+    saveToStorage(STORAGE_KEYS.RELATIONSHIPS, relationships);
+  }, [relationships]);
+  
+  useEffect(function() {
+    saveToStorage(STORAGE_KEYS.USER_SETTINGS, { userName: userName, darkMode: darkMode });
+  }, [userName, darkMode]);
+  
+  useEffect(function() {
+    saveToStorage(STORAGE_KEYS.MOOD_ENERGY, { mood: mood, energy: energy });
+  }, [mood, energy]);
+  
+  // Google 연결 상태 변경 시 모달 닫기
+  useEffect(function() {
+    if (isConnected && showGoogleAuth) {
+      setShowGoogleAuth(false);
+    }
+  }, [isConnected]);
   
   // 핸들러: 이벤트 열기
   var handleOpenEvent = function(event) {
@@ -681,7 +762,9 @@ var App = function() {
           onOpenInbox: handleOpenInbox,
           onOpenSearch: handleOpenSearch,
           onStartFocus: handleStartFocus,
-          onOpenReminder: handleOpenReminder
+          onOpenReminder: handleOpenReminder,
+          isGoogleConnected: isConnected,
+          onConnectGoogle: function() { setShowGoogleAuth(true); }
         }));
         
       case 'WORK':
@@ -827,7 +910,9 @@ var App = function() {
           onOpenInbox: handleOpenInbox,
           onOpenSearch: handleOpenSearch,
           onStartFocus: handleStartFocus,
-          onOpenReminder: handleOpenReminder
+          onOpenReminder: handleOpenReminder,
+          isGoogleConnected: isConnected,
+          onConnectGoogle: function() { setShowGoogleAuth(true); }
         }));
     }
   };
@@ -916,7 +1001,11 @@ var App = function() {
     showGoogleAuth && React.createElement(GoogleAuthModal, {
       isOpen: showGoogleAuth,
       onClose: function() { setShowGoogleAuth(false); },
+      service: 'googleCalendar',
       onConnect: connectGoogle,
+      onDisconnect: disconnectGoogle,
+      isConnected: isConnected,
+      userEmail: userEmail,
       darkMode: darkMode
     }),
     
