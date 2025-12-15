@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { CheckCircle2, Trash2, Clock, Circle } from 'lucide-react';
+import { CheckCircle2, Trash2, Clock, Circle, ChevronLeft } from 'lucide-react';
 
 // Common Components
 import { DomainBadge } from '../common';
