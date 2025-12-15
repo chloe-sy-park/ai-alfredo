@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { 
   ArrowLeft, TrendingUp, TrendingDown, Target, Flame, Award, 
-  Calendar, CheckCircle2, Clock, ChevronRight, Star
+  Calendar, CheckCircle2, Clock, ChevronRight, ChevronLeft, Star,
+  Zap, Briefcase, Sparkles
 } from 'lucide-react';
 
 // Common Components
@@ -10,7 +11,24 @@ import { AlfredoAvatar } from '../common';
 // Constants
 import { LEVEL_CONFIG, BADGES } from '../../constants/gamification';
 
-const WeeklyReviewPage = ({ onBack, gameState, allTasks, darkMode }) => {
+// Default gameState to prevent crashes
+const DEFAULT_GAME_STATE = {
+  totalXP: 0,
+  todayXP: 0,
+  todayTasks: 0,
+  streak: 0,
+  weeklyXP: [0, 0, 0, 0, 0, 0, 0],
+  totalCompleted: 0,
+  big3Completed: 0,
+  focusSessions: 0,
+  focusMinutes: 0,
+  unlockedBadges: [],
+};
+
+const WeeklyReviewPage = ({ onBack, gameState: rawGameState, allTasks, darkMode }) => {
+  // Defensive: merge with defaults
+  const gameState = { ...DEFAULT_GAME_STATE, ...rawGameState };
+  
   const [selectedWeek, setSelectedWeek] = useState(0); // 0 = 이번 주, -1 = 지난 주
   
   // 날짜 계산
@@ -27,7 +45,7 @@ const WeeklyReviewPage = ({ onBack, gameState, allTasks, darkMode }) => {
   const levelInfo = LEVEL_CONFIG.getLevel(gameState.totalXP);
   
   // 주간 통계 계산
-  const weeklyXP = gameState.weeklyXP;
+  const weeklyXP = gameState.weeklyXP || [0, 0, 0, 0, 0, 0, 0];
   const totalWeeklyXP = weeklyXP.reduce((a, b) => a + b, 0);
   const maxDailyXP = Math.max(...weeklyXP, 1);
   const avgDailyXP = Math.round(totalWeeklyXP / 7);
@@ -271,7 +289,7 @@ const WeeklyReviewPage = ({ onBack, gameState, allTasks, darkMode }) => {
                     <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                       <div 
                         className={`h-full rounded-full ${
-                          i === 0 ? 'bg-[#A996FF]' : i === 1 ? 'bg-gray-400' : 'bg-[#A996FF]300'
+                          i === 0 ? 'bg-[#A996FF]' : i === 1 ? 'bg-gray-400' : 'bg-[#A996FF]/50'
                         }`}
                         style={{ width: `${(count / topProjects[0][1]) * 100}%` }}
                       />
@@ -306,7 +324,7 @@ const WeeklyReviewPage = ({ onBack, gameState, allTasks, darkMode }) => {
         {/* 연속 달성 */}
         <div className={`${cardBg} rounded-xl p-5 shadow-sm`}>
           <h3 className={`font-bold ${textPrimary} mb-4 flex items-center gap-2`}>
-            <Flame size={18} className="text-[#A996FF]500" /> 연속 달성
+            <Flame size={18} className="text-orange-500" /> 연속 달성
           </h3>
           <div className="flex items-center justify-center gap-4">
             <div className="text-center">

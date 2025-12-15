@@ -4,6 +4,20 @@ import { X, Award, Flame, Target, TrendingUp, Calendar, CheckCircle2, Star, Trop
 // Constants
 import { LEVEL_CONFIG, BADGES } from '../../constants/gamification';
 
+// Default gameState to prevent crashes
+const DEFAULT_GAME_STATE = {
+  totalXP: 0,
+  todayXP: 0,
+  todayTasks: 0,
+  streak: 0,
+  weeklyXP: [0, 0, 0, 0, 0, 0, 0],
+  totalCompleted: 0,
+  big3Completed: 0,
+  focusSessions: 0,
+  focusMinutes: 0,
+  unlockedBadges: [],
+};
+
 const LevelUpModal = ({ level, onClose }) => {
   if (!level) return null;
   
@@ -82,7 +96,7 @@ const NewBadgeModal = ({ badge, onClose }) => {
       
       <div className="relative w-[320px] bg-white rounded-xl overflow-hidden animate-in zoom-in-95 shadow-2xl">
         {/* 헤더 */}
-        <div className="bg-gradient-to-r from-[#A996FF] to-[#EDE9FE]0 p-6 text-center">
+        <div className="bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] p-6 text-center">
           <div className="text-6xl mb-2">{badge.icon}</div>
           <p className="text-white/80 text-sm">새 배지 획득!</p>
         </div>
@@ -94,7 +108,7 @@ const NewBadgeModal = ({ badge, onClose }) => {
           
           <button
             onClick={onClose}
-            className="w-full py-4 bg-gradient-to-r from-[#A996FF] to-[#EDE9FE]0 text-white font-bold rounded-xl hover:opacity-90 transition-opacity"
+            className="w-full py-4 bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] text-white font-bold rounded-xl hover:opacity-90 transition-opacity"
           >
             멋져요! 🎉
           </button>
@@ -106,8 +120,11 @@ const NewBadgeModal = ({ badge, onClose }) => {
 
 // === Stats Modal (프로필 & 통계) ===
 
-const StatsModal = ({ isOpen, onClose, gameState }) => {
+const StatsModal = ({ isOpen, onClose, gameState: rawGameState }) => {
   if (!isOpen) return null;
+  
+  // Defensive: merge with defaults
+  const gameState = { ...DEFAULT_GAME_STATE, ...rawGameState };
   
   const levelInfo = LEVEL_CONFIG.getLevel(gameState.totalXP);
   const progressPercent = (levelInfo.currentXP / levelInfo.requiredXP) * 100;
@@ -116,7 +133,8 @@ const StatsModal = ({ isOpen, onClose, gameState }) => {
   const lockedBadges = BADGES.filter(b => !gameState.unlockedBadges.includes(b.id));
   
   // 주간 XP 최대값 (그래프용)
-  const maxWeeklyXP = Math.max(...gameState.weeklyXP, 100);
+  const weeklyXP = gameState.weeklyXP || [0, 0, 0, 0, 0, 0, 0];
+  const maxWeeklyXP = Math.max(...weeklyXP, 100);
   const weekDays = ['일', '월', '화', '수', '목', '금', '토'];
   const today = new Date().getDay();
   
@@ -162,7 +180,7 @@ const StatsModal = ({ isOpen, onClose, gameState }) => {
           {/* 오늘 통계 */}
           <div className="bg-gray-50 rounded-xl p-4 mb-4">
             <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-              <Flame size={18} className="text-[#A996FF]500" /> 오늘의 성과
+              <Flame size={18} className="text-orange-500" /> 오늘의 성과
             </h3>
             <div className="grid grid-cols-3 gap-3">
               <div className="text-center">
@@ -174,7 +192,7 @@ const StatsModal = ({ isOpen, onClose, gameState }) => {
                 <p className="text-xs text-gray-500">태스크 완료</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-[#A996FF]500">{gameState.streak}</p>
+                <p className="text-2xl font-bold text-orange-500">{gameState.streak}</p>
                 <p className="text-xs text-gray-500">연속 달성</p>
               </div>
             </div>
@@ -186,7 +204,7 @@ const StatsModal = ({ isOpen, onClose, gameState }) => {
               <TrendingUp size={18} className="text-gray-600" /> 이번 주 XP
             </h3>
             <div className="flex items-end justify-between h-24 gap-1">
-              {gameState.weeklyXP.map((xp, i) => (
+              {weeklyXP.map((xp, i) => (
                 <div key={i} className="flex-1 flex flex-col items-center">
                   <div 
                     className={`w-full rounded-t-lg transition-all ${
@@ -230,7 +248,7 @@ const StatsModal = ({ isOpen, onClose, gameState }) => {
           {/* 배지 */}
           <div className="bg-gray-50 rounded-xl p-4">
             <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-              <Award size={18} className="text-[#F5F3FF]0" /> 배지 ({unlockedBadges.length}/{BADGES.length})
+              <Award size={18} className="text-amber-500" /> 배지 ({unlockedBadges.length}/{BADGES.length})
             </h3>
             
             {/* 획득한 배지 */}

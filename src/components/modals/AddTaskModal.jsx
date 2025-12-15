@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Clock, Target, Calendar, ChevronDown } from 'lucide-react';
+import { X, Clock, Target, Calendar, ChevronDown, Plus } from 'lucide-react';
 
 // Data
 import { mockProjects } from '../../data/mockData';

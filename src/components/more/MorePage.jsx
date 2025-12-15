@@ -6,6 +6,15 @@ import {
   Sparkles, Trophy, TrendingUp, Heart
 } from 'lucide-react';
 
+// Default gameState to prevent crashes
+const DEFAULT_GAME_STATE = {
+  totalXP: 0,
+  todayXP: 0,
+  todayTasks: 0,
+  streak: 0,
+  focusSessions: 0,
+};
+
 var MorePage = function(props) {
   var darkMode = props.darkMode;
   var connections = props.connections || {};
@@ -16,7 +25,9 @@ var MorePage = function(props) {
   var onOpenEnergyRhythm = props.onOpenEnergyRhythm;
   var onOpenProjectDashboard = props.onOpenProjectDashboard;
   var onOpenSettings = props.onOpenSettings;
-  var gameState = props.gameState;
+  
+  // Defensive: merge with defaults
+  var gameState = Object.assign({}, DEFAULT_GAME_STATE, props.gameState);
 
   // 다크모드 색상
   var bgGradient = darkMode 
@@ -149,29 +160,27 @@ var MorePage = function(props) {
         </div>
 
         {/* ===== 빠른 통계 ===== */}
-        {gameState && (
-          <div className={cardBg + ' backdrop-blur-xl rounded-2xl shadow-sm p-4 mb-4 border ' + borderColor}>
-            <div className="flex items-center gap-2 mb-3">
-              <Trophy size={18} className="text-amber-500" />
-              <span className={textPrimary + ' font-bold'}>이번 주 성과</span>
+        <div className={cardBg + ' backdrop-blur-xl rounded-2xl shadow-sm p-4 mb-4 border ' + borderColor}>
+          <div className="flex items-center gap-2 mb-3">
+            <Trophy size={18} className="text-amber-500" />
+            <span className={textPrimary + ' font-bold'}>이번 주 성과</span>
+          </div>
+          
+          <div className="grid grid-cols-3 gap-3">
+            <div className={(darkMode ? 'bg-gray-700/50' : 'bg-[#F5F3FF]') + ' rounded-xl p-3 text-center'}>
+              <p className="text-2xl font-bold text-[#A996FF]">{gameState.todayXP || 0}</p>
+              <p className={textSecondary + ' text-xs'}>오늘 XP</p>
             </div>
-            
-            <div className="grid grid-cols-3 gap-3">
-              <div className={(darkMode ? 'bg-gray-700/50' : 'bg-[#F5F3FF]') + ' rounded-xl p-3 text-center'}>
-                <p className="text-2xl font-bold text-[#A996FF]">{gameState.todayXP || 0}</p>
-                <p className={textSecondary + ' text-xs'}>오늘 XP</p>
-              </div>
-              <div className={(darkMode ? 'bg-gray-700/50' : 'bg-emerald-50') + ' rounded-xl p-3 text-center'}>
-                <p className="text-2xl font-bold text-emerald-500">{gameState.todayTasks || 0}</p>
-                <p className={textSecondary + ' text-xs'}>완료 태스크</p>
-              </div>
-              <div className={(darkMode ? 'bg-gray-700/50' : 'bg-amber-50') + ' rounded-xl p-3 text-center'}>
-                <p className="text-2xl font-bold text-amber-500">{gameState.focusSessions || 0}</p>
-                <p className={textSecondary + ' text-xs'}>집중 세션</p>
-              </div>
+            <div className={(darkMode ? 'bg-gray-700/50' : 'bg-emerald-50') + ' rounded-xl p-3 text-center'}>
+              <p className="text-2xl font-bold text-emerald-500">{gameState.todayTasks || 0}</p>
+              <p className={textSecondary + ' text-xs'}>완료 태스크</p>
+            </div>
+            <div className={(darkMode ? 'bg-gray-700/50' : 'bg-amber-50') + ' rounded-xl p-3 text-center'}>
+              <p className="text-2xl font-bold text-amber-500">{gameState.focusSessions || 0}</p>
+              <p className={textSecondary + ' text-xs'}>집중 세션</p>
             </div>
           </div>
-        )}
+        </div>
 
         {/* ===== 연동 서비스 ===== */}
         <div className={cardBg + ' backdrop-blur-xl rounded-2xl shadow-lg p-5 mb-4 border ' + borderColor}>
