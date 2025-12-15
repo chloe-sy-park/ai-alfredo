@@ -1,216 +1,250 @@
-import React, { useMemo } from 'react';
-import { ChevronRight, Target, Zap, Coffee, Moon, Sun, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { ChevronRight, Zap, TrendingUp, Calendar, CheckCircle2 } from 'lucide-react';
 
-// 상황별 알프레도 표정과 한마디
-function getAlfredoState(props) {
-  var hour = new Date().getHours();
-  var tasks = props.tasks || [];
-  var events = props.events || [];
+// 알프레도 표정 결정
+function getAlfredoFace(props) {
   var mood = props.mood || 3;
   var energy = props.energy || 3;
+  var completionRate = props.completionRate || 0;
+  var hour = new Date().getHours();
+  var hasUrgent = props.hasUrgent;
+  var hasMeetingSoon = props.hasMeetingSoon;
   
-  var totalTasks = tasks.length;
-  var completedTasks = tasks.filter(function(t) { return t.completed || t.status === 'done'; }).length;
-  var completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  // 우선순위 순서로 체크
   
-  var incompleteTasks = totalTasks - completedTasks;
-  var urgentTasks = tasks.filter(function(t) { 
-    return !t.completed && t.status !== 'done' && (t.priority === 'high' || t.urgent); 
-  }).length;
-  
-  // 다음 미팅 확인
-  var now = new Date();
-  var upcomingMeeting = events.find(function(e) {
-    var start = new Date(e.start);
-    var diff = (start - now) / (1000 * 60); // 분 단위
-    return diff > 0 && diff <= 30;
-  });
-  
-  // 상태 결정 (우선순위 순)
-  
-  // 1. 모든 할 일 완료
-  if (totalTasks > 0 && completionRate === 100) {
-    return {
-      emoji: '🎉',
-      expression: 'celebrating',
-      message: '오늘 할 일 모두 완료! 대단해요!',
-      color: 'from-emerald-500 to-green-500'
-    };
+  // 1. 미팅 임박
+  if (hasMeetingSoon) {
+    return { emoji: '📅', mood: 'alert' };
   }
   
-  // 2. 컨디션 안 좋음
-  if (mood <= 2 || energy <= 2) {
-    return {
-      emoji: '🤗',
-      expression: 'caring',
-      message: '오늘 좀 힘드시죠? 천천히 해요',
-      color: 'from-pink-500 to-rose-500'
-    };
+  // 2. 긴급 할 일
+  if (hasUrgent) {
+    return { emoji: '💪', mood: 'focused' };
   }
   
-  // 3. 곧 미팅
-  if (upcomingMeeting) {
-    var minutes = Math.round((new Date(upcomingMeeting.start) - now) / (1000 * 60));
-    return {
-      emoji: '⏰',
-      expression: 'alert',
-      message: minutes + '분 후 미팅이에요!',
-      color: 'from-amber-500 to-orange-500'
-    };
+  // 3. 모든 할 일 완료
+  if (completionRate >= 1) {
+    return { emoji: '🎉', mood: 'celebration' };
   }
   
-  // 4. 긴급 할 일 있음
-  if (urgentTasks > 0) {
-    return {
-      emoji: '🔥',
-      expression: 'focused',
-      message: '긴급 ' + urgentTasks + '개, 집중해볼까요?',
-      color: 'from-red-500 to-orange-500'
-    };
+  // 4. 절반 이상 완료
+  if (completionRate >= 0.5) {
+    return { emoji: '🔥', mood: 'motivated' };
   }
   
-  // 5. 50% 이상 완료
-  if (completionRate >= 50) {
-    return {
-      emoji: '💪',
-      expression: 'encouraging',
-      message: '절반 넘었어요! 조금만 더!',
-      color: 'from-purple-500 to-indigo-500'
-    };
+  // 5. 에너지/기분 기반
+  if (energy <= 2 || mood <= 2) {
+    return { emoji: '😴', mood: 'tired' };
   }
   
-  // 6. 시간대별 기본 상태
+  // 6. 시간대별 기본
   if (hour < 6) {
-    return {
-      emoji: '😴',
-      expression: 'sleepy',
-      message: '새벽이에요... 푹 쉬세요',
-      color: 'from-indigo-500 to-purple-500'
-    };
+    return { emoji: '🌙', mood: 'night' };
   }
-  
-  if (hour < 10) {
-    return {
-      emoji: '☀️',
-      expression: 'cheerful',
-      message: '좋은 아침! 오늘도 화이팅!',
-      color: 'from-yellow-500 to-orange-500'
-    };
+  if (hour < 12) {
+    return { emoji: '☀️', mood: 'morning' };
   }
-  
-  if (hour < 14) {
-    return {
-      emoji: '🍚',
-      expression: 'normal',
-      message: '점심은 드셨나요?',
-      color: 'from-[#A996FF] to-[#8B7CF7]'
-    };
-  }
-  
   if (hour < 18) {
-    return {
-      emoji: '💼',
-      expression: 'working',
-      message: '오후도 힘내요!',
-      color: 'from-blue-500 to-cyan-500'
-    };
+    return { emoji: '😊', mood: 'default' };
   }
-  
   if (hour < 22) {
-    return {
-      emoji: '🌙',
-      expression: 'relaxed',
-      message: '오늘 수고했어요',
-      color: 'from-indigo-500 to-purple-500'
-    };
+    return { emoji: '🌆', mood: 'evening' };
   }
-  
-  return {
-    emoji: '🌛',
-    expression: 'night',
-    message: '늦은 시간이에요, 쉬어요',
-    color: 'from-slate-600 to-slate-700'
-  };
+  return { emoji: '🌛', mood: 'latenight' };
 }
 
-// 알프레도 상태바 컴포넌트
+// 알프레도 한마디 결정
+function getAlfredoMessage(props) {
+  var userName = props.userName || 'Boss';
+  var completionRate = props.completionRate || 0;
+  var remainingTasks = props.remainingTasks || 0;
+  var nextEventMinutes = props.nextEventMinutes;
+  var mood = props.mood || 3;
+  var energy = props.energy || 3;
+  var hour = new Date().getHours();
+  var face = props.face;
+  
+  // 상황별 메시지
+  switch(face.mood) {
+    case 'alert':
+      return nextEventMinutes + '분 후 미팅이에요! 준비되셨나요?';
+    case 'focused':
+      return '긴급한 일이 있어요. 먼저 처리할까요?';
+    case 'celebration':
+      return '오늘 할 일 완료! 정말 대단해요 🎊';
+    case 'motivated':
+      return '절반 넘었어요! 조금만 더 힘내요 💪';
+    case 'tired':
+      return '무리하지 마세요. 천천히 해도 괜찮아요';
+    case 'night':
+      return '이 시간까지... 푹 쉬세요, ' + userName + '님';
+    case 'morning':
+      if (remainingTasks > 0) {
+        return '오늘 ' + remainingTasks + '개 할 일이 있어요!';
+      }
+      return '좋은 아침이에요! 오늘도 파이팅 ☀️';
+    case 'evening':
+      if (remainingTasks > 0) {
+        return '아직 ' + remainingTasks + '개 남았어요. 괜찮아요?';
+      }
+      return '오늘 하루 수고하셨어요 🌙';
+    case 'latenight':
+      return '늦은 시간이에요. 내일 해도 괜찮아요';
+    default:
+      if (remainingTasks > 3) {
+        return '할 일이 좀 많네요. 하나씩 해봐요!';
+      }
+      if (remainingTasks > 0) {
+        return remainingTasks + '개만 더 하면 끝이에요!';
+      }
+      return '무엇을 도와드릴까요?';
+  }
+}
+
+// 진행률 바 컴포넌트
+var ProgressBar = function(props) {
+  var progress = props.progress || 0;
+  var darkMode = props.darkMode;
+  
+  var bgColor = darkMode ? 'bg-gray-700' : 'bg-gray-200';
+  var fillColor = progress >= 1 
+    ? 'bg-gradient-to-r from-green-500 to-emerald-500'
+    : progress >= 0.5
+      ? 'bg-gradient-to-r from-[#A996FF] to-[#8B7CF7]'
+      : 'bg-gradient-to-r from-amber-500 to-orange-500';
+  
+  return React.createElement('div', { className: bgColor + ' h-1.5 rounded-full overflow-hidden flex-1' },
+    React.createElement('div', {
+      className: fillColor + ' h-full rounded-full transition-all duration-500',
+      style: { width: Math.min(progress * 100, 100) + '%' }
+    })
+  );
+};
+
+// 알프레도 상태바 메인 컴포넌트
 var AlfredoStatusBar = function(props) {
   var darkMode = props.darkMode;
-  var tasks = props.tasks || [];
-  var events = props.events || [];
+  var userName = props.userName || 'Boss';
   var mood = props.mood;
   var energy = props.energy;
+  var tasks = props.tasks || [];
+  var events = props.events || [];
   var onOpenChat = props.onOpenChat;
-  var userName = props.userName || 'Boss';
   
-  // 상태 계산
-  var alfredoState = useMemo(function() {
-    return getAlfredoState({
-      tasks: tasks,
-      events: events,
-      mood: mood,
-      energy: energy
+  // 통계 계산
+  var stats = useMemo(function() {
+    var now = new Date();
+    var todayStr = now.toDateString();
+    
+    // 오늘 할 일만 필터 (선택적)
+    var allTasks = tasks;
+    var completed = allTasks.filter(function(t) { 
+      return t.completed || t.status === 'done'; 
     });
-  }, [tasks, events, mood, energy]);
+    var remaining = allTasks.filter(function(t) { 
+      return !t.completed && t.status !== 'done'; 
+    });
+    var urgent = remaining.filter(function(t) { 
+      return t.priority === 'high' || t.urgent; 
+    });
+    
+    // 다음 이벤트까지 남은 시간
+    var upcomingEvents = events.filter(function(e) {
+      return new Date(e.start) > now;
+    }).sort(function(a, b) {
+      return new Date(a.start) - new Date(b.start);
+    });
+    
+    var nextEvent = upcomingEvents[0];
+    var nextEventMinutes = null;
+    var hasMeetingSoon = false;
+    
+    if (nextEvent) {
+      var diff = (new Date(nextEvent.start) - now) / 1000 / 60;
+      nextEventMinutes = Math.round(diff);
+      hasMeetingSoon = diff <= 15;
+    }
+    
+    var total = allTasks.length;
+    var completionRate = total > 0 ? completed.length / total : 0;
+    
+    return {
+      total: total,
+      completed: completed.length,
+      remaining: remaining.length,
+      urgent: urgent.length,
+      completionRate: completionRate,
+      hasUrgent: urgent.length > 0,
+      hasMeetingSoon: hasMeetingSoon,
+      nextEventMinutes: nextEventMinutes,
+      nextEvent: nextEvent
+    };
+  }, [tasks, events]);
   
-  // 진행률 계산
-  var totalTasks = tasks.length;
-  var completedTasks = tasks.filter(function(t) { return t.completed || t.status === 'done'; }).length;
-  var completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  // 알프레도 표정 & 메시지
+  var face = getAlfredoFace({
+    mood: mood,
+    energy: energy,
+    completionRate: stats.completionRate,
+    hasUrgent: stats.hasUrgent,
+    hasMeetingSoon: stats.hasMeetingSoon
+  });
   
+  var message = getAlfredoMessage({
+    userName: userName,
+    completionRate: stats.completionRate,
+    remainingTasks: stats.remaining,
+    nextEventMinutes: stats.nextEventMinutes,
+    mood: mood,
+    energy: energy,
+    face: face
+  });
+  
+  // 스타일
   var bgClass = darkMode 
-    ? 'bg-gray-900/95 border-gray-800' 
+    ? 'bg-gray-800/95 border-gray-700' 
     : 'bg-white/95 border-gray-200';
   var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
   var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
   
   return React.createElement('div', {
-    className: 'sticky top-0 z-30 ' + bgClass + ' backdrop-blur-xl border-b px-4 py-3'
+    className: 'fixed top-0 left-0 right-0 z-50 backdrop-blur-xl border-b ' + bgClass,
+    style: { paddingTop: 'env(safe-area-inset-top)' }
   },
     React.createElement('div', {
-      className: 'flex items-center gap-3',
-      onClick: onOpenChat,
-      style: { cursor: 'pointer' }
+      className: 'px-4 py-3 flex items-center gap-3',
+      onClick: onOpenChat
     },
-      // 알프레도 아바타 + 표정
-      React.createElement('div', {
-        className: 'relative'
+      // 펭귄 + 표정
+      React.createElement('div', { 
+        className: 'relative flex-shrink-0'
       },
-        React.createElement('div', {
-          className: 'w-10 h-10 rounded-full bg-gradient-to-br ' + alfredoState.color + ' flex items-center justify-center text-lg shadow-lg'
-        }, '🐧'),
-        // 표정 배지
-        React.createElement('div', {
-          className: 'absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white shadow flex items-center justify-center text-xs'
-        }, alfredoState.emoji)
+        React.createElement('span', { className: 'text-2xl' }, '🐧'),
+        React.createElement('span', { 
+          className: 'absolute -top-1 -right-1 text-sm'
+        }, face.emoji)
       ),
       
-      // 한마디 + 진행률
+      // 메시지 + 진행률
       React.createElement('div', { className: 'flex-1 min-w-0' },
         React.createElement('p', { 
-          className: textPrimary + ' font-medium text-sm truncate' 
-        }, alfredoState.message),
+          className: textPrimary + ' text-sm font-medium truncate'
+        }, message),
         React.createElement('div', { className: 'flex items-center gap-2 mt-1' },
-          // 진행률 바
-          React.createElement('div', { 
-            className: 'flex-1 h-1.5 rounded-full ' + (darkMode ? 'bg-gray-700' : 'bg-gray-200') 
-          },
-            React.createElement('div', {
-              className: 'h-full rounded-full bg-gradient-to-r ' + alfredoState.color + ' transition-all duration-500',
-              style: { width: completionRate + '%' }
-            })
-          ),
-          // 진행률 텍스트
+          React.createElement(ProgressBar, { 
+            progress: stats.completionRate, 
+            darkMode: darkMode 
+          }),
           React.createElement('span', { 
-            className: textSecondary + ' text-xs font-medium whitespace-nowrap' 
-          }, completedTasks + '/' + totalTasks)
+            className: textSecondary + ' text-xs flex-shrink-0'
+          }, stats.completed + '/' + stats.total)
         )
       ),
       
       // 화살표
       React.createElement(ChevronRight, { 
         size: 18, 
-        className: textSecondary 
+        className: textSecondary + ' flex-shrink-0'
       })
     )
   );
