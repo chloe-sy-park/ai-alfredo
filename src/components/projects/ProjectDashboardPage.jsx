@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   ArrowLeft, Plus, ChevronRight, Clock, Target, Calendar, 
-  CheckCircle2, TrendingUp, MoreHorizontal
+  CheckCircle2, TrendingUp, MoreHorizontal, HardDrive, Settings
 } from 'lucide-react';
 
 // Other Components
@@ -108,7 +108,7 @@ const ProjectDashboardPage = ({
                 : textSecondary
             }`}
           >
-            <Database size={16} /> 카드뷰
+            <HardDrive size={16} /> 카드뷰
           </button>
           <button
             onClick={() => setViewMode('timeline')}
