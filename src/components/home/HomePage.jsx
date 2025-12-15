@@ -251,13 +251,18 @@ var RemindersSection = function(props) {
   );
 };
 
-// 컨디션 퀵체크
+// 컨디션 퀵체크 - 하루 1회 체크 후 간소화
 var ConditionQuickCheck = function(props) {
   var darkMode = props.darkMode;
   var mood = props.mood;
   var energy = props.energy;
   var setMood = props.setMood;
   var setEnergy = props.setEnergy;
+  
+  // 수정 모드 상태
+  var editModeState = useState(false);
+  var isEditMode = editModeState[0];
+  var setIsEditMode = editModeState[1];
   
   var cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
   var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
@@ -273,17 +278,49 @@ var ConditionQuickCheck = function(props) {
   ];
   
   var energyLevels = [
-    { value: 1, icon: Battery, label: '방전', color: 'text-red-400' },
-    { value: 2, icon: Battery, label: '부족', color: 'text-amber-400' },
-    { value: 3, icon: Zap, label: '보통', color: 'text-yellow-400' },
-    { value: 4, icon: Zap, label: '충분', color: 'text-emerald-400' },
-    { value: 5, icon: Zap, label: '최고', color: 'text-green-400' }
+    { value: 1, label: '방전', color: 'text-red-400' },
+    { value: 2, label: '부족', color: 'text-amber-400' },
+    { value: 3, label: '보통', color: 'text-yellow-400' },
+    { value: 4, label: '충분', color: 'text-emerald-400' },
+    { value: 5, label: '최고', color: 'text-green-400' }
   ];
   
+  // 이미 체크 완료 (mood와 energy 둘 다 있음)
+  var isChecked = mood && energy;
+  
+  // 체크 완료 & 수정모드 아님 → 간소화된 배지 UI
+  if (isChecked && !isEditMode) {
+    var currentMood = moods.find(function(m) { return m.value === mood; }) || moods[2];
+    var currentEnergy = energyLevels.find(function(e) { return e.value === energy; }) || energyLevels[2];
+    var batteryIcon = energy <= 2 ? '🪫' : '🔋';
+    
+    return React.createElement('button', { 
+      onClick: function() { setIsEditMode(true); },
+      className: cardBg + ' rounded-2xl p-3 mb-4 border ' + borderColor + ' w-full flex items-center justify-between hover:border-[#A996FF]/50 transition-all'
+    },
+      React.createElement('div', { className: 'flex items-center gap-3' },
+        React.createElement('span', { className: 'text-xl' }, currentMood.emoji),
+        React.createElement('div', { className: 'flex items-center gap-2 text-sm' },
+          React.createElement('span', { className: textPrimary }, '기분 ' + currentMood.label),
+          React.createElement('span', { className: textSecondary }, '•'),
+          React.createElement('span', { className: currentEnergy.color }, batteryIcon + ' 에너지 ' + currentEnergy.label)
+        )
+      ),
+      React.createElement('span', { className: textSecondary + ' text-xs' }, '수정')
+    );
+  }
+  
+  // 미체크 또는 수정모드 → 전체 선택 UI
   return React.createElement('div', { className: cardBg + ' rounded-2xl p-4 mb-4 border ' + borderColor },
-    React.createElement('h3', { className: textPrimary + ' font-bold mb-3 flex items-center gap-2' },
-      React.createElement(Smile, { size: 18, className: 'text-amber-400' }),
-      '오늘 컨디션'
+    React.createElement('div', { className: 'flex items-center justify-between mb-3' },
+      React.createElement('h3', { className: textPrimary + ' font-bold flex items-center gap-2' },
+        React.createElement(Smile, { size: 18, className: 'text-amber-400' }),
+        '오늘 컨디션'
+      ),
+      isEditMode && React.createElement('button', {
+        onClick: function() { setIsEditMode(false); },
+        className: 'text-xs text-[#A996FF] font-medium'
+      }, '완료')
     ),
     
     // 기분
@@ -313,6 +350,7 @@ var ConditionQuickCheck = function(props) {
       React.createElement('div', { className: 'flex justify-between' },
         energyLevels.map(function(e) {
           var isSelected = energy === e.value;
+          var batteryEmoji = e.value <= 2 ? '🪫' : '🔋';
           return React.createElement('button', {
             key: e.value,
             onClick: function() { if (setEnergy) setEnergy(e.value); },
@@ -321,7 +359,7 @@ var ConditionQuickCheck = function(props) {
                 ? 'bg-[#A996FF]/20 scale-110' 
                 : (darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'))
           },
-            React.createElement(e.icon, { size: 20, className: isSelected ? e.color : textSecondary }),
+            React.createElement('span', { className: 'text-lg' }, batteryEmoji),
             React.createElement('span', { className: textSecondary + ' text-[10px] mt-1' }, e.label)
           );
         })
