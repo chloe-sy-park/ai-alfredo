@@ -30,6 +30,7 @@ import GoogleAuthModal from './components/modals/GoogleAuthModal';
 
 // 알림
 import { SmartNotificationToast, NotificationCenter } from './components/notifications';
+import AlfredoNudge from './components/common/AlfredoNudge';
 
 // 훅
 import { useGoogleCalendar } from './hooks/useGoogleCalendar';
@@ -718,6 +719,39 @@ var App = function() {
     setHealthData(newHealthData);
   };
   
+  // 넛지 액션 핸들러
+  var handleNudgeAction = function(type, data) {
+    switch(type) {
+      case 'conditionCheck':
+        setView('HOME');
+        break;
+      case 'waterReminder':
+        setHealthData(function(prev) {
+          return Object.assign({}, prev, { waterIntake: (prev.waterIntake || 0) + 1 });
+        });
+        break;
+      case 'taskReminder':
+        setView('WORK');
+        break;
+      case 'meetingSoon':
+        setView('CALENDAR');
+        break;
+      case 'focusBreak':
+        break;
+      case 'halfwayDone':
+        setView('WORK');
+        break;
+      case 'allDone':
+        break;
+      case 'eveningReview':
+        setView('WEEKLY_REVIEW');
+        break;
+      case 'morningBriefing':
+        handleOpenChat();
+        break;
+    }
+  };
+  
   // 네비게이션 아이템
   var navItems = [
     { view: 'HOME', icon: Home, label: '홈' },
@@ -920,6 +954,19 @@ var App = function() {
   return React.createElement('div', { className: bgColor + ' min-h-screen' },
     // 메인 콘텐츠
     renderPage(),
+    
+    // 알프레도 넛지 (말풍선)
+    showNav && React.createElement(AlfredoNudge, {
+      darkMode: darkMode,
+      mood: mood,
+      energy: energy,
+      waterIntake: healthData.waterIntake,
+      waterGoal: healthData.waterGoal,
+      tasks: tasks,
+      events: events,
+      focusMinutes: 0,
+      onAction: handleNudgeAction
+    }),
     
     // 플로팅 알프레도 버튼
     showNav && React.createElement('button', {
