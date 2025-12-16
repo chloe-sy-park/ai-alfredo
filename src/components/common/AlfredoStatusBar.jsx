@@ -1,105 +1,129 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronRight, Zap, TrendingUp, Calendar, CheckCircle2 } from 'lucide-react';
+import React from 'react';
+import { ChevronRight, Zap } from 'lucide-react';
 
-// 알프레도 표정 결정
-function getAlfredoFace(props) {
-  var mood = props.mood || 3;
-  var energy = props.energy || 3;
-  var completionRate = props.completionRate || 0;
+// 상황별 알프레도 표정 & 한마디
+var getAlfredoState = function(props) {
+  var mood = props.mood;
+  var energy = props.energy;
+  var tasks = props.tasks || [];
+  var events = props.events || [];
   var hour = new Date().getHours();
-  var hasUrgent = props.hasUrgent;
-  var hasMeetingSoon = props.hasMeetingSoon;
   
-  // 우선순위 순서로 체크
+  var incompleteTasks = tasks.filter(function(t) { return !t.completed; });
+  var completedTasks = tasks.filter(function(t) { return t.completed; });
+  var totalTasks = tasks.length;
+  var completionRate = totalTasks > 0 ? completedTasks.length / totalTasks : 0;
   
-  // 1. 미팅 임박
-  if (hasMeetingSoon) {
-    return { emoji: '📅', mood: 'alert' };
+  // 긴급 태스크
+  var urgentTasks = incompleteTasks.filter(function(t) { 
+    return t.priority === 'high' || t.urgent; 
+  });
+  
+  // 다가오는 미팅 (30분 이내)
+  var now = new Date();
+  var upcomingMeeting = events.find(function(e) {
+    var start = new Date(e.start);
+    var diff = (start - now) / 1000 / 60;
+    return diff > 0 && diff <= 30;
+  });
+  
+  // 1. 모든 할일 완료!
+  if (totalTasks > 0 && completionRate === 1) {
+    return {
+      expression: '🎉🐧',
+      message: '오늘 할 일 완료! 수고했어요, Boss!',
+      mood: 'celebration'
+    };
   }
   
-  // 2. 긴급 할 일
-  if (hasUrgent) {
-    return { emoji: '💪', mood: 'focused' };
-  }
-  
-  // 3. 모든 할 일 완료
-  if (completionRate >= 1) {
-    return { emoji: '🎉', mood: 'celebration' };
-  }
-  
-  // 4. 절반 이상 완료
+  // 2. 절반 이상 완료
   if (completionRate >= 0.5) {
-    return { emoji: '🔥', mood: 'motivated' };
+    return {
+      expression: '🔥🐧',
+      message: '절반 넘었어요! 조금만 더 힘내요!',
+      mood: 'motivated'
+    };
   }
   
-  // 5. 에너지/기분 기반
-  if (energy <= 2 || mood <= 2) {
-    return { emoji: '😴', mood: 'tired' };
+  // 3. 곧 미팅!
+  if (upcomingMeeting) {
+    var minutesLeft = Math.ceil((new Date(upcomingMeeting.start) - now) / 1000 / 60);
+    return {
+      expression: '📅🐧',
+      message: minutesLeft + '분 후 미팅이에요! 준비되셨나요?',
+      mood: 'alert'
+    };
   }
   
-  // 6. 시간대별 기본
+  // 4. 긴급 태스크 있음
+  if (urgentTasks.length > 0) {
+    return {
+      expression: '😤🐧',
+      message: '긴급 할 일 ' + urgentTasks.length + '개! 집중해봐요!',
+      mood: 'urgent'
+    };
+  }
+  
+  // 5. 에너지 낮음
+  if (energy && energy <= 2) {
+    return {
+      expression: '😴🐧',
+      message: '에너지가 부족해 보여요. 잠깐 쉬어갈까요?',
+      mood: 'tired'
+    };
+  }
+  
+  // 6. 기분 안좋음
+  if (mood && mood <= 2) {
+    return {
+      expression: '🤗🐧',
+      message: '힘든 날이에요. 천천히 해도 괜찮아요.',
+      mood: 'caring'
+    };
+  }
+  
+  // 7. 시간대별 기본 상태
   if (hour < 6) {
-    return { emoji: '🌙', mood: 'night' };
+    return {
+      expression: '😪🐧',
+      message: '새벽이네요... 푹 주무셨나요?',
+      mood: 'sleepy'
+    };
   }
-  if (hour < 12) {
-    return { emoji: '☀️', mood: 'morning' };
+  if (hour < 10) {
+    return {
+      expression: '☀️🐧',
+      message: '좋은 아침이에요! 오늘도 화이팅!',
+      mood: 'morning'
+    };
+  }
+  if (hour < 14) {
+    return {
+      expression: '😊🐧',
+      message: '점심은 드셨나요? 든든하게!',
+      mood: 'normal'
+    };
   }
   if (hour < 18) {
-    return { emoji: '😊', mood: 'default' };
+    return {
+      expression: '💪🐧',
+      message: '오후도 파이팅! 잘하고 있어요!',
+      mood: 'motivated'
+    };
   }
   if (hour < 22) {
-    return { emoji: '🌆', mood: 'evening' };
+    return {
+      expression: '🌙🐧',
+      message: '하루 마무리 잘 하고 있어요!',
+      mood: 'evening'
+    };
   }
-  return { emoji: '🌛', mood: 'latenight' };
-}
-
-// 알프레도 한마디 결정
-function getAlfredoMessage(props) {
-  var userName = props.userName || 'Boss';
-  var completionRate = props.completionRate || 0;
-  var remainingTasks = props.remainingTasks || 0;
-  var nextEventMinutes = props.nextEventMinutes;
-  var mood = props.mood || 3;
-  var energy = props.energy || 3;
-  var hour = new Date().getHours();
-  var face = props.face;
-  
-  // 상황별 메시지
-  switch(face.mood) {
-    case 'alert':
-      return nextEventMinutes + '분 후 미팅이에요! 준비되셨나요?';
-    case 'focused':
-      return '긴급한 일이 있어요. 먼저 처리할까요?';
-    case 'celebration':
-      return '오늘 할 일 완료! 정말 대단해요 🎊';
-    case 'motivated':
-      return '절반 넘었어요! 조금만 더 힘내요 💪';
-    case 'tired':
-      return '무리하지 마세요. 천천히 해도 괜찮아요';
-    case 'night':
-      return '이 시간까지... 푹 쉬세요, ' + userName + '님';
-    case 'morning':
-      if (remainingTasks > 0) {
-        return '오늘 ' + remainingTasks + '개 할 일이 있어요!';
-      }
-      return '좋은 아침이에요! 오늘도 파이팅 ☀️';
-    case 'evening':
-      if (remainingTasks > 0) {
-        return '아직 ' + remainingTasks + '개 남았어요. 괜찮아요?';
-      }
-      return '오늘 하루 수고하셨어요 🌙';
-    case 'latenight':
-      return '늦은 시간이에요. 내일 해도 괜찮아요';
-    default:
-      if (remainingTasks > 3) {
-        return '할 일이 좀 많네요. 하나씩 해봐요!';
-      }
-      if (remainingTasks > 0) {
-        return remainingTasks + '개만 더 하면 끝이에요!';
-      }
-      return '무엇을 도와드릴까요?';
-  }
-}
+  return {
+    expression: '🌛🐧',
+    message: '늦은 시간이에요. 오늘도 수고했어요!',
+    mood: 'night'
+  };
+};
 
 // 진행률 바 컴포넌트
 var ProgressBar = function(props) {
@@ -107,147 +131,96 @@ var ProgressBar = function(props) {
   var darkMode = props.darkMode;
   
   var bgColor = darkMode ? 'bg-gray-700' : 'bg-gray-200';
-  var fillColor = progress >= 1 
-    ? 'bg-gradient-to-r from-green-500 to-emerald-500'
+  var progressColor = progress >= 1 
+    ? 'bg-gradient-to-r from-green-400 to-emerald-500'
     : progress >= 0.5
       ? 'bg-gradient-to-r from-[#A996FF] to-[#8B7CF7]'
-      : 'bg-gradient-to-r from-amber-500 to-orange-500';
+      : 'bg-gradient-to-r from-amber-400 to-orange-500';
   
-  return React.createElement('div', { className: bgColor + ' h-1.5 rounded-full overflow-hidden flex-1' },
-    React.createElement('div', {
-      className: fillColor + ' h-full rounded-full transition-all duration-500',
-      style: { width: Math.min(progress * 100, 100) + '%' }
-    })
+  return React.createElement('div', { className: 'flex items-center gap-2' },
+    React.createElement('div', { className: bgColor + ' h-1.5 flex-1 rounded-full overflow-hidden' },
+      React.createElement('div', {
+        className: progressColor + ' h-full rounded-full transition-all duration-500',
+        style: { width: Math.min(progress * 100, 100) + '%' }
+      })
+    ),
+    React.createElement('span', { 
+      className: (darkMode ? 'text-gray-400' : 'text-gray-500') + ' text-xs font-medium min-w-[36px] text-right'
+    }, Math.round(progress * 100) + '%')
   );
 };
 
-// 알프레도 상태바 메인 컴포넌트
+// 알프레도 상태바 컴포넌트
 var AlfredoStatusBar = function(props) {
   var darkMode = props.darkMode;
-  var userName = props.userName || 'Boss';
   var mood = props.mood;
   var energy = props.energy;
   var tasks = props.tasks || [];
   var events = props.events || [];
   var onOpenChat = props.onOpenChat;
+  var sticky = props.sticky !== false; // 기본값 true
   
-  // 통계 계산
-  var stats = useMemo(function() {
-    var now = new Date();
-    var todayStr = now.toDateString();
-    
-    // 오늘 할 일만 필터 (선택적)
-    var allTasks = tasks;
-    var completed = allTasks.filter(function(t) { 
-      return t.completed || t.status === 'done'; 
-    });
-    var remaining = allTasks.filter(function(t) { 
-      return !t.completed && t.status !== 'done'; 
-    });
-    var urgent = remaining.filter(function(t) { 
-      return t.priority === 'high' || t.urgent; 
-    });
-    
-    // 다음 이벤트까지 남은 시간
-    var upcomingEvents = events.filter(function(e) {
-      return new Date(e.start) > now;
-    }).sort(function(a, b) {
-      return new Date(a.start) - new Date(b.start);
-    });
-    
-    var nextEvent = upcomingEvents[0];
-    var nextEventMinutes = null;
-    var hasMeetingSoon = false;
-    
-    if (nextEvent) {
-      var diff = (new Date(nextEvent.start) - now) / 1000 / 60;
-      nextEventMinutes = Math.round(diff);
-      hasMeetingSoon = diff <= 15;
-    }
-    
-    var total = allTasks.length;
-    var completionRate = total > 0 ? completed.length / total : 0;
-    
-    return {
-      total: total,
-      completed: completed.length,
-      remaining: remaining.length,
-      urgent: urgent.length,
-      completionRate: completionRate,
-      hasUrgent: urgent.length > 0,
-      hasMeetingSoon: hasMeetingSoon,
-      nextEventMinutes: nextEventMinutes,
-      nextEvent: nextEvent
-    };
-  }, [tasks, events]);
-  
-  // 알프레도 표정 & 메시지
-  var face = getAlfredoFace({
+  var state = getAlfredoState({
     mood: mood,
     energy: energy,
-    completionRate: stats.completionRate,
-    hasUrgent: stats.hasUrgent,
-    hasMeetingSoon: stats.hasMeetingSoon
+    tasks: tasks,
+    events: events
   });
   
-  var message = getAlfredoMessage({
-    userName: userName,
-    completionRate: stats.completionRate,
-    remainingTasks: stats.remaining,
-    nextEventMinutes: stats.nextEventMinutes,
-    mood: mood,
-    energy: energy,
-    face: face
-  });
+  var completedTasks = tasks.filter(function(t) { return t.completed; });
+  var totalTasks = tasks.length;
+  var progress = totalTasks > 0 ? completedTasks.length / totalTasks : 0;
   
-  // 스타일
   var bgClass = darkMode 
-    ? 'bg-gray-800/95 border-gray-700' 
-    : 'bg-white/95 border-gray-200';
+    ? 'bg-gray-900/95 backdrop-blur-sm border-gray-800' 
+    : 'bg-white/95 backdrop-blur-sm border-gray-200';
   var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
   var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
   
-  return React.createElement('div', {
-    className: 'fixed top-0 left-0 right-0 z-50 backdrop-blur-xl border-b ' + bgClass,
-    style: { paddingTop: 'env(safe-area-inset-top)' }
-  },
-    React.createElement('div', {
-      className: 'px-4 py-3 flex items-center gap-3',
-      onClick: onOpenChat
+  // 무드별 악센트 색상
+  var getMoodAccent = function() {
+    switch (state.mood) {
+      case 'celebration': return 'border-l-green-500';
+      case 'motivated': return 'border-l-[#A996FF]';
+      case 'alert': return 'border-l-amber-500';
+      case 'urgent': return 'border-l-red-500';
+      case 'tired': return 'border-l-blue-400';
+      case 'caring': return 'border-l-pink-400';
+      default: return 'border-l-[#A996FF]';
+    }
+  };
+  
+  var containerClass = bgClass + ' border-b px-4 py-3 border-l-4 ' + getMoodAccent();
+  if (sticky) {
+    containerClass += ' sticky top-0 z-40';
+  }
+  
+  return React.createElement('div', { className: containerClass },
+    React.createElement('button', {
+      onClick: onOpenChat,
+      className: 'w-full'
     },
-      // 펭귄 + 표정
-      React.createElement('div', { 
-        className: 'relative flex-shrink-0'
-      },
-        React.createElement('span', { className: 'text-2xl' }, '🐧'),
-        React.createElement('span', { 
-          className: 'absolute -top-1 -right-1 text-sm'
-        }, face.emoji)
+      // 상단: 표정 + 한마디 + 화살표
+      React.createElement('div', { className: 'flex items-center gap-3 mb-2' },
+        React.createElement('span', { className: 'text-2xl' }, state.expression),
+        React.createElement('p', { className: textPrimary + ' text-sm font-medium flex-1 text-left' }, 
+          state.message
+        ),
+        React.createElement(ChevronRight, { size: 18, className: textSecondary })
       ),
       
-      // 메시지 + 진행률
-      React.createElement('div', { className: 'flex-1 min-w-0' },
-        React.createElement('p', { 
-          className: textPrimary + ' text-sm font-medium truncate'
-        }, message),
-        React.createElement('div', { className: 'flex items-center gap-2 mt-1' },
-          React.createElement(ProgressBar, { 
-            progress: stats.completionRate, 
-            darkMode: darkMode 
-          }),
-          React.createElement('span', { 
-            className: textSecondary + ' text-xs flex-shrink-0'
-          }, stats.completed + '/' + stats.total)
+      // 하단: 진행률 바
+      totalTasks > 0 && React.createElement('div', { className: 'flex items-center gap-2' },
+        React.createElement('span', { className: textSecondary + ' text-xs' }, 
+          '오늘 ' + completedTasks.length + '/' + totalTasks
+        ),
+        React.createElement('div', { className: 'flex-1' },
+          React.createElement(ProgressBar, { progress: progress, darkMode: darkMode })
         )
-      ),
-      
-      // 화살표
-      React.createElement(ChevronRight, { 
-        size: 18, 
-        className: textSecondary + ' flex-shrink-0'
-      })
+      )
     )
   );
 };
 
 export default AlfredoStatusBar;
+export { getAlfredoState };
