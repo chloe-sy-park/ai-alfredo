@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
 import { 
   ArrowLeft, User, Bell, Moon, Sun, Palette, Shield, ChevronRight,
-  LogOut, Trash2, Database, Cloud, RefreshCw, Settings, Zap, Plus
+  LogOut, Trash2, Database, Cloud, RefreshCw, Settings, Zap, Plus,
+  BellRing, BellOff, Check
 } from 'lucide-react';
 
 // Other Components
 import GoogleAuthModal from '../modals/GoogleAuthModal';
+
+// 푸시 알림 훅
+import { usePushNotifications } from '../../hooks/usePushNotifications';
 
 const SettingsPage = ({ 
   userName, 
@@ -32,6 +36,20 @@ const SettingsPage = ({
   
   // Google Auth Modal state
   const [authModal, setAuthModal] = useState({ isOpen: false, service: null });
+  
+  // 푸시 알림 훅
+  const pushNotifications = usePushNotifications();
+  const { isSupported, permission, requestPermission, sendAlfredoMessage } = pushNotifications;
+  
+  // 알림 권한 요청 핸들러
+  const handleRequestNotificationPermission = async () => {
+    const result = await requestPermission();
+    if (result === 'granted') {
+      // 테스트 알림은 훅 내부에서 발송됨
+    } else if (result === 'denied') {
+      alert('알림이 차단되었어요. 브라우저 설정에서 알림을 허용해주세요.');
+    }
+  };
   
   // 다크모드 색상
   const bgColor = darkMode ? 'bg-gray-900' : 'bg-[#F0EBFF]';
@@ -96,6 +114,79 @@ const SettingsPage = ({
     </div>
   );
   
+  // 알림 권한 상태 표시
+  const NotificationPermissionStatus = () => {
+    if (!isSupported) {
+      return (
+        <div className={`${darkMode ? 'bg-gray-700/50' : 'bg-gray-100'} rounded-xl p-4`}>
+          <div className="flex items-center gap-3">
+            <BellOff size={24} className="text-gray-400" />
+            <div>
+              <p className={`font-medium ${textPrimary}`}>알림 미지원</p>
+              <p className={`text-xs ${textSecondary}`}>이 브라우저는 알림을 지원하지 않아요</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    if (permission === 'granted') {
+      return (
+        <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-800/30 rounded-full flex items-center justify-center">
+                <BellRing size={20} className="text-emerald-600" />
+              </div>
+              <div>
+                <p className="font-medium text-emerald-700 dark:text-emerald-400">알림 활성화됨</p>
+                <p className="text-xs text-emerald-600/70 dark:text-emerald-500/70">중요한 알림을 받을 수 있어요</p>
+              </div>
+            </div>
+            <Check size={20} className="text-emerald-500" />
+          </div>
+        </div>
+      );
+    }
+    
+    if (permission === 'denied') {
+      return (
+        <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-red-100 dark:bg-red-800/30 rounded-full flex items-center justify-center">
+              <BellOff size={20} className="text-red-500" />
+            </div>
+            <div className="flex-1">
+              <p className="font-medium text-red-700 dark:text-red-400">알림 차단됨</p>
+              <p className="text-xs text-red-600/70 dark:text-red-500/70">브라우저 설정에서 알림을 허용해주세요</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    // default - 아직 요청 안 함
+    return (
+      <button
+        onClick={handleRequestNotificationPermission}
+        className="w-full bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] rounded-xl p-4 text-left hover:opacity-90 transition-opacity"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+              <Bell size={20} className="text-white" />
+            </div>
+            <div>
+              <p className="font-medium text-white">푸시 알림 활성화</p>
+              <p className="text-xs text-white/80">일정, 태스크 알림을 받아보세요</p>
+            </div>
+          </div>
+          <ChevronRight size={20} className="text-white/80" />
+        </div>
+      </button>
+    );
+  };
+  
   return (
     <div className={`flex-1 overflow-y-auto ${bgColor}`}>
       {/* Header */}
@@ -125,6 +216,24 @@ const SettingsPage = ({
               <Settings size={20} className={textSecondary} />
             </button>
           </div>
+        </div>
+        
+        {/* 🔔 푸시 알림 섹션 (새로 추가) */}
+        <div className={`${cardBg} backdrop-blur-xl rounded-xl p-4`}>
+          <h3 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2`}>
+            <BellRing size={18} className="text-[#A996FF]" />
+            푸시 알림
+          </h3>
+          <NotificationPermissionStatus />
+          
+          {permission === 'granted' && (
+            <button
+              onClick={() => sendAlfredoMessage('테스트 알림이에요! 🐧', { tag: 'test' })}
+              className={`mt-3 w-full py-2.5 ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'} rounded-xl text-sm font-medium hover:opacity-80 transition-opacity`}
+            >
+              테스트 알림 보내기
+            </button>
+          )}
         </div>
         
         {/* 외관 설정 */}
@@ -311,7 +420,7 @@ const SettingsPage = ({
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
               <span className={textSecondary}>버전</span>
-              <span className={`${textPrimary} font-medium`}>1.0.0 (Beta)</span>
+              <span className={`${textPrimary} font-medium`}>1.1.0</span>
             </div>
             <div className="flex justify-between">
               <span className={textSecondary}>빌드</span>
