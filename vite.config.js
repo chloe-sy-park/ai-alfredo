@@ -6,8 +6,15 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      // injectManifest 모드 - 커스텀 SW 사용
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.js',
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'icons/*.png'],
+      injectRegister: 'auto',
+      
+      includeAssets: ['favicon.ico', 'icons/*.png', 'alfredo-*.svg'],
+      
       manifest: {
         name: 'Life Butler - AI 알프레도',
         short_name: 'Life Butler',
@@ -18,6 +25,7 @@ export default defineConfig({
         orientation: 'portrait-primary',
         scope: '/',
         start_url: '/',
+        categories: ['productivity', 'lifestyle'],
         icons: [
           {
             src: '/icons/icon-192x192.png',
@@ -37,27 +45,15 @@ export default defineConfig({
           }
         ]
       },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        // 즉시 새 버전 활성화
-        skipWaiting: true,
-        clientsClaim: true,
-        // 캐시 버전 강제 업데이트
-        cleanupOutdatedCaches: true,
-        // 런타임 캐싱 - 네트워크 우선
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/.*\.js$/,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'js-cache',
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 // 1시간
-              }
-            }
-          }
-        ]
+      
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024 // 5MB
+      },
+      
+      devOptions: {
+        enabled: true,
+        type: 'module'
       }
     })
   ],
