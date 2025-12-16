@@ -2,14 +2,15 @@ import React, { useState } from 'react';
 import { 
   ArrowLeft, User, Bell, Moon, Sun, Palette, Shield, ChevronRight,
   LogOut, Trash2, Database, Cloud, RefreshCw, Settings, Zap, Plus,
-  BellRing, BellOff, Check
+  BellRing, BellOff, Check, Download, Upload, CloudOff, Loader2
 } from 'lucide-react';
 
 // Other Components
 import GoogleAuthModal from '../modals/GoogleAuthModal';
 
-// 푸시 알림 훅
+// 훅
 import { usePushNotifications } from '../../hooks/usePushNotifications';
+import { useGoogleDrive } from '../../hooks/useGoogleDrive';
 
 const SettingsPage = ({ 
   userName, 
@@ -41,6 +42,21 @@ const SettingsPage = ({
   const pushNotifications = usePushNotifications();
   const { isSupported, permission, requestPermission, sendAlfredoMessage } = pushNotifications;
   
+  // Google Drive 동기화 훅
+  const googleDrive = useGoogleDrive();
+  const { 
+    isConnected: isDriveConnected,
+    isSyncing, 
+    syncEnabled, 
+    lastSync, 
+    syncProgress,
+    error: driveError,
+    connect: connectDrive,
+    backupToDrive,
+    restoreFromDrive,
+    toggleSync,
+  } = googleDrive;
+  
   // 알림 권한 요청 핸들러
   const handleRequestNotificationPermission = async () => {
     const result = await requestPermission();
@@ -51,6 +67,17 @@ const SettingsPage = ({
     }
   };
   
+  // 복원 확인 핸들러
+  const handleRestore = async () => {
+    if (window.confirm('Google Drive에서 데이터를 복원하시겠어요?\n\n현재 로컬 데이터가 덮어씌워집니다.')) {
+      const success = await restoreFromDrive();
+      if (success) {
+        alert('데이터가 복원되었어요! 페이지를 새로고침합니다.');
+        window.location.reload();
+      }
+    }
+  };
+  
   // 다크모드 색상
   const bgColor = darkMode ? 'bg-gray-900' : 'bg-[#F0EBFF]';
   const cardBg = darkMode ? 'bg-gray-800' : 'bg-white/70';
@@ -58,12 +85,13 @@ const SettingsPage = ({
   const textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
   const borderColor = darkMode ? 'border-gray-700' : 'border-gray-200';
   
-  const ToggleSwitch = ({ enabled, onChange }) => (
+  const ToggleSwitch = ({ enabled, onChange, disabled }) => (
     <button
-      onClick={() => onChange(!enabled)}
+      onClick={() => !disabled && onChange(!enabled)}
+      disabled={disabled}
       className={`w-12 h-7 rounded-full transition-all duration-200 ${
         enabled ? 'bg-[#A996FF]' : (darkMode ? 'bg-gray-600' : 'bg-gray-200')
-      }`}
+      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
     >
       <div className={`w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-200 ${
         enabled ? 'translate-x-6' : 'translate-x-1'
@@ -187,6 +215,21 @@ const SettingsPage = ({
     );
   };
   
+  // 마지막 동기화 시간 포맷
+  const formatLastSync = (date) => {
+    if (!date) return '동기화 안 됨';
+    const now = new Date();
+    const diff = now - date;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    
+    if (minutes < 1) return '방금 전';
+    if (minutes < 60) return `${minutes}분 전`;
+    if (hours < 24) return `${hours}시간 전`;
+    return `${days}일 전`;
+  };
+  
   return (
     <div className={`flex-1 overflow-y-auto ${bgColor}`}>
       {/* Header */}
@@ -218,7 +261,113 @@ const SettingsPage = ({
           </div>
         </div>
         
-        {/* 🔔 푸시 알림 섹션 (새로 추가) */}
+        {/* ☁️ 클라우드 동기화 섹션 (새로 추가) */}
+        <div className={`${cardBg} backdrop-blur-xl rounded-xl p-4`}>
+          <h3 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2`}>
+            <Cloud size={18} className="text-[#A996FF]" />
+            클라우드 동기화
+          </h3>
+          
+          {/* 연결 상태 */}
+          {!isDriveConnected ? (
+            <button
+              onClick={connectDrive}
+              className="w-full bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] rounded-xl p-4 text-left hover:opacity-90 transition-opacity"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                    <Cloud size={20} className="text-white" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-white">Google Drive 연결</p>
+                    <p className="text-xs text-white/80">데이터를 안전하게 백업하세요</p>
+                  </div>
+                </div>
+                <ChevronRight size={20} className="text-white/80" />
+              </div>
+            </button>
+          ) : (
+            <>
+              {/* 연결됨 상태 */}
+              <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 mb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-800/30 rounded-full flex items-center justify-center">
+                      <Cloud size={20} className="text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-emerald-700 dark:text-emerald-400">Google Drive 연결됨</p>
+                      <p className="text-xs text-emerald-600/70 dark:text-emerald-500/70">
+                        마지막 동기화: {formatLastSync(lastSync)}
+                      </p>
+                    </div>
+                  </div>
+                  <Check size={20} className="text-emerald-500" />
+                </div>
+              </div>
+              
+              {/* 자동 동기화 토글 */}
+              <div className="flex items-center justify-between py-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">🔄</span>
+                  <div>
+                    <p className={`font-medium ${textPrimary}`}>자동 동기화</p>
+                    <p className={`text-xs ${textSecondary}`}>1시간마다 자동 백업</p>
+                  </div>
+                </div>
+                <ToggleSwitch 
+                  enabled={syncEnabled} 
+                  onChange={toggleSync}
+                  disabled={isSyncing}
+                />
+              </div>
+              
+              {/* 동기화 진행 상태 */}
+              {isSyncing && (
+                <div className={`${darkMode ? 'bg-gray-700' : 'bg-[#F5F3FF]'} rounded-xl p-3 mb-3`}>
+                  <div className="flex items-center gap-2">
+                    <Loader2 size={16} className="text-[#A996FF] animate-spin" />
+                    <span className={`text-sm ${textPrimary}`}>{syncProgress || '동기화 중...'}</span>
+                  </div>
+                </div>
+              )}
+              
+              {/* 에러 표시 */}
+              {driveError && (
+                <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-3 mb-3">
+                  <p className="text-sm text-red-600 dark:text-red-400">{driveError}</p>
+                </div>
+              )}
+              
+              {/* 수동 동기화 버튼들 */}
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={backupToDrive}
+                  disabled={isSyncing}
+                  className={`flex-1 py-2.5 ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-[#F5F3FF] text-[#A996FF]'} rounded-xl text-sm font-medium hover:opacity-80 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2`}
+                >
+                  <Upload size={16} />
+                  백업하기
+                </button>
+                <button
+                  onClick={handleRestore}
+                  disabled={isSyncing}
+                  className={`flex-1 py-2.5 ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-[#F5F3FF] text-[#A996FF]'} rounded-xl text-sm font-medium hover:opacity-80 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2`}
+                >
+                  <Download size={16} />
+                  복원하기
+                </button>
+              </div>
+              
+              <p className={`text-xs ${textSecondary} mt-3 text-center`}>
+                📁 데이터는 Google Drive의 'Life Butler' 폴더에 암호화되어 저장됩니다
+              </p>
+            </>
+          )}
+        </div>
+        
+        {/* 🔔 푸시 알림 섹션 */}
         <div className={`${cardBg} backdrop-blur-xl rounded-xl p-4`}>
           <h3 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2`}>
             <BellRing size={18} className="text-[#A996FF]" />
@@ -420,7 +569,7 @@ const SettingsPage = ({
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
               <span className={textSecondary}>버전</span>
-              <span className={`${textPrimary} font-medium`}>1.1.0</span>
+              <span className={`${textPrimary} font-medium`}>1.2.0</span>
             </div>
             <div className="flex justify-between">
               <span className={textSecondary}>빌드</span>
@@ -489,7 +638,7 @@ const SettingsPage = ({
           <div className="space-y-3 text-sm mb-4">
             <div className="flex justify-between items-center">
               <span className={textSecondary}>저장된 데이터</span>
-              <span className={`${textPrimary} font-medium`}>로컬 저장소</span>
+              <span className={`${textPrimary} font-medium`}>로컬 + 클라우드</span>
             </div>
             <div className="flex justify-between items-center">
               <span className={textSecondary}>자동 저장</span>
