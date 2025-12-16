@@ -97,8 +97,17 @@ export var MiniTimeline = function(props) {
     return null;
   };
   
+  // 애니메이션 딜레이 클래스
+  var getDelayClass = function(idx) {
+    if (idx === 0) return '';
+    if (idx === 1) return 'animate-delay-100';
+    if (idx === 2) return 'animate-delay-200';
+    if (idx === 3) return 'animate-delay-300';
+    return 'animate-delay-400';
+  };
+  
   return React.createElement('div', { 
-    className: 'rounded-3xl overflow-hidden shadow-lg ' +
+    className: 'rounded-3xl overflow-hidden shadow-lg animate-fadeIn ' +
       (darkMode ? 'bg-[#2C2C2E]' : 'bg-white')
   },
     // 헤더
@@ -123,7 +132,7 @@ export var MiniTimeline = function(props) {
         React.createElement('div', { 
           className: 'flex items-center gap-2 px-4 py-2 bg-[#A996FF] text-white rounded-full shadow-lg shadow-[#A996FF]/30'
         },
-          React.createElement('div', { className: 'w-2 h-2 bg-white rounded-full animate-pulse' }),
+          React.createElement('div', { className: 'w-2 h-2 bg-white rounded-full animate-pulse-soft' }),
           React.createElement('span', { className: 'font-semibold' }, '지금 ' + currentTimeStr)
         ),
         nextItem && React.createElement('span', { 
@@ -142,7 +151,7 @@ export var MiniTimeline = function(props) {
       },
         // 현재 시간까지 진행
         React.createElement('div', { 
-          className: 'absolute h-full bg-gradient-to-r from-[#D4CCE8] to-[#A996FF] rounded-full',
+          className: 'absolute h-full bg-gradient-to-r from-[#D4CCE8] to-[#A996FF] rounded-full xp-bar',
           style: { width: getTimePosition(now) + '%' }
         }),
         // 이벤트 포인트들
@@ -151,7 +160,7 @@ export var MiniTimeline = function(props) {
           var isPast = item.startTime < now;
           return React.createElement('div', {
             key: item.id,
-            className: 'absolute w-3 h-3 rounded-full -top-0.5 transform -translate-x-1/2 border-2 border-white ' +
+            className: 'absolute w-3 h-3 rounded-full -top-0.5 transform -translate-x-1/2 border-2 border-white transition-all hover:scale-125 ' +
               (item.type === 'event' ? 'bg-blue-500' : 'bg-green-500') +
               (isPast ? ' opacity-50' : ''),
             style: { left: pos + '%' }
@@ -180,11 +189,12 @@ export var MiniTimeline = function(props) {
         var isPast = item.startTime < now;
         var isOngoing = item.startTime <= now && 
           new Date(item.startTime.getTime() + (item.duration || 60) * 60000) > now;
+        var delayClass = getDelayClass(idx);
         
         return React.createElement(React.Fragment, { key: item.id },
           // 빈 시간 슬롯
           gap && React.createElement('div', { 
-            className: 'flex items-center gap-3 p-3 border-2 border-dashed rounded-2xl ' +
+            className: 'flex items-center gap-3 p-3 border-2 border-dashed rounded-2xl animate-fadeIn ' +
               (darkMode ? 'border-[#3A3A3C]' : 'border-gray-200')
           },
             React.createElement('div', { 
@@ -201,9 +211,9 @@ export var MiniTimeline = function(props) {
           
           // 아이템
           React.createElement('div', { 
-            className: 'flex items-center gap-3 p-3 rounded-2xl transition-all ' +
+            className: 'flex items-center gap-3 p-3 rounded-2xl transition-all animate-fadeInUp ' + delayClass + ' card-hover ' +
               (isOngoing 
-                ? 'bg-[#A996FF]/10 ring-1 ring-[#A996FF]' 
+                ? 'bg-[#A996FF]/10 ring-1 ring-[#A996FF] animate-glow' 
                 : isPast 
                   ? (darkMode ? 'bg-[#3A3A3C]/50' : 'bg-gray-50') 
                   : (darkMode ? 'bg-[#3A3A3C]' : 'bg-gray-50'))
@@ -255,7 +265,7 @@ export var MiniTimeline = function(props) {
               React.createElement('button', {
                 onClick: function() { if (onStartTask) onStartTask(item.original); },
                 className: 'px-3 py-1.5 bg-[#A996FF] text-white text-sm font-medium rounded-lg ' +
-                  'shadow-sm hover:bg-[#8B7AE4] transition-all active:scale-95 flex items-center gap-1'
+                  'shadow-sm hover:bg-[#8B7AE4] transition-all btn-press flex items-center gap-1'
               },
                 React.createElement(Zap, { size: 14 }),
                 '시작'
@@ -267,7 +277,7 @@ export var MiniTimeline = function(props) {
       
       // 아이템 없으면
       todayItems.length === 0 && React.createElement('div', { 
-        className: 'text-center py-8 ' + (darkMode ? 'text-gray-500' : 'text-gray-400')
+        className: 'text-center py-8 animate-fadeIn ' + (darkMode ? 'text-gray-500' : 'text-gray-400')
       }, '오늘 일정이 없어요 ✨')
     )
   );
