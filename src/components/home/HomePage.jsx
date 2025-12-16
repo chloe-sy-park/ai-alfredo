@@ -4,12 +4,25 @@ import {
   ChevronRight, Clock, Calendar, CheckCircle2, Circle, Target,
   AlertCircle, TrendingUp, TrendingDown, Minus, Sparkles,
   Plus, MessageSquare, Search, Bell, Settings, Inbox, FolderKanban,
-  Heart, Users, Activity, Smile, Rocket, Shield, Flame, Check, ChevronDown
+  Heart, Users, Activity, Smile, Rocket, Shield, Flame, Check, ChevronDown, Trophy
 } from 'lucide-react';
 import UnifiedTimelineView from './UnifiedTimelineView';
 import { AlfredoEmptyState } from '../common/AlfredoEmptyState';
 import AlfredoStatusBar from '../common/AlfredoStatusBar';
 import { YesterdayMeCard, TomorrowMeButton, TomorrowMeWriteModal } from '../common/TomorrowMeMessage';
+
+// W2: 게이미피케이션
+import { LevelXpBar, GameWidget, useGamification } from '../gamification/LevelSystem';
+
+// W3: 알프레도 UX
+import { AlfredoBriefingCard } from '../alfredo/AlfredoBriefing';
+import { SmartQuickActions, QuickActionBar, FloatingActionButton, QUICK_ACTIONS } from '../alfredo/QuickActions';
+import { NotificationBell, NotificationCenter, ToastNotification, useNotifications } from '../alfredo/SmartNotifications';
+import { ALFREDO_PERSONALITIES, DEFAULT_PERSONALITY, usePersonality } from '../alfredo/AlfredoPersonality';
+
+// W4: 분석
+import { InsightsSection, GoalProgressCard } from '../analytics/Insights';
+import { HabitTracker } from '../analytics/HabitTracker';
 
 // 🎯 통합 오늘 상태 카드 (날씨+컨디션+모드)
 var TodayStatusCard = function(props) {
@@ -190,32 +203,6 @@ var TodayStatusCard = function(props) {
   );
 };
 
-var QuickActions = function(props) {
-  var darkMode = props.darkMode;
-  var onAddTask = props.onAddTask;
-  var onOpenChat = props.onOpenChat;
-  var onOpenCalendar = props.onOpenCalendar;
-  var onOpenInbox = props.onOpenInbox;
-  
-  var btnClass = darkMode ? 'bg-gray-800 hover:bg-gray-700 text-white border-gray-700' : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200';
-  
-  var actions = [
-    { icon: Plus, label: '할일 추가', onClick: onAddTask, color: 'text-[#A996FF]' },
-    { icon: MessageSquare, label: '알프레도', onClick: onOpenChat, color: 'text-purple-500' },
-    { icon: Calendar, label: '캘린더', onClick: onOpenCalendar, color: 'text-emerald-500' },
-    { icon: Inbox, label: '인박스', onClick: onOpenInbox, color: 'text-blue-500' }
-  ];
-  
-  return React.createElement('div', { className: 'flex gap-2 mb-4 overflow-x-auto pb-2' },
-    actions.map(function(action, idx) {
-      return React.createElement('button', { key: idx, onClick: action.onClick, className: btnClass + ' flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium whitespace-nowrap transition-all shadow-sm' },
-        React.createElement(action.icon, { size: 16, className: action.color }),
-        React.createElement('span', null, action.label)
-      );
-    })
-  );
-};
-
 var RemindersSection = function(props) {
   var darkMode = props.darkMode;
   var tasks = props.tasks || [];
@@ -365,6 +352,44 @@ var Big3Section = function(props) {
   );
 };
 
+// 🎮 게임 위젯 (간소화)
+var GameWidgetCompact = function(props) {
+  var darkMode = props.darkMode;
+  var onClick = props.onClick;
+  var gameData = props.gameData || {};
+  
+  var cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
+  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+  var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  var borderColor = darkMode ? 'border-gray-700' : 'border-gray-200';
+  
+  var level = gameData.level || 1;
+  var xp = gameData.totalXp || 0;
+  var streak = gameData.currentStreak || 0;
+  
+  return React.createElement('button', {
+    onClick: onClick,
+    className: cardBg + ' rounded-2xl p-4 mb-4 border ' + borderColor + ' w-full text-left hover:border-[#A996FF]/50 transition-all'
+  },
+    React.createElement('div', { className: 'flex items-center justify-between' },
+      React.createElement('div', { className: 'flex items-center gap-3' },
+        React.createElement('div', { className: 'w-10 h-10 rounded-xl bg-gradient-to-br from-[#A996FF] to-[#8B7CF7] flex items-center justify-center text-white font-bold' }, level),
+        React.createElement('div', null,
+          React.createElement('p', { className: textPrimary + ' font-bold text-sm' }, 'Lv.' + level),
+          React.createElement('p', { className: textSecondary + ' text-xs' }, xp.toLocaleString() + ' XP')
+        )
+      ),
+      React.createElement('div', { className: 'flex items-center gap-4' },
+        streak > 0 && React.createElement('div', { className: 'flex items-center gap-1 text-orange-500' },
+          React.createElement(Flame, { size: 16 }),
+          React.createElement('span', { className: 'font-bold text-sm' }, streak)
+        ),
+        React.createElement(ChevronRight, { size: 16, className: textSecondary })
+      )
+    )
+  );
+};
+
 var HomePage = function(props) {
   var darkMode = props.darkMode;
   var tasks = props.tasks || [];
@@ -385,6 +410,7 @@ var HomePage = function(props) {
   var onStartFocus = props.onStartFocus;
   var onOpenReminder = props.onOpenReminder;
   var onOpenSearch = props.onOpenSearch;
+  var onOpenGameCenter = props.onOpenGameCenter;
   
   var modeState = useState(null);
   var alfredoMode = modeState[0];
@@ -393,9 +419,24 @@ var HomePage = function(props) {
   var tomorrowMeModalState = useState(false);
   var showTomorrowMeModal = tomorrowMeModalState[0];
   var setShowTomorrowMeModal = tomorrowMeModalState[1];
+  
+  var notifCenterState = useState(false);
+  var showNotifCenter = notifCenterState[0];
+  var setShowNotifCenter = notifCenterState[1];
+  
+  var quickSheetState = useState(false);
+  var showQuickSheet = quickSheetState[0];
+  var setShowQuickSheet = quickSheetState[1];
+  
+  // 게이미피케이션 훅
+  var gamification = useGamification ? useGamification() : { totalXp: 0, level: 1, currentStreak: 0 };
+  
+  // 알림 훅
+  var notifications = useNotifications ? useNotifications() : { notifications: [], unreadCount: 0, toast: { visible: false } };
 
   var bgColor = darkMode ? 'bg-gray-900' : 'bg-[#F0EBFF]';
   var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+  var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
 
   var today = new Date();
   var dateStr = today.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'long' });
@@ -406,17 +447,70 @@ var HomePage = function(props) {
     var eventDate = new Date(e.start);
     return eventDate.toDateString() === today.toDateString();
   });
+  
+  // 퀵 액션 핸들러
+  var handleQuickAction = function(action) {
+    if (!action) return;
+    switch (action.id) {
+      case 'addTask':
+      case 'addBig3':
+        if (onOpenAddTask) onOpenAddTask();
+        break;
+      case 'startFocus':
+      case 'quickFocus':
+        if (onStartFocus) onStartFocus();
+        break;
+      case 'talkToAlfredo':
+      case 'askAdvice':
+        if (onOpenChat) onOpenChat();
+        break;
+      case 'checkCalendar':
+      case 'addEvent':
+        if (setView) setView('CALENDAR');
+        break;
+      case 'logMood':
+        // 기분 기록은 상태 카드에서
+        break;
+      default:
+        break;
+    }
+    setShowQuickSheet(false);
+  };
 
   return React.createElement('div', { className: bgColor + ' min-h-screen pb-24' },
+    // 토스트 알림
+    notifications.toast && React.createElement(ToastNotification, {
+      notification: notifications.toast.notification,
+      isVisible: notifications.toast.visible,
+      onDismiss: notifications.hideToast,
+      darkMode: darkMode
+    }),
+    
+    // 알림 센터
+    React.createElement(NotificationCenter, {
+      isOpen: showNotifCenter,
+      onClose: function() { setShowNotifCenter(false); },
+      notifications: notifications.notifications,
+      onDismiss: notifications.dismissNotification,
+      onDismissAll: notifications.dismissAll,
+      darkMode: darkMode
+    }),
+    
     React.createElement(AlfredoStatusBar, { darkMode: darkMode, mood: mood, energy: energy, tasks: tasks, events: events, onOpenChat: onOpenChat, sticky: true }),
     
     React.createElement('div', { className: 'px-4 pt-4' },
+      // 헤더 with 알림 벨
       React.createElement('div', { className: 'flex items-center justify-between mb-4' },
         React.createElement('div', null,
           React.createElement('h1', { className: textPrimary + ' text-2xl font-bold' }, '홈'),
-          React.createElement('p', { className: (darkMode ? 'text-gray-400' : 'text-gray-500') + ' text-sm' }, dateStr)
+          React.createElement('p', { className: textSecondary + ' text-sm' }, dateStr)
         ),
         React.createElement('div', { className: 'flex gap-2' },
+          React.createElement(NotificationBell, {
+            count: notifications.unreadCount,
+            onClick: function() { setShowNotifCenter(true); },
+            darkMode: darkMode
+          }),
           React.createElement('button', { onClick: onOpenSearch, className: 'w-10 h-10 rounded-full flex items-center justify-center ' + (darkMode ? 'bg-gray-800 text-gray-300' : 'bg-white text-gray-600') + ' shadow-sm' },
             React.createElement(Search, { size: 18 })
           ),
@@ -426,20 +520,52 @@ var HomePage = function(props) {
         )
       ),
       
+      // 어제의 나에게서 온 메시지 (아침)
       isMorning && React.createElement(YesterdayMeCard, { darkMode: darkMode, onReply: function() { setShowTomorrowMeModal(true); } }),
       
+      // 알프레도 브리핑 (새로운 컴포넌트)
+      React.createElement(AlfredoBriefingCard, {
+        darkMode: darkMode,
+        personality: alfredoMode ? ALFREDO_PERSONALITIES[alfredoMode] : DEFAULT_PERSONALITY,
+        tasks: tasks,
+        events: todayEvents,
+        streak: gamification.currentStreak || 0,
+        energy: energy,
+        weather: weather,
+        onClick: onOpenChat,
+        compact: true
+      }),
+      
+      // 상태 카드 (날씨+컨디션+모드)
       React.createElement(TodayStatusCard, { darkMode: darkMode, mood: mood, energy: energy, setMood: setMood, setEnergy: setEnergy, tasks: tasks, events: events, weather: weather, currentMode: alfredoMode, setCurrentMode: setAlfredoMode }),
       
-      React.createElement(QuickActions, { darkMode: darkMode, onAddTask: onOpenAddTask, onOpenChat: onOpenChat, onOpenCalendar: function() { if (setView) setView('CALENDAR'); }, onOpenInbox: onOpenInbox }),
+      // 스마트 퀵 액션 (새로운 컴포넌트)
+      React.createElement(SmartQuickActions, {
+        darkMode: darkMode,
+        onAction: handleQuickAction,
+        userContext: { energy: energy, mood: mood, tasksLeft: tasks.filter(function(t) { return !t.completed; }).length }
+      }),
       
+      // 지금 집중할 것
       React.createElement(NowCard, { darkMode: darkMode, tasks: tasks, events: events, onStartTask: onStartFocus, onOpenTask: onOpenTask, onAddTask: onOpenAddTask }),
       
+      // 게임 위젯 (새로운 컴포넌트)
+      React.createElement(GameWidgetCompact, {
+        darkMode: darkMode,
+        gameData: gamification,
+        onClick: onOpenGameCenter
+      }),
+      
+      // 오늘의 Top 3
       React.createElement(Big3Section, { darkMode: darkMode, tasks: tasks, onOpenTask: onOpenTask }),
       
+      // 내일의 나에게 버튼
       React.createElement(TomorrowMeButton, { darkMode: darkMode, onClick: function() { setShowTomorrowMeModal(true); } }),
       
+      // 리마인더
       React.createElement(RemindersSection, { darkMode: darkMode, tasks: tasks, relationships: relationships, onOpenTask: onOpenTask, onOpenReminder: onOpenReminder }),
       
+      // 오늘 타임라인
       React.createElement('div', { className: 'mt-4' },
         React.createElement('h3', { className: textPrimary + ' font-bold mb-3 flex items-center gap-2' },
           React.createElement(Calendar, { size: 18, className: 'text-emerald-500' }),
@@ -451,6 +577,15 @@ var HomePage = function(props) {
       )
     ),
     
+    // 플로팅 액션 버튼
+    React.createElement(FloatingActionButton, {
+      darkMode: darkMode,
+      onAction: handleQuickAction,
+      primaryAction: 'addTask',
+      secondaryActions: ['startFocus', 'talkToAlfredo', 'logMood']
+    }),
+    
+    // 내일의 나에게 모달
     React.createElement(TomorrowMeWriteModal, { isOpen: showTomorrowMeModal, onClose: function() { setShowTomorrowMeModal(false); }, darkMode: darkMode, userName: userName })
   );
 };
