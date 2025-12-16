@@ -4,12 +4,14 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 // Google OAuth 설정
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1042496826498-3t0uuv38l48n8tgj23e0c3oknkrn8m4j.apps.googleusercontent.com';
 
-// 🆕 Drive scope 추가 (앱이 생성한 파일만 접근)
+// 🆕 Gmail scope 추가
 const SCOPES = [
   'https://www.googleapis.com/auth/calendar',
   'https://www.googleapis.com/auth/calendar.events',
-  'https://www.googleapis.com/auth/drive.file',  // 앱이 생성한 파일
-  'https://www.googleapis.com/auth/drive.appdata', // 앱 전용 숨김 폴더
+  'https://www.googleapis.com/auth/drive.file',
+  'https://www.googleapis.com/auth/drive.appdata',
+  'https://www.googleapis.com/auth/gmail.readonly',  // 이메일 읽기
+  'https://www.googleapis.com/auth/gmail.modify',    // 읽음 표시 변경
 ].join(' ');
 
 // localStorage 키
@@ -439,7 +441,7 @@ export function useGoogleCalendar() {
     updateEvent,
     deleteEvent,
     syncEvents,
-    getAccessToken, // 🆕 Drive에서도 사용할 수 있게 export
+    getAccessToken,
   };
 }
 
