@@ -3,8 +3,17 @@ import {
   BarChart3, Calendar, Zap, FolderKanban, Settings,
   ChevronRight, ExternalLink, Check, X, RefreshCw,
   Mail, HardDrive, MessageSquare, Bell, Shield, HelpCircle,
-  Sparkles, Trophy, TrendingUp, Heart
+  Sparkles, Trophy, TrendingUp, Heart, Target, Flame, Download, Upload
 } from 'lucide-react';
+
+// W2: 게이미피케이션
+import { LevelXpBar, useGamification } from '../gamification/LevelSystem';
+
+// W4: 분석
+import { WeeklyStatsDashboard, MonthlyStatsDashboard, StatsPage } from '../analytics/StatsDashboard';
+import { HabitTracker } from '../analytics/HabitTracker';
+import { InsightsSection, WeeklyReport, AchievementSummary } from '../analytics/Insights';
+import { DataManagementPage, ExportButton, ImportButton, StorageStatus } from '../analytics/DataManagement';
 
 // Default gameState to prevent crashes
 const DEFAULT_GAME_STATE = {
@@ -13,6 +22,8 @@ const DEFAULT_GAME_STATE = {
   todayTasks: 0,
   streak: 0,
   focusSessions: 0,
+  level: 1,
+  currentStreak: 0
 };
 
 var MorePage = function(props) {
@@ -25,9 +36,19 @@ var MorePage = function(props) {
   var onOpenEnergyRhythm = props.onOpenEnergyRhythm;
   var onOpenProjectDashboard = props.onOpenProjectDashboard;
   var onOpenSettings = props.onOpenSettings;
+  var onOpenGameCenter = props.onOpenGameCenter;
+  var setView = props.setView;
   
   // Defensive: merge with defaults
   var gameState = Object.assign({}, DEFAULT_GAME_STATE, props.gameState);
+  
+  // 서브페이지 상태
+  var subPageState = useState(null); // 'stats', 'habits', 'data'
+  var currentSubPage = subPageState[0];
+  var setSubPage = subPageState[1];
+  
+  // 게이미피케이션 훅
+  var gamification = useGamification ? useGamification() : gameState;
 
   // 다크모드 색상
   var bgGradient = darkMode 
@@ -70,39 +91,39 @@ var MorePage = function(props) {
     }
   ];
 
-  // 인사이트 메뉴
+  // 인사이트 메뉴 (업데이트)
   var insightMenus = [
     {
-      id: 'weekly',
-      name: '주간 리뷰',
+      id: 'stats',
+      name: '통계',
       icon: '📊',
       color: 'from-[#A996FF] to-[#8B7CF7]',
-      description: '생산성 분석',
-      onClick: onOpenWeeklyReview
+      description: '주간/월간 분석',
+      onClick: function() { setSubPage('stats'); }
     },
     {
-      id: 'habit',
-      name: '습관 히트맵',
-      icon: '🟩',
+      id: 'habits',
+      name: '습관 트래커',
+      icon: '🎯',
       color: 'from-emerald-400 to-emerald-600',
-      description: '루틴 완료 현황',
-      onClick: onOpenHabitHeatmap
+      description: '루틴 관리',
+      onClick: function() { setSubPage('habits'); }
     },
     {
-      id: 'energy',
-      name: '에너지 리듬',
-      icon: '⚡',
+      id: 'gamecenter',
+      name: '게임센터',
+      icon: '🎮',
       color: 'from-amber-400 to-orange-500',
-      description: '컨디션 패턴',
-      onClick: onOpenEnergyRhythm
+      description: '레벨 & 배지',
+      onClick: onOpenGameCenter
     },
     {
-      id: 'project',
-      name: '프로젝트',
-      icon: '📁',
+      id: 'data',
+      name: '데이터 관리',
+      icon: '💾',
       color: 'from-blue-400 to-blue-600',
-      description: '진행 현황',
-      onClick: onOpenProjectDashboard
+      description: '백업 & 복원',
+      onClick: function() { setSubPage('data'); }
     }
   ];
 
@@ -114,6 +135,41 @@ var MorePage = function(props) {
       if (onConnect) onConnect(serviceId);
     }
   };
+  
+  // 서브페이지 렌더링
+  if (currentSubPage === 'stats') {
+    return React.createElement(StatsPage, {
+      darkMode: darkMode,
+      weekData: {},
+      monthData: {},
+      gameData: gamification,
+      onBack: function() { setSubPage(null); }
+    });
+  }
+  
+  if (currentSubPage === 'habits') {
+    return React.createElement('div', { className: bgGradient + ' min-h-screen pb-24' },
+      React.createElement('div', { className: 'px-4 pt-6 pb-4' },
+        React.createElement('div', { className: 'flex items-center gap-3 mb-4' },
+          React.createElement('button', {
+            onClick: function() { setSubPage(null); },
+            className: textSecondary + ' hover:' + textPrimary
+          }, '←'),
+          React.createElement('h1', { className: textPrimary + ' text-2xl font-bold' }, '🎯 습관 트래커')
+        )
+      ),
+      React.createElement('div', { className: 'px-4' },
+        React.createElement(HabitTracker, { darkMode: darkMode })
+      )
+    );
+  }
+  
+  if (currentSubPage === 'data') {
+    return React.createElement(DataManagementPage, {
+      darkMode: darkMode,
+      onBack: function() { setSubPage(null); }
+    });
+  }
 
   return (
     <div className={bgGradient + ' flex-1 overflow-y-auto transition-colors duration-300'}>
@@ -130,6 +186,33 @@ var MorePage = function(props) {
             className={(darkMode ? 'bg-gray-700' : 'bg-white') + ' w-10 h-10 rounded-full flex items-center justify-center shadow-sm'}
           >
             <Settings size={20} className={textSecondary} />
+          </button>
+        </div>
+        
+        {/* ===== 레벨 & XP 바 ===== */}
+        <div className={cardBg + ' backdrop-blur-xl rounded-2xl shadow-lg p-4 mb-4 border ' + borderColor}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#A996FF] to-[#8B7CF7] flex items-center justify-center text-white font-bold text-xl">
+                {gamification.level || 1}
+              </div>
+              <div>
+                <p className={textPrimary + ' font-bold'}>Level {gamification.level || 1}</p>
+                <p className={textSecondary + ' text-sm'}>{(gamification.totalXp || 0).toLocaleString()} XP</p>
+              </div>
+            </div>
+            {gamification.currentStreak > 0 && (
+              <div className="flex items-center gap-1 text-orange-500">
+                <Flame size={18} />
+                <span className="font-bold">{gamification.currentStreak}일</span>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={onOpenGameCenter}
+            className="w-full py-2 text-[#A996FF] text-sm font-medium hover:bg-[#A996FF]/10 rounded-xl transition-colors flex items-center justify-center gap-1"
+          >
+            게임센터 열기 <ChevronRight size={14} />
           </button>
         </div>
 
@@ -229,6 +312,18 @@ var MorePage = function(props) {
             })}
           </div>
         </div>
+        
+        {/* ===== 빠른 백업 ===== */}
+        <div className={cardBg + ' backdrop-blur-xl rounded-2xl shadow-sm p-4 mb-4 border ' + borderColor}>
+          <div className="flex items-center gap-2 mb-3">
+            <HardDrive size={18} className="text-[#A996FF]" />
+            <span className={textPrimary + ' font-bold'}>데이터</span>
+          </div>
+          <div className="flex gap-2">
+            <ExportButton darkMode={darkMode} compact={true} />
+            <ImportButton darkMode={darkMode} compact={true} />
+          </div>
+        </div>
 
         {/* ===== 기타 메뉴 ===== */}
         <div className={cardBg + ' backdrop-blur-xl rounded-2xl shadow-sm p-4 mb-4 border ' + borderColor}>
@@ -261,7 +356,8 @@ var MorePage = function(props) {
             <span className="text-2xl">🐧</span>
             <span className={textPrimary + ' font-bold'}>Life Butler</span>
           </div>
-          <p className={textSecondary + ' text-xs'}>v1.0.0 · Made with 💜</p>
+          <p className={textSecondary + ' text-xs'}>v1.1.0 · Made with 💜</p>
+          <p className={textSecondary + ' text-[10px] mt-1'}>W1-W4 기능 추가</p>
         </div>
 
       </div>
