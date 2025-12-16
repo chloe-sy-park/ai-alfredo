@@ -189,8 +189,10 @@ export var HomePage = function(props) {
       weather: weather,
       level: gamification.level || 1,
       userName: userName,
-      onOpenSearch: function() { /* TODO */ },
-      onOpenNotifications: function() { /* TODO */ },
+      tasks: tasks,
+      events: events,
+      onSelectTask: onOpenTask,
+      onSelectEvent: onOpenEvent,
       onOpenSettings: function() { handleNavigate('SETTINGS'); }
     }),
     
