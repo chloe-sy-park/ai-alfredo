@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronDown, ChevronUp, Target, Heart, Flame } from 'lucide-react';
+import { ChevronDown, Target, Heart, Flame } from 'lucide-react';
 
 // 모드 설정
 var MODES = {
@@ -19,63 +19,18 @@ var getTimeOfDay = function() {
   return 'night';
 };
 
-// 인사말 생성 (이름 + 상황별 메시지)
-var getGreeting = function(timeOfDay, condition, userName) {
-  var name = userName || '클로이';
-  
-  // 밤 시간
-  if (timeOfDay === 'night') {
-    return {
-      title: name + ',\n이 시간엔 쉬셔야죠,',
-      subtitle: '오늘 충분히 하셨어요. 남은 건 내일의 ' + name + '가 할 거예요.\n푹 쉬세요 💜'
-    };
-  }
-  
-  // 컨디션 나쁠 때
-  if (condition && condition <= 2) {
-    return {
-      title: name + ',\n오늘 좀 힘드시구나...',
-      subtitle: '괜찮아요. 무리하지 말고 꼭 해야 할 것만 해요.\n나머지는 내일의 ' + name + '가 할 거예요 💜'
-    };
-  }
-  
-  var greetings = {
-    morning: {
-      title: name + ',\n좋은 아침이에요!',
-      subtitle: '오늘도 차근차근 시작해봐요 ☀️'
-    },
-    lateMorning: {
-      title: name + ',\n오전 잘 보내고 계세요?',
-      subtitle: '점심 전에 중요한 거 하나만 끝내봐요 💪'
-    },
-    lunch: {
-      title: name + ',\n점심 맛있게 드셨어요?',
-      subtitle: '잠깐 쉬고 오후 시작해요 🍽️'
-    },
-    afternoon: {
-      title: name + ',\n오후도 힘내세요!',
-      subtitle: '남은 일정 체크해볼까요? 📋'
-    },
-    evening: {
-      title: name + ',\n오늘 하루 수고했어요!',
-      subtitle: '마무리하고 편히 쉬어요 🌙'
-    }
-  };
-  
-  return greetings[timeOfDay] || greetings.morning;
-};
-
-// 브리핑 아이템 생성
-var generateBriefingItems = function(props) {
+// 알프레도 브리핑 생성 (수석비서 스타일)
+var generateBriefing = function(props) {
   var condition = props.condition;
   var tasks = props.tasks || [];
   var events = props.events || [];
   var weather = props.weather;
   var userName = props.userName || '클로이';
+  var reminders = props.reminders || [];
   
-  var items = [];
   var now = new Date();
   var timeOfDay = getTimeOfDay();
+  var lines = [];
   
   // 오늘 일정 필터링
   var todayEvents = events.filter(function(e) {
@@ -87,46 +42,130 @@ var generateBriefingItems = function(props) {
   
   // 미완료 할일
   var incompleteTasks = tasks.filter(function(t) { return !t.completed; });
+  var urgentTasks = incompleteTasks.filter(function(t) { 
+    return t.priority === 'high' || t.importance >= 4; 
+  });
+  var emailTasks = incompleteTasks.filter(function(t) { 
+    return t.title && (t.title.includes('메일') || t.title.includes('회신')); 
+  });
   
-  // 아침 날씨 정보
+  // === 첫 번째 줄: 인사 + 감성 ===
+  if (timeOfDay === 'night') {
+    lines.push('오늘 충분히 하셨어요. 남은 건 내일의 ' + userName + '가 할 거예요.');
+    lines.push('푹 쉬세요 💜');
+  } else if (condition && condition <= 2) {
+    lines.push('괜찮아요. 무리하지 말고 꼭 해야 할 것만 해요.');
+    lines.push('나머지는 내일의 ' + userName + '가 할 거예요 💜');
+  } else if (timeOfDay === 'morning') {
+    lines.push('오늘도 차근차근 시작해봐요 ☀️');
+  } else if (timeOfDay === 'lateMorning') {
+    lines.push('점심 전에 중요한 거 하나만 끝내봐요 💪');
+  } else if (timeOfDay === 'lunch') {
+    lines.push('잠깐 쉬고 오후 시작해요 🍽️');
+  } else if (timeOfDay === 'afternoon') {
+    lines.push('남은 일정 체크해볼까요? 📋');
+  } else if (timeOfDay === 'evening') {
+    lines.push('마무리하고 편히 쉬어요 🌙');
+  }
+  
+  // === 날씨 (아침에만) ===
   if (timeOfDay === 'morning' && weather) {
     var temp = weather.temp || 3;
-    var clothingAdvice = temp <= 0 ? '패딩 필수예요!' 
+    var clothingAdvice = temp <= 0 ? '패딩, 목도리 필수예요!' 
       : temp <= 5 ? '두꺼운 외투 챙기세요' 
       : temp <= 10 ? '가디건이나 자켓 추천해요'
       : '가벼운 옷차림이면 될 것 같아요';
-    items.push('(날씨, 옷차림 등등)');
+    lines.push('오늘 ' + temp + '도예요. ' + clothingAdvice);
   }
   
-  // 일정 정보
+  // === 일정 정보 ===
   if (todayEvents.length > 0) {
     var nextEvent = todayEvents.find(function(e) { return new Date(e.start) > now; });
     if (nextEvent) {
-      var time = new Date(nextEvent.start).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-      items.push('이따 오후 ' + time.replace('오후 ', '').replace('오전 ', '') + '에 미팅이 있어요. (일정)');
+      var eventTime = new Date(nextEvent.start);
+      var hours = eventTime.getHours();
+      var minutes = eventTime.getMinutes();
+      var timeStr = (hours >= 12 ? '오후 ' : '오전 ') + 
+        (hours > 12 ? hours - 12 : hours) + '시' +
+        (minutes > 0 ? ' ' + minutes + '분' : '');
+      var eventTitle = nextEvent.title || nextEvent.summary || '미팅';
+      lines.push('이따 ' + timeStr + '에 ' + eventTitle + '이 있어요.');
     }
   }
   
-  // 할일 정보
+  // === 할일 정보 ===
   if (incompleteTasks.length > 0) {
-    var urgentCount = incompleteTasks.filter(function(t) { return t.priority === 'high'; }).length;
-    var emailCount = incompleteTasks.filter(function(t) { 
-      return t.title && (t.title.includes('메일') || t.title.includes('회신')); 
-    }).length;
-    
-    var taskLine = '오늘 마감인 테스크 ' + urgentCount + '건';
-    if (emailCount > 0) taskLine += ', 회신해야하는 메일 ' + emailCount + '건';
-    taskLine += ' (오늘 할일)';
-    items.push(taskLine);
+    var taskParts = [];
+    if (urgentTasks.length > 0) {
+      taskParts.push('오늘 마감인 테스크 ' + urgentTasks.length + '건');
+    }
+    if (emailTasks.length > 0) {
+      taskParts.push('회신해야하는 메일 ' + emailTasks.length + '건');
+    }
+    if (taskParts.length > 0) {
+      lines.push(taskParts.join(', ') + '이 있어요.');
+    }
   }
   
-  // 일상 케어
-  items.push('(일상에서 챙겨야할 것)');
+  // === 일상 케어 (루틴 기반) ===
+  // TODO: 실제 루틴 데이터 연동
+  if (timeOfDay === 'morning') {
+    lines.push('물 한잔 마시고, 영양제 챙겨드세요 💧');
+  } else if (timeOfDay === 'afternoon') {
+    lines.push('스트레칭 한번 하고 가시죠 🧘');
+  }
   
-  // 리마인더
-  items.push('마지막으로 (잊지마세요! 뭐 할거, ...');
+  // === 리마인더 (마지막) ===
+  var reminderItem = null;
+  if (reminders.length > 0) {
+    var topReminder = reminders[0];
+    var reminderText = '';
+    
+    if (topReminder.type === 'call' || topReminder.title.includes('연락')) {
+      reminderText = '엄마님께 연락할 때가 됐어요';
+    } else if (topReminder.type === 'payment' || topReminder.title.includes('대금')) {
+      reminderText = topReminder.title + ' 납부일이 다가왔어요';
+    } else if (topReminder.type === 'email') {
+      reminderText = topReminder.title + ' 회신 잊지 마세요';
+    } else {
+      reminderText = topReminder.title;
+    }
+    
+    reminderItem = {
+      text: reminderText,
+      data: topReminder
+    };
+    
+    lines.push('마지막으로, 잊지 마세요!');
+  }
   
-  return items;
+  return {
+    lines: lines,
+    reminderItem: reminderItem
+  };
+};
+
+// 인사말 타이틀 생성
+var getGreetingTitle = function(timeOfDay, condition, userName) {
+  var name = userName || '클로이';
+  
+  if (timeOfDay === 'night') {
+    return name + ',\n이 시간엔 쉬셔야죠,';
+  }
+  
+  if (condition && condition <= 2) {
+    return name + ',\n오늘 좀 힘드시구나...';
+  }
+  
+  var titles = {
+    morning: name + ',\n좋은 아침이에요!',
+    lateMorning: name + ',\n오전 잘 보내고 계세요?',
+    lunch: name + ',\n점심 맛있게 드셨어요?',
+    afternoon: name + ',\n오후도 힘내세요!',
+    evening: name + ',\n오늘 하루 수고했어요!'
+  };
+  
+  return titles[timeOfDay] || titles.morning;
 };
 
 // 메인 브리핑 컴포넌트
@@ -142,7 +181,7 @@ export var AlfredoBriefingV2 = function(props) {
   var onAction = props.onAction;
   var reminders = props.reminders || [];
   
-  var expandedState = useState(true);
+  var expandedState = useState(false); // 기본: 접힌 상태
   var isExpanded = expandedState[0];
   var setExpanded = expandedState[1];
   
@@ -151,16 +190,24 @@ export var AlfredoBriefingV2 = function(props) {
   var setShowModeDropdown = modeDropdownState[1];
   
   var timeOfDay = getTimeOfDay();
-  var greeting = getGreeting(timeOfDay, condition, userName);
+  var greetingTitle = getGreetingTitle(timeOfDay, condition, userName);
   var currentMode = MODES[mode] || MODES.focus;
   
-  // 브리핑 아이템
-  var briefingItems = useMemo(function() {
-    return generateBriefingItems({ condition: condition, tasks: tasks, events: events, weather: weather, userName: userName });
-  }, [condition, tasks, events, weather, userName]);
+  // 브리핑 생성
+  var briefing = useMemo(function() {
+    return generateBriefing({ 
+      condition: condition, 
+      tasks: tasks, 
+      events: events, 
+      weather: weather, 
+      userName: userName,
+      reminders: reminders
+    });
+  }, [condition, tasks, events, weather, userName, reminders]);
   
-  // 가장 급한 리마인더
-  var topReminder = reminders.length > 0 ? reminders[0] : null;
+  // 접힌 상태: 첫 2줄만
+  var visibleLines = isExpanded ? briefing.lines : briefing.lines.slice(0, 2);
+  var hasMoreLines = briefing.lines.length > 2;
   
   return React.createElement('div', { 
     className: 'rounded-3xl overflow-hidden mb-6 shadow-xl ' +
@@ -176,17 +223,12 @@ export var AlfredoBriefingV2 = function(props) {
           className: 'w-16 h-16 rounded-full bg-[#A996FF] flex items-center justify-center text-3xl shadow-lg flex-shrink-0'
         }, '🐧'),
         
-        // 인사말
+        // 인사말 타이틀
         React.createElement('div', { className: 'flex-1 min-w-0' },
           React.createElement('h1', { 
             className: (darkMode ? 'text-white' : 'text-gray-900') + 
               ' text-2xl font-bold leading-tight whitespace-pre-line'
-          }, greeting.title),
-          
-          isExpanded && React.createElement('p', { 
-            className: (darkMode ? 'text-gray-300' : 'text-gray-600') + 
-              ' text-sm mt-2 leading-relaxed whitespace-pre-line'
-          }, greeting.subtitle)
+          }, greetingTitle)
         ),
         
         // 모드 선택 버튼
@@ -232,34 +274,33 @@ export var AlfredoBriefingV2 = function(props) {
         )
       ),
       
-      // 브리핑 내용 (펼쳐진 상태일 때)
-      isExpanded && React.createElement('div', { 
-        className: 'mt-4 pt-4 border-t ' + (darkMode ? 'border-white/10' : 'border-black/10')
-      },
-        briefingItems.map(function(item, idx) {
+      // 브리핑 내용
+      React.createElement('div', { className: 'mt-4' },
+        // 보이는 줄들
+        visibleLines.map(function(line, idx) {
           return React.createElement('p', {
             key: idx,
-            className: (darkMode ? 'text-gray-200' : 'text-gray-700') + ' text-sm leading-relaxed mb-2'
-          }, item);
+            className: (darkMode ? 'text-gray-200' : 'text-gray-700') + ' text-sm leading-relaxed mb-1'
+          }, line);
         }),
         
-        // 리마인더 버튼
-        topReminder && React.createElement('button', {
-          onClick: function() { if (onAction) onAction('openReminder', topReminder); },
-          className: 'mt-3 flex items-center gap-2 px-4 py-2 rounded-full ' +
+        // 펼쳐진 상태에서 리마인더 버튼
+        isExpanded && briefing.reminderItem && React.createElement('button', {
+          onClick: function() { if (onAction) onAction('openReminder', briefing.reminderItem.data); },
+          className: 'mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full ' +
             (darkMode ? 'bg-white/10' : 'bg-white/60') + ' transition-all hover:scale-105'
         },
-          React.createElement('span', null, '♡'),
+          React.createElement('span', { className: 'text-pink-400' }, '♡'),
           React.createElement('span', { 
             className: (darkMode ? 'text-white' : 'text-gray-700') + ' text-sm' 
-          }, topReminder.title || '엄마님께 연락할 때가 됐어요')
+          }, briefing.reminderItem.text)
         )
       ),
       
-      // 접기/펼치기 버튼
-      React.createElement('button', {
+      // 더보기/접기 토글
+      hasMoreLines && React.createElement('button', {
         onClick: function() { setExpanded(!isExpanded); },
-        className: 'w-full flex items-center justify-center pt-3 mt-2'
+        className: 'w-full flex items-center justify-center pt-4 mt-2'
       },
         React.createElement('div', { 
           className: 'w-0 h-0 border-l-8 border-r-8 border-transparent ' +
