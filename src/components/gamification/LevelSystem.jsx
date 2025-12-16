@@ -119,13 +119,13 @@ export var LevelXpBar = function(props) {
   if (compact) {
     return React.createElement('button', {
       onClick: onClick,
-      className: 'flex items-center gap-2 px-3 py-1.5 rounded-full ' + (darkMode ? 'bg-gray-700' : 'bg-white') + ' border ' + borderColor
+      className: 'flex items-center gap-2 px-3 py-1.5 rounded-full ' + (darkMode ? 'bg-gray-700' : 'bg-white') + ' border ' + borderColor + ' btn-press'
     },
       React.createElement('span', { className: 'text-sm' }, levelInfo.title.split(' ')[0]),
       React.createElement('span', { className: textSecondary + ' text-xs' }, 'Lv.' + levelInfo.level),
       React.createElement('div', { className: 'w-12 h-1.5 rounded-full bg-gray-200 dark:bg-gray-600 overflow-hidden' },
         React.createElement('div', { 
-          className: 'h-full bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] rounded-full transition-all',
+          className: 'h-full bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] rounded-full xp-bar',
           style: { width: levelInfo.progress + '%' }
         })
       )
@@ -133,7 +133,7 @@ export var LevelXpBar = function(props) {
   }
   
   return React.createElement('div', { 
-    className: cardBg + ' rounded-2xl p-4 border ' + borderColor + ' ' + (onClick ? 'cursor-pointer hover:border-[#A996FF]/50' : ''),
+    className: cardBg + ' rounded-2xl p-4 border ' + borderColor + ' card-hover ' + (onClick ? 'cursor-pointer hover:border-[#A996FF]/50' : ''),
     onClick: onClick
   },
     // 헤더
@@ -159,7 +159,7 @@ export var LevelXpBar = function(props) {
       ),
       React.createElement('div', { className: 'h-3 rounded-full ' + (darkMode ? 'bg-gray-700' : 'bg-gray-100') + ' overflow-hidden' },
         React.createElement('div', { 
-          className: 'h-full bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] rounded-full transition-all duration-500',
+          className: 'h-full bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] rounded-full xp-bar',
           style: { width: levelInfo.progress + '%' }
         })
       )
@@ -197,13 +197,13 @@ export var XpGainToast = function(props) {
   if (!isVisible) return null;
   
   return React.createElement('div', {
-    className: 'fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-bounce'
+    className: 'fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-fadeInDown'
   },
     React.createElement('div', {
-      className: 'bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2'
+      className: 'bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] text-white px-5 py-3 rounded-full shadow-lg shadow-[#A996FF]/30 flex items-center gap-2'
     },
-      React.createElement(Sparkles, { size: 18 }),
-      React.createElement('span', { className: 'font-bold' }, '+' + amount + ' XP'),
+      React.createElement(Sparkles, { size: 18, className: 'animate-pulse-soft' }),
+      React.createElement('span', { className: 'font-bold text-lg' }, '+' + amount + ' XP'),
       React.createElement('span', { className: 'text-white/80 text-sm' }, reason)
     )
   );
@@ -219,34 +219,42 @@ export var LevelUpModal = function(props) {
   
   if (!isOpen || !levelInfo) return null;
   
-  var cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
+  var cardBg = darkMode ? 'bg-[#2C2C2E]' : 'bg-white';
   var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
   var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
   
   return React.createElement('div', {
-    className: 'fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4',
+    className: 'fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn',
     onClick: onClose
   },
     React.createElement('div', {
-      className: cardBg + ' rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl',
+      className: cardBg + ' rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl animate-scaleInBounce level-up-celebrate',
       onClick: function(e) { e.stopPropagation(); }
     },
+      // 파티클 효과 (CSS)
+      React.createElement('div', { className: 'absolute inset-0 overflow-hidden pointer-events-none' },
+        React.createElement('div', { className: 'absolute top-0 left-1/4 w-2 h-2 bg-yellow-400 rounded-full animate-bounce-soft animate-delay-100' }),
+        React.createElement('div', { className: 'absolute top-0 right-1/4 w-2 h-2 bg-pink-400 rounded-full animate-bounce-soft animate-delay-200' }),
+        React.createElement('div', { className: 'absolute top-1/4 left-0 w-2 h-2 bg-[#A996FF] rounded-full animate-bounce-soft animate-delay-300' }),
+        React.createElement('div', { className: 'absolute top-1/4 right-0 w-2 h-2 bg-green-400 rounded-full animate-bounce-soft animate-delay-400' })
+      ),
+      
       // 축하 아이콘
-      React.createElement('div', { className: 'text-6xl mb-4 animate-bounce' }, '🎉'),
+      React.createElement('div', { className: 'text-7xl mb-4 animate-bounce-soft' }, '🎉'),
       
       // 레벨업 텍스트
-      React.createElement('h2', { className: 'text-[#A996FF] text-2xl font-bold mb-2' }, 'LEVEL UP!'),
+      React.createElement('h2', { className: 'text-[#A996FF] text-3xl font-bold mb-2 animate-glow' }, 'LEVEL UP!'),
       
       // 새 레벨
-      React.createElement('div', { className: 'text-5xl my-4' }, levelInfo.title.split(' ')[0]),
+      React.createElement('div', { className: 'text-6xl my-6' }, levelInfo.title.split(' ')[0]),
       React.createElement('p', { className: textPrimary + ' text-xl font-bold mb-1' }, levelInfo.title.split(' ').slice(1).join(' ')),
-      React.createElement('p', { className: textSecondary + ' mb-4' }, 'Level ' + newLevel),
+      React.createElement('p', { className: textSecondary + ' mb-6' }, 'Level ' + newLevel),
       
       // 보상
-      React.createElement('div', { className: 'bg-amber-500/20 text-amber-500 px-4 py-3 rounded-xl mb-6' },
-        React.createElement('div', { className: 'flex items-center justify-center gap-2 mb-1' },
-          React.createElement(Gift, { size: 18 }),
-          React.createElement('span', { className: 'font-bold' }, '새로운 보상!')
+      React.createElement('div', { className: 'bg-amber-500/20 text-amber-500 px-4 py-4 rounded-2xl mb-6 animate-fadeInUp animate-delay-200' },
+        React.createElement('div', { className: 'flex items-center justify-center gap-2 mb-2' },
+          React.createElement(Gift, { size: 20 }),
+          React.createElement('span', { className: 'font-bold text-lg' }, '새로운 보상!')
         ),
         React.createElement('p', { className: 'text-sm' }, levelInfo.perks)
       ),
@@ -254,7 +262,7 @@ export var LevelUpModal = function(props) {
       // 확인 버튼
       React.createElement('button', {
         onClick: onClose,
-        className: 'w-full py-3 bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] text-white rounded-xl font-bold'
+        className: 'w-full py-4 bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] text-white rounded-2xl font-bold text-lg shadow-lg shadow-[#A996FF]/30 btn-press hover:shadow-xl transition-all'
       }, '멋져요! 🎊')
     )
   );
@@ -279,16 +287,17 @@ export var GameStatsCard = function(props) {
     { icon: '🏅', label: '획득한 배지', value: (gameData.badges || []).length }
   ];
   
-  return React.createElement('div', { className: cardBg + ' rounded-2xl p-4 border ' + borderColor },
+  return React.createElement('div', { className: cardBg + ' rounded-2xl p-4 border ' + borderColor + ' animate-fadeIn' },
     React.createElement('h3', { className: textPrimary + ' font-bold mb-4 flex items-center gap-2' },
       React.createElement(Trophy, { size: 18, className: 'text-amber-400' }),
       '나의 기록'
     ),
     React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
       stats.map(function(stat, idx) {
+        var delayClass = 'animate-delay-' + (idx * 100);
         return React.createElement('div', {
           key: idx,
-          className: 'p-3 rounded-xl ' + (darkMode ? 'bg-gray-700/50' : 'bg-gray-50')
+          className: 'p-3 rounded-xl animate-fadeInUp ' + delayClass + ' ' + (darkMode ? 'bg-gray-700/50' : 'bg-gray-50')
         },
           React.createElement('div', { className: 'flex items-center gap-2 mb-1' },
             React.createElement('span', null, stat.icon),
@@ -298,6 +307,34 @@ export var GameStatsCard = function(props) {
         );
       })
     )
+  );
+};
+
+// 🔥 스트릭 뱃지 컴포넌트
+export var StreakBadge = function(props) {
+  var streak = props.streak || 0;
+  var darkMode = props.darkMode;
+  var size = props.size || 'md';
+  
+  if (streak === 0) return null;
+  
+  var sizeClasses = {
+    sm: 'px-2 py-1 text-xs',
+    md: 'px-3 py-1.5 text-sm',
+    lg: 'px-4 py-2 text-base'
+  };
+  
+  var bgColor = streak >= 30 ? 'bg-gradient-to-r from-amber-400 to-orange-500' 
+    : streak >= 7 ? 'bg-gradient-to-r from-[#A996FF] to-[#8B7CF7]'
+    : darkMode ? 'bg-gray-700' : 'bg-gray-200';
+  
+  var textColor = streak >= 7 ? 'text-white' : (darkMode ? 'text-gray-300' : 'text-gray-700');
+  
+  return React.createElement('div', {
+    className: bgColor + ' ' + textColor + ' ' + sizeClasses[size] + ' rounded-full font-bold flex items-center gap-1.5 shadow-sm'
+  },
+    React.createElement(Flame, { size: size === 'sm' ? 12 : size === 'md' ? 14 : 16 }),
+    React.createElement('span', null, streak + '일')
   );
 };
 
@@ -408,19 +445,32 @@ export function useGamification() {
     }
   };
   
+  // 현재 레벨 정보
+  var levelInfo = getLevelInfo(gameData.totalXp);
+  
   return {
+    // 데이터
     gameData: gameData,
-    levelInfo: getLevelInfo(gameData.totalXp),
+    totalXp: gameData.totalXp,
+    level: levelInfo.level,
+    levelInfo: levelInfo,
+    currentStreak: gameData.currentStreak,
+    
+    // 토스트/모달 상태
     xpToast: xpToast,
     hideXpToast: function() { setXpToast(function(prev) { return Object.assign({}, prev, { visible: false }); }); },
     levelUp: levelUp,
     closeLevelUp: function() { setLevelUp({ open: false, level: 0, info: null }); },
+    
+    // 액션
     addXp: addXp,
     onTaskComplete: onTaskComplete,
     onFocusComplete: onFocusComplete,
     updateStreak: updateStreak,
     onQuestComplete: onQuestComplete,
     addBadge: addBadge,
+    
+    // 상수
     XP_REWARDS: XP_REWARDS
   };
 }
@@ -430,6 +480,7 @@ export default {
   XpGainToast: XpGainToast,
   LevelUpModal: LevelUpModal,
   GameStatsCard: GameStatsCard,
+  StreakBadge: StreakBadge,
   useGamification: useGamification,
   LEVELS: LEVELS,
   XP_REWARDS: XP_REWARDS,
