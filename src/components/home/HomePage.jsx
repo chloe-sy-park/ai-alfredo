@@ -198,77 +198,14 @@ var TodayStatusCard = function(props) {
           ),
           React.createElement('div', { className: 'flex items-center gap-2' },
             React.createElement('span', { className: textSecondary + ' text-xs' }, '추천:'),
-            React.createElement('span', { className: recommendedModeData.color + ' text-sm font-medium' }, recommendedModeData.emoji + ' ' + recommendedModeData.label)
+            React.createElement('span', { className: recommendedModeData.color + ' text-xs font-medium' }, recommendedModeData.emoji + ' ' + recommendedModeData.label),
+            React.createElement(ChevronRight, { size: 16, className: textSecondary })
           )
         )
   );
 };
 
-var RemindersSection = function(props) {
-  var darkMode = props.darkMode;
-  var tasks = props.tasks || [];
-  var relationships = props.relationships || [];
-  var onOpenTask = props.onOpenTask;
-  var onOpenReminder = props.onOpenReminder;
-  
-  var cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
-  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
-  var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
-  var borderColor = darkMode ? 'border-gray-700' : 'border-gray-200';
-  
-  var now = new Date();
-  var threeDaysLater = new Date(now);
-  threeDaysLater.setDate(threeDaysLater.getDate() + 3);
-  
-  var urgentDeadlines = tasks.filter(function(t) {
-    if (t.completed || !t.dueDate) return false;
-    var due = new Date(t.dueDate);
-    return due <= threeDaysLater;
-  }).slice(0, 2);
-  
-  var needContact = relationships.filter(function(r) {
-    if (!r.lastContact) return true;
-    var lastDate = new Date(r.lastContact);
-    var daysSince = Math.floor((now - lastDate) / (1000 * 60 * 60 * 24));
-    return daysSince > (r.contactFrequency || 30);
-  }).slice(0, 2);
-  
-  var reminders = [];
-  
-  urgentDeadlines.forEach(function(task) {
-    var due = new Date(task.dueDate);
-    var daysLeft = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
-    reminders.push({ type: 'deadline', icon: '⏰', title: task.title, subtitle: daysLeft <= 0 ? '오늘까지!' : daysLeft + '일 남음', color: daysLeft <= 1 ? 'text-red-400' : 'text-amber-400', data: task });
-  });
-  
-  needContact.forEach(function(person) {
-    var lastDate = person.lastContact ? new Date(person.lastContact) : null;
-    var daysSince = lastDate ? Math.floor((now - lastDate) / (1000 * 60 * 60 * 24)) : '?';
-    reminders.push({ type: 'relationship', icon: '💝', title: person.name + '님께 연락', subtitle: daysSince + '일 전 마지막 연락', color: 'text-pink-400', data: person });
-  });
-  
-  if (reminders.length === 0) return null;
-  
-  return React.createElement('div', { className: cardBg + ' rounded-2xl p-4 mb-4 border ' + borderColor },
-    React.createElement('h3', { className: textPrimary + ' font-bold mb-3 flex items-center gap-2' },
-      React.createElement(Bell, { size: 18, className: 'text-amber-400' }),
-      '잊지 마세요'
-    ),
-    React.createElement('div', { className: 'space-y-2' },
-      reminders.map(function(item, idx) {
-        return React.createElement('button', { key: idx, onClick: function() { if (item.type === 'deadline' && onOpenTask) onOpenTask(item.data); if (item.type === 'relationship' && onOpenReminder) onOpenReminder(item); }, className: 'w-full flex items-center gap-3 p-2 rounded-xl ' + (darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50') + ' transition-all text-left' },
-          React.createElement('span', { className: 'text-lg' }, item.icon),
-          React.createElement('div', { className: 'flex-1 min-w-0' },
-            React.createElement('p', { className: textPrimary + ' text-sm font-medium truncate' }, item.title),
-            React.createElement('p', { className: item.color + ' text-xs' }, item.subtitle)
-          ),
-          React.createElement(ChevronRight, { size: 16, className: textSecondary })
-        );
-      })
-    )
-  );
-};
-
+// 📋 지금 집중할 것 카드
 var NowCard = function(props) {
   var darkMode = props.darkMode;
   var tasks = props.tasks || [];
@@ -277,46 +214,145 @@ var NowCard = function(props) {
   var onOpenTask = props.onOpenTask;
   var onAddTask = props.onAddTask;
   
+  var cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
+  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+  var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  var borderColor = darkMode ? 'border-gray-700' : 'border-gray-200';
+  
   var now = new Date();
+  
+  // 현재 진행 중인 이벤트
   var currentEvent = events.find(function(e) {
     var start = new Date(e.start);
-    var end = new Date(e.end || start.getTime() + 60 * 60 * 1000);
-    return start <= now && now <= end;
+    var end = new Date(e.end);
+    return now >= start && now <= end;
   });
   
-  var incompleteTasks = tasks.filter(function(t) { return !t.completed; });
-  var completedTasks = tasks.filter(function(t) { return t.completed; });
+  // 다음 30분 내 이벤트
+  var upcomingEvent = events.find(function(e) {
+    var start = new Date(e.start);
+    var diff = (start - now) / 1000 / 60;
+    return diff > 0 && diff <= 30;
+  });
   
-  var topTask = incompleteTasks.sort(function(a, b) {
-    var priorityOrder = { high: 0, medium: 1, low: 2 };
-    return (priorityOrder[a.priority] || 1) - (priorityOrder[b.priority] || 1);
-  })[0];
+  // 가장 급한 태스크
+  var urgentTask = tasks.filter(function(t) { return !t.completed; })
+    .sort(function(a, b) {
+      var priorityOrder = { high: 0, medium: 1, low: 2 };
+      return (priorityOrder[a.priority] || 1) - (priorityOrder[b.priority] || 1);
+    })[0];
   
-  var currentItem = currentEvent || topTask;
+  // 표시할 항목 결정
+  var displayItem = currentEvent || upcomingEvent || urgentTask;
   
-  if (tasks.length === 0) {
-    return React.createElement(AlfredoEmptyState, { variant: 'noTasks', darkMode: darkMode, onAction: onAddTask, compact: false });
+  if (!displayItem) {
+    return React.createElement('div', { className: cardBg + ' rounded-2xl p-4 mb-4 border ' + borderColor },
+      React.createElement('div', { className: 'flex items-center gap-3 mb-3' },
+        React.createElement(Target, { size: 18, className: 'text-[#A996FF]' }),
+        React.createElement('span', { className: textPrimary + ' font-bold' }, '지금 집중할 것')
+      ),
+      React.createElement(AlfredoEmptyState, {
+        darkMode: darkMode,
+        type: 'tasks',
+        onAction: onAddTask,
+        compact: true
+      })
+    );
   }
   
-  if (incompleteTasks.length === 0 && completedTasks.length > 0) {
-    return React.createElement(AlfredoEmptyState, { variant: 'allDone', darkMode: darkMode, onAction: onAddTask, compact: false });
-  }
+  var isEvent = currentEvent || upcomingEvent;
+  var item = displayItem;
   
-  var isEvent = currentItem && currentItem.start !== undefined;
-  var title = currentItem ? (currentItem.title || currentItem.summary || '') : '';
-  var subtitle = isEvent ? new Date(currentItem.start).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) + ' - ' + new Date(currentItem.end || currentItem.start).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : (currentItem ? (currentItem.project || '개인') : '');
-  
-  return React.createElement('div', { className: 'bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] rounded-2xl p-4 mb-4 text-white shadow-lg', onClick: function() { if (onOpenTask && !isEvent && currentItem) onOpenTask(currentItem); } },
-    React.createElement('div', { className: 'flex items-center gap-2 text-white/70 text-xs mb-2' },
-      React.createElement(Target, { size: 14 }),
-      React.createElement('span', null, '지금 집중할 것')
+  return React.createElement('div', { className: cardBg + ' rounded-2xl p-4 mb-4 border ' + borderColor },
+    React.createElement('div', { className: 'flex items-center justify-between mb-3' },
+      React.createElement('div', { className: 'flex items-center gap-2' },
+        React.createElement(Target, { size: 18, className: 'text-[#A996FF]' }),
+        React.createElement('span', { className: textPrimary + ' font-bold' }, '지금 집중할 것')
+      ),
+      currentEvent && React.createElement('span', { className: 'text-xs px-2 py-1 rounded-full bg-green-500/20 text-green-500' }, '진행 중')
     ),
-    React.createElement('h2', { className: 'text-lg font-bold mb-1 truncate' }, title),
-    React.createElement('p', { className: 'text-white/70 text-sm mb-3' }, subtitle),
-    !isEvent && currentItem && React.createElement('button', { onClick: function(e) { e.stopPropagation(); if (onStartTask) onStartTask(currentItem); }, className: 'bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl text-sm font-medium transition-all' }, '🎯 집중 모드 시작')
+    React.createElement('button', {
+      onClick: function() { isEvent ? null : (onOpenTask && onOpenTask(item)); },
+      className: 'w-full p-4 rounded-xl ' + (darkMode ? 'bg-gray-700/50 hover:bg-gray-700' : 'bg-gray-50 hover:bg-gray-100') + ' transition-all text-left'
+    },
+      React.createElement('div', { className: 'flex items-center gap-3' },
+        React.createElement('span', { className: 'text-2xl' }, isEvent ? '📅' : (item.priority === 'high' ? '🔥' : '📝')),
+        React.createElement('div', { className: 'flex-1 min-w-0' },
+          React.createElement('p', { className: textPrimary + ' font-medium truncate' }, item.title || item.summary),
+          isEvent && React.createElement('p', { className: textSecondary + ' text-sm' },
+            new Date(item.start).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) +
+            ' - ' +
+            new Date(item.end).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+          )
+        ),
+        !isEvent && React.createElement('button', {
+          onClick: function(e) { e.stopPropagation(); if (onStartTask) onStartTask(item); },
+          className: 'px-3 py-1.5 bg-[#A996FF] text-white text-sm rounded-lg font-medium'
+        }, '시작')
+      )
+    )
   );
 };
 
+// 📅 타임라인 요약 카드
+var TimelineCard = function(props) {
+  var darkMode = props.darkMode;
+  var events = props.events || [];
+  var tasks = props.tasks || [];
+  var onViewAll = props.onViewAll;
+  
+  var cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
+  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+  var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  var borderColor = darkMode ? 'border-gray-700' : 'border-gray-200';
+  
+  var today = new Date();
+  var todayEvents = events.filter(function(e) {
+    var eventDate = new Date(e.start);
+    return eventDate.toDateString() === today.toDateString();
+  }).sort(function(a, b) {
+    return new Date(a.start) - new Date(b.start);
+  });
+  
+  var upcomingEvents = todayEvents.filter(function(e) {
+    return new Date(e.start) > today;
+  }).slice(0, 3);
+  
+  if (upcomingEvents.length === 0) {
+    return React.createElement('div', { className: cardBg + ' rounded-2xl p-4 mb-4 border ' + borderColor },
+      React.createElement('div', { className: 'flex items-center justify-between mb-3' },
+        React.createElement('div', { className: 'flex items-center gap-2' },
+          React.createElement(Clock, { size: 18, className: 'text-[#A996FF]' }),
+          React.createElement('span', { className: textPrimary + ' font-bold' }, '오늘 타임라인')
+        ),
+        React.createElement('button', { onClick: onViewAll, className: textSecondary + ' text-sm' }, '전체')
+      ),
+      React.createElement('p', { className: textSecondary + ' text-center py-4' }, '남은 일정이 없어요 ✨')
+    );
+  }
+  
+  return React.createElement('div', { className: cardBg + ' rounded-2xl p-4 mb-4 border ' + borderColor },
+    React.createElement('div', { className: 'flex items-center justify-between mb-3' },
+      React.createElement('div', { className: 'flex items-center gap-2' },
+        React.createElement(Clock, { size: 18, className: 'text-[#A996FF]' }),
+        React.createElement('span', { className: textPrimary + ' font-bold' }, '오늘 타임라인')
+      ),
+      React.createElement('button', { onClick: onViewAll, className: textSecondary + ' text-sm' }, '전체')
+    ),
+    React.createElement('div', { className: 'space-y-2' },
+      upcomingEvents.map(function(event, idx) {
+        var startTime = new Date(event.start).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+        return React.createElement('div', { key: event.id || idx, className: 'flex items-center gap-3 p-2 rounded-lg ' + (darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50') },
+          React.createElement('span', { className: 'text-blue-500 text-sm font-medium w-14' }, startTime),
+          React.createElement('div', { className: 'w-2 h-2 rounded-full bg-blue-500' }),
+          React.createElement('span', { className: textPrimary + ' text-sm truncate flex-1' }, event.title || event.summary)
+        );
+      })
+    )
+  );
+};
+
+// 🎯 Big3 섹션
 var Big3Section = function(props) {
   var darkMode = props.darkMode;
   var tasks = props.tasks || [];
@@ -374,28 +410,61 @@ var GameWidgetCompact = function(props) {
   },
     React.createElement('div', { className: 'flex items-center justify-between' },
       React.createElement('div', { className: 'flex items-center gap-3' },
-        React.createElement('div', { className: 'w-10 h-10 rounded-xl bg-gradient-to-br from-[#A996FF] to-[#8B7CF7] flex items-center justify-center text-white font-bold' }, level),
+        React.createElement('div', { className: 'w-10 h-10 rounded-xl bg-gradient-to-br from-[#A996FF] to-[#8B7CF7] flex items-center justify-center' },
+          React.createElement(Trophy, { size: 20, className: 'text-white' })
+        ),
         React.createElement('div', null,
-          React.createElement('p', { className: textPrimary + ' font-bold text-sm' }, 'Lv.' + level),
-          React.createElement('p', { className: textSecondary + ' text-xs' }, xp.toLocaleString() + ' XP')
+          React.createElement('p', { className: textPrimary + ' font-bold' }, 'Lv.' + level),
+          React.createElement('p', { className: textSecondary + ' text-xs' }, xp + ' XP')
         )
       ),
-      React.createElement('div', { className: 'flex items-center gap-4' },
-        streak > 0 && React.createElement('div', { className: 'flex items-center gap-1 text-orange-500' },
-          React.createElement(Flame, { size: 16 }),
-          React.createElement('span', { className: 'font-bold text-sm' }, streak)
-        ),
-        React.createElement(ChevronRight, { size: 16, className: textSecondary })
+      React.createElement('div', { className: 'flex items-center gap-2' },
+        streak > 0 && React.createElement('span', { className: 'text-orange-500 text-sm font-medium' }, '🔥 ' + streak + '일'),
+        React.createElement(ChevronRight, { size: 18, className: textSecondary })
       )
     )
   );
 };
 
-var HomePage = function(props) {
+// 📝 리마인더 섹션
+var RemindersSection = function(props) {
+  var darkMode = props.darkMode;
+  var reminders = props.reminders || [];
+  var onOpenReminder = props.onOpenReminder;
+  
+  var cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
+  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+  var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  var borderColor = darkMode ? 'border-gray-700' : 'border-gray-200';
+  
+  var activeReminders = reminders.filter(function(r) { return !r.completed; }).slice(0, 3);
+  
+  if (activeReminders.length === 0) return null;
+  
+  return React.createElement('div', { className: cardBg + ' rounded-2xl p-4 mb-4 border ' + borderColor },
+    React.createElement('div', { className: 'flex items-center justify-between mb-3' },
+      React.createElement('div', { className: 'flex items-center gap-2' },
+        React.createElement(Bell, { size: 18, className: 'text-[#A996FF]' }),
+        React.createElement('span', { className: textPrimary + ' font-bold' }, '기억해야 할 것')
+      ),
+      React.createElement('button', { onClick: onOpenReminder, className: textSecondary + ' text-sm' }, '전체')
+    ),
+    React.createElement('div', { className: 'space-y-2' },
+      activeReminders.map(function(reminder, idx) {
+        return React.createElement('div', { key: reminder.id || idx, className: 'flex items-center gap-3 p-2 rounded-lg ' + (darkMode ? 'bg-gray-700/50' : 'bg-gray-50') },
+          React.createElement('span', { className: 'text-lg' }, '📌'),
+          React.createElement('span', { className: textPrimary + ' text-sm flex-1 truncate' }, reminder.title)
+        );
+      })
+    )
+  );
+};
+
+// 🏠 홈페이지 메인 컴포넌트
+export var HomePage = function(props) {
   var darkMode = props.darkMode;
   var tasks = props.tasks || [];
   var events = props.events || [];
-  var relationships = props.relationships || [];
   var weather = props.weather;
   var mood = props.mood;
   var energy = props.energy;
@@ -529,13 +598,7 @@ var HomePage = function(props) {
             count: notifications.unreadCount,
             onClick: function() { setShowNotifCenter(true); },
             darkMode: darkMode
-          }),
-          React.createElement('button', { onClick: onOpenSearch, className: 'w-10 h-10 rounded-full flex items-center justify-center ' + (darkMode ? 'bg-gray-800 text-gray-300' : 'bg-white text-gray-600') + ' shadow-sm' },
-            React.createElement(Search, { size: 18 })
-          ),
-          React.createElement('button', { onClick: onOpenAddTask, className: 'w-10 h-10 bg-[#A996FF] rounded-full flex items-center justify-center text-white shadow-lg' },
-            React.createElement(Plus, { size: 20 })
-          )
+          })
         )
       ),
       
@@ -552,6 +615,7 @@ var HomePage = function(props) {
         energy: energy,
         weather: weather,
         onClick: onOpenChat,
+        onEmailClick: onOpenInbox,
         compact: true
       }),
       
@@ -568,52 +632,50 @@ var HomePage = function(props) {
       // 지금 집중할 것
       React.createElement(NowCard, { darkMode: darkMode, tasks: tasks, events: events, onStartTask: onStartFocus, onOpenTask: onOpenTask, onAddTask: onOpenAddTask }),
       
-      // 📧 이메일 인박스 (NEW!)
-      React.createElement(EmailInbox, {
-        darkMode: darkMode,
-        onCreateTask: handleCreateTaskFromEmail,
-        onCreateEvent: handleCreateEventFromEmail,
-        compact: true
-      }),
-      
-      // 게임 위젯 (새로운 컴포넌트)
-      React.createElement(GameWidgetCompact, {
-        darkMode: darkMode,
-        gameData: gamification,
-        onClick: onOpenGameCenter
-      }),
-      
-      // 오늘의 Top 3
+      // Big3 섹션
       React.createElement(Big3Section, { darkMode: darkMode, tasks: tasks, onOpenTask: onOpenTask }),
       
-      // 내일의 나에게 버튼
-      React.createElement(TomorrowMeButton, { darkMode: darkMode, onClick: function() { setShowTomorrowMeModal(true); } }),
-      
       // 리마인더
-      React.createElement(RemindersSection, { darkMode: darkMode, tasks: tasks, relationships: relationships, onOpenTask: onOpenTask, onOpenReminder: onOpenReminder }),
+      React.createElement(RemindersSection, { darkMode: darkMode, reminders: [], onOpenReminder: onOpenReminder }),
       
-      // 오늘 타임라인
-      React.createElement('div', { className: 'mt-4' },
-        React.createElement('h3', { className: textPrimary + ' font-bold mb-3 flex items-center gap-2' },
-          React.createElement(Calendar, { size: 18, className: 'text-emerald-500' }),
-          '오늘 타임라인'
-        ),
-        todayEvents.length > 0 
-          ? React.createElement(UnifiedTimelineView, { darkMode: darkMode, events: events, tasks: tasks, onEventClick: onOpenEvent, onTaskClick: onOpenTask, compact: true })
-          : React.createElement(AlfredoEmptyState, { variant: 'noEvents', darkMode: darkMode, onAction: function() { if (setView) setView('CALENDAR'); }, compact: true, showSuggestion: false })
-      )
+      // 타임라인
+      React.createElement(TimelineCard, { darkMode: darkMode, events: todayEvents, tasks: tasks, onViewAll: function() { if (setView) setView('CALENDAR'); } }),
+      
+      // 이메일 인박스
+      React.createElement(EmailInbox, {
+        darkMode: darkMode,
+        compact: true,
+        onCreateTask: handleCreateTaskFromEmail,
+        onCreateEvent: handleCreateEventFromEmail,
+        onViewAll: onOpenInbox
+      }),
+      
+      // 게임 위젯
+      React.createElement(GameWidgetCompact, { darkMode: darkMode, onClick: onOpenGameCenter, gameData: gamification }),
+      
+      // 내일의 나에게 버튼 (저녁)
+      !isMorning && React.createElement(TomorrowMeButton, { darkMode: darkMode, onClick: function() { setShowTomorrowMeModal(true); } })
     ),
     
-    // 플로팅 액션 버튼
-    React.createElement(FloatingActionButton, {
+    // 내일의 나에게 모달
+    showTomorrowMeModal && React.createElement(TomorrowMeWriteModal, {
       darkMode: darkMode,
-      onAction: handleQuickAction,
-      primaryAction: 'addTask',
-      secondaryActions: ['startFocus', 'talkToAlfredo', 'logMood']
+      onClose: function() { setShowTomorrowMeModal(false); },
+      onSave: function(msg) { setShowTomorrowMeModal(false); }
     }),
     
-    // 내일의 나에게 모달
-    React.createElement(TomorrowMeWriteModal, { isOpen: showTomorrowMeModal, onClose: function() { setShowTomorrowMeModal(false); }, darkMode: darkMode, userName: userName })
+    // FAB
+    React.createElement(FloatingActionButton, {
+      onClick: function() { setShowQuickSheet(true); },
+      darkMode: darkMode
+    }),
+    
+    // 퀵 액션 시트
+    showQuickSheet && React.createElement(QuickActionBar, {
+      darkMode: darkMode,
+      onAction: handleQuickAction,
+      onClose: function() { setShowQuickSheet(false); }
+    })
   );
 };
 
