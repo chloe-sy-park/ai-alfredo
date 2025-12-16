@@ -53,7 +53,7 @@ var getElapsedText = function(lastCompleted) {
   return diffDays + '일 전';
 };
 
-// 리마인더 아이템
+// 리마인더 아이템 - 반응형
 var ReminderItem = function(props) {
   var reminder = props.reminder;
   var darkMode = props.darkMode;
@@ -74,7 +74,8 @@ var ReminderItem = function(props) {
   
   return React.createElement('button', {
     onClick: function() { if (onClick) onClick(reminder); },
-    className: 'w-full flex items-center gap-3 p-4 rounded-2xl transition-all active:scale-[0.98] ' +
+    // 터치 타겟 48px+ 보장
+    className: 'w-full flex items-center gap-3 p-3 md:p-4 min-h-[56px] rounded-xl md:rounded-2xl transition-all active:scale-[0.98] ' +
       'animate-fadeInUp ' + delayClass + ' card-hover ' +
       (darkMode 
         ? 'bg-[#2C2C2E] hover:bg-[#3A3A3C]' 
@@ -82,11 +83,11 @@ var ReminderItem = function(props) {
       ' shadow-sm'
   },
     // 이모지
-    React.createElement('span', { className: 'text-xl' }, emoji),
+    React.createElement('span', { className: 'text-xl flex-shrink-0' }, emoji),
     
-    // 텍스트
+    // 텍스트 - 말줄임 처리
     React.createElement('span', { 
-      className: 'flex-1 text-left font-medium ' +
+      className: 'flex-1 text-left font-medium text-sm md:text-base truncate ' +
         (isUrgent 
           ? (isPast ? 'text-orange-500' : 'text-[#A996FF]')
           : (darkMode ? 'text-white' : 'text-gray-900'))
@@ -94,7 +95,7 @@ var ReminderItem = function(props) {
     
     // 뱃지
     badgeText && React.createElement('span', { 
-      className: 'px-2.5 py-1 rounded-full text-xs font-semibold ' +
+      className: 'px-2 md:px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0 ' +
         (isUrgent 
           ? (isPast 
               ? 'bg-orange-100 text-orange-600' 
@@ -107,12 +108,12 @@ var ReminderItem = function(props) {
     // 화살표
     React.createElement(ChevronRight, { 
       size: 18, 
-      className: darkMode ? 'text-gray-600' : 'text-gray-300' 
+      className: (darkMode ? 'text-gray-600' : 'text-gray-300') + ' flex-shrink-0'
     })
   );
 };
 
-// ⚠️ 잊지 마세요 섹션
+// ⚠️ 잊지 마세요 섹션 - 반응형
 export var RemindersSection = function(props) {
   var reminders = props.reminders || [];
   var darkMode = props.darkMode;
@@ -129,7 +130,7 @@ export var RemindersSection = function(props) {
   var visibleReminders = isExpanded ? reminders : reminders.slice(0, 3);
   var hasMore = reminders.length > 3;
   
-  return React.createElement('div', { className: 'mb-6 animate-fadeIn' },
+  return React.createElement('div', { className: 'animate-fadeIn' },
     // 섹션 헤더
     React.createElement('div', { className: 'flex items-center justify-between mb-3 px-1' },
       React.createElement('div', { className: 'flex items-center gap-2' },
@@ -138,16 +139,17 @@ export var RemindersSection = function(props) {
           className: 'text-amber-500' 
         }),
         React.createElement('h2', { 
-          className: (darkMode ? 'text-white' : 'text-gray-900') + ' font-bold text-lg'
+          className: (darkMode ? 'text-white' : 'text-gray-900') + ' font-bold text-base md:text-lg'
         }, '잊지 마세요'),
         React.createElement('span', { 
           className: 'px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-600'
         }, reminders.length)
       ),
       
+      // 터치 타겟 44px
       hasMore && React.createElement('button', {
         onClick: function() { setExpanded(!isExpanded); },
-        className: 'text-sm font-medium text-[#A996FF] btn-press'
+        className: 'text-sm font-medium text-[#A996FF] p-2 -mr-2 min-h-[44px] btn-press'
       }, isExpanded ? '접기' : '전체보기')
     ),
     
