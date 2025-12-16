@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Zap } from 'lucide-react';
 
 // AI 제안 문구 생성
 var getAISuggestion = function(task) {
@@ -65,9 +65,13 @@ export var FocusNowCard = function(props) {
   // AI 제안 문구
   var suggestion = getAISuggestion(task);
   
+  // 긴급 태스크 여부
+  var isUrgent = task.recommended && (task.deadline || task.dueDate);
+  
   return React.createElement('div', { 
-    className: 'rounded-3xl overflow-hidden mb-6 shadow-lg ' +
-      (darkMode ? 'bg-[#2C2C2E]' : 'bg-white')
+    className: 'rounded-3xl overflow-hidden mb-6 shadow-lg animate-fadeInUp card-hover ' +
+      (darkMode ? 'bg-[#2C2C2E]' : 'bg-white') +
+      (isUrgent ? ' ring-2 ring-[#A996FF]/50' : '')
   },
     // AI 추천 헤더
     React.createElement('div', { 
@@ -75,7 +79,7 @@ export var FocusNowCard = function(props) {
         (darkMode ? 'bg-[#3A3A3C]' : 'bg-gray-50')
     },
       React.createElement('div', { 
-        className: 'w-8 h-8 rounded-full bg-[#A996FF] flex items-center justify-center text-lg'
+        className: 'w-8 h-8 rounded-full bg-[#A996FF] flex items-center justify-center text-lg shadow-lg shadow-[#A996FF]/20'
       }, '🐧'),
       React.createElement('p', { 
         className: (darkMode ? 'text-gray-200' : 'text-gray-700') + ' text-sm'
@@ -90,11 +94,14 @@ export var FocusNowCard = function(props) {
           React.createElement('span', { className: 'text-[#A996FF]' }, '🎯'),
           React.createElement('span', { 
             className: 'text-[#A996FF] text-sm font-medium' 
-          }, '지금 이거부터')
+          }, '지금 이거부터'),
+          isUrgent && React.createElement('span', {
+            className: 'px-2 py-0.5 bg-red-100 text-red-600 text-xs font-semibold rounded-full animate-pulse-soft'
+          }, '긴급')
         ),
         React.createElement('button', {
           onClick: onShowOptions,
-          className: 'flex items-center gap-1 text-sm ' +
+          className: 'flex items-center gap-1 text-sm btn-press ' +
             (darkMode ? 'text-gray-400' : 'text-gray-500')
         },
           '다른 옵션',
@@ -123,11 +130,15 @@ export var FocusNowCard = function(props) {
           React.createElement('button', {
             onClick: function() { if (onStart) onStart(task); },
             className: 'px-5 py-2.5 bg-[#A996FF] text-white rounded-xl font-semibold ' +
-              'shadow-lg shadow-[#A996FF]/30 hover:bg-[#8B7AE4] transition-all active:scale-95'
-          }, '시작하기'),
+              'shadow-lg shadow-[#A996FF]/30 hover:bg-[#8B7AE4] transition-all btn-press ' +
+              'flex items-center gap-2'
+          }, 
+            React.createElement(Zap, { size: 16 }),
+            '시작하기'
+          ),
           React.createElement('button', {
             onClick: function() { if (onLater) onLater(task); },
-            className: 'px-4 py-2.5 rounded-xl font-medium transition-all active:scale-95 ' +
+            className: 'px-4 py-2.5 rounded-xl font-medium transition-all btn-press ' +
               (darkMode 
                 ? 'bg-[#3A3A3C] text-gray-300 hover:bg-[#48484A]' 
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200')
