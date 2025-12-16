@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import HomeHeader from './HomeHeader';
+import AlfredoBriefingV2 from './AlfredoBriefingV2';
 import { 
-  AlfredoGreeting, 
   TodaySummary, 
   UpcomingEventCard, 
   FocusNow, 
@@ -175,12 +175,36 @@ export var HomePage = function(props) {
     
     // 스크롤 영역
     React.createElement('div', { className: 'px-4 pt-4' },
-      // 🐧 알프레도 인사
-      React.createElement(AlfredoGreeting, {
+      // 🐧 알프레도 브리핑 (기존 유지!)
+      React.createElement(AlfredoBriefingV2, {
         darkMode: darkMode,
         condition: condition,
+        tasks: tasks,
+        events: events,
+        emails: [],
+        reminders: [],
+        weather: weather,
+        streak: gamification.currentStreak || 0,
         mode: alfredoMode,
-        setMode: setAlfredoMode
+        setMode: setAlfredoMode,
+        onAction: function(action, data) {
+          switch (action) {
+            case 'startTask':
+              if (data) handleStartTask(data);
+              break;
+            case 'eventReady':
+              if (onOpenEvent && data) onOpenEvent(data);
+              break;
+            case 'openCalendar':
+              handleNavigate('CALENDAR');
+              break;
+            case 'openEmail':
+              if (onOpenInbox) onOpenInbox();
+              break;
+            default:
+              break;
+          }
+        }
       }),
       
       // 📊 오늘 요약
