@@ -1,5 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { BarChart3, TrendingUp, TrendingDown, Calendar, Clock, Target, Flame, Trophy, ChevronLeft, ChevronRight, Minus } from 'lucide-react';
+import { BarChart3, TrendingUp, TrendingDown, Calendar, Clock, Target, Flame, Trophy, ChevronLeft, ChevronRight, Minus, Star, Zap, Award, Medal } from 'lucide-react';
+
+// W2 게이미피케이션 임포트
+import { LevelXpBar, useGamification, LEVEL_CONFIG } from '../gamification/LevelSystem';
+import { DailyQuestCard, QuestList } from '../gamification/QuestSystem';
+import { BadgeGrid, BadgeShowcase } from '../gamification/BadgeSystem';
 
 // 요일 이름
 var WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -41,16 +46,14 @@ function formatDateKey(date) {
 
 // 📊 주간 막대 차트
 export var WeeklyBarChart = function(props) {
-  var data = props.data || {}; // { '2024-01-01': { tasks: 5, focus: 30 }, ... }
+  var data = props.data || {};
   var weekDates = props.weekDates || getWeekDates(new Date());
   var darkMode = props.darkMode;
-  var metric = props.metric || 'tasks'; // tasks, focus, mood
+  var metric = props.metric || 'tasks';
   var height = props.height || 120;
   
-  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
   var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
   
-  // 최대값 계산
   var maxValue = Math.max(1, ...weekDates.map(function(d) {
     var key = formatDateKey(d);
     return data[key] ? (data[key][metric] || 0) : 0;
@@ -69,15 +72,12 @@ export var WeeklyBarChart = function(props) {
         key: idx,
         className: 'flex-1 flex flex-col items-center gap-1'
       },
-        // 값
         React.createElement('span', { className: textSecondary + ' text-xs' }, value > 0 ? value : ''),
-        // 바
         React.createElement('div', {
           className: 'w-full rounded-t-lg transition-all ' + 
             (isToday ? 'bg-[#A996FF]' : (darkMode ? 'bg-gray-600' : 'bg-gray-300')),
           style: { height: Math.max(4, barHeight) + 'px' }
         }),
-        // 요일
         React.createElement('span', { 
           className: (isToday ? 'text-[#A996FF] font-bold' : textSecondary) + ' text-xs'
         }, WEEKDAYS[date.getDay()])
@@ -88,35 +88,31 @@ export var WeeklyBarChart = function(props) {
 
 // 📅 월간 히트맵
 export var MonthlyHeatmap = function(props) {
-  var data = props.data || {}; // { '2024-01-01': { level: 0-4 }, ... }
+  var data = props.data || {};
   var month = props.month || new Date();
   var darkMode = props.darkMode;
   var onDateClick = props.onDateClick;
   
-  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
   var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
   
   var monthDates = getMonthDates(month);
   var firstDayOfWeek = new Date(month.getFullYear(), month.getMonth(), 1).getDay();
   var today = formatDateKey(new Date());
   
-  // 레벨별 색상
   var levelColors = [
-    darkMode ? 'bg-gray-700' : 'bg-gray-200', // 0
+    darkMode ? 'bg-gray-700' : 'bg-gray-200',
     'bg-emerald-200',
     'bg-emerald-300',
     'bg-emerald-400',
     'bg-emerald-500'
   ];
   
-  // 빈 칸 채우기
   var emptyDays = [];
   for (var i = 0; i < firstDayOfWeek; i++) {
     emptyDays.push(null);
   }
   
   return React.createElement('div', null,
-    // 요일 헤더
     React.createElement('div', { className: 'grid grid-cols-7 gap-1 mb-1' },
       WEEKDAYS.map(function(day) {
         return React.createElement('div', {
@@ -125,7 +121,6 @@ export var MonthlyHeatmap = function(props) {
         }, day);
       })
     ),
-    // 날짜 그리드
     React.createElement('div', { className: 'grid grid-cols-7 gap-1' },
       emptyDays.map(function(_, idx) {
         return React.createElement('div', { key: 'empty-' + idx, className: 'aspect-square' });
@@ -145,7 +140,6 @@ export var MonthlyHeatmap = function(props) {
         });
       })
     ),
-    // 범례
     React.createElement('div', { className: 'flex items-center justify-end gap-1 mt-2' },
       React.createElement('span', { className: textSecondary + ' text-xs mr-1' }, '적음'),
       levelColors.map(function(color, idx) {
@@ -165,7 +159,7 @@ export var StatCard = function(props) {
   var label = props.label;
   var value = props.value;
   var subValue = props.subValue;
-  var trend = props.trend; // 'up', 'down', 'neutral'
+  var trend = props.trend;
   var trendValue = props.trendValue;
   var color = props.color || 'text-[#A996FF]';
   var darkMode = props.darkMode;
@@ -192,24 +186,109 @@ export var StatCard = function(props) {
   );
 };
 
-// 📊 주간 통계 대시보드
-export var WeeklyStatsDashboard = function(props) {
+// 🎮 게임 요약 카드
+var GameSummaryCard = function(props) {
   var darkMode = props.darkMode;
-  var weekData = props.weekData || {};
-  var previousWeekData = props.previousWeekData || {};
-  var onWeekChange = props.onWeekChange;
-  var currentWeekStart = props.currentWeekStart || new Date();
+  var gameData = props.gameData || {};
   
   var cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
   var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
   var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
   var borderColor = darkMode ? 'border-gray-700' : 'border-gray-200';
   
-  var weekDates = getWeekDates(currentWeekStart);
+  var level = gameData.level || 1;
+  var totalXp = gameData.totalXp || 0;
+  var currentStreak = gameData.currentStreak || 0;
+  var longestStreak = gameData.longestStreak || 0;
+  
+  var levelInfo = LEVEL_CONFIG ? LEVEL_CONFIG[level] : { title: '새싹', minXp: 0, maxXp: 100 };
+  var nextLevelXp = levelInfo ? levelInfo.maxXp : 100;
+  var progress = nextLevelXp > 0 ? Math.min(100, (totalXp / nextLevelXp) * 100) : 0;
+  
+  return React.createElement('div', { className: cardBg + ' rounded-2xl p-4 border ' + borderColor },
+    React.createElement('div', { className: 'flex items-center gap-2 mb-4' },
+      React.createElement(Trophy, { size: 20, className: 'text-amber-400' }),
+      React.createElement('h3', { className: textPrimary + ' font-bold' }, '나의 성장')
+    ),
+    
+    // 레벨 & XP
+    React.createElement('div', { className: 'flex items-center gap-4 mb-4' },
+      React.createElement('div', { 
+        className: 'w-16 h-16 rounded-2xl bg-gradient-to-br from-[#A996FF] to-[#8B7CF7] flex items-center justify-center text-white text-2xl font-bold shadow-lg'
+      }, level),
+      React.createElement('div', { className: 'flex-1' },
+        React.createElement('div', { className: 'flex items-center justify-between mb-1' },
+          React.createElement('span', { className: textPrimary + ' font-bold' }, 'Lv.' + level + ' ' + (levelInfo?.title || '')),
+          React.createElement('span', { className: 'text-[#A996FF] text-sm' }, totalXp.toLocaleString() + ' XP')
+        ),
+        React.createElement('div', { className: 'h-2 rounded-full ' + (darkMode ? 'bg-gray-700' : 'bg-gray-100') + ' overflow-hidden' },
+          React.createElement('div', {
+            className: 'h-full rounded-full bg-gradient-to-r from-[#A996FF] to-[#8B7CF7]',
+            style: { width: progress + '%' }
+          })
+        ),
+        React.createElement('p', { className: textSecondary + ' text-xs mt-1' }, 
+          '다음 레벨까지 ' + Math.max(0, nextLevelXp - totalXp) + ' XP'
+        )
+      )
+    ),
+    
+    // 스트릭
+    React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
+      React.createElement('div', { className: 'p-3 rounded-xl ' + (darkMode ? 'bg-gray-700/50' : 'bg-orange-50') },
+        React.createElement('div', { className: 'flex items-center gap-2 mb-1' },
+          React.createElement(Flame, { size: 16, className: 'text-orange-500' }),
+          React.createElement('span', { className: textSecondary + ' text-xs' }, '현재 스트릭')
+        ),
+        React.createElement('p', { className: 'text-orange-500 text-xl font-bold' }, currentStreak + '일')
+      ),
+      React.createElement('div', { className: 'p-3 rounded-xl ' + (darkMode ? 'bg-gray-700/50' : 'bg-amber-50') },
+        React.createElement('div', { className: 'flex items-center gap-2 mb-1' },
+          React.createElement(Star, { size: 16, className: 'text-amber-500' }),
+          React.createElement('span', { className: textSecondary + ' text-xs' }, '최장 스트릭')
+        ),
+        React.createElement('p', { className: 'text-amber-500 text-xl font-bold' }, longestStreak + '일')
+      )
+    )
+  );
+};
+
+// 📊 통합 통계 & 게임센터 페이지
+export var StatsPage = function(props) {
+  var darkMode = props.darkMode;
+  var weekData = props.weekData || {};
+  var monthData = props.monthData || {};
+  var gameData = props.gameData || {};
+  var onBack = props.onBack;
+  
+  // 탭 상태
+  var tabState = useState('stats'); // 'stats', 'game', 'quests', 'badges'
+  var activeTab = tabState[0];
+  var setActiveTab = tabState[1];
+  
+  var weekState = useState(new Date());
+  var currentWeek = weekState[0];
+  var setCurrentWeek = weekState[1];
+  
+  var monthState = useState(new Date());
+  var currentMonth = monthState[0];
+  var setCurrentMonth = monthState[1];
+  
+  // 게이미피케이션 훅
+  var gamification = useGamification ? useGamification() : gameData;
+  
+  var bgColor = darkMode ? 'bg-gray-900' : 'bg-[#F0EBFF]';
+  var cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
+  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+  var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  var borderColor = darkMode ? 'border-gray-700' : 'border-gray-200';
+  
+  var weekDates = getWeekDates(currentWeek);
   var weekLabel = (weekDates[0].getMonth() + 1) + '/' + weekDates[0].getDate() + ' - ' + 
                   (weekDates[6].getMonth() + 1) + '/' + weekDates[6].getDate();
+  var monthLabel = currentMonth.getFullYear() + '년 ' + (currentMonth.getMonth() + 1) + '월';
   
-  // 주간 합계 계산
+  // 주간 합계
   var weekTotals = useMemo(function() {
     var totals = { tasks: 0, focus: 0, streak: 0, quests: 0 };
     weekDates.forEach(function(date) {
@@ -220,146 +299,11 @@ export var WeeklyStatsDashboard = function(props) {
         totals.quests += weekData[key].quests || 0;
       }
     });
-    totals.streak = weekData.streak || 0;
+    totals.streak = gamification.currentStreak || 0;
     return totals;
-  }, [weekData, weekDates]);
+  }, [weekData, weekDates, gamification]);
   
-  // 전주 대비 트렌드
-  var prevTotals = useMemo(function() {
-    var totals = { tasks: 0, focus: 0 };
-    Object.values(previousWeekData).forEach(function(day) {
-      if (day && typeof day === 'object') {
-        totals.tasks += day.tasks || 0;
-        totals.focus += day.focus || 0;
-      }
-    });
-    return totals;
-  }, [previousWeekData]);
-  
-  var getTrend = function(current, previous) {
-    if (current > previous) return 'up';
-    if (current < previous) return 'down';
-    return 'neutral';
-  };
-  
-  var getTrendValue = function(current, previous) {
-    if (previous === 0) return '';
-    var diff = Math.round(((current - previous) / previous) * 100);
-    return (diff >= 0 ? '+' : '') + diff + '%';
-  };
-  
-  return React.createElement('div', { className: cardBg + ' rounded-2xl p-4 border ' + borderColor },
-    // 헤더
-    React.createElement('div', { className: 'flex items-center justify-between mb-4' },
-      React.createElement('div', { className: 'flex items-center gap-2' },
-        React.createElement(BarChart3, { size: 20, className: 'text-[#A996FF]' }),
-        React.createElement('h3', { className: textPrimary + ' font-bold' }, '주간 통계')
-      ),
-      React.createElement('div', { className: 'flex items-center gap-2' },
-        React.createElement('button', {
-          onClick: function() { 
-            var prev = new Date(currentWeekStart);
-            prev.setDate(prev.getDate() - 7);
-            if (onWeekChange) onWeekChange(prev);
-          },
-          className: textSecondary + ' hover:text-[#A996FF]'
-        }, React.createElement(ChevronLeft, { size: 18 })),
-        React.createElement('span', { className: textSecondary + ' text-sm' }, weekLabel),
-        React.createElement('button', {
-          onClick: function() {
-            var next = new Date(currentWeekStart);
-            next.setDate(next.getDate() + 7);
-            if (onWeekChange) onWeekChange(next);
-          },
-          className: textSecondary + ' hover:text-[#A996FF]'
-        }, React.createElement(ChevronRight, { size: 18 }))
-      )
-    ),
-    
-    // 통계 카드 그리드
-    React.createElement('div', { className: 'grid grid-cols-2 gap-3 mb-4' },
-      React.createElement(StatCard, {
-        icon: '✅',
-        label: '완료한 할일',
-        value: weekTotals.tasks,
-        trend: getTrend(weekTotals.tasks, prevTotals.tasks),
-        trendValue: getTrendValue(weekTotals.tasks, prevTotals.tasks),
-        color: 'text-emerald-500',
-        darkMode: darkMode
-      }),
-      React.createElement(StatCard, {
-        icon: '🎯',
-        label: '집중 시간',
-        value: weekTotals.focus + '분',
-        subValue: Math.floor(weekTotals.focus / 60) + '시간 ' + (weekTotals.focus % 60) + '분',
-        trend: getTrend(weekTotals.focus, prevTotals.focus),
-        trendValue: getTrendValue(weekTotals.focus, prevTotals.focus),
-        color: 'text-purple-500',
-        darkMode: darkMode
-      }),
-      React.createElement(StatCard, {
-        icon: '🔥',
-        label: '현재 스트릭',
-        value: weekTotals.streak + '일',
-        color: 'text-orange-500',
-        darkMode: darkMode
-      }),
-      React.createElement(StatCard, {
-        icon: '⭐',
-        label: '완료 퀘스트',
-        value: weekTotals.quests,
-        color: 'text-amber-500',
-        darkMode: darkMode
-      })
-    ),
-    
-    // 주간 차트
-    React.createElement('div', { className: 'pt-4 border-t ' + borderColor },
-      React.createElement('p', { className: textSecondary + ' text-xs mb-3' }, '일별 할일 완료'),
-      React.createElement(WeeklyBarChart, {
-        data: weekData,
-        weekDates: weekDates,
-        darkMode: darkMode,
-        metric: 'tasks'
-      })
-    )
-  );
-};
-
-// 📅 월간 통계 대시보드
-export var MonthlyStatsDashboard = function(props) {
-  var darkMode = props.darkMode;
-  var monthData = props.monthData || {};
-  var currentMonth = props.currentMonth || new Date();
-  var onMonthChange = props.onMonthChange;
-  var onDateClick = props.onDateClick;
-  
-  var cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
-  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
-  var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
-  var borderColor = darkMode ? 'border-gray-700' : 'border-gray-200';
-  
-  var monthLabel = currentMonth.getFullYear() + '년 ' + (currentMonth.getMonth() + 1) + '월';
-  
-  // 월간 합계
-  var monthTotals = useMemo(function() {
-    var totals = { tasks: 0, focus: 0, activeDays: 0, bestDay: 0 };
-    var monthDates = getMonthDates(currentMonth);
-    
-    monthDates.forEach(function(date) {
-      var key = formatDateKey(date);
-      if (monthData[key]) {
-        var dayTasks = monthData[key].tasks || 0;
-        totals.tasks += dayTasks;
-        totals.focus += monthData[key].focus || 0;
-        if (dayTasks > 0) totals.activeDays++;
-        if (dayTasks > totals.bestDay) totals.bestDay = dayTasks;
-      }
-    });
-    return totals;
-  }, [monthData, currentMonth]);
-  
-  // 히트맵 데이터 변환
+  // 히트맵 데이터
   var heatmapData = useMemo(function() {
     var result = {};
     Object.keys(monthData).forEach(function(key) {
@@ -374,86 +318,13 @@ export var MonthlyStatsDashboard = function(props) {
     return result;
   }, [monthData]);
   
-  return React.createElement('div', { className: cardBg + ' rounded-2xl p-4 border ' + borderColor },
-    // 헤더
-    React.createElement('div', { className: 'flex items-center justify-between mb-4' },
-      React.createElement('div', { className: 'flex items-center gap-2' },
-        React.createElement(Calendar, { size: 20, className: 'text-[#A996FF]' }),
-        React.createElement('h3', { className: textPrimary + ' font-bold' }, '월간 통계')
-      ),
-      React.createElement('div', { className: 'flex items-center gap-2' },
-        React.createElement('button', {
-          onClick: function() {
-            var prev = new Date(currentMonth);
-            prev.setMonth(prev.getMonth() - 1);
-            if (onMonthChange) onMonthChange(prev);
-          },
-          className: textSecondary + ' hover:text-[#A996FF]'
-        }, React.createElement(ChevronLeft, { size: 18 })),
-        React.createElement('span', { className: textSecondary + ' text-sm' }, monthLabel),
-        React.createElement('button', {
-          onClick: function() {
-            var next = new Date(currentMonth);
-            next.setMonth(next.getMonth() + 1);
-            if (onMonthChange) onMonthChange(next);
-          },
-          className: textSecondary + ' hover:text-[#A996FF]'
-        }, React.createElement(ChevronRight, { size: 18 }))
-      )
-    ),
-    
-    // 요약 통계
-    React.createElement('div', { className: 'grid grid-cols-4 gap-2 mb-4' },
-      React.createElement('div', { className: 'text-center p-2 rounded-lg ' + (darkMode ? 'bg-gray-700/50' : 'bg-gray-50') },
-        React.createElement('p', { className: 'text-emerald-500 font-bold text-lg' }, monthTotals.tasks),
-        React.createElement('p', { className: textSecondary + ' text-xs' }, '할일')
-      ),
-      React.createElement('div', { className: 'text-center p-2 rounded-lg ' + (darkMode ? 'bg-gray-700/50' : 'bg-gray-50') },
-        React.createElement('p', { className: 'text-purple-500 font-bold text-lg' }, Math.floor(monthTotals.focus / 60) + 'h'),
-        React.createElement('p', { className: textSecondary + ' text-xs' }, '집중')
-      ),
-      React.createElement('div', { className: 'text-center p-2 rounded-lg ' + (darkMode ? 'bg-gray-700/50' : 'bg-gray-50') },
-        React.createElement('p', { className: 'text-blue-500 font-bold text-lg' }, monthTotals.activeDays),
-        React.createElement('p', { className: textSecondary + ' text-xs' }, '활동일')
-      ),
-      React.createElement('div', { className: 'text-center p-2 rounded-lg ' + (darkMode ? 'bg-gray-700/50' : 'bg-gray-50') },
-        React.createElement('p', { className: 'text-amber-500 font-bold text-lg' }, monthTotals.bestDay),
-        React.createElement('p', { className: textSecondary + ' text-xs' }, '최고일')
-      )
-    ),
-    
-    // 히트맵
-    React.createElement('div', { className: 'pt-4 border-t ' + borderColor },
-      React.createElement('p', { className: textSecondary + ' text-xs mb-3' }, '일별 활동량'),
-      React.createElement(MonthlyHeatmap, {
-        data: heatmapData,
-        month: currentMonth,
-        darkMode: darkMode,
-        onDateClick: onDateClick
-      })
-    )
-  );
-};
-
-// 📊 전체 통계 페이지
-export var StatsPage = function(props) {
-  var darkMode = props.darkMode;
-  var weekData = props.weekData || {};
-  var monthData = props.monthData || {};
-  var gameData = props.gameData || {};
-  var onBack = props.onBack;
-  
-  var weekState = useState(new Date());
-  var currentWeek = weekState[0];
-  var setCurrentWeek = weekState[1];
-  
-  var monthState = useState(new Date());
-  var currentMonth = monthState[0];
-  var setCurrentMonth = monthState[1];
-  
-  var bgColor = darkMode ? 'bg-gray-900' : 'bg-[#F0EBFF]';
-  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
-  var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  // 탭 목록
+  var tabs = [
+    { id: 'stats', label: '통계', icon: '📊' },
+    { id: 'game', label: '성장', icon: '🎮' },
+    { id: 'quests', label: '퀘스트', icon: '📜' },
+    { id: 'badges', label: '배지', icon: '🏅' }
+  ];
   
   return React.createElement('div', { className: bgColor + ' min-h-screen pb-24' },
     // 헤더
@@ -461,54 +332,148 @@ export var StatsPage = function(props) {
       React.createElement('div', { className: 'flex items-center gap-3 mb-4' },
         React.createElement('button', {
           onClick: onBack,
-          className: textSecondary + ' hover:' + textPrimary
+          className: textSecondary + ' hover:' + textPrimary + ' text-xl'
         }, '←'),
-        React.createElement('h1', { className: textPrimary + ' text-2xl font-bold' }, '📊 통계')
+        React.createElement('h1', { className: textPrimary + ' text-2xl font-bold' }, '📊 통계 & 게임센터')
+      ),
+      
+      // 탭 바
+      React.createElement('div', { className: 'flex gap-2 overflow-x-auto pb-2' },
+        tabs.map(function(tab) {
+          var isActive = activeTab === tab.id;
+          return React.createElement('button', {
+            key: tab.id,
+            onClick: function() { setActiveTab(tab.id); },
+            className: 'flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ' +
+              (isActive 
+                ? 'bg-[#A996FF] text-white' 
+                : (darkMode ? 'bg-gray-800 text-gray-400' : 'bg-white text-gray-600'))
+          },
+            React.createElement('span', null, tab.icon),
+            React.createElement('span', null, tab.label)
+          );
+        })
       )
     ),
     
     // 콘텐츠
     React.createElement('div', { className: 'px-4 space-y-4' },
-      // 주간 통계
-      React.createElement(WeeklyStatsDashboard, {
-        darkMode: darkMode,
-        weekData: weekData,
-        currentWeekStart: currentWeek,
-        onWeekChange: setCurrentWeek
-      }),
       
-      // 월간 통계
-      React.createElement(MonthlyStatsDashboard, {
-        darkMode: darkMode,
-        monthData: monthData,
-        currentMonth: currentMonth,
-        onMonthChange: setCurrentMonth
-      }),
-      
-      // 전체 기록
-      React.createElement('div', { className: (darkMode ? 'bg-gray-800' : 'bg-white') + ' rounded-2xl p-4 border ' + (darkMode ? 'border-gray-700' : 'border-gray-200') },
-        React.createElement('div', { className: 'flex items-center gap-2 mb-4' },
-          React.createElement(Trophy, { size: 20, className: 'text-amber-400' }),
-          React.createElement('h3', { className: textPrimary + ' font-bold' }, '전체 기록')
+      // 통계 탭
+      activeTab === 'stats' && React.createElement(React.Fragment, null,
+        // 주간 통계 카드
+        React.createElement('div', { className: cardBg + ' rounded-2xl p-4 border ' + borderColor },
+          React.createElement('div', { className: 'flex items-center justify-between mb-4' },
+            React.createElement('div', { className: 'flex items-center gap-2' },
+              React.createElement(BarChart3, { size: 20, className: 'text-[#A996FF]' }),
+              React.createElement('h3', { className: textPrimary + ' font-bold' }, '주간 통계')
+            ),
+            React.createElement('div', { className: 'flex items-center gap-2' },
+              React.createElement('button', {
+                onClick: function() { 
+                  var prev = new Date(currentWeek);
+                  prev.setDate(prev.getDate() - 7);
+                  setCurrentWeek(prev);
+                },
+                className: textSecondary + ' hover:text-[#A996FF]'
+              }, React.createElement(ChevronLeft, { size: 18 })),
+              React.createElement('span', { className: textSecondary + ' text-sm' }, weekLabel),
+              React.createElement('button', {
+                onClick: function() {
+                  var next = new Date(currentWeek);
+                  next.setDate(next.getDate() + 7);
+                  setCurrentWeek(next);
+                },
+                className: textSecondary + ' hover:text-[#A996FF]'
+              }, React.createElement(ChevronRight, { size: 18 }))
+            )
+          ),
+          
+          React.createElement('div', { className: 'grid grid-cols-2 gap-3 mb-4' },
+            React.createElement(StatCard, { icon: '✅', label: '완료 할일', value: weekTotals.tasks, color: 'text-emerald-500', darkMode: darkMode }),
+            React.createElement(StatCard, { icon: '🎯', label: '집중 시간', value: weekTotals.focus + '분', color: 'text-purple-500', darkMode: darkMode }),
+            React.createElement(StatCard, { icon: '🔥', label: '스트릭', value: weekTotals.streak + '일', color: 'text-orange-500', darkMode: darkMode }),
+            React.createElement(StatCard, { icon: '⭐', label: '완료 퀘스트', value: weekTotals.quests, color: 'text-amber-500', darkMode: darkMode })
+          ),
+          
+          React.createElement('div', { className: 'pt-4 border-t ' + borderColor },
+            React.createElement('p', { className: textSecondary + ' text-xs mb-3' }, '일별 할일 완료'),
+            React.createElement(WeeklyBarChart, { data: weekData, weekDates: weekDates, darkMode: darkMode, metric: 'tasks' })
+          )
         ),
-        React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
-          React.createElement('div', { className: 'p-3 rounded-xl ' + (darkMode ? 'bg-gray-700/50' : 'bg-gray-50') },
-            React.createElement('p', { className: 'text-emerald-500 text-2xl font-bold' }, gameData.tasksCompleted || 0),
-            React.createElement('p', { className: textSecondary + ' text-xs' }, '총 완료 할일')
+        
+        // 월간 히트맵
+        React.createElement('div', { className: cardBg + ' rounded-2xl p-4 border ' + borderColor },
+          React.createElement('div', { className: 'flex items-center justify-between mb-4' },
+            React.createElement('div', { className: 'flex items-center gap-2' },
+              React.createElement(Calendar, { size: 20, className: 'text-[#A996FF]' }),
+              React.createElement('h3', { className: textPrimary + ' font-bold' }, '월간 활동')
+            ),
+            React.createElement('div', { className: 'flex items-center gap-2' },
+              React.createElement('button', {
+                onClick: function() {
+                  var prev = new Date(currentMonth);
+                  prev.setMonth(prev.getMonth() - 1);
+                  setCurrentMonth(prev);
+                },
+                className: textSecondary + ' hover:text-[#A996FF]'
+              }, React.createElement(ChevronLeft, { size: 18 })),
+              React.createElement('span', { className: textSecondary + ' text-sm' }, monthLabel),
+              React.createElement('button', {
+                onClick: function() {
+                  var next = new Date(currentMonth);
+                  next.setMonth(next.getMonth() + 1);
+                  setCurrentMonth(next);
+                },
+                className: textSecondary + ' hover:text-[#A996FF]'
+              }, React.createElement(ChevronRight, { size: 18 }))
+            )
           ),
-          React.createElement('div', { className: 'p-3 rounded-xl ' + (darkMode ? 'bg-gray-700/50' : 'bg-gray-50') },
-            React.createElement('p', { className: 'text-purple-500 text-2xl font-bold' }, Math.floor((gameData.focusMinutes || 0) / 60) + 'h'),
-            React.createElement('p', { className: textSecondary + ' text-xs' }, '총 집중 시간')
+          React.createElement(MonthlyHeatmap, { data: heatmapData, month: currentMonth, darkMode: darkMode })
+        )
+      ),
+      
+      // 게임(성장) 탭
+      activeTab === 'game' && React.createElement(React.Fragment, null,
+        React.createElement(GameSummaryCard, { darkMode: darkMode, gameData: gamification }),
+        
+        // 전체 기록
+        React.createElement('div', { className: cardBg + ' rounded-2xl p-4 border ' + borderColor },
+          React.createElement('div', { className: 'flex items-center gap-2 mb-4' },
+            React.createElement(Award, { size: 20, className: 'text-amber-400' }),
+            React.createElement('h3', { className: textPrimary + ' font-bold' }, '전체 기록')
           ),
-          React.createElement('div', { className: 'p-3 rounded-xl ' + (darkMode ? 'bg-gray-700/50' : 'bg-gray-50') },
-            React.createElement('p', { className: 'text-orange-500 text-2xl font-bold' }, gameData.longestStreak || 0),
-            React.createElement('p', { className: textSecondary + ' text-xs' }, '최장 스트릭')
-          ),
-          React.createElement('div', { className: 'p-3 rounded-xl ' + (darkMode ? 'bg-gray-700/50' : 'bg-gray-50') },
-            React.createElement('p', { className: 'text-[#A996FF] text-2xl font-bold' }, gameData.totalXp || 0),
-            React.createElement('p', { className: textSecondary + ' text-xs' }, '총 XP')
+          React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
+            React.createElement('div', { className: 'p-3 rounded-xl ' + (darkMode ? 'bg-gray-700/50' : 'bg-gray-50') },
+              React.createElement('p', { className: 'text-emerald-500 text-2xl font-bold' }, gamification.tasksCompleted || 0),
+              React.createElement('p', { className: textSecondary + ' text-xs' }, '총 완료 할일')
+            ),
+            React.createElement('div', { className: 'p-3 rounded-xl ' + (darkMode ? 'bg-gray-700/50' : 'bg-gray-50') },
+              React.createElement('p', { className: 'text-purple-500 text-2xl font-bold' }, Math.floor((gamification.focusMinutes || 0) / 60) + 'h'),
+              React.createElement('p', { className: textSecondary + ' text-xs' }, '총 집중 시간')
+            ),
+            React.createElement('div', { className: 'p-3 rounded-xl ' + (darkMode ? 'bg-gray-700/50' : 'bg-gray-50') },
+              React.createElement('p', { className: 'text-blue-500 text-2xl font-bold' }, gamification.questsCompleted || 0),
+              React.createElement('p', { className: textSecondary + ' text-xs' }, '완료 퀘스트')
+            ),
+            React.createElement('div', { className: 'p-3 rounded-xl ' + (darkMode ? 'bg-gray-700/50' : 'bg-gray-50') },
+              React.createElement('p', { className: 'text-amber-500 text-2xl font-bold' }, gamification.badgesEarned || 0),
+              React.createElement('p', { className: textSecondary + ' text-xs' }, '획득 배지')
+            )
           )
         )
+      ),
+      
+      // 퀘스트 탭
+      activeTab === 'quests' && React.createElement(React.Fragment, null,
+        React.createElement(DailyQuestCard, { darkMode: darkMode }),
+        React.createElement(QuestList, { darkMode: darkMode, showCompleted: true })
+      ),
+      
+      // 배지 탭
+      activeTab === 'badges' && React.createElement(React.Fragment, null,
+        React.createElement(BadgeShowcase, { darkMode: darkMode, maxBadges: 6 }),
+        React.createElement(BadgeGrid, { darkMode: darkMode, showLocked: true })
       )
     )
   );
@@ -518,7 +483,5 @@ export default {
   WeeklyBarChart: WeeklyBarChart,
   MonthlyHeatmap: MonthlyHeatmap,
   StatCard: StatCard,
-  WeeklyStatsDashboard: WeeklyStatsDashboard,
-  MonthlyStatsDashboard: MonthlyStatsDashboard,
   StatsPage: StatsPage
 };
