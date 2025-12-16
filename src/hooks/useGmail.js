@@ -25,7 +25,7 @@ const DEFAULT_SETTINGS = {
 };
 
 export function useGmail() {
-  const { isConnected, getAccessToken, login } = useGoogleCalendar();
+  const { isConnected, getAccessToken, connect } = useGoogleCalendar();
   
   const [emails, setEmails] = useState([]);
   const [actions, setActions] = useState([]);
@@ -427,15 +427,15 @@ ${JSON.stringify(emailSummaries, null, 2)}
   // Gmail 연결 (Google 로그인 트리거)
   const connectGmail = useCallback(async () => {
     if (!isConnected) {
-      if (login) {
-        await login();
+      if (connect) {
+        await connect();
       }
       return false;
     }
     toggleGmail(true);
     await fetchAndAnalyze();
     return true;
-  }, [isConnected, login, toggleGmail, fetchAndAnalyze]);
+  }, [isConnected, connect, toggleGmail, fetchAndAnalyze]);
 
   // === 브리핑용 통계 ===
   
