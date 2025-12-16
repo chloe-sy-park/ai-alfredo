@@ -58,6 +58,7 @@ var ReminderItem = function(props) {
   var reminder = props.reminder;
   var darkMode = props.darkMode;
   var onClick = props.onClick;
+  var index = props.index || 0;
   
   var emoji = REMINDER_EMOJIS[reminder.type] || REMINDER_EMOJIS.default;
   var ddayInfo = reminder.dueDate ? getDdayText(reminder.dueDate) : null;
@@ -68,9 +69,13 @@ var ReminderItem = function(props) {
   var isUrgent = ddayInfo && ddayInfo.isOverdue;
   var isPast = ddayInfo && ddayInfo.isPast;
   
+  // 애니메이션 딜레이
+  var delayClass = index === 0 ? '' : index === 1 ? 'animate-delay-100' : index === 2 ? 'animate-delay-200' : 'animate-delay-300';
+  
   return React.createElement('button', {
     onClick: function() { if (onClick) onClick(reminder); },
     className: 'w-full flex items-center gap-3 p-4 rounded-2xl transition-all active:scale-[0.98] ' +
+      'animate-fadeInUp ' + delayClass + ' card-hover ' +
       (darkMode 
         ? 'bg-[#2C2C2E] hover:bg-[#3A3A3C]' 
         : 'bg-white hover:bg-gray-50') +
@@ -124,7 +129,7 @@ export var RemindersSection = function(props) {
   var visibleReminders = isExpanded ? reminders : reminders.slice(0, 3);
   var hasMore = reminders.length > 3;
   
-  return React.createElement('div', { className: 'mb-6' },
+  return React.createElement('div', { className: 'mb-6 animate-fadeIn' },
     // 섹션 헤더
     React.createElement('div', { className: 'flex items-center justify-between mb-3 px-1' },
       React.createElement('div', { className: 'flex items-center gap-2' },
@@ -142,7 +147,7 @@ export var RemindersSection = function(props) {
       
       hasMore && React.createElement('button', {
         onClick: function() { setExpanded(!isExpanded); },
-        className: 'text-sm font-medium text-[#A996FF]'
+        className: 'text-sm font-medium text-[#A996FF] btn-press'
       }, isExpanded ? '접기' : '전체보기')
     ),
     
@@ -153,7 +158,8 @@ export var RemindersSection = function(props) {
           key: reminder.id || idx,
           reminder: reminder,
           darkMode: darkMode,
-          onClick: onReminderClick
+          onClick: onReminderClick,
+          index: idx
         });
       })
     )
