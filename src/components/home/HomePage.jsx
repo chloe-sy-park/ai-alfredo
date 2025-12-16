@@ -1,11 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import HomeHeader from './HomeHeader';
 import AlfredoBriefingV2 from './AlfredoBriefingV2';
 import FocusNowCard from './FocusNowCard';
 import RemindersSection from './RemindersSection';
 import MiniTimeline from './MiniTimeline';
 import { QuickActionFloating, ChatFloating } from './QuickActionFloating';
-import { useGamification } from '../gamification/LevelSystem';
+import { useGamification, XpGainToast, LevelUpModal } from '../gamification/LevelSystem';
 
 // 🏠 홈페이지 메인 컴포넌트 - Apple 2025 스타일
 export var HomePage = function(props) {
@@ -40,7 +40,14 @@ export var HomePage = function(props) {
   var setShowOtherOptions = showOptionsState[1];
   
   // 게이미피케이션
-  var gamification = useGamification ? useGamification() : { totalXp: 0, level: 1, currentStreak: 0 };
+  var gamification = useGamification();
+  
+  // 스트릭 업데이트 (하루 1번)
+  useEffect(function() {
+    if (gamification && gamification.updateStreak) {
+      gamification.updateStreak();
+    }
+  }, []);
   
   // Apple 스타일 배경색
   var bgColor = darkMode ? 'bg-[#1D1D1F]' : 'bg-[#F5F5F7]';
@@ -49,6 +56,10 @@ export var HomePage = function(props) {
   var handleConditionChange = function(newCondition) {
     setCondition(newCondition);
     if (setMood) setMood(newCondition);
+    // 컨디션 기록 XP
+    if (gamification && gamification.addXp) {
+      gamification.addXp(5, '컨디션 기록');
+    }
   };
   
   // 페이지 이동
@@ -168,9 +179,15 @@ export var HomePage = function(props) {
         break;
       case 'water':
         if (onCompleteRoutine) onCompleteRoutine({ id: 'water', title: '물 마시기' });
+        if (gamification && gamification.addXp) {
+          gamification.addXp(10, '💧 물 마시기');
+        }
         break;
       case 'vitamin':
         if (onCompleteRoutine) onCompleteRoutine({ id: 'vitamin', title: '영양제' });
+        if (gamification && gamification.addXp) {
+          gamification.addXp(10, '💊 영양제');
+        }
         break;
       case 'rest':
         if (onStartFocus) onStartFocus({ type: 'rest', duration: 5 });
@@ -265,6 +282,23 @@ export var HomePage = function(props) {
     React.createElement(ChatFloating, {
       onClick: onOpenChat,
       darkMode: darkMode
+    }),
+    
+    // XP 토스트
+    gamification.xpToast && React.createElement(XpGainToast, {
+      amount: gamification.xpToast.amount,
+      reason: gamification.xpToast.reason,
+      isVisible: gamification.xpToast.visible,
+      onClose: gamification.hideXpToast
+    }),
+    
+    // 레벨업 모달
+    gamification.levelUp && React.createElement(LevelUpModal, {
+      isOpen: gamification.levelUp.open,
+      onClose: gamification.closeLevelUp,
+      darkMode: darkMode,
+      newLevel: gamification.levelUp.level,
+      levelInfo: gamification.levelUp.info
     })
   );
 };
