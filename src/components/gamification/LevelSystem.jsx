@@ -5,7 +5,7 @@ import { Star, Zap, Trophy, Gift, ChevronRight, Sparkles, Target, Flame, Award }
 var STORAGE_KEY = 'lifebutler_gamification';
 
 // 레벨 데이터
-var LEVELS = [
+export var LEVELS = [
   { level: 1, title: '🐣 새싹 버틀러', minXp: 0, maxXp: 100, perks: '기본 기능' },
   { level: 2, title: '🌱 성장하는 버틀러', minXp: 100, maxXp: 250, perks: '커스텀 테마 잠금해제' },
   { level: 3, title: '🌿 능숙한 버틀러', minXp: 250, maxXp: 500, perks: '알프레도 표정 추가' },
@@ -19,7 +19,7 @@ var LEVELS = [
 ];
 
 // XP 보상 정의
-var XP_REWARDS = {
+export var XP_REWARDS = {
   taskComplete: 10,
   taskCompleteHigh: 20,
   focusSession: 15,
@@ -68,7 +68,7 @@ function saveGameData(data) {
 }
 
 // 레벨 계산
-function getLevelInfo(totalXp) {
+export function getLevelInfo(totalXp) {
   for (var i = LEVELS.length - 1; i >= 0; i--) {
     if (totalXp >= LEVELS[i].minXp) {
       var level = LEVELS[i];
