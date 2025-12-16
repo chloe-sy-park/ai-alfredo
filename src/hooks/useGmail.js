@@ -1,5 +1,5 @@
 // useGmail.js - Gmail 연동 훅 (AI 분석 포함)
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useGoogleCalendar } from './useGoogleCalendar';
 
 // localStorage 키
@@ -7,10 +7,20 @@ const STORAGE_KEYS = {
   EMAILS: 'lifebutler_gmail_emails',
   ACTIONS: 'lifebutler_gmail_actions',
   LAST_FETCH: 'lifebutler_gmail_last_fetch',
+  SETTINGS: 'lifebutler_gmail_settings',
+};
+
+// 기본 이메일 설정
+const DEFAULT_SETTINGS = {
+  fetchPeriod: 3,           // 1, 3, 7일
+  filterUnreadOnly: true,   // 안읽음만 / 전체
+  maxEmails: 20,            // 10, 20, 50
+  autoSyncMinutes: 30,      // 15, 30, 60, 0(수동)
+  enabled: true,            // Gmail 연동 활성화
 };
 
 export function useGmail() {
-  const { isConnected, getAccessToken } = useGoogleCalendar();
+  const { isConnected, getAccessToken, login } = useGoogleCalendar();
   
   const [emails, setEmails] = useState([]);
   const [actions, setActions] = useState([]);
@@ -18,6 +28,9 @@ export function useGmail() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState(null);
   const [lastFetch, setLastFetch] = useState(null);
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  
+  const autoSyncRef = useRef(null);
 
   // 초기화 - localStorage에서 복원
   useEffect(() => {
@@ -25,14 +38,46 @@ export function useGmail() {
       const storedEmails = localStorage.getItem(STORAGE_KEYS.EMAILS);
       const storedActions = localStorage.getItem(STORAGE_KEYS.ACTIONS);
       const storedLastFetch = localStorage.getItem(STORAGE_KEYS.LAST_FETCH);
+      const storedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
       
       if (storedEmails) setEmails(JSON.parse(storedEmails));
       if (storedActions) setActions(JSON.parse(storedActions));
       if (storedLastFetch) setLastFetch(new Date(storedLastFetch));
+      if (storedSettings) setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(storedSettings) });
     } catch (e) {
       console.warn('Failed to restore Gmail data');
     }
   }, []);
+
+  // 설정 변경
+  const updateSettings = useCallback((newSettings) => {
+    const updated = { ...settings, ...newSettings };
+    setSettings(updated);
+    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(updated));
+    return updated;
+  }, [settings]);
+
+  // 쿼리 빌드 (설정 기반)
+  const buildQuery = useCallback((options = {}) => {
+    const period = options.fetchPeriod || settings.fetchPeriod;
+    const unreadOnly = options.filterUnreadOnly ?? settings.filterUnreadOnly;
+    
+    const parts = [];
+    
+    // 기간 설정
+    parts.push(`newer_than:${period}d`);
+    
+    // 안읽음 필터
+    if (unreadOnly) {
+      parts.push('is:unread');
+    }
+    
+    // 프로모션/소셜 제외 (액션 필요한 것만)
+    parts.push('-category:promotions');
+    parts.push('-category:social');
+    
+    return parts.join(' ');
+  }, [settings]);
 
   // 이메일 목록 가져오기
   const fetchEmails = useCallback(async (options = {}) => {
@@ -42,10 +87,17 @@ export function useGmail() {
       return [];
     }
 
+    if (!settings.enabled) {
+      return emails;
+    }
+
     setIsLoading(true);
     setError(null);
 
     try {
+      const query = buildQuery(options);
+      const maxResults = options.maxEmails || settings.maxEmails;
+
       // 이메일 ID 목록 가져오기
       const listResponse = await fetch('/api/gmail', {
         method: 'POST',
@@ -55,9 +107,9 @@ export function useGmail() {
         },
         body: JSON.stringify({
           action: 'list',
-          maxResults: options.maxResults || 20,
-          query: options.query || 'is:unread OR newer_than:3d',
-          labelIds: options.labelIds || ['INBOX'],
+          maxResults,
+          query,
+          labelIds: ['INBOX'],
         }),
       });
 
@@ -71,6 +123,8 @@ export function useGmail() {
       if (messageIds.length === 0) {
         setEmails([]);
         localStorage.setItem(STORAGE_KEYS.EMAILS, '[]');
+        setLastFetch(new Date());
+        localStorage.setItem(STORAGE_KEYS.LAST_FETCH, new Date().toISOString());
         return [];
       }
 
@@ -109,7 +163,7 @@ export function useGmail() {
     } finally {
       setIsLoading(false);
     }
-  }, [getAccessToken]);
+  }, [getAccessToken, settings, buildQuery, emails]);
 
   // AI로 이메일 분석하여 액션 추출
   const analyzeEmails = useCallback(async (emailsToAnalyze = null) => {
@@ -242,6 +296,28 @@ ${JSON.stringify(emailSummaries, null, 2)}
     return fetchedEmails;
   }, [fetchEmails, analyzeEmails]);
 
+  // 자동 동기화 설정
+  useEffect(() => {
+    // 기존 타이머 제거
+    if (autoSyncRef.current) {
+      clearInterval(autoSyncRef.current);
+      autoSyncRef.current = null;
+    }
+
+    // 자동 동기화 활성화
+    if (isConnected && settings.enabled && settings.autoSyncMinutes > 0) {
+      autoSyncRef.current = setInterval(() => {
+        fetchAndAnalyze();
+      }, settings.autoSyncMinutes * 60 * 1000);
+    }
+
+    return () => {
+      if (autoSyncRef.current) {
+        clearInterval(autoSyncRef.current);
+      }
+    };
+  }, [isConnected, settings.enabled, settings.autoSyncMinutes, fetchAndAnalyze]);
+
   // 읽음 표시
   const markAsRead = useCallback(async (messageId) => {
     const token = getAccessToken();
@@ -299,6 +375,33 @@ ${JSON.stringify(emailSummaries, null, 2)}
     };
   }, []);
 
+  // Gmail 활성화/비활성화
+  const toggleGmail = useCallback((enabled) => {
+    updateSettings({ enabled });
+    if (!enabled) {
+      // 비활성화시 데이터 초기화
+      setEmails([]);
+      setActions([]);
+      localStorage.removeItem(STORAGE_KEYS.EMAILS);
+      localStorage.removeItem(STORAGE_KEYS.ACTIONS);
+    }
+  }, [updateSettings]);
+
+  // Gmail 연결 (Google 로그인 트리거)
+  const connectGmail = useCallback(async () => {
+    if (!isConnected) {
+      // Google 로그인 필요
+      if (login) {
+        await login();
+      }
+      return false;
+    }
+    // 이미 연결됨 - 동기화 시작
+    toggleGmail(true);
+    await fetchAndAnalyze();
+    return true;
+  }, [isConnected, login, toggleGmail, fetchAndAnalyze]);
+
   // 통계
   const stats = {
     total: emails.length,
@@ -307,9 +410,23 @@ ${JSON.stringify(emailSummaries, null, 2)}
     needsAction: actions.filter(a => ['reply', 'schedule', 'task'].includes(a.actionType)).length,
   };
 
+  // 마지막 동기화 시간 표시용
+  const getLastSyncText = useCallback(() => {
+    if (!lastFetch) return '동기화 안됨';
+    
+    const now = new Date();
+    const diff = Math.floor((now - lastFetch) / 1000 / 60); // 분 단위
+    
+    if (diff < 1) return '방금 전';
+    if (diff < 60) return `${diff}분 전`;
+    if (diff < 1440) return `${Math.floor(diff / 60)}시간 전`;
+    return `${Math.floor(diff / 1440)}일 전`;
+  }, [lastFetch]);
+
   return {
     // 상태
     isConnected,
+    isGmailEnabled: settings.enabled,
     emails,
     actions,
     isLoading,
@@ -317,6 +434,7 @@ ${JSON.stringify(emailSummaries, null, 2)}
     error,
     lastFetch,
     stats,
+    settings,
     
     // 액션
     fetchEmails,
@@ -325,6 +443,10 @@ ${JSON.stringify(emailSummaries, null, 2)}
     markAsRead,
     completeAction,
     convertToTask,
+    toggleGmail,
+    connectGmail,
+    updateSettings,
+    getLastSyncText,
   };
 }
 

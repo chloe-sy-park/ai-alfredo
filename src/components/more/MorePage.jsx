@@ -4,7 +4,7 @@ import {
   ChevronRight, ExternalLink, Check, X, RefreshCw,
   Mail, HardDrive, MessageSquare, Bell, Shield, HelpCircle,
   Sparkles, Trophy, TrendingUp, Heart, Target, Flame, Download, Upload,
-  Moon, Sun
+  Moon, Sun, Loader2
 } from 'lucide-react';
 
 // W2: 게이미피케이션
@@ -14,6 +14,9 @@ import { LevelXpBar, useGamification } from '../gamification/LevelSystem';
 import { StatsPage } from '../analytics/StatsDashboard';
 import { HabitTracker } from '../analytics/HabitTracker';
 import { DataManagementPage, ExportButton, ImportButton } from '../analytics/DataManagement';
+
+// Gmail 훅
+import { useGmail } from '../../hooks/useGmail';
 
 // Default gameState to prevent crashes
 const DEFAULT_GAME_STATE = {
@@ -39,12 +42,15 @@ var MorePage = function(props) {
   var gameState = Object.assign({}, DEFAULT_GAME_STATE, props.gameState);
   
   // 서브페이지 상태
-  var subPageState = useState(null); // 'stats', 'habits', 'data'
+  var subPageState = useState(null);
   var currentSubPage = subPageState[0];
   var setSubPage = subPageState[1];
   
   // 게이미피케이션 훅
   var gamification = useGamification ? useGamification() : gameState;
+  
+  // Gmail 훅
+  var gmail = useGmail();
 
   // 다크모드 색상
   var bgGradient = darkMode 
@@ -55,39 +61,43 @@ var MorePage = function(props) {
   var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
   var borderColor = darkMode ? 'border-gray-700' : 'border-[#A996FF]/20';
 
-  // 연동 서비스 목록
+  // 연동 서비스 목록 - Gmail은 특별 처리
   var services = [
     {
       id: 'googleCalendar',
       name: 'Google Calendar',
       icon: Calendar,
       color: 'from-blue-500 to-blue-600',
-      description: '일정 동기화'
+      description: '일정 동기화',
+      isSpecial: false
     },
     {
       id: 'gmail',
       name: 'Gmail',
       icon: Mail,
       color: 'from-red-500 to-red-600',
-      description: '이메일 알림'
+      description: '이메일 알림',
+      isSpecial: true // Gmail은 특별 처리
     },
     {
       id: 'notion',
       name: 'Notion',
       icon: HardDrive,
       color: 'from-gray-700 to-gray-800',
-      description: '메모/문서 연동'
+      description: '메모/문서 연동',
+      isSpecial: false
     },
     {
       id: 'slack',
       name: 'Slack',
       icon: MessageSquare,
       color: 'from-purple-500 to-purple-600',
-      description: '팀 메시지 알림'
+      description: '팀 메시지 알림',
+      isSpecial: false
     }
   ];
 
-  // 인사이트 메뉴 (게임센터 제거, 통계에 통합)
+  // 인사이트 메뉴
   var insightMenus = [
     {
       id: 'stats',
@@ -115,7 +125,25 @@ var MorePage = function(props) {
     }
   ];
 
-  // 토글 핸들러
+  // Gmail 토글 핸들러
+  var handleGmailToggle = async function() {
+    if (gmail.isGmailEnabled) {
+      // 비활성화
+      gmail.toggleGmail(false);
+    } else {
+      // 활성화 - 연결 안되어있으면 로그인 트리거
+      await gmail.connectGmail();
+    }
+  };
+
+  // Gmail 동기화 핸들러
+  var handleGmailSync = async function() {
+    if (gmail.isConnected && gmail.isGmailEnabled) {
+      await gmail.fetchAndAnalyze();
+    }
+  };
+
+  // 일반 서비스 토글 핸들러
   var handleToggle = function(serviceId) {
     if (connections[serviceId]) {
       if (onDisconnect) onDisconnect(serviceId);
@@ -159,6 +187,14 @@ var MorePage = function(props) {
     });
   }
 
+  // Gmail 연결 상태 계산
+  var isGmailConnected = gmail.isConnected && gmail.isGmailEnabled;
+  var gmailStatusText = !gmail.isConnected 
+    ? '연결 안됨' 
+    : gmail.isGmailEnabled 
+      ? gmail.getLastSyncText() 
+      : '비활성화';
+
   return (
     <div className={bgGradient + ' flex-1 overflow-y-auto transition-colors duration-300'}>
       <div className="px-4 pb-32 pt-4">
@@ -170,7 +206,6 @@ var MorePage = function(props) {
             <p className={textSecondary + ' text-sm mt-0.5'}>인사이트와 설정</p>
           </div>
           <div className="flex items-center gap-2">
-            {/* 다크모드 빠른 토글 */}
             <button 
               onClick={() => setDarkMode && setDarkMode(!darkMode)}
               className={(darkMode ? 'bg-gray-700' : 'bg-white') + ' w-10 h-10 rounded-full flex items-center justify-center shadow-sm transition-all hover:scale-105'}
@@ -182,7 +217,6 @@ var MorePage = function(props) {
                 <Moon size={20} className="text-gray-500" />
               )}
             </button>
-            {/* 설정 버튼 */}
             <button 
               onClick={onOpenSettings}
               className={(darkMode ? 'bg-gray-700' : 'bg-white') + ' w-10 h-10 rounded-full flex items-center justify-center shadow-sm'}
@@ -192,7 +226,7 @@ var MorePage = function(props) {
           </div>
         </div>
         
-        {/* ===== 레벨 & XP 바 (클릭시 통계 페이지로) ===== */}
+        {/* ===== 레벨 & XP 바 ===== */}
         <button 
           onClick={function() { setSubPage('stats'); }}
           className={cardBg + ' backdrop-blur-xl rounded-2xl shadow-lg p-4 mb-4 border ' + borderColor + ' w-full text-left hover:border-[#A996FF]/50 transition-all'}
@@ -277,14 +311,90 @@ var MorePage = function(props) {
               <span className={textPrimary + ' font-bold'}>연동 서비스</span>
             </div>
             <span className={textSecondary + ' text-xs'}>
-              {Object.values(connections).filter(Boolean).length}개 연결됨
+              {(Object.values(connections).filter(Boolean).length + (isGmailConnected ? 1 : 0))}개 연결됨
             </span>
           </div>
           
           <div className="space-y-3">
             {services.map(function(service) {
-              var isConnected = connections[service.id];
               var IconComponent = service.icon;
+              
+              // Gmail 특별 처리
+              if (service.isSpecial) {
+                return (
+                  <div 
+                    key={service.id}
+                    className={(darkMode ? 'bg-gray-700/50' : 'bg-gray-50') + ' rounded-xl p-4'}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={'w-10 h-10 bg-gradient-to-br ' + service.color + ' rounded-xl flex items-center justify-center shadow-sm'}>
+                          <IconComponent size={20} className="text-white" />
+                        </div>
+                        <div>
+                          <p className={textPrimary + ' font-semibold text-sm'}>{service.name}</p>
+                          <p className={textSecondary + ' text-xs'}>{service.description}</p>
+                        </div>
+                      </div>
+                      
+                      {/* Gmail 토글 */}
+                      <button
+                        onClick={handleGmailToggle}
+                        disabled={gmail.isLoading}
+                        className={(isGmailConnected
+                          ? 'bg-[#A996FF]' 
+                          : (darkMode ? 'bg-gray-600' : 'bg-gray-300')
+                        ) + ' relative w-12 h-7 rounded-full transition-colors disabled:opacity-50'}
+                      >
+                        <div className={(isGmailConnected ? 'translate-x-5' : 'translate-x-0.5') + ' absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform flex items-center justify-center'}>
+                          {gmail.isLoading && (
+                            <Loader2 size={14} className="text-gray-400 animate-spin" />
+                          )}
+                        </div>
+                      </button>
+                    </div>
+                    
+                    {/* Gmail 상태 & 동기화 */}
+                    {gmail.isConnected && (
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200/20">
+                        <div className="flex items-center gap-2">
+                          <div className={isGmailConnected ? 'w-2 h-2 rounded-full bg-green-500' : 'w-2 h-2 rounded-full bg-gray-400'} />
+                          <span className={textSecondary + ' text-xs'}>
+                            {gmailStatusText}
+                          </span>
+                          {gmail.stats.urgent > 0 && (
+                            <span className="text-xs bg-red-500 text-white px-1.5 py-0.5 rounded-full">
+                              {gmail.stats.urgent} 긴급
+                            </span>
+                          )}
+                        </div>
+                        {isGmailConnected && (
+                          <button
+                            onClick={handleGmailSync}
+                            disabled={gmail.isLoading || gmail.isAnalyzing}
+                            className="flex items-center gap-1 text-xs text-[#A996FF] hover:text-[#8B7CF7] disabled:opacity-50"
+                          >
+                            {(gmail.isLoading || gmail.isAnalyzing) ? (
+                              <>
+                                <Loader2 size={12} className="animate-spin" />
+                                동기화 중...
+                              </>
+                            ) : (
+                              <>
+                                <RefreshCw size={12} />
+                                동기화
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+              
+              // 일반 서비스
+              var isConnected = connections[service.id];
               
               return (
                 <div 
@@ -301,7 +411,6 @@ var MorePage = function(props) {
                     </div>
                   </div>
                   
-                  {/* 토글 스위치 */}
                   <button
                     onClick={function() { handleToggle(service.id); }}
                     className={(isConnected 
@@ -360,7 +469,7 @@ var MorePage = function(props) {
             <span className="text-2xl">🐧</span>
             <span className={textPrimary + ' font-bold'}>Life Butler</span>
           </div>
-          <p className={textSecondary + ' text-xs'}>v1.1.0 · Made with 💜</p>
+          <p className={textSecondary + ' text-xs'}>v1.2.0 · Made with 💜</p>
         </div>
 
       </div>
