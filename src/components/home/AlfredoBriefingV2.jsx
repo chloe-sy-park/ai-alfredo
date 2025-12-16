@@ -212,22 +212,23 @@ var generateBriefing = function(props) {
   };
 };
 
-// 인라인 모드 토글 (세그먼트 컨트롤)
+// 인라인 모드 토글 (세그먼트 컨트롤) - 반응형
 var ModeToggle = function(props) {
   var mode = props.mode || 'focus';
   var setMode = props.setMode;
   var darkMode = props.darkMode;
   
   return React.createElement('div', { 
-    className: 'flex items-center gap-1 p-1 rounded-full ' +
+    className: 'inline-flex items-center gap-0.5 md:gap-1 p-1 rounded-full ' +
       (darkMode ? 'bg-white/10' : 'bg-white/60')
   },
     Object.values(MODES).map(function(m) {
       var isActive = mode === m.id;
+      // 터치 타겟 44px
       return React.createElement('button', {
         key: m.id,
         onClick: function() { if (setMode) setMode(m.id); },
-        className: 'px-2.5 py-1 rounded-full text-xs font-medium transition-all btn-press ' +
+        className: 'px-3 md:px-3.5 py-2 min-h-[36px] rounded-full text-xs md:text-sm font-medium transition-all btn-press ' +
           (isActive 
             ? 'bg-[#A996FF] text-white shadow-sm' 
             : (darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'))
@@ -239,7 +240,7 @@ var ModeToggle = function(props) {
   );
 };
 
-// 메인 브리핑 컴포넌트
+// 메인 브리핑 컴포넌트 - 반응형
 export var AlfredoBriefingV2 = function(props) {
   var darkMode = props.darkMode;
   var condition = props.condition || 3;
@@ -277,24 +278,24 @@ export var AlfredoBriefingV2 = function(props) {
   var hasMoreLines = briefing.lines.length > 2;
   
   return React.createElement('div', { 
-    className: 'rounded-3xl overflow-hidden mb-6 shadow-xl animate-fadeIn ' +
+    className: 'rounded-2xl md:rounded-3xl overflow-hidden mb-4 md:mb-6 shadow-xl animate-fadeIn ' +
       (darkMode 
         ? 'bg-gradient-to-br from-[#2C2C2E] to-[#1D1D1F]' 
         : 'bg-gradient-to-br from-[#E8E4F3] to-[#D4CCE8]')
   },
-    React.createElement('div', { className: 'p-5' },
+    React.createElement('div', { className: 'p-4 md:p-5' },
       // 헤더: 아바타 + 인사
-      React.createElement('div', { className: 'flex items-start gap-4' },
+      React.createElement('div', { className: 'flex items-start gap-3 md:gap-4' },
         // 알프레도 아바타 (원형)
         React.createElement('div', { 
-          className: 'w-14 h-14 rounded-full bg-[#A996FF] flex items-center justify-center text-2xl shadow-lg shadow-[#A996FF]/30 flex-shrink-0 animate-fadeIn'
+          className: 'w-12 h-12 md:w-14 md:h-14 rounded-full bg-[#A996FF] flex items-center justify-center text-xl md:text-2xl shadow-lg shadow-[#A996FF]/30 flex-shrink-0 animate-fadeIn'
         }, '🐧'),
         
         // 인사말 타이틀
         React.createElement('div', { className: 'flex-1 min-w-0 animate-fadeInUp' },
           React.createElement('h1', { 
             className: (darkMode ? 'text-white' : 'text-gray-900') + 
-              ' text-xl font-bold leading-tight whitespace-pre-line'
+              ' text-lg md:text-xl font-bold leading-tight whitespace-pre-line'
           }, greetingTitle)
         )
       ),
@@ -316,14 +317,14 @@ export var AlfredoBriefingV2 = function(props) {
           return React.createElement('p', {
             key: idx,
             className: (darkMode ? 'text-gray-200' : 'text-gray-700') + 
-              ' text-sm leading-relaxed mb-1.5 animate-fadeInUp ' + delayClass
+              ' text-sm md:text-base leading-relaxed mb-1.5 animate-fadeInUp ' + delayClass
           }, line);
         }),
         
-        // 펼쳐진 상태에서 리마인더 버튼
+        // 펼쳐진 상태에서 리마인더 버튼 - 터치 타겟 44px
         isExpanded && briefing.reminderItem && React.createElement('button', {
           onClick: function() { if (onAction) onAction('openReminder', briefing.reminderItem.data); },
-          className: 'mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full animate-fadeInUp btn-press ' +
+          className: 'mt-3 inline-flex items-center gap-2 px-4 py-3 min-h-[44px] rounded-full animate-fadeInUp btn-press ' +
             (darkMode ? 'bg-white/10 hover:bg-white/15' : 'bg-white/60 hover:bg-white/80') + 
             ' transition-all'
         },
@@ -334,14 +335,14 @@ export var AlfredoBriefingV2 = function(props) {
         )
       ),
       
-      // 더보기/접기 토글 (항상 표시, 2줄 이상일 때만 기능)
+      // 더보기/접기 토글 - 터치 타겟 44px
       hasMoreLines && React.createElement('button', {
         onClick: function() { setExpanded(!isExpanded); },
-        className: 'w-full flex items-center justify-center gap-1 pt-3 mt-2 btn-press group'
+        className: 'w-full flex items-center justify-center gap-1 pt-3 mt-2 min-h-[44px] btn-press group'
       },
         React.createElement('span', { 
           className: (darkMode ? 'text-gray-400' : 'text-gray-500') + 
-            ' text-xs group-hover:text-[#A996FF] transition-colors'
+            ' text-xs md:text-sm group-hover:text-[#A996FF] transition-colors'
         }, isExpanded ? '접기' : '더보기'),
         isExpanded 
           ? React.createElement(ChevronUp, { 
