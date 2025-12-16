@@ -56,7 +56,6 @@ export var HomePage = function(props) {
   var handleConditionChange = function(newCondition) {
     setCondition(newCondition);
     if (setMood) setMood(newCondition);
-    // 컨디션 기록 XP
     if (gamification && gamification.addXp) {
       gamification.addXp(5, '컨디션 기록');
     }
@@ -87,7 +86,6 @@ export var HomePage = function(props) {
     
     if (incompleteTasks.length === 0) return null;
     
-    // 1. 마감 임박 (2시간 이내)
     var urgentTask = incompleteTasks.find(function(t) {
       if (!t.deadline && !t.dueDate) return false;
       var deadline = new Date(t.deadline || t.dueDate);
@@ -96,26 +94,22 @@ export var HomePage = function(props) {
     });
     if (urgentTask) return { ...urgentTask, recommended: true };
     
-    // 2. 우선순위 높은 것
     var highPriority = incompleteTasks.find(function(t) {
       return t.priority === 'high' || t.importance >= 4;
     });
     if (highPriority) return { ...highPriority, recommended: true };
     
-    // 3. 시간 지정된 것 중 가장 빠른 것
     var scheduled = incompleteTasks.filter(function(t) { return t.scheduledTime; })
       .sort(function(a, b) { return a.scheduledTime.localeCompare(b.scheduledTime); });
     if (scheduled.length > 0) return scheduled[0];
     
-    // 4. 그냥 첫 번째
     return incompleteTasks[0];
   }, [tasks]);
   
-  // 리마인더 목록 (샘플 데이터 - 나중에 props로 받기)
+  // 리마인더 목록
   var reminders = useMemo(function() {
     var items = [];
     
-    // 마감 임박 할일을 리마인더로
     tasks.forEach(function(t) {
       if (t.completed) return;
       if (t.dueDate || t.deadline) {
@@ -126,7 +120,7 @@ export var HomePage = function(props) {
         if (diffDays <= 3) {
           items.push({
             id: 'task-' + t.id,
-            type: t.title.includes('메일') ? 'email' : 'default',
+            type: t.title.includes('메일') ? 'email' : 'deadline',
             title: t.title,
             dueDate: t.dueDate || t.deadline
           });
@@ -134,7 +128,6 @@ export var HomePage = function(props) {
       }
     });
     
-    // 샘플 리마인더 (데모용)
     if (items.length < 3) {
       items.push({
         id: 'sample-1',
@@ -198,7 +191,7 @@ export var HomePage = function(props) {
   };
   
   return React.createElement('div', { className: bgColor + ' min-h-screen' },
-    // 고정 헤더 (Apple 글라스모피즘)
+    // 고정 헤더
     React.createElement(HomeHeader, {
       darkMode: darkMode,
       condition: condition,
@@ -213,11 +206,11 @@ export var HomePage = function(props) {
       onOpenSettings: function() { handleNavigate('SETTINGS'); }
     }),
     
-    // 메인 콘텐츠 컨테이너 - 최대 너비 제한 + 센터 정렬
+    // 메인 콘텐츠 - 간격 확대 (space-y-6)
     React.createElement('div', { 
-      className: 'max-w-3xl mx-auto px-4 md:px-6 lg:px-8 pt-5 pb-28'
+      className: 'max-w-3xl mx-auto px-4 md:px-6 lg:px-8 pt-5 pb-28 space-y-6'
     },
-      // 🐧 알프레도 브리핑 (그라데이션 배경)
+      // 🐧 알프레도 브리핑
       React.createElement(AlfredoBriefingV2, {
         darkMode: darkMode,
         condition: condition,
@@ -236,32 +229,27 @@ export var HomePage = function(props) {
             case 'openCalendar':
               handleNavigate('CALENDAR');
               break;
-            case 'openReminder':
-              // TODO: 리마인더 상세
-              break;
             default:
               break;
           }
         }
       }),
       
-      // 📊 2컬럼 그리드 (태블릿 이상)
+      // 📊 2컬럼 그리드 (태블릿 이상) - 간격 확대
       React.createElement('div', { 
-        className: 'grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6'
+        className: 'grid grid-cols-1 md:grid-cols-2 gap-6'
       },
-        // 왼쪽 컬럼: 집중 + 리마인더
-        React.createElement('div', { className: 'space-y-4 md:space-y-6' },
-          // 🎯 지금 이거부터
+        // 왼쪽 컬럼
+        React.createElement('div', { className: 'space-y-6' },
           focusTask && React.createElement(FocusNowCard, {
             task: focusTask,
             darkMode: darkMode,
             userName: userName,
             onStart: handleStartTask,
-            onLater: function() { /* TODO: 나중에 처리 */ },
+            onLater: function() {},
             onShowOptions: function() { setShowOtherOptions(!showOtherOptions); }
           }),
           
-          // ⚠️ 잊지 마세요
           React.createElement(RemindersSection, {
             reminders: reminders,
             darkMode: darkMode,
@@ -271,9 +259,8 @@ export var HomePage = function(props) {
           })
         ),
         
-        // 오른쪽 컬럼: 타임라인
-        React.createElement('div', { className: 'space-y-4 md:space-y-6' },
-          // 📋 오늘 한눈에 (타임라인)
+        // 오른쪽 컬럼
+        React.createElement('div', { className: 'space-y-6' },
           React.createElement(MiniTimeline, {
             events: todayEvents,
             tasks: tasks,
@@ -285,7 +272,7 @@ export var HomePage = function(props) {
       )
     ),
     
-    // 플로팅 버튼들 - 반응형 위치
+    // 플로팅 버튼들
     React.createElement(QuickActionFloating, {
       onAction: handleQuickAction,
       darkMode: darkMode
