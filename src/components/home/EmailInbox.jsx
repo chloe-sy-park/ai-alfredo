@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Mail, RefreshCw, Reply, Calendar, CheckSquare, 
   Archive, ChevronRight, AlertCircle, Clock, X, ExternalLink,
-  Loader2, MailOpen
+  Loader2, MailOpen, AlertTriangle, LogIn
 } from 'lucide-react';
 import { useGmail } from '../../hooks/useGmail';
 
@@ -124,6 +124,48 @@ function EmailActionCard({ action, darkMode, onComplete, onCreateTask, onCreateE
   );
 }
 
+// 🆕 재연결 필요 카드
+function ReauthRequiredCard({ darkMode, onReconnect, isLoading }) {
+  const cardBg = darkMode ? 'bg-gray-800/90' : 'bg-white/90';
+  const textPrimary = darkMode ? 'text-gray-100' : 'text-gray-800';
+  const textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  
+  return (
+    <div className={`${cardBg} backdrop-blur-xl rounded-2xl shadow-sm p-6 border border-amber-500/30`}>
+      <div className="text-center">
+        <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+          <AlertTriangle size={32} className="text-amber-500" />
+        </div>
+        <h3 className={`${textPrimary} font-bold text-lg mb-2`}>Gmail 재연결 필요</h3>
+        <p className={`${textSecondary} text-sm mb-4`}>
+          Gmail 권한이 만료되었어요.<br/>
+          다시 연결하면 이메일을 가져올 수 있어요.
+        </p>
+        <button
+          onClick={onReconnect}
+          disabled={isLoading}
+          className="flex items-center justify-center gap-2 bg-[#A996FF] hover:bg-[#8B7CF7] text-white py-3 px-6 rounded-xl text-sm font-medium transition-colors w-full disabled:opacity-50"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 size={18} className="animate-spin" />
+              재연결 중...
+            </>
+          ) : (
+            <>
+              <LogIn size={18} />
+              Google 재연결하기
+            </>
+          )}
+        </button>
+        <p className={`${textSecondary} text-xs mt-3`}>
+          💡 Gmail 권한 포함해서 다시 로그인해요
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ===== 브리핑용 컴팩트 위젯 (홈에서 사용) =====
 export function EmailBriefingWidget({ darkMode = false, onNavigate }) {
   const gmail = useGmail();
@@ -136,6 +178,24 @@ export function EmailBriefingWidget({ darkMode = false, onNavigate }) {
   // 연결 안됨 또는 비활성화
   if (!gmail.isConnected || !gmail.isGmailEnabled) {
     return null; // 브리핑에서는 숨김
+  }
+
+  // 🆕 재연결 필요 상태
+  if (gmail.needsReauth) {
+    return (
+      <div className={`${cardBg} backdrop-blur-xl rounded-2xl shadow-sm p-4 border border-amber-500/30`}>
+        <button 
+          onClick={onNavigate}
+          className="w-full flex items-center justify-between group"
+        >
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={18} className="text-amber-500" />
+            <span className={`${textPrimary} font-bold`}>Gmail 재연결 필요</span>
+          </div>
+          <ChevronRight size={18} className={`${textSecondary} group-hover:text-[#A996FF] transition-colors`} />
+        </button>
+      </div>
+    );
   }
 
   // 답장 필요 없으면 숨김
@@ -216,13 +276,14 @@ export function EmailInbox({
   onBack
 }) {
   const gmail = useGmail();
-  const [filter, setFilter] = useState('reply'); // 'reply' | 'all' | 'urgent'
+  const [filter, setFilter] = useState('all'); // 'reply' | 'all' | 'urgent'
+  const [isReconnecting, setIsReconnecting] = useState(false);
   
   useEffect(() => {
-    if (gmail.isConnected && gmail.isGmailEnabled && gmail.actions.length === 0) {
+    if (gmail.isConnected && gmail.isGmailEnabled && gmail.actions.length === 0 && !gmail.needsReauth) {
       gmail.fetchAndAnalyze();
     }
-  }, [gmail.isConnected, gmail.isGmailEnabled]);
+  }, [gmail.isConnected, gmail.isGmailEnabled, gmail.needsReauth]);
   
   const cardBg = darkMode ? 'bg-gray-800/90' : 'bg-white/90';
   const textPrimary = darkMode ? 'text-gray-100' : 'text-gray-800';
@@ -256,6 +317,22 @@ export function EmailInbox({
       });
     }
     gmail.completeAction(action.emailId);
+  };
+
+  // 🆕 재연결 핸들러
+  const handleReconnect = async () => {
+    setIsReconnecting(true);
+    try {
+      await gmail.forceReconnect();
+      // 재연결 성공 후 이메일 가져오기
+      setTimeout(() => {
+        gmail.fetchAndAnalyze();
+      }, 1000);
+    } catch (err) {
+      console.error('Reconnect failed:', err);
+    } finally {
+      setIsReconnecting(false);
+    }
   };
 
   // 연결 안됨 상태
@@ -332,111 +409,114 @@ export function EmailInbox({
             <button onClick={onBack || onViewAll} className={`${textSecondary} text-xl`}>←</button>
             <h1 className={`${textPrimary} text-2xl font-bold`}>인박스 📬</h1>
           </div>
-          <span className={`${textSecondary} text-sm`}>{filteredActions.length}개</span>
+          <span className={`${textSecondary} text-sm`}>{filteredActions.length}개 항목</span>
         </div>
         
-        {/* 연결 상태 바 */}
-        <div className={`${cardBg} rounded-xl p-3 mt-4 flex items-center justify-between`}>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-500" />
-            <span className={`${textSecondary} text-sm`}>Gmail 연결됨</span>
+        {/* 🆕 재연결 필요 상태 */}
+        {gmail.needsReauth ? (
+          <div className="mt-4">
+            <ReauthRequiredCard 
+              darkMode={darkMode} 
+              onReconnect={handleReconnect}
+              isLoading={isReconnecting}
+            />
           </div>
-          <button
-            onClick={() => gmail.fetchAndAnalyze()}
-            disabled={gmail.isLoading || gmail.isAnalyzing}
-            className="flex items-center gap-1 text-sm text-[#A996FF] hover:text-[#8B7CF7] disabled:opacity-50"
-          >
-            {(gmail.isLoading || gmail.isAnalyzing) ? (
-              <>
-                <Loader2 size={14} className="animate-spin" />
-                동기화 중...
-              </>
-            ) : (
-              <>
-                <RefreshCw size={14} />
-                동기화
-              </>
-            )}
-          </button>
-        </div>
-        
-        {/* 필터 탭 */}
-        <div className={`${cardBg} rounded-xl p-1 mt-3 flex`}>
-          <button
-            onClick={() => setFilter('reply')}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filter === 'reply' 
-                ? 'bg-[#A996FF] text-white shadow-sm' 
-                : `${textSecondary}`
-            }`}
-          >
-            답장 필요
-          </button>
-          <button
-            onClick={() => setFilter('urgent')}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filter === 'urgent' 
-                ? 'bg-[#A996FF] text-white shadow-sm' 
-                : `${textSecondary}`
-            }`}
-          >
-            긴급
-          </button>
-          <button
-            onClick={() => setFilter('all')}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filter === 'all' 
-                ? 'bg-[#A996FF] text-white shadow-sm' 
-                : `${textSecondary}`
-            }`}
-          >
-            전체
-          </button>
-        </div>
+        ) : (
+          <>
+            {/* 연결 상태 바 */}
+            <div className={`${cardBg} rounded-xl p-3 mt-4 flex items-center justify-between`}>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-500" />
+                <span className={`${textSecondary} text-sm`}>Gmail 연결됨</span>
+              </div>
+              <button
+                onClick={() => gmail.fetchAndAnalyze()}
+                disabled={gmail.isLoading || gmail.isAnalyzing}
+                className="flex items-center gap-1 text-sm text-[#A996FF] hover:text-[#8B7CF7] disabled:opacity-50"
+              >
+                {(gmail.isLoading || gmail.isAnalyzing) ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    동기화 중...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw size={14} />
+                    동기화
+                  </>
+                )}
+              </button>
+            </div>
+            
+            {/* 필터 탭 */}
+            <div className={`${cardBg} rounded-xl p-1 mt-3 flex`}>
+              <button
+                onClick={() => setFilter('all')}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  filter === 'all' 
+                    ? 'bg-[#A996FF] text-white shadow-sm' 
+                    : `${textSecondary}`
+                }`}
+              >
+                전체
+              </button>
+              <button
+                onClick={() => setFilter('urgent')}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  filter === 'urgent' 
+                    ? 'bg-[#A996FF] text-white shadow-sm' 
+                    : `${textSecondary}`
+                }`}
+              >
+                긴급
+              </button>
+            </div>
+          </>
+        )}
       </div>
       
-      {/* 콘텐츠 */}
-      <div className="px-4">
-        {/* 로딩 */}
-        {(gmail.isLoading || gmail.isAnalyzing) && gmail.actions.length === 0 && (
-          <div className="text-center py-12">
-            <Loader2 size={32} className="text-[#A996FF] animate-spin mx-auto mb-3" />
-            <p className={`${textPrimary} font-medium`}>
-              {gmail.isLoading ? '중요 이메일 가져오는 중...' : 'AI가 분석 중...'}
-            </p>
-            <p className={`${textSecondary} text-sm mt-1`}>잠시만 기다려주세요</p>
-          </div>
-        )}
-        
-        {/* 빈 상태 */}
-        {!gmail.isLoading && !gmail.isAnalyzing && filteredActions.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-4xl mb-3">✨</div>
-            <p className={`${textPrimary} font-medium`}>
-              {filter === 'reply' ? '답장할 이메일이 없어요' : 
-               filter === 'urgent' ? '긴급한 이메일이 없어요' : 
-               '처리할 이메일이 없어요'}
-            </p>
-            <p className={`${textSecondary} text-sm mt-1`}>잘 하고 있어요!</p>
-          </div>
-        )}
-        
-        {/* 액션 리스트 */}
-        {filteredActions.length > 0 && (
-          <div className="space-y-3">
-            {filteredActions.map((action) => (
-              <EmailActionCard
-                key={action.emailId}
-                action={action}
-                darkMode={darkMode}
-                onComplete={gmail.completeAction}
-                onCreateTask={handleCreateTask}
-                onCreateEvent={handleCreateEvent}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      {/* 콘텐츠 - 재연결 필요 시 숨김 */}
+      {!gmail.needsReauth && (
+        <div className="px-4">
+          {/* 로딩 */}
+          {(gmail.isLoading || gmail.isAnalyzing) && gmail.actions.length === 0 && (
+            <div className="text-center py-12">
+              <Loader2 size={32} className="text-[#A996FF] animate-spin mx-auto mb-3" />
+              <p className={`${textPrimary} font-medium`}>
+                {gmail.isLoading ? '중요 이메일 가져오는 중...' : 'AI가 분석 중...'}
+              </p>
+              <p className={`${textSecondary} text-sm mt-1`}>잠시만 기다려주세요</p>
+            </div>
+          )}
+          
+          {/* 빈 상태 */}
+          {!gmail.isLoading && !gmail.isAnalyzing && filteredActions.length === 0 && (
+            <div className="text-center py-12">
+              <div className="text-5xl mb-3">📭</div>
+              <p className={`${textPrimary} font-medium`}>인박스가 비어있어요</p>
+              <p className={`${textSecondary} text-sm mt-1`}>
+                {filter === 'urgent' ? '긴급한 이메일이 없어요' : '처리할 이메일이 없어요'}
+              </p>
+            </div>
+          )}
+          
+          {/* 액션 리스트 */}
+          {filteredActions.length > 0 && (
+            <div className="space-y-3">
+              {filteredActions.map((action) => (
+                <EmailActionCard
+                  key={action.emailId}
+                  action={action}
+                  darkMode={darkMode}
+                  onComplete={gmail.completeAction}
+                  onCreateTask={handleCreateTask}
+                  onCreateEvent={handleCreateEvent}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

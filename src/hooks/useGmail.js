@@ -25,13 +25,14 @@ const DEFAULT_SETTINGS = {
 };
 
 export function useGmail() {
-  const { isConnected, getAccessToken, connect } = useGoogleCalendar();
+  const { isConnected, getAccessToken, connect, disconnect } = useGoogleCalendar();
   
   const [emails, setEmails] = useState([]);
   const [actions, setActions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState(null);
+  const [needsReauth, setNeedsReauth] = useState(false); // 🆕 재인증 필요 상태
   const [lastFetch, setLastFetch] = useState(null);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [vipSenders, setVipSenders] = useState([]); // VIP 발신자 목록
@@ -116,6 +117,30 @@ export function useGmail() {
     return parts.join(' ');
   }, [settings, vipSenders]);
 
+  // 🆕 강제 재연결 (scope 변경 시)
+  const forceReconnect = useCallback(async () => {
+    console.log('🔄 Gmail: Force reconnecting...');
+    
+    // 기존 연결 해제
+    if (disconnect) {
+      disconnect();
+    }
+    
+    // 상태 초기화
+    setNeedsReauth(false);
+    setError(null);
+    
+    // 잠시 대기 후 재연결
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // 새로 연결 (새 scope로)
+    if (connect) {
+      await connect();
+      return true;
+    }
+    return false;
+  }, [disconnect, connect]);
+
   // 이메일 목록 가져오기
   const fetchEmails = useCallback(async (options = {}) => {
     const token = getAccessToken();
@@ -150,9 +175,18 @@ export function useGmail() {
         }),
       });
 
+      // 🆕 401/403 에러 감지 - 재인증 필요
       if (!listResponse.ok) {
+        if (listResponse.status === 401 || listResponse.status === 403) {
+          console.warn('🔐 Gmail: Auth error, needs reauth');
+          setNeedsReauth(true);
+          throw new Error('Gmail 권한이 필요합니다. Google 재연결이 필요해요.');
+        }
         throw new Error('이메일 목록을 가져오는데 실패했습니다');
       }
+
+      // 성공하면 needsReauth 해제
+      setNeedsReauth(false);
 
       const listData = await listResponse.json();
       const messageIds = (listData.emails || []).map(m => m.id);
@@ -179,6 +213,10 @@ export function useGmail() {
       });
 
       if (!detailResponse.ok) {
+        if (detailResponse.status === 401 || detailResponse.status === 403) {
+          setNeedsReauth(true);
+          throw new Error('Gmail 권한이 필요합니다. Google 재연결이 필요해요.');
+        }
         throw new Error('이메일 상세를 가져오는데 실패했습니다');
       }
 
@@ -381,6 +419,11 @@ ${JSON.stringify(emailSummaries, null, 2)}
         ));
         return true;
       }
+      
+      // 401/403이면 재인증 필요
+      if (response.status === 401 || response.status === 403) {
+        setNeedsReauth(true);
+      }
       return false;
     } catch (err) {
       console.error('Mark as read error:', err);
@@ -474,13 +517,14 @@ ${JSON.stringify(emailSummaries, null, 2)}
   // 브리핑 메시지 생성
   const getBriefingMessage = useCallback(() => {
     if (!settings.enabled || !isConnected) return null;
+    if (needsReauth) return '📧 Gmail 재연결 필요';
     if (replyActions.length === 0) return null;
     
     if (urgentReplyActions.length > 0) {
       return `📧 긴급 답장 필요 ${urgentReplyActions.length}개`;
     }
     return `📧 답장 필요 ${replyActions.length}개`;
-  }, [settings.enabled, isConnected, replyActions, urgentReplyActions]);
+  }, [settings.enabled, isConnected, needsReauth, replyActions, urgentReplyActions]);
 
   return {
     // 상태
@@ -493,6 +537,7 @@ ${JSON.stringify(emailSummaries, null, 2)}
     isLoading,
     isAnalyzing,
     error,
+    needsReauth,         // 🆕 재인증 필요 여부
     lastFetch,
     stats,
     settings,
@@ -507,6 +552,7 @@ ${JSON.stringify(emailSummaries, null, 2)}
     convertToTask,
     toggleGmail,
     connectGmail,
+    forceReconnect,      // 🆕 강제 재연결
     updateSettings,
     addVipSender,
     removeVipSender,
