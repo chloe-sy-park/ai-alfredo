@@ -1,226 +1,203 @@
-import React, { useState } from 'react';
-import { Bell, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Bell, ChevronDown, ChevronUp, AlertCircle, Mail, Phone, CreditCard, Calendar } from 'lucide-react';
 
 // 리마인더 타입별 스타일
 var REMINDER_STYLES = {
-  payment: { emoji: '💳', label: '결제' },
-  email: { emoji: '✉️', label: '메일' },
-  call: { emoji: '📱', label: '연락' },
-  birthday: { emoji: '🎂', label: '생일' },
-  meeting: { emoji: '🤝', label: '미팅' },
-  health: { emoji: '💊', label: '건강' },
-  deadline: { emoji: '⏰', label: '마감' },
-  default: { emoji: '📌', label: '일반' }
+  deadline: { emoji: '🔥', label: '마감', color: 'red', icon: AlertCircle },
+  email: { emoji: '✉️', label: '메일', color: 'blue', icon: Mail },
+  call: { emoji: '📞', label: '연락', color: 'green', icon: Phone },
+  payment: { emoji: '💳', label: '결제', color: 'orange', icon: CreditCard },
+  event: { emoji: '📅', label: '일정', color: 'purple', icon: Calendar },
+  default: { emoji: '📌', label: '할일', color: 'gray', icon: Bell }
 };
 
-// D-day 계산
-var getDdayText = function(dueDate) {
-  if (!dueDate) return null;
-  
-  var now = new Date();
-  now.setHours(0, 0, 0, 0);
-  var due = new Date(dueDate);
-  due.setHours(0, 0, 0, 0);
-  
-  var diffTime = due - now;
-  var diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
-  if (diffDays < 0) {
-    return { text: Math.abs(diffDays) + '일 지남', isOverdue: true, isPast: true };
-  } else if (diffDays === 0) {
-    return { text: '오늘!', isOverdue: true, isPast: false };
-  } else if (diffDays === 1) {
-    return { text: '내일', isOverdue: true, isPast: false };
-  } else if (diffDays <= 3) {
-    return { text: 'D-' + diffDays, isOverdue: true, isPast: false };
-  } else if (diffDays <= 7) {
-    return { text: 'D-' + diffDays, isOverdue: false, isPast: false };
-  } else {
-    return { text: diffDays + '일 후', isOverdue: false, isPast: false };
-  }
-};
-
-// 경과일 계산
-var getElapsedText = function(lastCompleted) {
-  if (!lastCompleted) return null;
-  
-  var now = new Date();
-  var last = new Date(lastCompleted);
-  var diffTime = now - last;
-  var diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  
-  if (diffDays === 0) return '오늘 함';
-  if (diffDays === 1) return '어제';
-  if (diffDays <= 7) return diffDays + '일 전';
-  return Math.floor(diffDays / 7) + '주 전';
-};
-
-// 리마인더 아이템 - 시각적 강화
-var ReminderItem = function(props) {
-  var reminder = props.reminder;
-  var darkMode = props.darkMode;
-  var onClick = props.onClick;
-  var index = props.index || 0;
-  
-  var style = REMINDER_STYLES[reminder.type] || REMINDER_STYLES.default;
-  var ddayInfo = reminder.dueDate ? getDdayText(reminder.dueDate) : null;
-  var elapsedText = reminder.lastCompleted ? getElapsedText(reminder.lastCompleted) : null;
-  
-  var badgeText = ddayInfo ? ddayInfo.text : elapsedText;
-  var isUrgent = ddayInfo && ddayInfo.isOverdue;
-  var isPast = ddayInfo && ddayInfo.isPast;
-  
-  // 배경색 결정
-  var getBgColor = function() {
-    if (isUrgent && !isPast) return darkMode ? 'bg-[#A996FF]/10' : 'bg-[#A996FF]/5';
-    if (isPast) return darkMode ? 'bg-orange-500/10' : 'bg-orange-50';
-    return darkMode ? 'bg-[#3A3A3C]' : 'bg-white';
+// 색상 매핑
+var getColorClasses = function(color, darkMode) {
+  var colors = {
+    red: {
+      bg: darkMode ? 'bg-red-500/20' : 'bg-red-100',
+      text: 'text-red-500',
+      ring: 'ring-red-500/30'
+    },
+    blue: {
+      bg: darkMode ? 'bg-blue-500/20' : 'bg-blue-100',
+      text: 'text-blue-500',
+      ring: 'ring-blue-500/30'
+    },
+    green: {
+      bg: darkMode ? 'bg-green-500/20' : 'bg-green-100',
+      text: 'text-green-500',
+      ring: 'ring-green-500/30'
+    },
+    orange: {
+      bg: darkMode ? 'bg-orange-500/20' : 'bg-orange-100',
+      text: 'text-orange-500',
+      ring: 'ring-orange-500/30'
+    },
+    purple: {
+      bg: darkMode ? 'bg-purple-500/20' : 'bg-purple-100',
+      text: 'text-purple-500',
+      ring: 'ring-purple-500/30'
+    },
+    gray: {
+      bg: darkMode ? 'bg-gray-500/20' : 'bg-gray-100',
+      text: 'text-gray-500',
+      ring: 'ring-gray-500/30'
+    }
   };
-  
-  var delayClass = index === 0 ? '' : index === 1 ? 'animate-delay-100' : index === 2 ? 'animate-delay-200' : 'animate-delay-300';
-  
-  return React.createElement('button', {
-    onClick: function() { if (onClick) onClick(reminder); },
-    className: 'w-full flex items-center gap-3 p-3 md:p-4 min-h-[56px] rounded-xl ' +
-      'transition-all active:scale-[0.98] shadow-sm hover:shadow-md animate-fadeInUp ' + delayClass + ' ' +
-      getBgColor() +
-      (isUrgent && !isPast ? ' ring-1 ring-[#A996FF]/30' : '') +
-      (isPast ? ' ring-1 ring-orange-300/30' : '')
-  },
-    // 이모지 with 배경
-    React.createElement('div', { 
-      className: 'w-10 h-10 md:w-11 md:h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ' +
-        (isPast 
-          ? (darkMode ? 'bg-orange-500/20' : 'bg-orange-100')
-          : isUrgent 
-            ? (darkMode ? 'bg-[#A996FF]/20' : 'bg-[#A996FF]/10')
-            : (darkMode ? 'bg-[#48484A]' : 'bg-gray-100'))
-    }, style.emoji),
-    
-    // 텍스트
-    React.createElement('div', { className: 'flex-1 min-w-0 text-left' },
-      React.createElement('p', { 
-        className: 'font-semibold truncate text-sm md:text-base ' +
-          (isPast 
-            ? 'text-orange-500'
-            : isUrgent 
-              ? 'text-[#A996FF]'
-              : (darkMode ? 'text-white' : 'text-gray-900'))
-      }, reminder.title),
-      React.createElement('p', { 
-        className: 'text-xs mt-0.5 ' + (darkMode ? 'text-gray-500' : 'text-gray-400')
-      }, style.label)
-    ),
-    
-    // 뱃지
-    badgeText && React.createElement('span', { 
-      className: 'flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-bold ' +
-        (isPast 
-          ? 'bg-orange-100 text-orange-600' 
-          : isUrgent
-            ? 'bg-[#A996FF]/20 text-[#A996FF]'
-            : (darkMode 
-                ? 'bg-[#48484A] text-gray-400' 
-                : 'bg-gray-100 text-gray-500'))
-    }, badgeText),
-    
-    // 화살표
-    React.createElement(ChevronRight, { 
-      size: 18, 
-      className: 'flex-shrink-0 ' + (darkMode ? 'text-gray-600' : 'text-gray-300')
-    })
-  );
+  return colors[color] || colors.gray;
 };
 
-// ⚠️ 잊지 마세요 섹션 - 카드형 레이아웃
+// 날짜 포맷
+var formatDueDate = function(dateStr) {
+  if (!dateStr) return null;
+  
+  var date = new Date(dateStr);
+  var now = new Date();
+  var diffDays = Math.ceil((date - now) / (1000 * 60 * 60 * 24));
+  
+  if (diffDays < 0) return { text: Math.abs(diffDays) + '일 지남', urgent: true, overdue: true };
+  if (diffDays === 0) return { text: '오늘', urgent: true, overdue: false };
+  if (diffDays === 1) return { text: '내일', urgent: true, overdue: false };
+  if (diffDays <= 3) return { text: diffDays + '일 후', urgent: true, overdue: false };
+  if (diffDays <= 7) return { text: diffDays + '일 후', urgent: false, overdue: false };
+  
+  return { 
+    text: (date.getMonth() + 1) + '/' + date.getDate(), 
+    urgent: false, 
+    overdue: false 
+  };
+};
+
+// 🔔 리마인더 섹션
 export var RemindersSection = function(props) {
   var reminders = props.reminders || [];
   var darkMode = props.darkMode;
   var onReminderClick = props.onReminderClick;
+  var maxVisible = props.maxVisible || 3;
   
   var expandedState = useState(false);
   var isExpanded = expandedState[0];
   var setExpanded = expandedState[1];
   
-  if (reminders.length === 0) return null;
+  // 정렬 및 필터
+  var sortedReminders = useMemo(function() {
+    return reminders.slice().sort(function(a, b) {
+      // 긴급한 것 먼저
+      var aDate = a.dueDate ? new Date(a.dueDate) : new Date('2099-12-31');
+      var bDate = b.dueDate ? new Date(b.dueDate) : new Date('2099-12-31');
+      return aDate - bDate;
+    });
+  }, [reminders]);
   
-  var visibleReminders = isExpanded ? reminders : reminders.slice(0, 3);
-  var hasMore = reminders.length > 3;
+  var visibleReminders = isExpanded ? sortedReminders : sortedReminders.slice(0, maxVisible);
+  var hasMore = sortedReminders.length > maxVisible;
   
-  // 긴급 건수
-  var urgentCount = reminders.filter(function(r) {
+  // 긴급 카운트
+  var urgentCount = sortedReminders.filter(function(r) {
     if (!r.dueDate) return false;
-    var info = getDdayText(r.dueDate);
-    return info && info.isOverdue;
+    var due = formatDueDate(r.dueDate);
+    return due && due.urgent;
   }).length;
   
-  return React.createElement('div', { 
-    className: 'rounded-2xl md:rounded-3xl overflow-hidden shadow-lg animate-fadeIn ' +
-      (darkMode ? 'bg-[#2C2C2E]' : 'bg-white')
+  if (reminders.length === 0) {
+    return null;
+  }
+  
+  return React.createElement('div', {
+    className: 'rounded-2xl overflow-hidden shadow-lg ' +
+      (darkMode 
+        ? 'bg-gradient-to-br from-[#2C2C2E] to-[#1D1D1F]'
+        : 'bg-gradient-to-br from-white to-gray-50')
   },
-    // 헤더 - 그라데이션 배경
-    React.createElement('div', { 
-      className: 'flex items-center justify-between p-4 md:p-5 pb-3 ' +
-        (darkMode ? 'bg-gradient-to-r from-[#3A3A3C] to-[#2C2C2E]' : 'bg-gradient-to-r from-amber-50 to-white')
+    // 헤더
+    React.createElement('div', {
+      className: 'px-5 py-3 flex items-center justify-between ' +
+        (darkMode 
+          ? 'bg-gradient-to-r from-pink-500/20 to-transparent'
+          : 'bg-gradient-to-r from-pink-100 to-transparent')
     },
-      React.createElement('div', { className: 'flex items-center gap-3' },
-        // 아이콘 with 배경
-        React.createElement('div', { 
-          className: 'w-10 h-10 rounded-xl flex items-center justify-center ' +
-            (darkMode ? 'bg-amber-500/20' : 'bg-amber-100')
+      React.createElement('div', { className: 'flex items-center gap-2' },
+        React.createElement('div', {
+          className: 'w-7 h-7 rounded-full bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center'
         },
-          React.createElement(Bell, { size: 20, className: 'text-amber-500' })
+          React.createElement(Bell, { size: 14, className: 'text-white' })
         ),
-        React.createElement('div', null,
-          React.createElement('h2', { 
-            className: (darkMode ? 'text-white' : 'text-gray-900') + ' font-bold text-base md:text-lg'
-          }, '잊지 마세요'),
-          React.createElement('p', { 
-            className: 'text-xs ' + (darkMode ? 'text-gray-400' : 'text-gray-500')
-          }, 
-            urgentCount > 0 
-              ? '🔥 ' + urgentCount + '건 긴급!'
-              : reminders.length + '건의 리마인더'
-          )
-        )
+        React.createElement('span', {
+          className: (darkMode ? 'text-white' : 'text-gray-900') + ' font-bold'
+        }, '잊지 마세요')
       ),
-      
-      // 카운트 뱃지
-      React.createElement('span', { 
-        className: 'px-3 py-1.5 rounded-full text-sm font-bold ' +
-          (urgentCount > 0 
-            ? 'bg-[#A996FF] text-white shadow-lg shadow-[#A996FF]/30'
-            : (darkMode ? 'bg-[#3A3A3C] text-gray-300' : 'bg-gray-100 text-gray-600'))
-      }, reminders.length)
+      // 긴급 카운트
+      urgentCount > 0 && React.createElement('div', {
+        className: 'px-2 py-1 rounded-full bg-red-500 text-white text-xs font-bold animate-pulse-soft'
+      }, '🔥 ' + urgentCount + '건 긴급!')
     ),
     
     // 리마인더 목록
-    React.createElement('div', { className: 'p-3 md:p-4 pt-2 space-y-2' },
+    React.createElement('div', { className: 'p-4 space-y-2' },
       visibleReminders.map(function(reminder, idx) {
-        return React.createElement(ReminderItem, {
+        var style = REMINDER_STYLES[reminder.type] || REMINDER_STYLES.default;
+        var colorClasses = getColorClasses(style.color, darkMode);
+        var dueInfo = formatDueDate(reminder.dueDate);
+        
+        return React.createElement('button', {
           key: reminder.id || idx,
-          reminder: reminder,
-          darkMode: darkMode,
-          onClick: onReminderClick,
-          index: idx
-        });
-      })
-    ),
-    
-    // 더보기/접기
-    hasMore && React.createElement('div', { className: 'px-4 pb-4 pt-0' },
-      React.createElement('button', {
+          onClick: function() { if (onReminderClick) onReminderClick(reminder); },
+          className: 'w-full flex items-center gap-3 p-3 rounded-xl transition-all btn-press text-left ' +
+            (dueInfo && dueInfo.overdue 
+              ? (darkMode ? 'bg-red-500/10 ring-1 ring-red-500/30' : 'bg-red-50 ring-1 ring-red-200')
+              : (dueInfo && dueInfo.urgent)
+                ? (darkMode ? 'bg-orange-500/10' : 'bg-orange-50')
+                : (darkMode ? 'bg-white/5 hover:bg-white/10' : 'bg-gray-50 hover:bg-gray-100'))
+        },
+          // 아이콘
+          React.createElement('div', {
+            className: 'w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ' + colorClasses.bg
+          },
+            React.createElement('span', { className: 'text-lg' }, style.emoji)
+          ),
+          
+          // 내용
+          React.createElement('div', { className: 'flex-1 min-w-0' },
+            React.createElement('p', {
+              className: (darkMode ? 'text-white' : 'text-gray-900') + ' font-medium text-sm truncate'
+            }, reminder.title),
+            
+            // 메타 정보
+            React.createElement('div', { className: 'flex items-center gap-2 mt-0.5' },
+              React.createElement('span', {
+                className: colorClasses.text + ' text-xs'
+              }, style.label),
+              
+              dueInfo && React.createElement('span', {
+                className: (dueInfo.overdue 
+                  ? 'text-red-500' 
+                  : dueInfo.urgent 
+                    ? 'text-orange-500' 
+                    : (darkMode ? 'text-gray-500' : 'text-gray-400')) + ' text-xs'
+              }, dueInfo.overdue ? '⚠️ ' + dueInfo.text : dueInfo.text)
+            )
+          ),
+          
+          // 화살표
+          React.createElement('div', {
+            className: 'text-gray-400'
+          }, '›')
+        );
+      }),
+      
+      // 더보기/접기 버튼
+      hasMore && React.createElement('button', {
         onClick: function() { setExpanded(!isExpanded); },
-        className: 'w-full flex items-center justify-center gap-2 py-2.5 min-h-[44px] ' +
-          'text-sm font-medium rounded-xl transition-colors btn-press ' +
-          (darkMode 
-            ? 'text-gray-400 hover:bg-white/5' 
-            : 'text-gray-500 hover:bg-black/5')
-      }, 
-        isExpanded ? '접기' : (reminders.length - 3) + '개 더보기',
+        className: 'w-full flex items-center justify-center gap-1 py-2 mt-2 rounded-xl transition-all btn-press ' +
+          (darkMode ? 'hover:bg-white/5 text-gray-500' : 'hover:bg-gray-100 text-gray-400')
+      },
+        React.createElement('span', { className: 'text-sm' }, 
+          isExpanded ? '접기' : (sortedReminders.length - maxVisible) + '개 더보기'
+        ),
         isExpanded 
-          ? React.createElement(ChevronUp, { size: 16 })
-          : React.createElement(ChevronDown, { size: 16 })
+          ? React.createElement(ChevronUp, { size: 14 })
+          : React.createElement(ChevronDown, { size: 14 })
       )
     )
   );
