@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { BarChart3, TrendingUp, TrendingDown, Calendar, Clock, Target, Flame, Trophy, ChevronLeft, ChevronRight, Minus, Star, Zap, Award, Medal } from 'lucide-react';
 
-// W2 게이미피케이션 임포트
+// W2 게이미피케이션 임포트 (올바른 export 이름 사용)
 import { LevelXpBar, useGamification, LEVEL_CONFIG } from '../gamification/LevelSystem';
-import { DailyQuestCard, QuestList } from '../gamification/QuestSystem';
+import { DailyQuestList, QuestCard, useQuests } from '../gamification/QuestSystem';
 import { BadgeGrid, BadgeShowcase } from '../gamification/BadgeSystem';
 
 // 요일 이름
@@ -277,6 +277,9 @@ export var StatsPage = function(props) {
   // 게이미피케이션 훅
   var gamification = useGamification ? useGamification() : gameData;
   
+  // 퀘스트 훅
+  var questHook = useQuests ? useQuests() : { dailyQuests: [], weeklyQuests: [], claimReward: function() {} };
+  
   var bgColor = darkMode ? 'bg-gray-900' : 'bg-[#F0EBFF]';
   var cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
   var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
@@ -464,10 +467,14 @@ export var StatsPage = function(props) {
         )
       ),
       
-      // 퀘스트 탭
+      // 퀘스트 탭 - DailyQuestList 사용
       activeTab === 'quests' && React.createElement(React.Fragment, null,
-        React.createElement(DailyQuestCard, { darkMode: darkMode }),
-        React.createElement(QuestList, { darkMode: darkMode, showCompleted: true })
+        React.createElement(DailyQuestList, { 
+          darkMode: darkMode, 
+          quests: questHook.dailyQuests,
+          onClaim: function(quest) { questHook.claimReward(quest.id); },
+          compact: false
+        })
       ),
       
       // 배지 탭
