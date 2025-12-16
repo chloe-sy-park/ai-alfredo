@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sun, Cloud, CloudRain, ChevronDown, X, Search, Bell, Settings, Star } from 'lucide-react';
+import { Sun, Cloud, CloudRain, ChevronDown, X, Search, Bell, Settings, Star, Calendar, CheckSquare, Clock } from 'lucide-react';
 
 // 컨디션 이모지 매핑
 var CONDITION_EMOJIS = {
@@ -8,6 +8,234 @@ var CONDITION_EMOJIS = {
   3: { emoji: '😐', label: '보통' },
   4: { emoji: '😊', label: '좋음' },
   5: { emoji: '😄', label: '최고' }
+};
+
+// 검색 모달
+var SearchModal = function(props) {
+  var isOpen = props.isOpen;
+  var onClose = props.onClose;
+  var darkMode = props.darkMode;
+  var tasks = props.tasks || [];
+  var events = props.events || [];
+  var onSelectTask = props.onSelectTask;
+  var onSelectEvent = props.onSelectEvent;
+  
+  var queryState = useState('');
+  var query = queryState[0];
+  var setQuery = queryState[1];
+  
+  if (!isOpen) return null;
+  
+  // 검색 결과
+  var filteredTasks = tasks.filter(function(t) {
+    return t.title && t.title.toLowerCase().includes(query.toLowerCase());
+  }).slice(0, 5);
+  
+  var filteredEvents = events.filter(function(e) {
+    var title = e.title || e.summary || '';
+    return title.toLowerCase().includes(query.toLowerCase());
+  }).slice(0, 5);
+  
+  var hasResults = filteredTasks.length > 0 || filteredEvents.length > 0;
+  
+  return React.createElement('div', {
+    className: 'fixed inset-0 z-50',
+    onClick: onClose
+  },
+    React.createElement('div', { 
+      className: 'absolute inset-0 bg-black/40 backdrop-blur-sm' 
+    }),
+    React.createElement('div', {
+      className: 'relative max-w-lg mx-auto mt-20 px-4',
+      onClick: function(e) { e.stopPropagation(); }
+    },
+      // 검색 입력
+      React.createElement('div', {
+        className: (darkMode ? 'bg-[#2C2C2E]' : 'bg-white') + 
+          ' rounded-2xl shadow-2xl overflow-hidden'
+      },
+        React.createElement('div', { 
+          className: 'flex items-center gap-3 px-4 py-3 border-b ' +
+            (darkMode ? 'border-gray-700' : 'border-gray-100')
+        },
+          React.createElement(Search, { 
+            size: 20, 
+            className: darkMode ? 'text-gray-400' : 'text-gray-500' 
+          }),
+          React.createElement('input', {
+            type: 'text',
+            placeholder: '할일, 일정 검색...',
+            value: query,
+            onChange: function(e) { setQuery(e.target.value); },
+            autoFocus: true,
+            className: 'flex-1 bg-transparent outline-none text-lg ' +
+              (darkMode ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400')
+          }),
+          query && React.createElement('button', {
+            onClick: function() { setQuery(''); },
+            className: 'p-1 rounded-full ' + (darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100')
+          },
+            React.createElement(X, { size: 16, className: darkMode ? 'text-gray-400' : 'text-gray-500' })
+          )
+        ),
+        
+        // 검색 결과
+        query && React.createElement('div', { className: 'max-h-80 overflow-y-auto' },
+          // 할일 결과
+          filteredTasks.length > 0 && React.createElement('div', { className: 'p-3' },
+            React.createElement('p', { 
+              className: (darkMode ? 'text-gray-500' : 'text-gray-400') + ' text-xs font-medium mb-2 px-2' 
+            }, '할일'),
+            filteredTasks.map(function(task) {
+              return React.createElement('button', {
+                key: task.id,
+                onClick: function() { if (onSelectTask) onSelectTask(task); onClose(); },
+                className: 'w-full flex items-center gap-3 p-3 rounded-xl transition-all ' +
+                  (darkMode ? 'hover:bg-[#3A3A3C]' : 'hover:bg-gray-50')
+              },
+                React.createElement('div', {
+                  className: 'w-8 h-8 rounded-lg flex items-center justify-center ' +
+                    (task.completed ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600')
+                },
+                  React.createElement(CheckSquare, { size: 16 })
+                ),
+                React.createElement('div', { className: 'flex-1 text-left' },
+                  React.createElement('p', { 
+                    className: (darkMode ? 'text-white' : 'text-gray-900') + 
+                      (task.completed ? ' line-through opacity-50' : '')
+                  }, task.title),
+                  task.project && React.createElement('p', { 
+                    className: (darkMode ? 'text-gray-500' : 'text-gray-400') + ' text-xs' 
+                  }, task.project)
+                )
+              );
+            })
+          ),
+          
+          // 일정 결과
+          filteredEvents.length > 0 && React.createElement('div', { className: 'p-3 border-t ' + (darkMode ? 'border-gray-700' : 'border-gray-100') },
+            React.createElement('p', { 
+              className: (darkMode ? 'text-gray-500' : 'text-gray-400') + ' text-xs font-medium mb-2 px-2' 
+            }, '일정'),
+            filteredEvents.map(function(event) {
+              var startDate = new Date(event.start || event.startTime);
+              var dateStr = (startDate.getMonth() + 1) + '/' + startDate.getDate();
+              var timeStr = startDate.getHours() + ':' + startDate.getMinutes().toString().padStart(2, '0');
+              
+              return React.createElement('button', {
+                key: event.id,
+                onClick: function() { if (onSelectEvent) onSelectEvent(event); onClose(); },
+                className: 'w-full flex items-center gap-3 p-3 rounded-xl transition-all ' +
+                  (darkMode ? 'hover:bg-[#3A3A3C]' : 'hover:bg-gray-50')
+              },
+                React.createElement('div', {
+                  className: 'w-8 h-8 rounded-lg flex items-center justify-center bg-purple-100 text-purple-600'
+                },
+                  React.createElement(Calendar, { size: 16 })
+                ),
+                React.createElement('div', { className: 'flex-1 text-left' },
+                  React.createElement('p', { 
+                    className: darkMode ? 'text-white' : 'text-gray-900'
+                  }, event.title || event.summary),
+                  React.createElement('p', { 
+                    className: (darkMode ? 'text-gray-500' : 'text-gray-400') + ' text-xs' 
+                  }, dateStr + ' ' + timeStr)
+                )
+              );
+            })
+          ),
+          
+          // 결과 없음
+          !hasResults && React.createElement('div', { 
+            className: 'p-8 text-center ' + (darkMode ? 'text-gray-500' : 'text-gray-400')
+          }, '검색 결과가 없어요')
+        ),
+        
+        // 빈 상태 (검색어 없을 때)
+        !query && React.createElement('div', { 
+          className: 'p-8 text-center ' + (darkMode ? 'text-gray-500' : 'text-gray-400')
+        }, '할일이나 일정을 검색해보세요')
+      )
+    )
+  );
+};
+
+// 알림 모달
+var NotificationsModal = function(props) {
+  var isOpen = props.isOpen;
+  var onClose = props.onClose;
+  var darkMode = props.darkMode;
+  var notifications = props.notifications || [];
+  
+  if (!isOpen) return null;
+  
+  // 샘플 알림 (실제로는 props로 받아야 함)
+  var sampleNotifications = notifications.length > 0 ? notifications : [
+    { id: 1, type: 'reminder', title: '팀 미팅 30분 전', time: '10분 전', icon: '📅' },
+    { id: 2, type: 'task', title: '기획서 마감 D-1', time: '1시간 전', icon: '⚠️' },
+    { id: 3, type: 'care', title: '물 마실 시간이에요', time: '2시간 전', icon: '💧' }
+  ];
+  
+  return React.createElement('div', {
+    className: 'fixed inset-0 z-50 flex items-start justify-end p-4 pt-16',
+    onClick: onClose
+  },
+    React.createElement('div', { 
+      className: 'absolute inset-0 bg-black/20' 
+    }),
+    React.createElement('div', {
+      className: (darkMode ? 'bg-[#2C2C2E]' : 'bg-white') + 
+        ' w-80 rounded-2xl shadow-2xl overflow-hidden relative',
+      onClick: function(e) { e.stopPropagation(); }
+    },
+      // 헤더
+      React.createElement('div', { 
+        className: 'flex items-center justify-between px-4 py-3 border-b ' +
+          (darkMode ? 'border-gray-700' : 'border-gray-100')
+      },
+        React.createElement('h3', { 
+          className: (darkMode ? 'text-white' : 'text-gray-900') + ' font-semibold' 
+        }, '알림'),
+        React.createElement('button', {
+          onClick: onClose,
+          className: 'p-1 rounded-full ' + (darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100')
+        },
+          React.createElement(X, { size: 16, className: darkMode ? 'text-gray-400' : 'text-gray-500' })
+        )
+      ),
+      
+      // 알림 목록
+      React.createElement('div', { className: 'max-h-80 overflow-y-auto' },
+        sampleNotifications.map(function(notif) {
+          return React.createElement('div', {
+            key: notif.id,
+            className: 'flex items-start gap-3 p-4 border-b transition-all ' +
+              (darkMode ? 'border-gray-700/50 hover:bg-[#3A3A3C]' : 'border-gray-50 hover:bg-gray-50')
+          },
+            React.createElement('span', { className: 'text-xl' }, notif.icon),
+            React.createElement('div', { className: 'flex-1' },
+              React.createElement('p', { 
+                className: (darkMode ? 'text-white' : 'text-gray-900') + ' text-sm font-medium' 
+              }, notif.title),
+              React.createElement('p', { 
+                className: (darkMode ? 'text-gray-500' : 'text-gray-400') + ' text-xs mt-0.5' 
+              }, notif.time)
+            )
+          );
+        }),
+        
+        sampleNotifications.length === 0 && React.createElement('div', { 
+          className: 'p-8 text-center ' + (darkMode ? 'text-gray-500' : 'text-gray-400')
+        }, '새로운 알림이 없어요')
+      ),
+      
+      // 전체 보기
+      React.createElement('button', {
+        className: 'w-full p-3 text-center text-sm font-medium text-[#A996FF] ' +
+          (darkMode ? 'hover:bg-[#3A3A3C]' : 'hover:bg-gray-50')
+      }, '전체 알림 보기')
+    )
+  );
 };
 
 // 컨디션 선택 모달 (Apple 스타일 바텀시트)
@@ -143,9 +371,12 @@ export var HomeHeader = function(props) {
   var setCondition = props.setCondition;
   var weather = props.weather;
   var level = props.level || 1;
-  var onOpenSearch = props.onOpenSearch;
-  var onOpenNotifications = props.onOpenNotifications;
+  var tasks = props.tasks || [];
+  var events = props.events || [];
+  var notifications = props.notifications || [];
   var onOpenSettings = props.onOpenSettings;
+  var onSelectTask = props.onSelectTask;
+  var onSelectEvent = props.onSelectEvent;
   
   var conditionModalState = useState(false);
   var showConditionModal = conditionModalState[0];
@@ -154,6 +385,14 @@ export var HomeHeader = function(props) {
   var weatherModalState = useState(false);
   var showWeatherModal = weatherModalState[0];
   var setShowWeatherModal = weatherModalState[1];
+  
+  var searchModalState = useState(false);
+  var showSearchModal = searchModalState[0];
+  var setShowSearchModal = searchModalState[1];
+  
+  var notifModalState = useState(false);
+  var showNotifModal = notifModalState[0];
+  var setShowNotifModal = notifModalState[1];
   
   // 날짜 포맷
   var now = new Date();
@@ -176,6 +415,9 @@ export var HomeHeader = function(props) {
   };
   
   var currentCondition = CONDITION_EMOJIS[condition] || CONDITION_EMOJIS[3];
+  
+  // 읽지 않은 알림 개수
+  var unreadCount = notifications.filter(function(n) { return !n.read; }).length || 0;
   
   return React.createElement('div', { 
     className: 'sticky top-0 z-40 backdrop-blur-xl ' +
@@ -229,7 +471,7 @@ export var HomeHeader = function(props) {
         
         // 검색
         React.createElement('button', {
-          onClick: onOpenSearch,
+          onClick: function() { setShowSearchModal(true); },
           className: 'p-2 rounded-full transition-all ' +
             (darkMode ? 'hover:bg-white/10 text-gray-300' : 'hover:bg-black/5 text-gray-600')
         },
@@ -238,11 +480,14 @@ export var HomeHeader = function(props) {
         
         // 알림
         React.createElement('button', {
-          onClick: onOpenNotifications,
+          onClick: function() { setShowNotifModal(true); },
           className: 'p-2 rounded-full transition-all relative ' +
             (darkMode ? 'hover:bg-white/10 text-gray-300' : 'hover:bg-black/5 text-gray-600')
         },
-          React.createElement(Bell, { size: 20 })
+          React.createElement(Bell, { size: 20 }),
+          unreadCount > 0 && React.createElement('div', {
+            className: 'absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full'
+          })
         ),
         
         // 설정
@@ -270,6 +515,23 @@ export var HomeHeader = function(props) {
       onClose: function() { setShowWeatherModal(false); },
       weather: weather,
       darkMode: darkMode
+    }),
+    
+    React.createElement(SearchModal, {
+      isOpen: showSearchModal,
+      onClose: function() { setShowSearchModal(false); },
+      darkMode: darkMode,
+      tasks: tasks,
+      events: events,
+      onSelectTask: onSelectTask,
+      onSelectEvent: onSelectEvent
+    }),
+    
+    React.createElement(NotificationsModal, {
+      isOpen: showNotifModal,
+      onClose: function() { setShowNotifModal(false); },
+      darkMode: darkMode,
+      notifications: notifications
     })
   );
 };
