@@ -4,177 +4,47 @@ import {
   ChevronRight, Clock, Calendar, CheckCircle2, Circle, Target,
   AlertCircle, TrendingUp, TrendingDown, Minus, Sparkles,
   Plus, MessageSquare, Search, Bell, Settings, Inbox, FolderKanban,
-  Heart, Users, Activity, Smile, Rocket, Shield, Flame, Check
+  Heart, Users, Activity, Smile, Rocket, Shield, Flame, Check, ChevronDown
 } from 'lucide-react';
 import UnifiedTimelineView from './UnifiedTimelineView';
 import { AlfredoEmptyState } from '../common/AlfredoEmptyState';
 import AlfredoStatusBar from '../common/AlfredoStatusBar';
 
-// 알프레도 모드 선택 컴포넌트
-var AlfredoModeSelector = function(props) {
+// 🎯 통합 오늘 상태 카드 (날씨+컨디션+모드)
+var TodayStatusCard = function(props) {
   var darkMode = props.darkMode;
   var mood = props.mood;
   var energy = props.energy;
+  var setMood = props.setMood;
+  var setEnergy = props.setEnergy;
   var tasks = props.tasks || [];
+  var events = props.events || [];
+  var weather = props.weather;
   var currentMode = props.currentMode;
   var setCurrentMode = props.setCurrentMode;
   
-  var expandedState = useState(false);
-  var isExpanded = expandedState[0];
-  var setIsExpanded = expandedState[1];
+  // 확장 상태들
+  var conditionExpandState = useState(false);
+  var isConditionExpanded = conditionExpandState[0];
+  var setConditionExpanded = conditionExpandState[1];
+  
+  var modeExpandState = useState(false);
+  var isModeExpanded = modeExpandState[0];
+  var setModeExpanded = modeExpandState[1];
   
   var cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
   var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
   var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
   var borderColor = darkMode ? 'border-gray-700' : 'border-gray-200';
+  var dividerColor = darkMode ? 'border-gray-700' : 'border-gray-100';
   
-  var modes = [
-    { 
-      id: 'focus', 
-      emoji: '🔥', 
-      label: 'Focus 모드', 
-      description: '방해 최소화, 집중 극대화',
-      color: 'text-orange-500',
-      bgColor: 'bg-orange-500/10',
-      borderActive: 'border-orange-500'
-    },
-    { 
-      id: 'care', 
-      emoji: '💙', 
-      label: 'Care 모드', 
-      description: '부드럽게, 천천히',
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-500/10',
-      borderActive: 'border-blue-500'
-    },
-    { 
-      id: 'challenge', 
-      emoji: '🚀', 
-      label: 'Challenge 모드', 
-      description: '도전적으로, 성취감 UP',
-      color: 'text-emerald-500',
-      bgColor: 'bg-emerald-500/10',
-      borderActive: 'border-emerald-500'
-    }
-  ];
-  
-  // 추천 모드 계산
-  var getRecommendedMode = function() {
-    // 에너지 낮거나 기분 안좋으면 Care
-    if ((energy && energy <= 2) || (mood && mood <= 2)) {
-      return 'care';
-    }
-    // 에너지 높고 할일 많으면 Challenge
-    var incompleteTasks = tasks.filter(function(t) { return !t.completed; });
-    if ((energy && energy >= 4) && incompleteTasks.length >= 3) {
-      return 'challenge';
-    }
-    // 기본은 Focus
-    return 'focus';
-  };
-  
-  var recommendedMode = getRecommendedMode();
-  var activeMode = currentMode || recommendedMode;
-  var activeModeData = modes.find(function(m) { return m.id === activeMode; }) || modes[0];
-  var recommendedModeData = modes.find(function(m) { return m.id === recommendedMode; }) || modes[0];
-  
-  // 축소된 상태
-  if (!isExpanded) {
-    return React.createElement('button', {
-      onClick: function() { setIsExpanded(true); },
-      className: cardBg + ' rounded-2xl p-3 mb-4 border ' + borderColor + ' w-full flex items-center justify-between hover:border-[#A996FF]/50 transition-all'
-    },
-      React.createElement('div', { className: 'flex items-center gap-3' },
-        React.createElement('span', { className: 'text-xl' }, '🐧'),
-        React.createElement('span', { className: textSecondary + ' text-sm' }, '알프레도 모드')
-      ),
-      React.createElement('div', { className: 'flex items-center gap-2' },
-        React.createElement('span', { className: textSecondary + ' text-xs' }, '추천:'),
-        React.createElement('span', { className: recommendedModeData.color + ' text-sm font-medium' }, 
-          recommendedModeData.emoji + ' ' + recommendedModeData.label
-        ),
-        currentMode && currentMode === recommendedMode && React.createElement(Check, { 
-          size: 16, 
-          className: 'text-emerald-500' 
-        })
-      )
-    );
-  }
-  
-  // 확장된 상태
-  return React.createElement('div', { className: cardBg + ' rounded-2xl p-4 mb-4 border ' + borderColor },
-    React.createElement('div', { className: 'flex items-center justify-between mb-3' },
-      React.createElement('h3', { className: textPrimary + ' font-bold flex items-center gap-2' },
-        React.createElement('span', null, '🐧'),
-        '알프레도 모드'
-      ),
-      React.createElement('button', {
-        onClick: function() { setIsExpanded(false); },
-        className: 'text-xs text-[#A996FF] font-medium'
-      }, '완료')
-    ),
-    
-    React.createElement('div', { className: 'space-y-2' },
-      modes.map(function(mode) {
-        var isActive = activeMode === mode.id;
-        var isRecommended = recommendedMode === mode.id;
-        
-        return React.createElement('button', {
-          key: mode.id,
-          onClick: function() { 
-            if (setCurrentMode) setCurrentMode(mode.id);
-          },
-          className: 'w-full flex items-center gap-3 p-3 rounded-xl border transition-all ' +
-            (isActive 
-              ? mode.bgColor + ' ' + mode.borderActive + ' border-2'
-              : (darkMode ? 'border-gray-700 hover:bg-gray-700' : 'border-gray-200 hover:bg-gray-50'))
-        },
-          React.createElement('span', { className: 'text-2xl' }, mode.emoji),
-          React.createElement('div', { className: 'flex-1 text-left' },
-            React.createElement('div', { className: 'flex items-center gap-2' },
-              React.createElement('span', { className: textPrimary + ' font-medium text-sm' }, mode.label),
-              isRecommended && React.createElement('span', { 
-                className: 'text-[10px] px-1.5 py-0.5 rounded-full bg-[#A996FF]/20 text-[#A996FF]' 
-              }, '추천')
-            ),
-            React.createElement('p', { className: textSecondary + ' text-xs' }, mode.description)
-          ),
-          isActive && React.createElement(Check, { size: 18, className: mode.color })
-        );
-      })
-    )
-  );
-};
-
-// 알프레도 상세 브리핑 (날씨, 통계, 다음 일정)
-var AlfredoDetailBriefing = function(props) {
-  var darkMode = props.darkMode;
-  var tasks = props.tasks || [];
-  var events = props.events || [];
-  var weather = props.weather;
-  var onOpenChat = props.onOpenChat;
-  
-  // 통계 계산
-  var todayTasks = tasks.filter(function(t) { return !t.completed; });
-  var completedTasks = tasks.filter(function(t) { return t.completed; });
-  var urgentTasks = todayTasks.filter(function(t) { return t.priority === 'high' || t.urgent; });
-  
+  // 날씨 통계 계산
   var today = new Date();
   var todayMeetings = events.filter(function(e) {
     var eventDate = new Date(e.start);
     return eventDate.toDateString() === today.toDateString();
   });
   
-  // 다음 일정
-  var now = new Date();
-  var upcomingEvents = events.filter(function(e) {
-    return new Date(e.start) > now;
-  }).sort(function(a, b) {
-    return new Date(a.start) - new Date(b.start);
-  });
-  var nextEvent = upcomingEvents[0];
-  
-  // 날씨 아이콘
   var getWeatherIcon = function() {
     if (!weather) return React.createElement(Sun, { size: 14, className: "text-yellow-400" });
     var condition = (weather.condition || '').toLowerCase();
@@ -187,42 +57,180 @@ var AlfredoDetailBriefing = function(props) {
     return React.createElement(Sun, { size: 14, className: "text-yellow-400" });
   };
   
-  var cardBg = darkMode ? 'bg-gray-800/50' : 'bg-white/70';
-  var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
-  var borderColor = darkMode ? 'border-gray-700/50' : 'border-gray-200/50';
+  // 컨디션 데이터
+  var moods = [
+    { value: 1, emoji: '😫', label: '힘듦' },
+    { value: 2, emoji: '😔', label: '별로' },
+    { value: 3, emoji: '😐', label: '보통' },
+    { value: 4, emoji: '🙂', label: '좋음' },
+    { value: 5, emoji: '😄', label: '최고' }
+  ];
   
-  return React.createElement('div', { 
-    className: cardBg + ' backdrop-blur-sm rounded-xl p-3 mb-4 border ' + borderColor
-  },
-    React.createElement('div', { className: 'flex items-center justify-between flex-wrap gap-2 text-xs' },
-      // 날씨
-      weather && React.createElement('div', { className: 'flex items-center gap-1.5 ' + textSecondary },
+  var energyLevels = [
+    { value: 1, label: '방전', color: 'text-red-400' },
+    { value: 2, label: '부족', color: 'text-amber-400' },
+    { value: 3, label: '보통', color: 'text-yellow-400' },
+    { value: 4, label: '충분', color: 'text-emerald-400' },
+    { value: 5, label: '최고', color: 'text-green-400' }
+  ];
+  
+  var currentMood = moods.find(function(m) { return m.value === mood; }) || moods[2];
+  var currentEnergy = energyLevels.find(function(e) { return e.value === energy; }) || energyLevels[2];
+  var batteryIcon = energy && energy <= 2 ? '🪫' : '🔋';
+  var isConditionChecked = mood && energy;
+  
+  // 모드 데이터
+  var modes = [
+    { id: 'focus', emoji: '🔥', label: 'Focus 모드', description: '방해 최소화, 집중 극대화', color: 'text-orange-500', bgColor: 'bg-orange-500/10', borderActive: 'border-orange-500' },
+    { id: 'care', emoji: '💙', label: 'Care 모드', description: '부드럽게, 천천히', color: 'text-blue-500', bgColor: 'bg-blue-500/10', borderActive: 'border-blue-500' },
+    { id: 'challenge', emoji: '🚀', label: 'Challenge 모드', description: '도전적으로, 성취감 UP', color: 'text-emerald-500', bgColor: 'bg-emerald-500/10', borderActive: 'border-emerald-500' }
+  ];
+  
+  var getRecommendedMode = function() {
+    if ((energy && energy <= 2) || (mood && mood <= 2)) return 'care';
+    var incompleteTasks = tasks.filter(function(t) { return !t.completed; });
+    if ((energy && energy >= 4) && incompleteTasks.length >= 3) return 'challenge';
+    return 'focus';
+  };
+  
+  var recommendedMode = getRecommendedMode();
+  var activeMode = currentMode || recommendedMode;
+  var recommendedModeData = modes.find(function(m) { return m.id === recommendedMode; }) || modes[0];
+  
+  return React.createElement('div', { className: cardBg + ' rounded-2xl mb-4 border ' + borderColor + ' overflow-hidden' },
+    
+    // 섹션 1: 날씨 & 미팅
+    React.createElement('div', { className: 'px-4 py-3 flex items-center justify-between text-xs' },
+      React.createElement('div', { className: 'flex items-center gap-1.5 ' + textSecondary },
         getWeatherIcon(),
-        React.createElement('span', null, (weather.temp || 15) + '°C')
+        React.createElement('span', null, (weather?.temp || '-3') + '°C')
       ),
-      
-      // 미팅
       React.createElement('div', { className: 'flex items-center gap-1.5 ' + textSecondary },
         React.createElement(Calendar, { size: 14 }),
         React.createElement('span', null, '미팅 ' + todayMeetings.length)
-      ),
-      
-      // 긴급
-      urgentTasks.length > 0 && React.createElement('div', { className: 'flex items-center gap-1.5 text-red-400' },
-        React.createElement(AlertCircle, { size: 14 }),
-        React.createElement('span', null, '긴급 ' + urgentTasks.length)
-      ),
-      
-      // 다음 일정
-      nextEvent && React.createElement('div', { className: 'flex items-center gap-1.5 text-emerald-400' },
-        React.createElement(Clock, { size: 14 }),
-        React.createElement('span', null,
-          new Date(nextEvent.start).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) +
-          ' ' + ((nextEvent.title || nextEvent.summary || '').substring(0, 8) + 
-            ((nextEvent.title || nextEvent.summary || '').length > 8 ? '..' : ''))
-        )
       )
-    )
+    ),
+    
+    // 구분선
+    React.createElement('div', { className: 'border-t ' + dividerColor }),
+    
+    // 섹션 2: 컨디션
+    isConditionExpanded 
+      ? React.createElement('div', { className: 'px-4 py-3' },
+          React.createElement('div', { className: 'flex items-center justify-between mb-3' },
+            React.createElement('span', { className: textSecondary + ' text-xs font-medium' }, '오늘 컨디션'),
+            React.createElement('button', {
+              onClick: function() { setConditionExpanded(false); },
+              className: 'text-xs text-[#A996FF] font-medium'
+            }, '완료')
+          ),
+          // 기분 선택
+          React.createElement('div', { className: 'mb-3' },
+            React.createElement('p', { className: textSecondary + ' text-xs mb-2' }, '기분'),
+            React.createElement('div', { className: 'flex justify-between' },
+              moods.map(function(m) {
+                var isSelected = mood === m.value;
+                return React.createElement('button', {
+                  key: m.value,
+                  onClick: function() { if (setMood) setMood(m.value); },
+                  className: 'flex flex-col items-center p-2 rounded-xl transition-all ' +
+                    (isSelected ? 'bg-[#A996FF]/20 scale-110' : (darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'))
+                },
+                  React.createElement('span', { className: 'text-xl' }, m.emoji),
+                  React.createElement('span', { className: textSecondary + ' text-[10px] mt-1' }, m.label)
+                );
+              })
+            )
+          ),
+          // 에너지 선택
+          React.createElement('div', null,
+            React.createElement('p', { className: textSecondary + ' text-xs mb-2' }, '에너지'),
+            React.createElement('div', { className: 'flex justify-between' },
+              energyLevels.map(function(e) {
+                var isSelected = energy === e.value;
+                var emoji = e.value <= 2 ? '🪫' : '🔋';
+                return React.createElement('button', {
+                  key: e.value,
+                  onClick: function() { if (setEnergy) setEnergy(e.value); },
+                  className: 'flex flex-col items-center p-2 rounded-xl transition-all ' +
+                    (isSelected ? 'bg-[#A996FF]/20 scale-110' : (darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'))
+                },
+                  React.createElement('span', { className: 'text-lg' }, emoji),
+                  React.createElement('span', { className: textSecondary + ' text-[10px] mt-1' }, e.label)
+                );
+              })
+            )
+          )
+        )
+      : React.createElement('button', {
+          onClick: function() { setConditionExpanded(true); },
+          className: 'w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all'
+        },
+          React.createElement('div', { className: 'flex items-center gap-3' },
+            React.createElement('span', { className: 'text-xl' }, isConditionChecked ? currentMood.emoji : '😐'),
+            React.createElement('div', { className: 'flex items-center gap-2 text-sm' },
+              React.createElement('span', { className: textPrimary }, '기분 ' + currentMood.label),
+              React.createElement('span', { className: textSecondary }, '•'),
+              React.createElement('span', { className: currentEnergy.color }, batteryIcon + ' 에너지 ' + currentEnergy.label)
+            )
+          ),
+          React.createElement('span', { className: textSecondary + ' text-xs' }, '수정')
+        ),
+    
+    // 구분선
+    React.createElement('div', { className: 'border-t ' + dividerColor }),
+    
+    // 섹션 3: 알프레도 모드
+    isModeExpanded
+      ? React.createElement('div', { className: 'px-4 py-3' },
+          React.createElement('div', { className: 'flex items-center justify-between mb-3' },
+            React.createElement('div', { className: 'flex items-center gap-2' },
+              React.createElement('span', null, '🐧'),
+              React.createElement('span', { className: textSecondary + ' text-xs font-medium' }, '알프레도 모드')
+            ),
+            React.createElement('button', {
+              onClick: function() { setModeExpanded(false); },
+              className: 'text-xs text-[#A996FF] font-medium'
+            }, '완료')
+          ),
+          React.createElement('div', { className: 'space-y-2' },
+            modes.map(function(mode) {
+              var isActive = activeMode === mode.id;
+              var isRecommended = recommendedMode === mode.id;
+              return React.createElement('button', {
+                key: mode.id,
+                onClick: function() { if (setCurrentMode) setCurrentMode(mode.id); },
+                className: 'w-full flex items-center gap-3 p-3 rounded-xl border transition-all ' +
+                  (isActive ? mode.bgColor + ' ' + mode.borderActive + ' border-2' : (darkMode ? 'border-gray-700 hover:bg-gray-700' : 'border-gray-200 hover:bg-gray-50'))
+              },
+                React.createElement('span', { className: 'text-2xl' }, mode.emoji),
+                React.createElement('div', { className: 'flex-1 text-left' },
+                  React.createElement('div', { className: 'flex items-center gap-2' },
+                    React.createElement('span', { className: textPrimary + ' font-medium text-sm' }, mode.label),
+                    isRecommended && React.createElement('span', { className: 'text-[10px] px-1.5 py-0.5 rounded-full bg-[#A996FF]/20 text-[#A996FF]' }, '추천')
+                  ),
+                  React.createElement('p', { className: textSecondary + ' text-xs' }, mode.description)
+                ),
+                isActive && React.createElement(Check, { size: 18, className: mode.color })
+              );
+            })
+          )
+        )
+      : React.createElement('button', {
+          onClick: function() { setModeExpanded(true); },
+          className: 'w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all'
+        },
+          React.createElement('div', { className: 'flex items-center gap-3' },
+            React.createElement('span', { className: 'text-xl' }, '🐧'),
+            React.createElement('span', { className: textSecondary + ' text-sm' }, '알프레도 모드')
+          ),
+          React.createElement('div', { className: 'flex items-center gap-2' },
+            React.createElement('span', { className: textSecondary + ' text-xs' }, '추천:'),
+            React.createElement('span', { className: recommendedModeData.color + ' text-sm font-medium' }, 
+              recommendedModeData.emoji + ' ' + recommendedModeData.label
+            )
+          )
+        )
   );
 };
 
@@ -273,7 +281,6 @@ var RemindersSection = function(props) {
   var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
   var borderColor = darkMode ? 'border-gray-700' : 'border-gray-200';
   
-  // 마감 임박 (3일 이내)
   var now = new Date();
   var threeDaysLater = new Date(now);
   threeDaysLater.setDate(threeDaysLater.getDate() + 3);
@@ -284,7 +291,6 @@ var RemindersSection = function(props) {
     return due <= threeDaysLater;
   }).slice(0, 2);
   
-  // 연락 필요한 사람
   var needContact = relationships.filter(function(r) {
     if (!r.lastContact) return true;
     var lastDate = new Date(r.lastContact);
@@ -294,7 +300,6 @@ var RemindersSection = function(props) {
   
   var reminders = [];
   
-  // 마감 임박 추가
   urgentDeadlines.forEach(function(task) {
     var due = new Date(task.dueDate);
     var daysLeft = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
@@ -308,7 +313,6 @@ var RemindersSection = function(props) {
     });
   });
   
-  // 연락 필요 추가
   needContact.forEach(function(person) {
     var lastDate = person.lastContact ? new Date(person.lastContact) : null;
     var daysSince = lastDate ? Math.floor((now - lastDate) / (1000 * 60 * 60 * 24)) : '?';
@@ -352,123 +356,6 @@ var RemindersSection = function(props) {
   );
 };
 
-// 컨디션 퀵체크 - 하루 1회 체크 후 간소화
-var ConditionQuickCheck = function(props) {
-  var darkMode = props.darkMode;
-  var mood = props.mood;
-  var energy = props.energy;
-  var setMood = props.setMood;
-  var setEnergy = props.setEnergy;
-  
-  // 수정 모드 상태
-  var editModeState = useState(false);
-  var isEditMode = editModeState[0];
-  var setIsEditMode = editModeState[1];
-  
-  var cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
-  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
-  var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
-  var borderColor = darkMode ? 'border-gray-700' : 'border-gray-200';
-  
-  var moods = [
-    { value: 1, emoji: '😫', label: '힘듦' },
-    { value: 2, emoji: '😔', label: '별로' },
-    { value: 3, emoji: '😐', label: '보통' },
-    { value: 4, emoji: '🙂', label: '좋음' },
-    { value: 5, emoji: '😄', label: '최고' }
-  ];
-  
-  var energyLevels = [
-    { value: 1, label: '방전', color: 'text-red-400' },
-    { value: 2, label: '부족', color: 'text-amber-400' },
-    { value: 3, label: '보통', color: 'text-yellow-400' },
-    { value: 4, label: '충분', color: 'text-emerald-400' },
-    { value: 5, label: '최고', color: 'text-green-400' }
-  ];
-  
-  // 이미 체크 완료 (mood와 energy 둘 다 있음)
-  var isChecked = mood && energy;
-  
-  // 체크 완료 & 수정모드 아님 → 간소화된 배지 UI
-  if (isChecked && !isEditMode) {
-    var currentMood = moods.find(function(m) { return m.value === mood; }) || moods[2];
-    var currentEnergy = energyLevels.find(function(e) { return e.value === energy; }) || energyLevels[2];
-    var batteryIcon = energy <= 2 ? '🪫' : '🔋';
-    
-    return React.createElement('button', { 
-      onClick: function() { setIsEditMode(true); },
-      className: cardBg + ' rounded-2xl p-3 mb-4 border ' + borderColor + ' w-full flex items-center justify-between hover:border-[#A996FF]/50 transition-all'
-    },
-      React.createElement('div', { className: 'flex items-center gap-3' },
-        React.createElement('span', { className: 'text-xl' }, currentMood.emoji),
-        React.createElement('div', { className: 'flex items-center gap-2 text-sm' },
-          React.createElement('span', { className: textPrimary }, '기분 ' + currentMood.label),
-          React.createElement('span', { className: textSecondary }, '•'),
-          React.createElement('span', { className: currentEnergy.color }, batteryIcon + ' 에너지 ' + currentEnergy.label)
-        )
-      ),
-      React.createElement('span', { className: textSecondary + ' text-xs' }, '수정')
-    );
-  }
-  
-  // 미체크 또는 수정모드 → 전체 선택 UI
-  return React.createElement('div', { className: cardBg + ' rounded-2xl p-4 mb-4 border ' + borderColor },
-    React.createElement('div', { className: 'flex items-center justify-between mb-3' },
-      React.createElement('h3', { className: textPrimary + ' font-bold flex items-center gap-2' },
-        React.createElement(Smile, { size: 18, className: 'text-amber-400' }),
-        '오늘 컨디션'
-      ),
-      isEditMode && React.createElement('button', {
-        onClick: function() { setIsEditMode(false); },
-        className: 'text-xs text-[#A996FF] font-medium'
-      }, '완료')
-    ),
-    
-    // 기분
-    React.createElement('div', { className: 'mb-3' },
-      React.createElement('p', { className: textSecondary + ' text-xs mb-2' }, '기분'),
-      React.createElement('div', { className: 'flex justify-between' },
-        moods.map(function(m) {
-          var isSelected = mood === m.value;
-          return React.createElement('button', {
-            key: m.value,
-            onClick: function() { if (setMood) setMood(m.value); },
-            className: 'flex flex-col items-center p-2 rounded-xl transition-all ' +
-              (isSelected 
-                ? 'bg-[#A996FF]/20 scale-110' 
-                : (darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'))
-          },
-            React.createElement('span', { className: 'text-xl' }, m.emoji),
-            React.createElement('span', { className: textSecondary + ' text-[10px] mt-1' }, m.label)
-          );
-        })
-      )
-    ),
-    
-    // 에너지
-    React.createElement('div', null,
-      React.createElement('p', { className: textSecondary + ' text-xs mb-2' }, '에너지'),
-      React.createElement('div', { className: 'flex justify-between' },
-        energyLevels.map(function(e) {
-          var isSelected = energy === e.value;
-          var batteryEmoji = e.value <= 2 ? '🪫' : '🔋';
-          return React.createElement('button', {
-            key: e.value,
-            onClick: function() { if (setEnergy) setEnergy(e.value); },
-            className: 'flex flex-col items-center p-2 rounded-xl transition-all ' +
-              (isSelected 
-                ? 'bg-[#A996FF]/20 scale-110' 
-                : (darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'))
-          },
-            React.createElement('span', { className: 'text-lg' }, batteryEmoji),
-            React.createElement('span', { className: textSecondary + ' text-[10px] mt-1' }, e.label)
-          );
-        })
-      )
-    )
-  );
-};
-
 // 지금 할 일 카드
 var NowCard = function(props) {
   var darkMode = props.darkMode;
@@ -478,12 +365,6 @@ var NowCard = function(props) {
   var onOpenTask = props.onOpenTask;
   var onAddTask = props.onAddTask;
   
-  var cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
-  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
-  var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
-  var borderColor = darkMode ? 'border-gray-700' : 'border-gray-200';
-  
-  // 현재 진행 중인 이벤트 또는 가장 우선순위 높은 태스크
   var now = new Date();
   var currentEvent = events.find(function(e) {
     var start = new Date(e.start);
@@ -494,17 +375,15 @@ var NowCard = function(props) {
   var incompleteTasks = tasks.filter(function(t) { return !t.completed; });
   var completedTasks = tasks.filter(function(t) { return t.completed; });
   
-  var topTask = incompleteTasks
-    .sort(function(a, b) {
-      var priorityOrder = { high: 0, medium: 1, low: 2 };
-      var aPriority = priorityOrder[a.priority] !== undefined ? priorityOrder[a.priority] : 1;
-      var bPriority = priorityOrder[b.priority] !== undefined ? priorityOrder[b.priority] : 1;
-      return aPriority - bPriority;
-    })[0];
+  var topTask = incompleteTasks.sort(function(a, b) {
+    var priorityOrder = { high: 0, medium: 1, low: 2 };
+    var aPriority = priorityOrder[a.priority] !== undefined ? priorityOrder[a.priority] : 1;
+    var bPriority = priorityOrder[b.priority] !== undefined ? priorityOrder[b.priority] : 1;
+    return aPriority - bPriority;
+  })[0];
   
   var currentItem = currentEvent || topTask;
   
-  // 할 일이 없는 경우
   if (tasks.length === 0) {
     return React.createElement(AlfredoEmptyState, {
       variant: 'noTasks',
@@ -514,7 +393,6 @@ var NowCard = function(props) {
     });
   }
   
-  // 모든 할 일 완료
   if (incompleteTasks.length === 0 && completedTasks.length > 0) {
     return React.createElement(AlfredoEmptyState, {
       variant: 'allDone',
@@ -524,7 +402,6 @@ var NowCard = function(props) {
     });
   }
   
-  // 현재 할 일이 있는 경우
   var isEvent = currentItem && currentItem.start !== undefined;
   var title = currentItem ? (currentItem.title || currentItem.summary || '') : '';
   var subtitle = isEvent 
@@ -564,7 +441,6 @@ var Big3Section = function(props) {
   var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
   var borderColor = darkMode ? 'border-gray-700' : 'border-gray-200';
   
-  // Big3: 우선순위 높은 상위 3개
   var big3 = tasks
     .filter(function(t) { return !t.completed; })
     .sort(function(a, b) {
@@ -636,7 +512,6 @@ var HomePage = function(props) {
   var bgColor = darkMode ? 'bg-gray-900' : 'bg-[#F0EBFF]';
   var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
 
-  // 오늘 날짜
   var today = new Date();
   var dateStr = today.toLocaleDateString('ko-KR', { 
     month: 'long', 
@@ -644,7 +519,6 @@ var HomePage = function(props) {
     weekday: 'long' 
   });
 
-  // 오늘 이벤트만 필터
   var todayEvents = events.filter(function(e) {
     var eventDate = new Date(e.start);
     return eventDate.toDateString() === today.toDateString();
@@ -686,30 +560,16 @@ var HomePage = function(props) {
         )
       ),
       
-      // 상세 브리핑 (날씨, 통계, 다음 일정)
-      React.createElement(AlfredoDetailBriefing, {
-        darkMode: darkMode,
-        tasks: tasks,
-        events: events,
-        weather: weather,
-        onOpenChat: onOpenChat
-      }),
-      
-      // ⭐ 컨디션 퀵체크 (퀵액션 위로 이동)
-      React.createElement(ConditionQuickCheck, {
+      // ⭐ 통합 상태 카드 (날씨+컨디션+모드)
+      React.createElement(TodayStatusCard, {
         darkMode: darkMode,
         mood: mood,
         energy: energy,
         setMood: setMood,
-        setEnergy: setEnergy
-      }),
-      
-      // ⭐ 알프레도 모드 선택 (NEW!)
-      React.createElement(AlfredoModeSelector, {
-        darkMode: darkMode,
-        mood: mood,
-        energy: energy,
+        setEnergy: setEnergy,
         tasks: tasks,
+        events: events,
+        weather: weather,
         currentMode: alfredoMode,
         setCurrentMode: setAlfredoMode
       }),
@@ -724,7 +584,7 @@ var HomePage = function(props) {
         onOpenInbox: onOpenInbox
       }),
       
-      // ⭐ 지금 할 일 (Big3 위로 이동)
+      // 지금 할 일
       React.createElement(NowCard, {
         darkMode: darkMode,
         tasks: tasks,
