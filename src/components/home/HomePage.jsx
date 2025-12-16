@@ -7,7 +7,7 @@ import MiniTimeline from './MiniTimeline';
 import { QuickActionFloating, ChatFloating } from './QuickActionFloating';
 import { useGamification, XpGainToast, LevelUpModal } from '../gamification/LevelSystem';
 
-// 🏠 홈페이지 메인 컴포넌트 - Apple 2025 스타일
+// 🏠 홈페이지 메인 컴포넌트 - Apple 2025 스타일 + 반응형
 export var HomePage = function(props) {
   var darkMode = props.darkMode;
   var tasks = props.tasks || [];
@@ -197,7 +197,7 @@ export var HomePage = function(props) {
     }
   };
   
-  return React.createElement('div', { className: bgColor + ' min-h-screen pb-24' },
+  return React.createElement('div', { className: bgColor + ' min-h-screen' },
     // 고정 헤더 (Apple 글라스모피즘)
     React.createElement(HomeHeader, {
       darkMode: darkMode,
@@ -213,8 +213,10 @@ export var HomePage = function(props) {
       onOpenSettings: function() { handleNavigate('SETTINGS'); }
     }),
     
-    // 스크롤 영역
-    React.createElement('div', { className: 'px-4 pt-5' },
+    // 메인 콘텐츠 컨테이너 - 최대 너비 제한 + 센터 정렬
+    React.createElement('div', { 
+      className: 'max-w-3xl mx-auto px-4 md:px-6 lg:px-8 pt-5 pb-28'
+    },
       // 🐧 알프레도 브리핑 (그라데이션 배경)
       React.createElement(AlfredoBriefingV2, {
         darkMode: darkMode,
@@ -243,37 +245,47 @@ export var HomePage = function(props) {
         }
       }),
       
-      // 🎯 지금 이거부터
-      focusTask && React.createElement(FocusNowCard, {
-        task: focusTask,
-        darkMode: darkMode,
-        userName: userName,
-        onStart: handleStartTask,
-        onLater: function() { /* TODO: 나중에 처리 */ },
-        onShowOptions: function() { setShowOtherOptions(!showOtherOptions); }
-      }),
-      
-      // ⚠️ 잊지 마세요
-      React.createElement(RemindersSection, {
-        reminders: reminders,
-        darkMode: darkMode,
-        onReminderClick: function(reminder) {
-          // TODO: 리마인더 처리
-          console.log('Reminder clicked:', reminder);
-        }
-      }),
-      
-      // 📋 오늘 한눈에 (타임라인)
-      React.createElement(MiniTimeline, {
-        events: todayEvents,
-        tasks: tasks,
-        darkMode: darkMode,
-        onStartTask: handleStartTask,
-        onOpenEvent: onOpenEvent
-      })
+      // 📊 2컬럼 그리드 (태블릿 이상)
+      React.createElement('div', { 
+        className: 'grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6'
+      },
+        // 왼쪽 컬럼: 집중 + 리마인더
+        React.createElement('div', { className: 'space-y-4 md:space-y-6' },
+          // 🎯 지금 이거부터
+          focusTask && React.createElement(FocusNowCard, {
+            task: focusTask,
+            darkMode: darkMode,
+            userName: userName,
+            onStart: handleStartTask,
+            onLater: function() { /* TODO: 나중에 처리 */ },
+            onShowOptions: function() { setShowOtherOptions(!showOtherOptions); }
+          }),
+          
+          // ⚠️ 잊지 마세요
+          React.createElement(RemindersSection, {
+            reminders: reminders,
+            darkMode: darkMode,
+            onReminderClick: function(reminder) {
+              console.log('Reminder clicked:', reminder);
+            }
+          })
+        ),
+        
+        // 오른쪽 컬럼: 타임라인
+        React.createElement('div', { className: 'space-y-4 md:space-y-6' },
+          // 📋 오늘 한눈에 (타임라인)
+          React.createElement(MiniTimeline, {
+            events: todayEvents,
+            tasks: tasks,
+            darkMode: darkMode,
+            onStartTask: handleStartTask,
+            onOpenEvent: onOpenEvent
+          })
+        )
+      )
     ),
     
-    // 플로팅 버튼들
+    // 플로팅 버튼들 - 반응형 위치
     React.createElement(QuickActionFloating, {
       onAction: handleQuickAction,
       darkMode: darkMode
