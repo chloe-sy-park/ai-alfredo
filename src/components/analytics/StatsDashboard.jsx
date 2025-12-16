@@ -4,7 +4,7 @@ import { BarChart3, TrendingUp, TrendingDown, Calendar, Clock, Target, Flame, Tr
 // W2 게이미피케이션 임포트 (올바른 export 이름 사용)
 import { LevelXpBar, useGamification, LEVEL_CONFIG } from '../gamification/LevelSystem';
 import { DailyQuestList, QuestCard, useQuests } from '../gamification/QuestSystem';
-import { BadgeGrid, BadgeShowcase } from '../gamification/BadgeSystem';
+import { BadgeCollection, BadgeCard, useBadges } from '../gamification/BadgeSystem';
 
 // 요일 이름
 var WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -280,6 +280,9 @@ export var StatsPage = function(props) {
   // 퀘스트 훅
   var questHook = useQuests ? useQuests() : { dailyQuests: [], weeklyQuests: [], claimReward: function() {} };
   
+  // 배지 훅
+  var badgeHook = useBadges ? useBadges() : { earnedBadges: [] };
+  
   var bgColor = darkMode ? 'bg-gray-900' : 'bg-[#F0EBFF]';
   var cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
   var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
@@ -477,10 +480,12 @@ export var StatsPage = function(props) {
         })
       ),
       
-      // 배지 탭
+      // 배지 탭 - BadgeCollection 사용
       activeTab === 'badges' && React.createElement(React.Fragment, null,
-        React.createElement(BadgeShowcase, { darkMode: darkMode, maxBadges: 6 }),
-        React.createElement(BadgeGrid, { darkMode: darkMode, showLocked: true })
+        React.createElement(BadgeCollection, { 
+          darkMode: darkMode, 
+          earnedBadges: badgeHook.earnedBadges
+        })
       )
     )
   );
