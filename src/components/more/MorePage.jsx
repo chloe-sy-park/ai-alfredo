@@ -10,10 +10,9 @@ import {
 import { LevelXpBar, useGamification } from '../gamification/LevelSystem';
 
 // W4: 분석
-import { WeeklyStatsDashboard, MonthlyStatsDashboard, StatsPage } from '../analytics/StatsDashboard';
+import { StatsPage } from '../analytics/StatsDashboard';
 import { HabitTracker } from '../analytics/HabitTracker';
-import { InsightsSection, WeeklyReport, AchievementSummary } from '../analytics/Insights';
-import { DataManagementPage, ExportButton, ImportButton, StorageStatus } from '../analytics/DataManagement';
+import { DataManagementPage, ExportButton, ImportButton } from '../analytics/DataManagement';
 
 // Default gameState to prevent crashes
 const DEFAULT_GAME_STATE = {
@@ -31,12 +30,7 @@ var MorePage = function(props) {
   var connections = props.connections || {};
   var onConnect = props.onConnect;
   var onDisconnect = props.onDisconnect;
-  var onOpenWeeklyReview = props.onOpenWeeklyReview;
-  var onOpenHabitHeatmap = props.onOpenHabitHeatmap;
-  var onOpenEnergyRhythm = props.onOpenEnergyRhythm;
-  var onOpenProjectDashboard = props.onOpenProjectDashboard;
   var onOpenSettings = props.onOpenSettings;
-  var onOpenGameCenter = props.onOpenGameCenter;
   var setView = props.setView;
   
   // Defensive: merge with defaults
@@ -91,14 +85,14 @@ var MorePage = function(props) {
     }
   ];
 
-  // 인사이트 메뉴 (업데이트)
+  // 인사이트 메뉴 (게임센터 제거, 통계에 통합)
   var insightMenus = [
     {
       id: 'stats',
-      name: '통계',
+      name: '통계 & 성장',
       icon: '📊',
       color: 'from-[#A996FF] to-[#8B7CF7]',
-      description: '주간/월간 분석',
+      description: '분석, 퀘스트, 배지',
       onClick: function() { setSubPage('stats'); }
     },
     {
@@ -108,14 +102,6 @@ var MorePage = function(props) {
       color: 'from-emerald-400 to-emerald-600',
       description: '루틴 관리',
       onClick: function() { setSubPage('habits'); }
-    },
-    {
-      id: 'gamecenter',
-      name: '게임센터',
-      icon: '🎮',
-      color: 'from-amber-400 to-orange-500',
-      description: '레벨 & 배지',
-      onClick: onOpenGameCenter
     },
     {
       id: 'data',
@@ -153,7 +139,7 @@ var MorePage = function(props) {
         React.createElement('div', { className: 'flex items-center gap-3 mb-4' },
           React.createElement('button', {
             onClick: function() { setSubPage(null); },
-            className: textSecondary + ' hover:' + textPrimary
+            className: textSecondary + ' hover:' + textPrimary + ' text-xl'
           }, '←'),
           React.createElement('h1', { className: textPrimary + ' text-2xl font-bold' }, '🎯 습관 트래커')
         )
@@ -189,8 +175,11 @@ var MorePage = function(props) {
           </button>
         </div>
         
-        {/* ===== 레벨 & XP 바 ===== */}
-        <div className={cardBg + ' backdrop-blur-xl rounded-2xl shadow-lg p-4 mb-4 border ' + borderColor}>
+        {/* ===== 레벨 & XP 바 (클릭시 통계 페이지로) ===== */}
+        <button 
+          onClick={function() { setSubPage('stats'); }}
+          className={cardBg + ' backdrop-blur-xl rounded-2xl shadow-lg p-4 mb-4 border ' + borderColor + ' w-full text-left hover:border-[#A996FF]/50 transition-all'}
+        >
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#A996FF] to-[#8B7CF7] flex items-center justify-center text-white font-bold text-xl">
@@ -201,20 +190,18 @@ var MorePage = function(props) {
                 <p className={textSecondary + ' text-sm'}>{(gamification.totalXp || 0).toLocaleString()} XP</p>
               </div>
             </div>
-            {gamification.currentStreak > 0 && (
-              <div className="flex items-center gap-1 text-orange-500">
-                <Flame size={18} />
-                <span className="font-bold">{gamification.currentStreak}일</span>
-              </div>
-            )}
+            <div className="flex items-center gap-3">
+              {gamification.currentStreak > 0 && (
+                <div className="flex items-center gap-1 text-orange-500">
+                  <Flame size={18} />
+                  <span className="font-bold">{gamification.currentStreak}일</span>
+                </div>
+              )}
+              <ChevronRight size={18} className={textSecondary} />
+            </div>
           </div>
-          <button
-            onClick={onOpenGameCenter}
-            className="w-full py-2 text-[#A996FF] text-sm font-medium hover:bg-[#A996FF]/10 rounded-xl transition-colors flex items-center justify-center gap-1"
-          >
-            게임센터 열기 <ChevronRight size={14} />
-          </button>
-        </div>
+          <p className={textSecondary + ' text-xs text-center'}>탭하여 통계 & 게임센터 보기</p>
+        </button>
 
         {/* ===== 나의 인사이트 ===== */}
         <div className={cardBg + ' backdrop-blur-xl rounded-2xl shadow-lg p-5 mb-4 border ' + borderColor}>
@@ -223,7 +210,7 @@ var MorePage = function(props) {
             <span className={textPrimary + ' font-bold'}>나의 인사이트</span>
           </div>
           
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             {insightMenus.map(function(menu) {
               return (
                 <button
@@ -357,7 +344,6 @@ var MorePage = function(props) {
             <span className={textPrimary + ' font-bold'}>Life Butler</span>
           </div>
           <p className={textSecondary + ' text-xs'}>v1.1.0 · Made with 💜</p>
-          <p className={textSecondary + ' text-[10px] mt-1'}>W1-W4 기능 추가</p>
         </div>
 
       </div>
