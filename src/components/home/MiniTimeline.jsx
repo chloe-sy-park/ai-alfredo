@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Calendar, CheckSquare, MapPin, Zap } from 'lucide-react';
 
-// 📋 오늘 한눈에 미니 타임라인
+// 📋 오늘 한눈에 미니 타임라인 - 반응형
 export var MiniTimeline = function(props) {
   var events = props.events || [];
   var tasks = props.tasks || [];
@@ -107,40 +107,43 @@ export var MiniTimeline = function(props) {
   };
   
   return React.createElement('div', { 
-    className: 'rounded-3xl overflow-hidden shadow-lg animate-fadeIn ' +
+    className: 'rounded-2xl md:rounded-3xl overflow-hidden shadow-lg animate-fadeIn ' +
       (darkMode ? 'bg-[#2C2C2E]' : 'bg-white')
   },
     // 헤더
-    React.createElement('div', { className: 'p-5 pb-3' },
+    React.createElement('div', { className: 'p-4 md:p-5 pb-3' },
       React.createElement('div', { className: 'flex items-center justify-between mb-4' },
         React.createElement('div', { className: 'flex items-center gap-2' },
           React.createElement('span', { className: 'text-lg' }, '📋'),
           React.createElement('h2', { 
-            className: (darkMode ? 'text-white' : 'text-gray-900') + ' font-bold text-lg'
+            className: (darkMode ? 'text-white' : 'text-gray-900') + ' font-bold text-base md:text-lg'
           }, '오늘 한눈에'),
+          // 모바일에서 숨김
           React.createElement('span', { 
-            className: 'px-2 py-0.5 rounded-full text-xs font-medium bg-[#A996FF]/10 text-[#A996FF]'
+            className: 'hidden sm:inline px-2 py-0.5 rounded-full text-xs font-medium bg-[#A996FF]/10 text-[#A996FF]'
           }, '드래그로 이동')
         ),
         React.createElement('span', { 
-          className: (darkMode ? 'text-gray-400' : 'text-gray-500') + ' text-sm'
+          className: (darkMode ? 'text-gray-400' : 'text-gray-500') + ' text-xs md:text-sm'
         }, completedCount + '/' + totalCount + ' 완료')
       ),
       
       // 현재 시간 + 다음 일정
-      React.createElement('div', { className: 'flex items-center gap-3 mb-4' },
+      React.createElement('div', { className: 'flex items-center gap-2 md:gap-3 mb-4 flex-wrap' },
         React.createElement('div', { 
-          className: 'flex items-center gap-2 px-4 py-2 bg-[#A996FF] text-white rounded-full shadow-lg shadow-[#A996FF]/30'
+          className: 'flex items-center gap-2 px-3 md:px-4 py-2 bg-[#A996FF] text-white rounded-full shadow-lg shadow-[#A996FF]/30'
         },
           React.createElement('div', { className: 'w-2 h-2 bg-white rounded-full animate-pulse-soft' }),
-          React.createElement('span', { className: 'font-semibold' }, '지금 ' + currentTimeStr)
+          React.createElement('span', { className: 'font-semibold text-sm md:text-base' }, '지금 ' + currentTimeStr)
         ),
         nextItem && React.createElement('span', { 
-          className: (darkMode ? 'text-gray-400' : 'text-gray-500') + ' text-sm'
+          className: (darkMode ? 'text-gray-400' : 'text-gray-500') + ' text-xs md:text-sm truncate'
         },
           '→ ',
-          nextItem.title.length > 12 ? nextItem.title.substring(0, 12) + '...' : nextItem.title,
-          ' ',
+          React.createElement('span', { className: 'hidden sm:inline' },
+            nextItem.title.length > 12 ? nextItem.title.substring(0, 12) + '...' : nextItem.title,
+            ' '
+          ),
           React.createElement('span', { className: 'text-[#A996FF] font-semibold' }, nextItemMin + '분 후')
         )
       ),
@@ -170,7 +173,7 @@ export var MiniTimeline = function(props) {
       
       // 시간 라벨
       React.createElement('div', { 
-        className: 'flex justify-between text-xs ' + (darkMode ? 'text-gray-500' : 'text-gray-400')
+        className: 'flex justify-between text-[10px] md:text-xs ' + (darkMode ? 'text-gray-500' : 'text-gray-400')
       },
         React.createElement('span', null, '7:00'),
         React.createElement('span', null, '12:00'),
@@ -181,7 +184,7 @@ export var MiniTimeline = function(props) {
     
     // 아이템 리스트
     React.createElement('div', { 
-      className: 'px-5 pb-5 space-y-2 max-h-80 overflow-y-auto'
+      className: 'px-4 md:px-5 pb-4 md:pb-5 space-y-2 max-h-80 overflow-y-auto'
     },
       todayItems.map(function(item, idx) {
         var prevItem = idx > 0 ? todayItems[idx - 1] : null;
@@ -194,24 +197,24 @@ export var MiniTimeline = function(props) {
         return React.createElement(React.Fragment, { key: item.id },
           // 빈 시간 슬롯
           gap && React.createElement('div', { 
-            className: 'flex items-center gap-3 p-3 border-2 border-dashed rounded-2xl animate-fadeIn ' +
+            className: 'flex items-center gap-2 md:gap-3 p-2 md:p-3 border-2 border-dashed rounded-xl md:rounded-2xl animate-fadeIn ' +
               (darkMode ? 'border-[#3A3A3C]' : 'border-gray-200')
           },
             React.createElement('div', { 
-              className: 'w-3 h-3 rounded-full ' + (darkMode ? 'bg-gray-600' : 'bg-gray-300')
+              className: 'w-3 h-3 rounded-full flex-shrink-0 ' + (darkMode ? 'bg-gray-600' : 'bg-gray-300')
             }),
             React.createElement('span', { 
-              className: (darkMode ? 'text-gray-500' : 'text-gray-400') + ' text-sm'
+              className: (darkMode ? 'text-gray-500' : 'text-gray-400') + ' text-xs md:text-sm'
             }, gap.startStr + ' - ' + gap.endStr),
             React.createElement('span', { 
-              className: 'px-2 py-0.5 text-xs rounded-full ' + 
+              className: 'px-2 py-0.5 text-[10px] md:text-xs rounded-full ' + 
                 (darkMode ? 'bg-[#3A3A3C] text-gray-400' : 'bg-gray-100 text-gray-500')
             }, gap.durationStr + ' 비어있어요')
           ),
           
-          // 아이템
+          // 아이템 - 터치 타겟 48px+
           React.createElement('div', { 
-            className: 'flex items-center gap-3 p-3 rounded-2xl transition-all animate-fadeInUp ' + delayClass + ' card-hover ' +
+            className: 'flex items-center gap-2 md:gap-3 p-3 min-h-[56px] rounded-xl md:rounded-2xl transition-all animate-fadeInUp ' + delayClass + ' card-hover ' +
               (isOngoing 
                 ? 'bg-[#A996FF]/10 ring-1 ring-[#A996FF] animate-glow' 
                 : isPast 
@@ -220,13 +223,13 @@ export var MiniTimeline = function(props) {
           },
             // 시간
             React.createElement('span', { 
-              className: 'text-sm font-semibold w-12 ' + 
+              className: 'text-xs md:text-sm font-semibold w-10 md:w-12 flex-shrink-0 ' + 
                 (isPast ? (darkMode ? 'text-gray-500' : 'text-gray-400') : (darkMode ? 'text-white' : 'text-gray-900'))
             }, item.timeStr),
             
             // 타입 아이콘
             React.createElement('div', { 
-              className: 'w-8 h-8 rounded-xl flex items-center justify-center ' +
+              className: 'w-8 h-8 rounded-lg md:rounded-xl flex items-center justify-center flex-shrink-0 ' +
                 (item.type === 'event' 
                   ? 'bg-blue-100 text-blue-600' 
                   : 'bg-green-100 text-green-600')
@@ -239,7 +242,7 @@ export var MiniTimeline = function(props) {
             // 제목 + 위치
             React.createElement('div', { className: 'flex-1 min-w-0' },
               React.createElement('p', { 
-                className: 'font-medium truncate ' + 
+                className: 'font-medium text-sm md:text-base truncate ' + 
                   (isPast 
                     ? (darkMode ? 'text-gray-500 line-through' : 'text-gray-400 line-through')
                     : (darkMode ? 'text-white' : 'text-gray-900'))
@@ -252,24 +255,19 @@ export var MiniTimeline = function(props) {
                   className: darkMode ? 'text-gray-500' : 'text-gray-400'
                 }),
                 React.createElement('span', { 
-                  className: (darkMode ? 'text-gray-500' : 'text-gray-400') + ' text-xs'
+                  className: (darkMode ? 'text-gray-500' : 'text-gray-400') + ' text-xs truncate'
                 }, item.location || item.project)
               )
             ),
             
-            // 소요시간 + 시작 버튼
-            !isPast && item.type === 'task' && React.createElement(React.Fragment, null,
-              React.createElement('span', { 
-                className: (darkMode ? 'text-gray-500' : 'text-gray-400') + ' text-xs'
-              }, '~' + (item.duration || 30) + '분'),
-              React.createElement('button', {
-                onClick: function() { if (onStartTask) onStartTask(item.original); },
-                className: 'px-3 py-1.5 bg-[#A996FF] text-white text-sm font-medium rounded-lg ' +
-                  'shadow-sm hover:bg-[#8B7AE4] transition-all btn-press flex items-center gap-1'
-              },
-                React.createElement(Zap, { size: 14 }),
-                '시작'
-              )
+            // 시작 버튼 - 터치 타겟
+            !isPast && item.type === 'task' && React.createElement('button', {
+              onClick: function() { if (onStartTask) onStartTask(item.original); },
+              className: 'px-3 py-2 min-h-[40px] bg-[#A996FF] text-white text-xs md:text-sm font-medium rounded-lg ' +
+                'shadow-sm hover:bg-[#8B7AE4] transition-all btn-press flex items-center gap-1 flex-shrink-0'
+            },
+              React.createElement(Zap, { size: 14 }),
+              React.createElement('span', { className: 'hidden sm:inline' }, '시작')
             )
           )
         );
