@@ -1,16 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import HomeHeader from './HomeHeader';
 import AlfredoBriefingV2 from './AlfredoBriefingV2';
-import { 
-  TodaySummary, 
-  UpcomingEventCard, 
-  FocusNow, 
-  MiniTimeline 
-} from './HomeDashboard';
+import FocusNowCard from './FocusNowCard';
+import RemindersSection from './RemindersSection';
+import MiniTimeline from './MiniTimeline';
 import { QuickActionFloating, ChatFloating } from './QuickActionFloating';
 import { useGamification } from '../gamification/LevelSystem';
 
-// 🏠 홈페이지 메인 컴포넌트 - 대시보드 스타일
+// 🏠 홈페이지 메인 컴포넌트 - Apple 2025 스타일
 export var HomePage = function(props) {
   var darkMode = props.darkMode;
   var tasks = props.tasks || [];
@@ -18,9 +15,7 @@ export var HomePage = function(props) {
   var routines = props.routines || [];
   var weather = props.weather;
   var mood = props.mood;
-  var energy = props.energy;
   var setMood = props.setMood;
-  var setEnergy = props.setEnergy;
   var setView = props.setView;
   var onOpenAddTask = props.onOpenAddTask;
   var onOpenTask = props.onOpenTask;
@@ -28,10 +23,8 @@ export var HomePage = function(props) {
   var onOpenChat = props.onOpenChat;
   var onOpenInbox = props.onOpenInbox;
   var onStartFocus = props.onStartFocus;
-  var onAddTask = props.onAddTask;
-  var onAddEvent = props.onAddEvent;
-  var onAddRoutine = props.onAddRoutine;
   var onCompleteRoutine = props.onCompleteRoutine;
+  var userName = props.userName || '클로이';
   
   // 상태
   var modeState = useState('focus');
@@ -42,17 +35,17 @@ export var HomePage = function(props) {
   var condition = conditionState[0];
   var setCondition = conditionState[1];
   
-  var otherOptionsState = useState(false);
-  var showOtherOptions = otherOptionsState[0];
-  var setShowOtherOptions = otherOptionsState[1];
+  var showOptionsState = useState(false);
+  var showOtherOptions = showOptionsState[0];
+  var setShowOtherOptions = showOptionsState[1];
   
-  // 게이미피케이션 훅
+  // 게이미피케이션
   var gamification = useGamification ? useGamification() : { totalXp: 0, level: 1, currentStreak: 0 };
   
-  // 스타일
-  var bgColor = darkMode ? 'bg-gray-900' : 'bg-[#F8F6FF]';
+  // Apple 스타일 배경색
+  var bgColor = darkMode ? 'bg-[#1D1D1F]' : 'bg-[#F5F5F7]';
   
-  // 컨디션 변경 시 부모에게도 전달
+  // 컨디션 변경
   var handleConditionChange = function(newCondition) {
     setCondition(newCondition);
     if (setMood) setMood(newCondition);
@@ -61,29 +54,6 @@ export var HomePage = function(props) {
   // 페이지 이동
   var handleNavigate = function(page) {
     if (setView) setView(page);
-  };
-  
-  // 퀵액션 처리
-  var handleQuickAction = function(actionId) {
-    switch (actionId) {
-      case 'addTask':
-        if (onOpenAddTask) onOpenAddTask();
-        break;
-      case 'addEvent':
-        if (setView) setView('CALENDAR');
-        break;
-      case 'water':
-        if (onCompleteRoutine) onCompleteRoutine({ id: 'water', title: '물 마시기' });
-        break;
-      case 'vitamin':
-        if (onCompleteRoutine) onCompleteRoutine({ id: 'vitamin', title: '영양제' });
-        break;
-      case 'rest':
-        if (onStartFocus) onStartFocus({ type: 'rest', duration: 5 });
-        break;
-      default:
-        break;
-    }
   };
   
   // 오늘 일정만 필터
@@ -99,19 +69,7 @@ export var HomePage = function(props) {
     });
   }, [events]);
   
-  // 다가오는 일정 (30분 이내 또는 다음 2개)
-  var upcomingEvents = useMemo(function() {
-    var now = new Date();
-    var nowMin = now.getHours() * 60 + now.getMinutes();
-    
-    return todayEvents.filter(function(e) {
-      var eventDate = new Date(e.start);
-      var eventMin = eventDate.getHours() * 60 + eventDate.getMinutes();
-      return eventMin > nowMin - 30; // 지나간 것 제외 (30분 여유)
-    }).slice(0, 3);
-  }, [todayEvents]);
-  
-  // 지금 집중할 할일 선택 (우선순위 높은 것 또는 마감 임박)
+  // 지금 집중할 할일 선택
   var focusTask = useMemo(function() {
     var now = new Date();
     var incompleteTasks = tasks.filter(function(t) { return !t.completed; });
@@ -142,13 +100,53 @@ export var HomePage = function(props) {
     return incompleteTasks[0];
   }, [tasks]);
   
-  // 다른 옵션들 (focusTask 제외한 상위 3개)
-  var otherTasks = useMemo(function() {
-    if (!focusTask) return [];
-    return tasks.filter(function(t) { 
-      return !t.completed && t.id !== focusTask.id; 
-    }).slice(0, 3);
-  }, [tasks, focusTask]);
+  // 리마인더 목록 (샘플 데이터 - 나중에 props로 받기)
+  var reminders = useMemo(function() {
+    var items = [];
+    
+    // 마감 임박 할일을 리마인더로
+    tasks.forEach(function(t) {
+      if (t.completed) return;
+      if (t.dueDate || t.deadline) {
+        var due = new Date(t.dueDate || t.deadline);
+        var now = new Date();
+        var diffDays = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
+        
+        if (diffDays <= 3) {
+          items.push({
+            id: 'task-' + t.id,
+            type: t.title.includes('메일') ? 'email' : 'default',
+            title: t.title,
+            dueDate: t.dueDate || t.deadline
+          });
+        }
+      }
+    });
+    
+    // 샘플 리마인더 (데모용)
+    if (items.length < 3) {
+      items.push({
+        id: 'sample-1',
+        type: 'payment',
+        title: '카드대금',
+        dueDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString()
+      });
+      items.push({
+        id: 'sample-2',
+        type: 'email',
+        title: 'Sarah 메일 답장',
+        lastCompleted: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
+      });
+      items.push({
+        id: 'sample-3',
+        type: 'call',
+        title: '엄마에게 연락',
+        lastCompleted: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+      });
+    }
+    
+    return items.slice(0, 5);
+  }, [tasks]);
   
   // 태스크 시작
   var handleStartTask = function(task) {
@@ -159,47 +157,66 @@ export var HomePage = function(props) {
     }
   };
   
+  // 퀵액션 처리
+  var handleQuickAction = function(actionId) {
+    switch (actionId) {
+      case 'addTask':
+        if (onOpenAddTask) onOpenAddTask();
+        break;
+      case 'addEvent':
+        if (setView) setView('CALENDAR');
+        break;
+      case 'water':
+        if (onCompleteRoutine) onCompleteRoutine({ id: 'water', title: '물 마시기' });
+        break;
+      case 'vitamin':
+        if (onCompleteRoutine) onCompleteRoutine({ id: 'vitamin', title: '영양제' });
+        break;
+      case 'rest':
+        if (onStartFocus) onStartFocus({ type: 'rest', duration: 5 });
+        break;
+      default:
+        break;
+    }
+  };
+  
   return React.createElement('div', { className: bgColor + ' min-h-screen pb-24' },
-    // 고정 헤더
+    // 고정 헤더 (Apple 글라스모피즘)
     React.createElement(HomeHeader, {
       darkMode: darkMode,
       condition: condition,
       setCondition: handleConditionChange,
       weather: weather,
-      tasks: tasks,
-      events: events,
-      routines: routines,
-      streak: gamification.currentStreak || 0,
-      onNavigate: handleNavigate
+      level: gamification.level || 1,
+      userName: userName,
+      onOpenSearch: function() { /* TODO */ },
+      onOpenNotifications: function() { /* TODO */ },
+      onOpenSettings: function() { handleNavigate('SETTINGS'); }
     }),
     
     // 스크롤 영역
-    React.createElement('div', { className: 'px-4 pt-4' },
-      // 🐧 알프레도 브리핑 (기존 유지!)
+    React.createElement('div', { className: 'px-4 pt-5' },
+      // 🐧 알프레도 브리핑 (그라데이션 배경)
       React.createElement(AlfredoBriefingV2, {
         darkMode: darkMode,
         condition: condition,
         tasks: tasks,
         events: events,
-        emails: [],
-        reminders: [],
         weather: weather,
-        streak: gamification.currentStreak || 0,
         mode: alfredoMode,
         setMode: setAlfredoMode,
+        userName: userName,
+        reminders: reminders,
         onAction: function(action, data) {
           switch (action) {
             case 'startTask':
               if (data) handleStartTask(data);
               break;
-            case 'eventReady':
-              if (onOpenEvent && data) onOpenEvent(data);
-              break;
             case 'openCalendar':
               handleNavigate('CALENDAR');
               break;
-            case 'openEmail':
-              if (onOpenInbox) onOpenInbox();
+            case 'openReminder':
+              // TODO: 리마인더 상세
               break;
             default:
               break;
@@ -207,66 +224,33 @@ export var HomePage = function(props) {
         }
       }),
       
-      // 📊 오늘 요약
-      React.createElement(TodaySummary, {
-        darkMode: darkMode,
-        tasks: tasks,
-        events: events
-      }),
-      
-      // 📅 다가오는 일정들
-      upcomingEvents.length > 0 && upcomingEvents.map(function(event, idx) {
-        var now = new Date();
-        var eventTime = new Date(event.start);
-        var diffMin = Math.round((eventTime - now) / 1000 / 60);
-        var isUrgent = diffMin <= 60 && diffMin > -30;
-        
-        return React.createElement(UpcomingEventCard, {
-          key: event.id || idx,
-          event: event,
-          darkMode: darkMode,
-          isUrgent: isUrgent,
-          onClick: function() { if (onOpenEvent) onOpenEvent(event); }
-        });
-      }),
-      
-      // ⚡ 지금 이거부터
-      React.createElement(FocusNow, {
+      // 🎯 지금 이거부터
+      focusTask && React.createElement(FocusNowCard, {
         task: focusTask,
         darkMode: darkMode,
+        userName: userName,
         onStart: handleStartTask,
-        onMore: function() { setShowOtherOptions(!showOtherOptions); }
+        onLater: function() { /* TODO: 나중에 처리 */ },
+        onShowOptions: function() { setShowOtherOptions(!showOtherOptions); }
       }),
       
-      // 다른 옵션들 (펼쳤을 때)
-      showOtherOptions && otherTasks.length > 0 && React.createElement('div', {
-        className: 'mb-4 space-y-2'
-      },
-        otherTasks.map(function(task) {
-          return React.createElement('button', {
-            key: task.id,
-            onClick: function() { handleStartTask(task); },
-            className: (darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200') + 
-              ' w-full p-3 rounded-xl border text-left flex items-center justify-between'
-          },
-            React.createElement('div', null,
-              React.createElement('p', { className: darkMode ? 'text-white' : 'text-gray-800' }, task.title),
-              React.createElement('p', { className: (darkMode ? 'text-gray-400' : 'text-gray-500') + ' text-sm' },
-                task.project || task.domain || ''
-              )
-            ),
-            React.createElement('span', { className: 'text-[#A996FF] text-sm' }, '선택')
-          );
-        })
-      ),
+      // ⚠️ 잊지 마세요
+      React.createElement(RemindersSection, {
+        reminders: reminders,
+        darkMode: darkMode,
+        onReminderClick: function(reminder) {
+          // TODO: 리마인더 처리
+          console.log('Reminder clicked:', reminder);
+        }
+      }),
       
       // 📋 오늘 한눈에 (타임라인)
       React.createElement(MiniTimeline, {
         events: todayEvents,
         tasks: tasks,
         darkMode: darkMode,
-        onExpand: function() { handleNavigate('WORK'); },
-        onStartTask: handleStartTask
+        onStartTask: handleStartTask,
+        onOpenEvent: onOpenEvent
       })
     ),
     
