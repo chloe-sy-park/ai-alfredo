@@ -1,5 +1,47 @@
 import React from 'react';
-import { ChevronDown, Zap, Clock } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
+
+// AI 제안 문구 생성
+var getAISuggestion = function(task) {
+  var title = task.title || '';
+  var titleLower = title.toLowerCase();
+  
+  // 마감 임박
+  if (task.recommended) {
+    if (task.deadline || task.dueDate) {
+      var due = new Date(task.deadline || task.dueDate);
+      var now = new Date();
+      var diffHours = Math.round((due - now) / 1000 / 60 / 60);
+      
+      if (diffHours <= 2 && diffHours > 0) {
+        return '"' + title + '" 마감이 ' + diffHours + '시간 남았어요. 먼저 시작해볼까요?';
+      }
+    }
+  }
+  
+  // 메일/회신
+  if (titleLower.includes('메일') || titleLower.includes('회신') || titleLower.includes('답장')) {
+    return '"' + title + '" 답장이 밀려있어요. 간단하게 먼저 정리할까요?';
+  }
+  
+  // 문서/보고서
+  if (titleLower.includes('문서') || titleLower.includes('보고서') || titleLower.includes('기획')) {
+    return '"' + title + '" 초안을 제가 도와드릴까요?';
+  }
+  
+  // 회의/미팅
+  if (titleLower.includes('회의') || titleLower.includes('미팅') || titleLower.includes('준비')) {
+    return '"' + title + '" 준비할 시간이에요. 체크리스트 볼까요?';
+  }
+  
+  // 연락
+  if (titleLower.includes('연락') || titleLower.includes('전화') || titleLower.includes('통화')) {
+    return '"' + title + '" 잊기 전에 지금 해볼까요?';
+  }
+  
+  // 기본
+  return '"' + title + '"이 제일 급해요. 먼저 시작해볼까요?';
+};
 
 // 🎯 지금 이거부터 카드 (AI 제안)
 export var FocusNowCard = function(props) {
@@ -8,7 +50,6 @@ export var FocusNowCard = function(props) {
   var onStart = props.onStart;
   var onLater = props.onLater;
   var onShowOptions = props.onShowOptions;
-  var userName = props.userName || '클로이';
   
   if (!task) return null;
   
@@ -20,6 +61,9 @@ export var FocusNowCard = function(props) {
   var durationText = duration >= 60 
     ? Math.floor(duration / 60) + '시간' 
     : duration + '분';
+  
+  // AI 제안 문구
+  var suggestion = getAISuggestion(task);
   
   return React.createElement('div', { 
     className: 'rounded-3xl overflow-hidden mb-6 shadow-lg ' +
@@ -35,11 +79,7 @@ export var FocusNowCard = function(props) {
       }, '🐧'),
       React.createElement('p', { 
         className: (darkMode ? 'text-gray-200' : 'text-gray-700') + ' text-sm'
-      }, 
-        '"' + task.title + '"이 제일 급해요.',
-        React.createElement('br'),
-        '제가 초안을 준비할까요?'
-      )
+      }, suggestion)
     ),
     
     // 태스크 정보
