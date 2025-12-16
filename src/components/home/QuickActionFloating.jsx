@@ -27,10 +27,8 @@ var QuickActionMenu = function(props) {
     className: 'fixed inset-0 z-50',
     onClick: onClose
   },
-    // 배경
     React.createElement('div', { className: 'absolute inset-0 bg-black/30' }),
     
-    // 메뉴
     React.createElement('div', {
       className: 'absolute bottom-24 right-4',
       onClick: function(e) { e.stopPropagation(); }
@@ -66,7 +64,6 @@ export var QuickActionFloating = function(props) {
   var setMenuOpen = menuState[1];
   
   return React.createElement(React.Fragment, null,
-    // 플로팅 버튼
     React.createElement('button', {
       onClick: function() { setMenuOpen(!isMenuOpen); },
       className: 'fixed bottom-36 right-4 z-40 w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all ' +
@@ -79,7 +76,6 @@ export var QuickActionFloating = function(props) {
         : React.createElement(Zap, { size: 24, className: 'text-white' })
     ),
     
-    // 메뉴
     React.createElement(QuickActionMenu, {
       isOpen: isMenuOpen,
       onClose: function() { setMenuOpen(false); },
@@ -166,12 +162,12 @@ export var getPageComment = function(page, data) {
       if (routines.length === 0) {
         return '루틴을 추가해보세요 ☀️';
       }
-      var remaining = routines.length - completedRoutines.length;
-      if (remaining === 0) {
+      var remainingRoutines = routines.length - completedRoutines.length;
+      if (remainingRoutines === 0) {
         return '오늘 루틴 다 했어요! 대단해요 ✨';
       }
-      if (remaining <= 2) {
-        return remaining + '개만 더 하면 끝이에요!';
+      if (remainingRoutines <= 2) {
+        return remainingRoutines + '개만 더 하면 끝이에요!';
       }
       return '오늘도 나를 챙겨봐요 💜';
       

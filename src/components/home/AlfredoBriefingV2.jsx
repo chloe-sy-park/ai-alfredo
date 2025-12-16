@@ -245,7 +245,6 @@ export var AlfredoBriefingV2 = function(props) {
         eventSummary += '\n다음은 ' + nextTime + ' ' + (nextEvent.title || nextEvent.summary);
       }
       
-      // 여유/빡빡 판단
       var busyEvents = todayEvents.filter(function(e) { return new Date(e.start) > now; });
       if (busyEvents.length >= 3) {
         eventSummary += '\n오후가 좀 빡빡해요. 점심은 일찍 드세요.';
@@ -264,7 +263,7 @@ export var AlfredoBriefingV2 = function(props) {
       });
     }
     
-    // 5. 이메일 (임시 - 나중에 실제 데이터 연동)
+    // 5. 이메일
     if (emails.length > 0) {
       var urgentEmails = emails.filter(function(e) { return e.priority === 'high'; });
       if (urgentEmails.length > 0) {
@@ -293,7 +292,6 @@ export var AlfredoBriefingV2 = function(props) {
       if (topTask) {
         taskContent += '\n"' + topTask.title + '"이 제일 급해요.';
         
-        // 시간 여유 있으면 제안
         var nextEventTime = todayEvents.find(function(e) { return new Date(e.start) > now; });
         if (nextEventTime) {
           var minutesFree = Math.round((new Date(nextEventTime.start) - now) / 1000 / 60);
@@ -330,14 +328,11 @@ export var AlfredoBriefingV2 = function(props) {
     // 8. 저녁 마무리
     if (timeOfDay === 'evening') {
       var completedToday = tasks.filter(function(t) { return t.completed; }).length;
-      var totalToday = tasks.length;
-      
       var summaryContent = '✓ 완료 ' + completedToday + '개';
       if (incompleteTasks.length > 0) {
         summaryContent += '\n→ 내일로 ' + incompleteTasks.length + '개 (급하지 않아요)';
       }
       
-      // 내일 일정 미리보기
       var tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       var tomorrowEvents = events.filter(function(e) {
@@ -390,7 +385,7 @@ export var AlfredoBriefingV2 = function(props) {
       });
     }
     
-    // 11. 못했을 때 케어 (저녁에 완료 0개)
+    // 11. 못했을 때 케어
     if (timeOfDay === 'evening' && tasks.length > 0 && tasks.filter(function(t) { return t.completed; }).length === 0) {
       items.unshift({
         priority: -1,
@@ -401,7 +396,6 @@ export var AlfredoBriefingV2 = function(props) {
       });
     }
     
-    // 정렬
     items.sort(function(a, b) { return a.priority - b.priority; });
     
     return items;
@@ -410,14 +404,12 @@ export var AlfredoBriefingV2 = function(props) {
   var greeting = getGreeting(timeOfDay, condition);
   
   return React.createElement('div', { className: cardBg + ' rounded-2xl border ' + borderColor + ' overflow-hidden mb-4' },
-    // 알프레도 헤더
     React.createElement('div', { className: 'px-4 pt-4' },
       React.createElement('div', { className: 'flex items-start gap-3 mb-3' },
         React.createElement('span', { className: 'text-2xl' }, '🐧'),
         React.createElement('p', { className: textPrimary + ' font-medium leading-relaxed' }, greeting)
       ),
       
-      // 모드 선택
       React.createElement(ModeSelector, {
         currentMode: mode,
         setMode: setMode,
@@ -428,7 +420,6 @@ export var AlfredoBriefingV2 = function(props) {
       })
     ),
     
-    // 브리핑 아이템들
     React.createElement('div', { className: 'px-4 pb-4' },
       briefingItems.length > 0 
         ? briefingItems.map(function(item, idx) {

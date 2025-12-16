@@ -80,7 +80,6 @@ export var HomePage = function(props) {
   var handleBriefingAction = function(action, data) {
     switch (action) {
       case 'showEssentials':
-        // 필수만 보기 - 나중에 필터 기능 추가
         break;
       case 'eventReady':
         if (onOpenEvent && data) onOpenEvent(data);
@@ -99,35 +98,28 @@ export var HomePage = function(props) {
         else if (data && onOpenTask) onOpenTask(data);
         break;
       case 'later':
-        // 나중에 처리 - 토스트 표시 등
         break;
       case 'tomorrowNote':
-        // 내일 메모 모달
         break;
       case 'endDay':
-        // 하루 마무리
         break;
       case 'prepareTomorrow':
         if (setView) setView('WORK');
         break;
       case 'rest':
-        // 쉬기 선택
         break;
       default:
         break;
     }
   };
   
-  // 샘플 이메일 (나중에 실제 데이터로 교체)
+  // 샘플 이메일
   var sampleEmails = useMemo(function() {
-    return [
-      // { from: '김과장', subject: 'Q2 예산 관련 질문', priority: 'high', suggestion: '"현재 기준 10% 증액 가능"으로 답하시면 될 것 같아요.' }
-    ];
+    return [];
   }, []);
   
-  // 샘플 리마인더 (나중에 실제 데이터로 교체)
+  // 샘플 리마인더
   var sampleReminders = useMemo(function() {
-    // 이번 주 내 생일/기념일 체크 로직 추가 가능
     return [];
   }, []);
   
