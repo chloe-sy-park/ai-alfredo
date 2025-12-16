@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronDown, Target, Heart, Flame } from 'lucide-react';
+import { ChevronDown, ChevronUp, Target, Heart, Flame } from 'lucide-react';
 
 // 모드 설정
 var MODES = {
-  focus: { id: 'focus', emoji: '🎯', label: '집중', color: 'text-orange-500' },
-  care: { id: 'care', emoji: '💜', label: '케어', color: 'text-purple-500' },
-  challenge: { id: 'challenge', emoji: '🔥', label: '챌린지', color: 'text-red-500' }
+  focus: { id: 'focus', emoji: '🎯', label: '집중' },
+  care: { id: 'care', emoji: '💜', label: '케어' },
+  challenge: { id: 'challenge', emoji: '🔥', label: '챌린지' }
 };
 
 // 시간대 구분
@@ -212,6 +212,33 @@ var generateBriefing = function(props) {
   };
 };
 
+// 인라인 모드 토글 (세그먼트 컨트롤)
+var ModeToggle = function(props) {
+  var mode = props.mode || 'focus';
+  var setMode = props.setMode;
+  var darkMode = props.darkMode;
+  
+  return React.createElement('div', { 
+    className: 'flex items-center gap-1 p-1 rounded-full ' +
+      (darkMode ? 'bg-white/10' : 'bg-white/60')
+  },
+    Object.values(MODES).map(function(m) {
+      var isActive = mode === m.id;
+      return React.createElement('button', {
+        key: m.id,
+        onClick: function() { if (setMode) setMode(m.id); },
+        className: 'px-2.5 py-1 rounded-full text-xs font-medium transition-all btn-press ' +
+          (isActive 
+            ? 'bg-[#A996FF] text-white shadow-sm' 
+            : (darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'))
+      },
+        React.createElement('span', { className: 'mr-1' }, m.emoji),
+        m.label
+      );
+    })
+  );
+};
+
 // 메인 브리핑 컴포넌트
 export var AlfredoBriefingV2 = function(props) {
   var darkMode = props.darkMode;
@@ -229,13 +256,8 @@ export var AlfredoBriefingV2 = function(props) {
   var isExpanded = expandedState[0];
   var setExpanded = expandedState[1];
   
-  var modeDropdownState = useState(false);
-  var showModeDropdown = modeDropdownState[0];
-  var setShowModeDropdown = modeDropdownState[1];
-  
   var timeOfDay = getTimeOfDay();
   var greetingTitle = getGreetingTitle(timeOfDay, condition, userName);
-  var currentMode = MODES[mode] || MODES.focus;
   
   // 브리핑 생성
   var briefing = useMemo(function() {
@@ -250,7 +272,7 @@ export var AlfredoBriefingV2 = function(props) {
     });
   }, [condition, tasks, events, weather, userName, reminders, mode]);
   
-  // 접힌 상태: 첫 2줄만
+  // 접힌 상태: 첫 2줄만, 펼쳐진 상태: 전부
   var visibleLines = isExpanded ? briefing.lines : briefing.lines.slice(0, 2);
   var hasMoreLines = briefing.lines.length > 2;
   
@@ -261,70 +283,36 @@ export var AlfredoBriefingV2 = function(props) {
         : 'bg-gradient-to-br from-[#E8E4F3] to-[#D4CCE8]')
   },
     React.createElement('div', { className: 'p-5' },
-      // 헤더: 아바타 + 인사 + 모드 선택
+      // 헤더: 아바타 + 인사
       React.createElement('div', { className: 'flex items-start gap-4' },
-        // 알프레도 아바타 (원형) - 글로우 효과 추가
+        // 알프레도 아바타 (원형)
         React.createElement('div', { 
-          className: 'w-16 h-16 rounded-full bg-[#A996FF] flex items-center justify-center text-3xl shadow-lg shadow-[#A996FF]/30 flex-shrink-0 animate-fadeIn'
+          className: 'w-14 h-14 rounded-full bg-[#A996FF] flex items-center justify-center text-2xl shadow-lg shadow-[#A996FF]/30 flex-shrink-0 animate-fadeIn'
         }, '🐧'),
         
         // 인사말 타이틀
         React.createElement('div', { className: 'flex-1 min-w-0 animate-fadeInUp' },
           React.createElement('h1', { 
             className: (darkMode ? 'text-white' : 'text-gray-900') + 
-              ' text-2xl font-bold leading-tight whitespace-pre-line'
+              ' text-xl font-bold leading-tight whitespace-pre-line'
           }, greetingTitle)
-        ),
-        
-        // 모드 선택 버튼
-        React.createElement('div', { className: 'relative' },
-          React.createElement('button', {
-            onClick: function() { setShowModeDropdown(!showModeDropdown); },
-            className: 'flex items-center gap-1.5 px-3 py-2 rounded-full transition-all btn-press ' +
-              (darkMode ? 'bg-white/10 hover:bg-white/20' : 'bg-white/60 hover:bg-white/80') +
-              ' shadow-sm'
-          },
-            React.createElement('span', null, currentMode.emoji),
-            React.createElement('span', { 
-              className: (darkMode ? 'text-white' : 'text-gray-700') + ' text-sm font-medium' 
-            }, currentMode.label),
-            React.createElement(ChevronDown, { 
-              size: 14, 
-              className: (darkMode ? 'text-gray-300' : 'text-gray-500') + 
-                (showModeDropdown ? ' rotate-180' : '') + ' transition-transform'
-            })
-          ),
-          
-          // 드롭다운 - 애니메이션 적용
-          showModeDropdown && React.createElement('div', {
-            className: 'absolute right-0 top-full mt-2 w-36 rounded-2xl shadow-xl overflow-hidden z-10 animate-fadeInDown ' +
-              (darkMode ? 'bg-[#3A3A3C]' : 'bg-white')
-          },
-            Object.values(MODES).map(function(m) {
-              var isActive = mode === m.id;
-              return React.createElement('button', {
-                key: m.id,
-                onClick: function() { if (setMode) setMode(m.id); setShowModeDropdown(false); },
-                className: 'w-full flex items-center gap-2 px-4 py-3 transition-all btn-press ' +
-                  (isActive 
-                    ? 'bg-[#A996FF]/20' 
-                    : (darkMode ? 'hover:bg-white/10' : 'hover:bg-gray-50'))
-              },
-                React.createElement('span', null, m.emoji),
-                React.createElement('span', { 
-                  className: (darkMode ? 'text-white' : 'text-gray-700') + ' text-sm font-medium' 
-                }, m.label)
-              );
-            })
-          )
         )
+      ),
+      
+      // 모드 토글 (인라인 세그먼트)
+      React.createElement('div', { className: 'mt-3 animate-fadeInUp animate-delay-100' },
+        React.createElement(ModeToggle, {
+          mode: mode,
+          setMode: setMode,
+          darkMode: darkMode
+        })
       ),
       
       // 브리핑 내용
       React.createElement('div', { className: 'mt-4' },
         // 보이는 줄들
         visibleLines.map(function(line, idx) {
-          var delayClass = idx === 0 ? '' : idx === 1 ? 'animate-delay-100' : idx === 2 ? 'animate-delay-200' : 'animate-delay-300';
+          var delayClass = idx === 0 ? 'animate-delay-200' : idx === 1 ? 'animate-delay-300' : 'animate-delay-400';
           return React.createElement('p', {
             key: idx,
             className: (darkMode ? 'text-gray-200' : 'text-gray-700') + 
@@ -335,7 +323,7 @@ export var AlfredoBriefingV2 = function(props) {
         // 펼쳐진 상태에서 리마인더 버튼
         isExpanded && briefing.reminderItem && React.createElement('button', {
           onClick: function() { if (onAction) onAction('openReminder', briefing.reminderItem.data); },
-          className: 'mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full animate-fadeInUp animate-delay-300 btn-press ' +
+          className: 'mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full animate-fadeInUp btn-press ' +
             (darkMode ? 'bg-white/10 hover:bg-white/15' : 'bg-white/60 hover:bg-white/80') + 
             ' transition-all'
         },
@@ -346,17 +334,24 @@ export var AlfredoBriefingV2 = function(props) {
         )
       ),
       
-      // 더보기/접기 토글
+      // 더보기/접기 토글 (항상 표시, 2줄 이상일 때만 기능)
       hasMoreLines && React.createElement('button', {
         onClick: function() { setExpanded(!isExpanded); },
-        className: 'w-full flex items-center justify-center pt-4 mt-2 btn-press'
+        className: 'w-full flex items-center justify-center gap-1 pt-3 mt-2 btn-press group'
       },
-        React.createElement('div', { 
-          className: 'w-0 h-0 border-l-8 border-r-8 border-transparent transition-transform ' +
-            (isExpanded 
-              ? 'border-t-8 ' + (darkMode ? 'border-t-gray-400' : 'border-t-gray-500')
-              : 'border-b-8 ' + (darkMode ? 'border-b-gray-400' : 'border-b-gray-500'))
-        })
+        React.createElement('span', { 
+          className: (darkMode ? 'text-gray-400' : 'text-gray-500') + 
+            ' text-xs group-hover:text-[#A996FF] transition-colors'
+        }, isExpanded ? '접기' : '더보기'),
+        isExpanded 
+          ? React.createElement(ChevronUp, { 
+              size: 14, 
+              className: (darkMode ? 'text-gray-400' : 'text-gray-500') + ' group-hover:text-[#A996FF] transition-colors'
+            })
+          : React.createElement(ChevronDown, { 
+              size: 14, 
+              className: (darkMode ? 'text-gray-400' : 'text-gray-500') + ' group-hover:text-[#A996FF] transition-colors'
+            })
       )
     )
   );
