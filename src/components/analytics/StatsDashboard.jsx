@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { BarChart3, TrendingUp, TrendingDown, Calendar, Clock, Target, Flame, Trophy, ChevronLeft, ChevronRight, Minus, Star, Zap, Award, Medal } from 'lucide-react';
 
 // W2 게이미피케이션 임포트 (올바른 export 이름 사용)
-import { LevelXpBar, useGamification, LEVEL_CONFIG } from '../gamification/LevelSystem';
+import { LevelXpBar, useGamification, LEVELS } from '../gamification/LevelSystem';
 import { DailyQuestList, QuestCard, useQuests } from '../gamification/QuestSystem';
 import { BadgeCollection, BadgeCard, useBadges } from '../gamification/BadgeSystem';
 
@@ -201,7 +201,7 @@ var GameSummaryCard = function(props) {
   var currentStreak = gameData.currentStreak || 0;
   var longestStreak = gameData.longestStreak || 0;
   
-  var levelInfo = LEVEL_CONFIG ? LEVEL_CONFIG[level] : { title: '새싹', minXp: 0, maxXp: 100 };
+  var levelInfo = LEVELS ? LEVELS[level - 1] : { title: '새싹', minXp: 0, maxXp: 100 };
   var nextLevelXp = levelInfo ? levelInfo.maxXp : 100;
   var progress = nextLevelXp > 0 ? Math.min(100, (totalXp / nextLevelXp) * 100) : 0;
   
