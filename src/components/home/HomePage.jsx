@@ -4,12 +4,13 @@ import {
   ChevronRight, Clock, Calendar, CheckCircle2, Circle, Target,
   AlertCircle, TrendingUp, TrendingDown, Minus, Sparkles,
   Plus, MessageSquare, Search, Bell, Settings, Inbox, FolderKanban,
-  Heart, Users, Activity, Smile, Rocket, Shield, Flame, Check, ChevronDown, Trophy
+  Heart, Users, Activity, Smile, Rocket, Shield, Flame, Check, ChevronDown, Trophy, Mail
 } from 'lucide-react';
 import UnifiedTimelineView from './UnifiedTimelineView';
 import { AlfredoEmptyState } from '../common/AlfredoEmptyState';
 import AlfredoStatusBar from '../common/AlfredoStatusBar';
 import { YesterdayMeCard, TomorrowMeButton, TomorrowMeWriteModal } from '../common/TomorrowMeMessage';
+import EmailInbox from './EmailInbox';
 
 // W2: 게이미피케이션
 import { LevelXpBar, GameWidget, useGamification } from '../gamification/LevelSystem';
@@ -411,6 +412,8 @@ var HomePage = function(props) {
   var onOpenReminder = props.onOpenReminder;
   var onOpenSearch = props.onOpenSearch;
   var onOpenGameCenter = props.onOpenGameCenter;
+  var onAddTask = props.onAddTask;
+  var onAddEvent = props.onAddEvent;
   
   var modeState = useState(null);
   var alfredoMode = modeState[0];
@@ -447,6 +450,22 @@ var HomePage = function(props) {
     var eventDate = new Date(e.start);
     return eventDate.toDateString() === today.toDateString();
   });
+  
+  // 이메일에서 태스크 생성 핸들러
+  var handleCreateTaskFromEmail = function(task) {
+    if (onAddTask) {
+      onAddTask(task);
+    }
+  };
+  
+  // 이메일에서 이벤트 생성 핸들러
+  var handleCreateEventFromEmail = function(event) {
+    if (onAddEvent) {
+      onAddEvent(event);
+    } else if (setView) {
+      setView('CALENDAR');
+    }
+  };
   
   // 퀵 액션 핸들러
   var handleQuickAction = function(action) {
@@ -548,6 +567,14 @@ var HomePage = function(props) {
       
       // 지금 집중할 것
       React.createElement(NowCard, { darkMode: darkMode, tasks: tasks, events: events, onStartTask: onStartFocus, onOpenTask: onOpenTask, onAddTask: onOpenAddTask }),
+      
+      // 📧 이메일 인박스 (NEW!)
+      React.createElement(EmailInbox, {
+        darkMode: darkMode,
+        onCreateTask: handleCreateTaskFromEmail,
+        onCreateEvent: handleCreateEventFromEmail,
+        compact: true
+      }),
       
       // 게임 위젯 (새로운 컴포넌트)
       React.createElement(GameWidgetCompact, {
