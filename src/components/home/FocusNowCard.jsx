@@ -43,7 +43,7 @@ var getAISuggestion = function(task) {
   return '"' + title + '"이 제일 급해요. 먼저 시작해볼까요?';
 };
 
-// 🎯 지금 이거부터 카드 (AI 제안)
+// 🎯 지금 이거부터 카드 (AI 제안) - 반응형
 export var FocusNowCard = function(props) {
   var task = props.task;
   var darkMode = props.darkMode;
@@ -69,25 +69,25 @@ export var FocusNowCard = function(props) {
   var isUrgent = task.recommended && (task.deadline || task.dueDate);
   
   return React.createElement('div', { 
-    className: 'rounded-3xl overflow-hidden mb-6 shadow-lg animate-fadeInUp card-hover ' +
+    className: 'rounded-2xl md:rounded-3xl overflow-hidden shadow-lg animate-fadeInUp card-hover ' +
       (darkMode ? 'bg-[#2C2C2E]' : 'bg-white') +
       (isUrgent ? ' ring-2 ring-[#A996FF]/50' : '')
   },
     // AI 추천 헤더
     React.createElement('div', { 
-      className: 'px-5 py-3 flex items-center gap-3 ' +
+      className: 'px-4 md:px-5 py-3 flex items-center gap-3 ' +
         (darkMode ? 'bg-[#3A3A3C]' : 'bg-gray-50')
     },
       React.createElement('div', { 
-        className: 'w-8 h-8 rounded-full bg-[#A996FF] flex items-center justify-center text-lg shadow-lg shadow-[#A996FF]/20'
+        className: 'w-8 h-8 rounded-full bg-[#A996FF] flex items-center justify-center text-lg shadow-lg shadow-[#A996FF]/20 flex-shrink-0'
       }, '🐧'),
       React.createElement('p', { 
-        className: (darkMode ? 'text-gray-200' : 'text-gray-700') + ' text-sm'
+        className: (darkMode ? 'text-gray-200' : 'text-gray-700') + ' text-sm md:text-base leading-snug'
       }, suggestion)
     ),
     
     // 태스크 정보
-    React.createElement('div', { className: 'p-5' },
+    React.createElement('div', { className: 'p-4 md:p-5' },
       // 섹션 헤더
       React.createElement('div', { className: 'flex items-center justify-between mb-3' },
         React.createElement('div', { className: 'flex items-center gap-2' },
@@ -101,7 +101,7 @@ export var FocusNowCard = function(props) {
         ),
         React.createElement('button', {
           onClick: onShowOptions,
-          className: 'flex items-center gap-1 text-sm btn-press ' +
+          className: 'flex items-center gap-1 text-sm p-2 -mr-2 min-h-[44px] btn-press ' +
             (darkMode ? 'text-gray-400' : 'text-gray-500')
         },
           '다른 옵션',
@@ -109,13 +109,13 @@ export var FocusNowCard = function(props) {
         )
       ),
       
-      // 태스크 카드
+      // 태스크 카드 - 모바일에서 세로 배치
       React.createElement('div', { 
-        className: 'flex items-center justify-between gap-4'
+        className: 'flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'
       },
         React.createElement('div', { className: 'flex-1 min-w-0' },
           React.createElement('h3', { 
-            className: (darkMode ? 'text-white' : 'text-gray-900') + ' font-bold text-lg'
+            className: (darkMode ? 'text-white' : 'text-gray-900') + ' font-bold text-base md:text-lg'
           }, task.title),
           React.createElement('p', { 
             className: (darkMode ? 'text-gray-400' : 'text-gray-500') + ' text-sm mt-0.5'
@@ -125,20 +125,20 @@ export var FocusNowCard = function(props) {
           )
         ),
         
-        // 버튼들
+        // 버튼들 - 모바일에서 전체 너비
         React.createElement('div', { className: 'flex items-center gap-2' },
           React.createElement('button', {
             onClick: function() { if (onStart) onStart(task); },
-            className: 'px-5 py-2.5 bg-[#A996FF] text-white rounded-xl font-semibold ' +
+            className: 'flex-1 sm:flex-none px-5 py-3 min-h-[48px] bg-[#A996FF] text-white rounded-xl font-semibold ' +
               'shadow-lg shadow-[#A996FF]/30 hover:bg-[#8B7AE4] transition-all btn-press ' +
-              'flex items-center gap-2'
+              'flex items-center justify-center gap-2'
           }, 
             React.createElement(Zap, { size: 16 }),
             '시작하기'
           ),
           React.createElement('button', {
             onClick: function() { if (onLater) onLater(task); },
-            className: 'px-4 py-2.5 rounded-xl font-medium transition-all btn-press ' +
+            className: 'px-4 py-3 min-h-[48px] rounded-xl font-medium transition-all btn-press ' +
               (darkMode 
                 ? 'bg-[#3A3A3C] text-gray-300 hover:bg-[#48484A]' 
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200')
