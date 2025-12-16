@@ -32,6 +32,9 @@ import GoogleAuthModal from './components/modals/GoogleAuthModal';
 import { SmartNotificationToast, NotificationCenter } from './components/notifications';
 import AlfredoNudge from './components/common/AlfredoNudge';
 
+// 🤗 실패 케어 시스템
+import { DayEndModal } from './components/common/FailureCareSystem';
+
 // 훅
 import { useGoogleCalendar } from './hooks/useGoogleCalendar';
 import { useSmartNotifications } from './hooks/useSmartNotifications';
@@ -50,7 +53,8 @@ var STORAGE_KEYS = {
   HEALTH: 'lifebutler_health',
   RELATIONSHIPS: 'lifebutler_relationships',
   USER_SETTINGS: 'lifebutler_user_settings',
-  MOOD_ENERGY: 'lifebutler_mood_energy'
+  MOOD_ENERGY: 'lifebutler_mood_energy',
+  STREAK_DATA: 'lifebutler_streak_data'
 };
 
 // localStorage에서 데이터 로드
@@ -443,6 +447,19 @@ var App = function() {
   var energy = energyState[0];
   var setEnergy = energyState[1];
   
+  // 🔥 스트릭 데이터
+  var streakDataState = useState(function() {
+    return loadFromStorage(STORAGE_KEYS.STREAK_DATA, {
+      currentStreak: 0,
+      longestStreak: 0,
+      protectionsLeft: 2,
+      lastProtectionReset: new Date().toISOString().slice(0, 7), // YYYY-MM 형식
+      lastActiveDate: null
+    });
+  });
+  var streakData = streakDataState[0];
+  var setStreakData = streakDataState[1];
+  
   // 태스크 & 이벤트 (localStorage에서 로드, 없으면 mockData 사용)
   var tasksState = useState(function() {
     return loadFromStorage(STORAGE_KEYS.TASKS, null) || mockTasks || [];
@@ -530,6 +547,11 @@ var App = function() {
   var showEditHealthModal = showEditHealthModalState[0];
   var setShowEditHealthModal = showEditHealthModalState[1];
   
+  // 🤗 하루 마무리 모달
+  var showDayEndModalState = useState(false);
+  var showDayEndModal = showDayEndModalState[0];
+  var setShowDayEndModal = showDayEndModalState[1];
+  
   // 선택된 아이템
   var selectedEventState = useState(null);
   var selectedEvent = selectedEventState[0];
@@ -567,6 +589,35 @@ var App = function() {
     energy: energy
   });
   
+  // 오늘 완료한 태스크 수 계산
+  var todayCompletedCount = useMemo(function() {
+    var today = new Date().toDateString();
+    return tasks.filter(function(t) {
+      return t.completed && t.completedAt && new Date(t.completedAt).toDateString() === today;
+    }).length;
+  }, [tasks]);
+  
+  var todayTotalCount = useMemo(function() {
+    var today = new Date().toDateString();
+    return tasks.filter(function(t) {
+      if (!t.dueDate) return false;
+      return new Date(t.dueDate).toDateString() === today;
+    }).length || tasks.filter(function(t) { return !t.completed; }).length;
+  }, [tasks]);
+  
+  // 월 초에 보호권 리셋
+  useEffect(function() {
+    var currentMonth = new Date().toISOString().slice(0, 7);
+    if (streakData.lastProtectionReset !== currentMonth) {
+      setStreakData(function(prev) {
+        return Object.assign({}, prev, {
+          protectionsLeft: 2,
+          lastProtectionReset: currentMonth
+        });
+      });
+    }
+  }, []);
+  
   // localStorage 저장 효과
   useEffect(function() {
     saveToStorage(STORAGE_KEYS.TASKS, tasks);
@@ -591,6 +642,10 @@ var App = function() {
   useEffect(function() {
     saveToStorage(STORAGE_KEYS.MOOD_ENERGY, { mood: mood, energy: energy });
   }, [mood, energy]);
+  
+  useEffect(function() {
+    saveToStorage(STORAGE_KEYS.STREAK_DATA, streakData);
+  }, [streakData]);
   
   // Google 연결 상태 변경 시 모달 닫기
   useEffect(function() {
@@ -648,6 +703,22 @@ var App = function() {
     setView('FOCUS');
   };
   
+  // 핸들러: 하루 마무리 (테스트용)
+  var handleOpenDayEnd = function() {
+    setShowDayEndModal(true);
+  };
+  
+  // 핸들러: 스트릭 보호권 사용
+  var handleUseProtection = function() {
+    if (streakData.protectionsLeft > 0) {
+      setStreakData(function(prev) {
+        return Object.assign({}, prev, {
+          protectionsLeft: prev.protectionsLeft - 1
+        });
+      });
+    }
+  };
+  
   // 핸들러: 태스크 추가
   var handleAddTask = function(newTask) {
     var task = Object.assign({}, newTask, {
@@ -663,13 +734,28 @@ var App = function() {
   var handleToggleTask = function(taskId) {
     setTasks(tasks.map(function(t) {
       if (t.id === taskId) {
+        var nowCompleted = !t.completed;
         return Object.assign({}, t, { 
-          completed: !t.completed,
-          status: t.status === 'done' ? 'todo' : 'done'
+          completed: nowCompleted,
+          status: t.status === 'done' ? 'todo' : 'done',
+          completedAt: nowCompleted ? new Date().toISOString() : null
         });
       }
       return t;
     }));
+    
+    // 스트릭 업데이트
+    var today = new Date().toDateString();
+    if (streakData.lastActiveDate !== today) {
+      setStreakData(function(prev) {
+        var newStreak = prev.currentStreak + 1;
+        return Object.assign({}, prev, {
+          currentStreak: newStreak,
+          longestStreak: Math.max(prev.longestStreak, newStreak),
+          lastActiveDate: today
+        });
+      });
+    }
   };
   
   // 핸들러: 태스크 업데이트
@@ -744,7 +830,7 @@ var App = function() {
       case 'allDone':
         break;
       case 'eveningReview':
-        setView('WEEKLY_REVIEW');
+        handleOpenDayEnd(); // 🤗 하루 마무리 모달 열기
         break;
       case 'morningBriefing':
         handleOpenChat();
@@ -858,6 +944,8 @@ var App = function() {
           onOpenEnergyRhythm: function() { setView('ENERGY_RHYTHM'); },
           onOpenProjectDashboard: function() { setView('PROJECT_DASHBOARD'); },
           onOpenSettings: function() { setView('SETTINGS'); },
+          onOpenDayEnd: handleOpenDayEnd, // 🤗 테스트용
+          streakData: streakData, // 🔥 스트릭 데이터 전달
           gameState: { level: 5, xp: 450, totalXp: 1000 }
         }));
         
@@ -1082,6 +1170,21 @@ var App = function() {
       darkMode: darkMode,
       healthData: healthData,
       onSave: handleSaveHealth
+    }),
+    
+    // 🤗 하루 마무리 모달
+    React.createElement(DayEndModal, {
+      isOpen: showDayEndModal,
+      onClose: function() { setShowDayEndModal(false); },
+      darkMode: darkMode,
+      completedCount: todayCompletedCount,
+      totalCount: todayTotalCount,
+      streakCount: streakData.currentStreak,
+      protectionsLeft: streakData.protectionsLeft,
+      mood: mood,
+      energy: energy,
+      onUseProtection: handleUseProtection,
+      onOpenChat: function() { setShowDayEndModal(false); handleOpenChat(); }
     }),
     
     // 리마인더 모달
