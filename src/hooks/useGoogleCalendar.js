@@ -1,4 +1,5 @@
 // useGoogleCalendar.js - Google Calendar 실제 연동 훅
+// 🔧 단순화: 앱 시작 시 API 호출 없음, 실제 사용 시에만 401 처리
 import { useState, useCallback, useEffect, useRef } from 'react';
 
 // Google OAuth 설정
@@ -31,7 +32,6 @@ export function useGoogleCalendar() {
   
   const tokenClientRef = useRef(null);
   const isInitializedRef = useRef(false);
-  const isValidatingRef = useRef(false);
 
   // 저장된 인증 정보 삭제
   const clearStoredAuth = useCallback(() => {
@@ -43,7 +43,7 @@ export function useGoogleCalendar() {
     setUserEmail(null);
   }, []);
 
-  // 액세스 토큰 가져오기
+  // 액세스 토큰 가져오기 (만료 확인 포함)
   const getAccessToken = useCallback(() => {
     const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
     const expiry = localStorage.getItem(STORAGE_KEYS.TOKEN_EXPIRY);
@@ -51,54 +51,11 @@ export function useGoogleCalendar() {
     if (token && expiry && Date.now() < parseInt(expiry, 10)) {
       return token;
     }
-    return null;
-  }, []);
-
-  // 🆕 토큰 유효성 검증 (API 호출로 실제 확인)
-  const validateToken = useCallback(async (accessToken) => {
-    if (!accessToken) return false;
     
-    try {
-      const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-        headers: { 'Authorization': `Bearer ${accessToken}` }
-      });
-      
-      if (response.ok) {
-        const userInfo = await response.json();
-        if (userInfo?.email) {
-          setUserEmail(userInfo.email);
-          localStorage.setItem(STORAGE_KEYS.USER_EMAIL, userInfo.email);
-        }
-        return true;
-      } else if (response.status === 401 || response.status === 403) {
-        // 🔐 토큰이 유효하지 않음 - 정리
-        console.warn('🔐 Token is invalid (401/403), clearing...');
-        clearStoredAuth();
-        return false;
-      }
-      return false;
-    } catch (e) {
-      console.warn('Token validation failed:', e);
-      return false;
-    }
-  }, [clearStoredAuth]);
-
-  // 사용자 정보 가져오기 (토큰 검증 포함)
-  const fetchUserInfo = useCallback(async (accessToken) => {
-    try {
-      const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-        headers: { 'Authorization': `Bearer ${accessToken}` }
-      });
-      
-      if (response.ok) {
-        return await response.json();
-      } else if (response.status === 401 || response.status === 403) {
-        // 토큰 무효 - 정리
-        console.warn('🔐 fetchUserInfo: Token invalid, clearing...');
-        clearStoredAuth();
-      }
-    } catch (e) {
-      console.warn('Failed to fetch user info:', e);
+    // 토큰 만료 시 정리
+    if (token) {
+      console.log('⏰ Token expired in getAccessToken, clearing...');
+      clearStoredAuth();
     }
     return null;
   }, [clearStoredAuth]);
@@ -148,7 +105,7 @@ export function useGoogleCalendar() {
     }
   }, [clearStoredAuth]);
 
-  // 토큰 응답 처리
+  // 토큰 응답 처리 (OAuth 로그인 성공 후)
   const handleTokenResponse = useCallback(async (response) => {
     console.log('Token response received:', response.error ? 'Error' : 'Success');
     
@@ -170,17 +127,26 @@ export function useGoogleCalendar() {
     setIsConnected(true);
     setError(null);
 
-    // 사용자 정보 가져오기
-    const userInfo = await fetchUserInfo(accessToken);
-    if (userInfo?.email) {
-      setUserEmail(userInfo.email);
-      localStorage.setItem(STORAGE_KEYS.USER_EMAIL, userInfo.email);
+    // 사용자 정보 가져오기 (로그인 직후에만 - 여기서만 userinfo API 호출)
+    try {
+      const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+      if (userResponse.ok) {
+        const userInfo = await userResponse.json();
+        if (userInfo?.email) {
+          setUserEmail(userInfo.email);
+          localStorage.setItem(STORAGE_KEYS.USER_EMAIL, userInfo.email);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to fetch user info:', e);
     }
 
     // 이벤트 가져오기
     await fetchEventsInternal(accessToken);
     setIsLoading(false);
-  }, [fetchUserInfo, fetchEventsInternal]);
+  }, [fetchEventsInternal]);
 
   // Google Identity Services 초기화
   const initializeGIS = useCallback(() => {
@@ -195,9 +161,7 @@ export function useGoogleCalendar() {
         tokenClientRef.current = google.accounts.oauth2.initTokenClient({
           client_id: GOOGLE_CLIENT_ID,
           scope: SCOPES,
-          callback: (response) => {
-            handleTokenResponse(response);
-          },
+          callback: handleTokenResponse,
         });
         isInitializedRef.current = true;
         console.log('Google OAuth initialized successfully');
@@ -216,62 +180,45 @@ export function useGoogleCalendar() {
       attempts++;
       if (createClient() || attempts >= maxAttempts) {
         clearInterval(checkGIS);
-        if (attempts >= maxAttempts && !isInitializedRef.current) {
-          console.warn('Google Identity Services failed to load');
-        }
       }
     }, 100);
   }, [handleTokenResponse]);
 
-  // 🆕 초기화 - localStorage에서 상태 복원 + 토큰 검증
+  // 초기화 - localStorage에서 상태 복원 (API 호출 없음!)
   useEffect(() => {
-    const initAuth = async () => {
-      if (isValidatingRef.current) return;
-      isValidatingRef.current = true;
+    const storedToken = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+    const storedExpiry = localStorage.getItem(STORAGE_KEYS.TOKEN_EXPIRY);
+    const storedEvents = localStorage.getItem(STORAGE_KEYS.EVENTS);
+    const storedEmail = localStorage.getItem(STORAGE_KEYS.USER_EMAIL);
+
+    // 토큰이 있고 만료 전이면 연결된 것으로 간주
+    if (storedToken && storedExpiry) {
+      const expiryTime = parseInt(storedExpiry, 10);
       
-      const storedToken = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
-      const storedExpiry = localStorage.getItem(STORAGE_KEYS.TOKEN_EXPIRY);
-      const storedEvents = localStorage.getItem(STORAGE_KEYS.EVENTS);
-      const storedEmail = localStorage.getItem(STORAGE_KEYS.USER_EMAIL);
-
-      // 토큰이 있으면 유효성 검증
-      if (storedToken && storedExpiry) {
-        const expiryTime = parseInt(storedExpiry, 10);
-        
-        if (Date.now() < expiryTime) {
-          // 만료 전 - 실제 API로 유효성 검증
-          console.log('🔍 Validating stored token...');
-          const isValid = await validateToken(storedToken);
-          
-          if (isValid) {
-            console.log('✅ Token is valid');
-            setIsConnected(true);
-            if (storedEmail) setUserEmail(storedEmail);
-            if (storedEvents) {
-              try {
-                setEvents(JSON.parse(storedEvents));
-              } catch (e) {
-                console.warn('Failed to parse stored events');
-              }
-            }
-          } else {
-            console.log('❌ Token is invalid, cleared');
-            // validateToken 내에서 이미 clearStoredAuth 호출됨
+      if (Date.now() < expiryTime) {
+        // 단순히 localStorage 기반으로 상태 복원 (API 호출 없음)
+        console.log('✅ Token found in storage, restoring state...');
+        setIsConnected(true);
+        if (storedEmail) setUserEmail(storedEmail);
+        if (storedEvents) {
+          try {
+            setEvents(JSON.parse(storedEvents));
+          } catch (e) {
+            console.warn('Failed to parse stored events');
           }
-        } else {
-          // 토큰 만료됨 - 정리
-          console.log('⏰ Token expired, clearing...');
-          clearStoredAuth();
         }
+      } else {
+        // 토큰 만료됨 - 정리
+        console.log('⏰ Token expired, clearing...');
+        localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+        localStorage.removeItem(STORAGE_KEYS.TOKEN_EXPIRY);
+        localStorage.removeItem(STORAGE_KEYS.USER_EMAIL);
       }
+    }
 
-      // Google Identity Services 초기화
-      initializeGIS();
-      isValidatingRef.current = false;
-    };
-
-    initAuth();
-  }, [clearStoredAuth, initializeGIS, validateToken]);
+    // Google Identity Services 초기화
+    initializeGIS();
+  }, [initializeGIS]);
 
   // Google 연결
   const connect = useCallback(async () => {
@@ -299,7 +246,7 @@ export function useGoogleCalendar() {
         console.log('Requesting access token...');
         tokenClientRef.current.requestAccessToken();
       } else {
-        throw new Error('Google OAuth가 초기화되지 않았습니다. 페이지를 새로고침해주세요.');
+        throw new Error('Google OAuth가 초기화되지 않았습니다.');
       }
     } catch (err) {
       console.error('Connect error:', err);
@@ -312,7 +259,7 @@ export function useGoogleCalendar() {
 
   // Google 연결 해제
   const disconnect = useCallback(() => {
-    const token = getAccessToken();
+    const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
     if (token && typeof google !== 'undefined' && google.accounts?.oauth2) {
       try {
         google.accounts.oauth2.revoke(token, () => {
@@ -326,7 +273,7 @@ export function useGoogleCalendar() {
     clearStoredAuth();
     setEvents([]);
     setError(null);
-  }, [getAccessToken, clearStoredAuth]);
+  }, [clearStoredAuth]);
 
   // 이벤트 가져오기 (외부용)
   const fetchEvents = useCallback(async () => {
