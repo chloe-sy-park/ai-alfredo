@@ -3,7 +3,8 @@ import {
   BarChart3, Calendar, Zap, FolderKanban, Settings,
   ChevronRight, ExternalLink, Check, X, RefreshCw,
   Mail, HardDrive, MessageSquare, Bell, Shield, HelpCircle,
-  Sparkles, Trophy, TrendingUp, Heart, Target, Flame, Download, Upload
+  Sparkles, Trophy, TrendingUp, Heart, Target, Flame, Download, Upload,
+  Moon, Sun
 } from 'lucide-react';
 
 // W2: 게이미피케이션
@@ -27,6 +28,7 @@ const DEFAULT_GAME_STATE = {
 
 var MorePage = function(props) {
   var darkMode = props.darkMode;
+  var setDarkMode = props.setDarkMode;
   var connections = props.connections || {};
   var onConnect = props.onConnect;
   var onDisconnect = props.onDisconnect;
@@ -167,12 +169,27 @@ var MorePage = function(props) {
             <h1 className={textPrimary + ' text-2xl font-bold'}>더보기</h1>
             <p className={textSecondary + ' text-sm mt-0.5'}>인사이트와 설정</p>
           </div>
-          <button 
-            onClick={onOpenSettings}
-            className={(darkMode ? 'bg-gray-700' : 'bg-white') + ' w-10 h-10 rounded-full flex items-center justify-center shadow-sm'}
-          >
-            <Settings size={20} className={textSecondary} />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* 다크모드 빠른 토글 */}
+            <button 
+              onClick={() => setDarkMode && setDarkMode(!darkMode)}
+              className={(darkMode ? 'bg-gray-700' : 'bg-white') + ' w-10 h-10 rounded-full flex items-center justify-center shadow-sm transition-all hover:scale-105'}
+              title={darkMode ? '라이트 모드로 전환' : '다크 모드로 전환'}
+            >
+              {darkMode ? (
+                <Sun size={20} className="text-amber-400" />
+              ) : (
+                <Moon size={20} className="text-gray-500" />
+              )}
+            </button>
+            {/* 설정 버튼 */}
+            <button 
+              onClick={onOpenSettings}
+              className={(darkMode ? 'bg-gray-700' : 'bg-white') + ' w-10 h-10 rounded-full flex items-center justify-center shadow-sm'}
+            >
+              <Settings size={20} className={textSecondary} />
+            </button>
+          </div>
         </div>
         
         {/* ===== 레벨 & XP 바 (클릭시 통계 페이지로) ===== */}
