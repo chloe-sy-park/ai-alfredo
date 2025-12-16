@@ -8,15 +8,20 @@ const STORAGE_KEYS = {
   ACTIONS: 'lifebutler_gmail_actions',
   LAST_FETCH: 'lifebutler_gmail_last_fetch',
   SETTINGS: 'lifebutler_gmail_settings',
+  VIP_SENDERS: 'lifebutler_gmail_vip_senders',
 };
 
 // 기본 이메일 설정
 const DEFAULT_SETTINGS = {
   fetchPeriod: 3,           // 1, 3, 7일
-  filterUnreadOnly: true,   // 안읽음만 / 전체
   maxEmails: 20,            // 10, 20, 50
   autoSyncMinutes: 30,      // 15, 30, 60, 0(수동)
   enabled: true,            // Gmail 연동 활성화
+  // 새로운 필터 옵션
+  priorityFilter: 'smart',  // 'smart' | 'important' | 'all'
+  // smart: 중요 + 별표 + VIP 발신자
+  // important: Gmail 중요 표시만
+  // all: 전체 (기간 내)
 };
 
 export function useGmail() {
@@ -29,6 +34,7 @@ export function useGmail() {
   const [error, setError] = useState(null);
   const [lastFetch, setLastFetch] = useState(null);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [vipSenders, setVipSenders] = useState([]); // VIP 발신자 목록
   
   const autoSyncRef = useRef(null);
 
@@ -39,11 +45,13 @@ export function useGmail() {
       const storedActions = localStorage.getItem(STORAGE_KEYS.ACTIONS);
       const storedLastFetch = localStorage.getItem(STORAGE_KEYS.LAST_FETCH);
       const storedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+      const storedVipSenders = localStorage.getItem(STORAGE_KEYS.VIP_SENDERS);
       
       if (storedEmails) setEmails(JSON.parse(storedEmails));
       if (storedActions) setActions(JSON.parse(storedActions));
       if (storedLastFetch) setLastFetch(new Date(storedLastFetch));
       if (storedSettings) setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(storedSettings) });
+      if (storedVipSenders) setVipSenders(JSON.parse(storedVipSenders));
     } catch (e) {
       console.warn('Failed to restore Gmail data');
     }
@@ -57,27 +65,56 @@ export function useGmail() {
     return updated;
   }, [settings]);
 
-  // 쿼리 빌드 (설정 기반)
+  // VIP 발신자 추가
+  const addVipSender = useCallback((email) => {
+    const updated = [...new Set([...vipSenders, email.toLowerCase()])];
+    setVipSenders(updated);
+    localStorage.setItem(STORAGE_KEYS.VIP_SENDERS, JSON.stringify(updated));
+  }, [vipSenders]);
+
+  // VIP 발신자 제거
+  const removeVipSender = useCallback((email) => {
+    const updated = vipSenders.filter(e => e !== email.toLowerCase());
+    setVipSenders(updated);
+    localStorage.setItem(STORAGE_KEYS.VIP_SENDERS, JSON.stringify(updated));
+  }, [vipSenders]);
+
+  // 쿼리 빌드 (설정 기반) - 중요/답변필요 우선
   const buildQuery = useCallback((options = {}) => {
     const period = options.fetchPeriod || settings.fetchPeriod;
-    const unreadOnly = options.filterUnreadOnly ?? settings.filterUnreadOnly;
+    const filter = options.priorityFilter || settings.priorityFilter;
     
     const parts = [];
     
     // 기간 설정
     parts.push(`newer_than:${period}d`);
     
-    // 안읽음 필터
-    if (unreadOnly) {
-      parts.push('is:unread');
-    }
-    
-    // 프로모션/소셜 제외 (액션 필요한 것만)
+    // 프로모션/소셜 제외 (항상)
     parts.push('-category:promotions');
     parts.push('-category:social');
     
+    // 필터 설정
+    if (filter === 'important') {
+      // Gmail이 중요 표시한 것만
+      parts.push('is:important');
+    } else if (filter === 'smart') {
+      // 중요 OR 별표 OR VIP 발신자
+      const smartParts = ['is:important', 'is:starred'];
+      
+      // VIP 발신자 추가
+      vipSenders.forEach(sender => {
+        smartParts.push(`from:${sender}`);
+      });
+      
+      // OR 조건으로 묶기 (최소 중요+별표는 포함)
+      if (smartParts.length > 0) {
+        parts.push(`(${smartParts.join(' OR ')})`);
+      }
+    }
+    // 'all'은 추가 필터 없음
+    
     return parts.join(' ');
-  }, [settings]);
+  }, [settings, vipSenders]);
 
   // 이메일 목록 가져오기
   const fetchEmails = useCallback(async (options = {}) => {
@@ -187,6 +224,7 @@ export function useGmail() {
         date: email.date,
         isUnread: email.isUnread,
         isImportant: email.isImportant,
+        isStarred: email.isStarred,
         category: email.category,
       }));
 
@@ -203,22 +241,24 @@ export function useGmail() {
               content: `당신은 Life Butler 앱의 AI 비서 알프레도입니다.
 아래 이메일 목록을 분석하고, 사용자가 해야 할 액션을 JSON 배열로 추출해주세요.
 
+**가장 중요**: 답장이 필요한 이메일을 우선적으로 식별하세요!
+
 분석 기준:
 1. 긴급도 (priority): urgent(빨강), high(노랑), medium(초록), low(회색)
-   - urgent: 오늘 내, ASAP, 마감 임박, 긴급 요청
-   - high: 상사/클라이언트, 회의 요청, 결제/송금, 중요 결정
+   - urgent: 오늘 내 답장 필요, ASAP, 마감 임박
+   - high: 상사/클라이언트, 회의 요청, 결제/송금, 질문에 답변 필요
    - medium: 일반 업무, 정보 요청, 팔로업 필요
    - low: 뉴스레터, 알림, 프로모션, 참고용
 
 2. 액션 유형 (actionType): reply, schedule, task, review, archive, ignore
-   - reply: 답장 필요
+   - reply: **답장 필요** (질문, 요청, 확인 필요 등)
    - schedule: 일정 잡기/회의 조율
    - task: 태스크로 변환 (문서 작성, 리뷰 등)
    - review: 검토/확인 필요
    - archive: 읽기만 하면 됨
-   - ignore: 무시해도 됨
+   - ignore: 무시해도 됨 (스팸, 불필요)
 
-3. 추천 액션 (suggestedAction): 구체적으로 어떤 행동을 해야 하는지
+3. 추천 액션 (suggestedAction): 구체적으로 어떤 행동을 해야 하는지 (한국어)
 
 이메일 목록:
 ${JSON.stringify(emailSummaries, null, 2)}
@@ -269,6 +309,7 @@ ${JSON.stringify(emailSummaries, null, 2)}
             snippet: email.snippet,
             date: email.date,
             isUnread: email.isUnread,
+            isImportant: email.isImportant,
           } : null,
           createdAt: new Date().toISOString(),
         };
@@ -298,13 +339,11 @@ ${JSON.stringify(emailSummaries, null, 2)}
 
   // 자동 동기화 설정
   useEffect(() => {
-    // 기존 타이머 제거
     if (autoSyncRef.current) {
       clearInterval(autoSyncRef.current);
       autoSyncRef.current = null;
     }
 
-    // 자동 동기화 활성화
     if (isConnected && settings.enabled && settings.autoSyncMinutes > 0) {
       autoSyncRef.current = setInterval(() => {
         fetchAndAnalyze();
@@ -337,7 +376,6 @@ ${JSON.stringify(emailSummaries, null, 2)}
       });
 
       if (response.ok) {
-        // 로컬 상태 업데이트
         setEmails(prev => prev.map(e => 
           e.id === messageId ? { ...e, isUnread: false } : e
         ));
@@ -379,7 +417,6 @@ ${JSON.stringify(emailSummaries, null, 2)}
   const toggleGmail = useCallback((enabled) => {
     updateSettings({ enabled });
     if (!enabled) {
-      // 비활성화시 데이터 초기화
       setEmails([]);
       setActions([]);
       localStorage.removeItem(STORAGE_KEYS.EMAILS);
@@ -390,17 +427,25 @@ ${JSON.stringify(emailSummaries, null, 2)}
   // Gmail 연결 (Google 로그인 트리거)
   const connectGmail = useCallback(async () => {
     if (!isConnected) {
-      // Google 로그인 필요
       if (login) {
         await login();
       }
       return false;
     }
-    // 이미 연결됨 - 동기화 시작
     toggleGmail(true);
     await fetchAndAnalyze();
     return true;
   }, [isConnected, login, toggleGmail, fetchAndAnalyze]);
+
+  // === 브리핑용 통계 ===
+  
+  // 답장 필요한 액션만 필터
+  const replyActions = actions.filter(a => a.actionType === 'reply');
+  
+  // 긴급 답장 (urgent + high)
+  const urgentReplyActions = replyActions.filter(a => 
+    a.priority === 'urgent' || a.priority === 'high'
+  );
 
   // 통계
   const stats = {
@@ -408,6 +453,9 @@ ${JSON.stringify(emailSummaries, null, 2)}
     unread: emails.filter(e => e.isUnread).length,
     urgent: actions.filter(a => a.priority === 'urgent').length,
     needsAction: actions.filter(a => ['reply', 'schedule', 'task'].includes(a.actionType)).length,
+    // 브리핑용
+    needsReply: replyActions.length,
+    urgentReply: urgentReplyActions.length,
   };
 
   // 마지막 동기화 시간 표시용
@@ -415,7 +463,7 @@ ${JSON.stringify(emailSummaries, null, 2)}
     if (!lastFetch) return '동기화 안됨';
     
     const now = new Date();
-    const diff = Math.floor((now - lastFetch) / 1000 / 60); // 분 단위
+    const diff = Math.floor((now - lastFetch) / 1000 / 60);
     
     if (diff < 1) return '방금 전';
     if (diff < 60) return `${diff}분 전`;
@@ -423,18 +471,32 @@ ${JSON.stringify(emailSummaries, null, 2)}
     return `${Math.floor(diff / 1440)}일 전`;
   }, [lastFetch]);
 
+  // 브리핑 메시지 생성
+  const getBriefingMessage = useCallback(() => {
+    if (!settings.enabled || !isConnected) return null;
+    if (replyActions.length === 0) return null;
+    
+    if (urgentReplyActions.length > 0) {
+      return `📧 긴급 답장 필요 ${urgentReplyActions.length}개`;
+    }
+    return `📧 답장 필요 ${replyActions.length}개`;
+  }, [settings.enabled, isConnected, replyActions, urgentReplyActions]);
+
   return {
     // 상태
     isConnected,
     isGmailEnabled: settings.enabled,
     emails,
     actions,
+    replyActions,        // 답장 필요한 것만
+    urgentReplyActions,  // 긴급 답장
     isLoading,
     isAnalyzing,
     error,
     lastFetch,
     stats,
     settings,
+    vipSenders,
     
     // 액션
     fetchEmails,
@@ -446,7 +508,10 @@ ${JSON.stringify(emailSummaries, null, 2)}
     toggleGmail,
     connectGmail,
     updateSettings,
+    addVipSender,
+    removeVipSender,
     getLastSyncText,
+    getBriefingMessage,
   };
 }
 

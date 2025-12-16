@@ -60,7 +60,6 @@ function EmailActionCard({ action, darkMode, onComplete, onCreateTask, onCreateE
     switch (action.actionType) {
       case 'reply':
         if (onReply) onReply(action);
-        // Gmail 열기
         window.open(`https://mail.google.com/mail/u/0/#inbox/${action.emailId}`, '_blank');
         break;
       case 'schedule':
@@ -76,7 +75,6 @@ function EmailActionCard({ action, darkMode, onComplete, onCreateTask, onCreateE
 
   return (
     <div className={`${cardBg} ${colors.border} border rounded-xl p-4 transition-all hover:shadow-md`}>
-      {/* 헤더 */}
       <div className="flex items-start gap-3 mb-3">
         <div className={`w-2 h-2 rounded-full ${colors.dot} mt-2 flex-shrink-0`} />
         <div className="flex-1 min-w-0">
@@ -94,7 +92,6 @@ function EmailActionCard({ action, darkMode, onComplete, onCreateTask, onCreateE
         </div>
       </div>
       
-      {/* 추천 액션 */}
       <div className={`${colors.bg} rounded-lg p-3 mb-3`}>
         <p className={`${colors.text} text-sm`}>
           💡 {action.suggestedAction}
@@ -107,7 +104,6 @@ function EmailActionCard({ action, darkMode, onComplete, onCreateTask, onCreateE
         )}
       </div>
       
-      {/* 액션 버튼 */}
       <div className="flex items-center gap-2">
         <button
           onClick={handleAction}
@@ -128,18 +124,100 @@ function EmailActionCard({ action, darkMode, onComplete, onCreateTask, onCreateE
   );
 }
 
-// 메인 인박스 컴포넌트
+// ===== 브리핑용 컴팩트 위젯 (홈에서 사용) =====
+export function EmailBriefingWidget({ darkMode = false, onNavigate }) {
+  const gmail = useGmail();
+  
+  const cardBg = darkMode ? 'bg-gray-800/90' : 'bg-white/90';
+  const textPrimary = darkMode ? 'text-gray-100' : 'text-gray-800';
+  const textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  const borderColor = darkMode ? 'border-gray-700' : 'border-[#A996FF]/20';
+
+  // 연결 안됨 또는 비활성화
+  if (!gmail.isConnected || !gmail.isGmailEnabled) {
+    return null; // 브리핑에서는 숨김
+  }
+
+  // 답장 필요 없으면 숨김
+  if (gmail.replyActions.length === 0) {
+    return null;
+  }
+
+  // 최대 3개만 표시
+  const displayActions = gmail.replyActions.slice(0, 3);
+  const hasMore = gmail.replyActions.length > 3;
+
+  return (
+    <div className={`${cardBg} backdrop-blur-xl rounded-2xl shadow-sm p-4 border ${borderColor}`}>
+      {/* 헤더 */}
+      <button 
+        onClick={onNavigate}
+        className="w-full flex items-center justify-between mb-3 group"
+      >
+        <div className="flex items-center gap-2">
+          <Reply size={18} className="text-[#A996FF]" />
+          <span className={`${textPrimary} font-bold`}>답장 필요</span>
+          {gmail.urgentReplyActions.length > 0 && (
+            <span className="text-xs bg-red-500 text-white px-1.5 py-0.5 rounded-full">
+              {gmail.urgentReplyActions.length} 긴급
+            </span>
+          )}
+        </div>
+        <ChevronRight size={18} className={`${textSecondary} group-hover:text-[#A996FF] transition-colors`} />
+      </button>
+      
+      {/* 리스트 - 최대 3개 */}
+      <div className="space-y-2">
+        {displayActions.map((action) => {
+          const colors = PRIORITY_COLORS[action.priority] || PRIORITY_COLORS.medium;
+          return (
+            <button
+              key={action.emailId}
+              onClick={() => window.open(`https://mail.google.com/mail/u/0/#inbox/${action.emailId}`, '_blank')}
+              className={`w-full ${darkMode ? 'bg-gray-700/50 hover:bg-gray-700' : 'bg-gray-50 hover:bg-gray-100'} rounded-xl p-3 transition-all text-left`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-2 h-2 rounded-full ${colors.dot} flex-shrink-0`} />
+                <div className="flex-1 min-w-0">
+                  <p className={`${textPrimary} text-sm font-medium truncate`}>
+                    {action.email?.from?.name || action.email?.from?.email}
+                  </p>
+                  <p className={`${textSecondary} text-xs truncate`}>
+                    {action.email?.subject}
+                  </p>
+                </div>
+                <ExternalLink size={14} className={textSecondary} />
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      
+      {/* 더보기 */}
+      {hasMore && (
+        <button
+          onClick={onNavigate}
+          className={`w-full text-center py-2 mt-2 ${textSecondary} text-sm hover:text-[#A996FF]`}
+        >
+          +{gmail.replyActions.length - 3}개 더보기
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ===== 메인 인박스 컴포넌트 (전체 페이지) =====
 export function EmailInbox({ 
   darkMode = false, 
   compact = false, 
   onCreateTask, 
   onCreateEvent,
-  onViewAll 
+  onViewAll,
+  onBack
 }) {
   const gmail = useGmail();
-  const [filter, setFilter] = useState('all'); // 'all' | 'urgent'
+  const [filter, setFilter] = useState('reply'); // 'reply' | 'all' | 'urgent'
   
-  // 컴포넌트 마운트시 데이터 로드
   useEffect(() => {
     if (gmail.isConnected && gmail.isGmailEnabled && gmail.actions.length === 0) {
       gmail.fetchAndAnalyze();
@@ -152,12 +230,11 @@ export function EmailInbox({
   const borderColor = darkMode ? 'border-gray-700' : 'border-[#A996FF]/20';
   
   // 필터링된 액션
-  const filteredActions = filter === 'urgent' 
-    ? gmail.actions.filter(a => a.priority === 'urgent' || a.priority === 'high')
-    : gmail.actions;
-  
-  // 표시할 액션 (compact 모드면 3개만)
-  const displayActions = compact ? filteredActions.slice(0, 3) : filteredActions;
+  const filteredActions = filter === 'reply' 
+    ? gmail.replyActions
+    : filter === 'urgent'
+      ? gmail.actions.filter(a => a.priority === 'urgent' || a.priority === 'high')
+      : gmail.actions;
   
   // 태스크 생성 핸들러
   const handleCreateTask = (action) => {
@@ -203,7 +280,7 @@ export function EmailInbox({
               </div>
               <div className="text-left">
                 <p className={`${textPrimary} font-medium`}>Gmail 연결하기</p>
-                <p className={`${textSecondary} text-xs`}>이메일에서 액션을 추출해요</p>
+                <p className={`${textSecondary} text-xs`}>중요 이메일을 분석해요</p>
               </div>
             </div>
             <ChevronRight size={18} className={textSecondary} />
@@ -240,95 +317,9 @@ export function EmailInbox({
     );
   }
 
-  // Compact 위젯 모드
+  // Compact 위젯 모드 (구버전 호환용)
   if (compact) {
-    return (
-      <div className={`${cardBg} backdrop-blur-xl rounded-2xl shadow-sm p-4 border ${borderColor}`}>
-        {/* 헤더 */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Mail size={18} className="text-[#A996FF]" />
-            <span className={`${textPrimary} font-bold`}>이메일</span>
-          </div>
-          <button
-            onClick={() => gmail.fetchAndAnalyze()}
-            disabled={gmail.isLoading || gmail.isAnalyzing}
-            className={`${textSecondary} hover:text-[#A996FF] disabled:opacity-50`}
-          >
-            {(gmail.isLoading || gmail.isAnalyzing) ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : (
-              <RefreshCw size={18} />
-            )}
-          </button>
-        </div>
-        
-        {/* 연결 상태 */}
-        <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-200/20">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-500" />
-            <span className={`${textSecondary} text-xs`}>Gmail 연결됨</span>
-          </div>
-          <span className={`${textSecondary} text-xs`}>{gmail.getLastSyncText()}</span>
-        </div>
-        
-        {/* 로딩 상태 */}
-        {(gmail.isLoading || gmail.isAnalyzing) && gmail.actions.length === 0 && (
-          <div className="text-center py-6">
-            <Loader2 size={24} className="text-[#A996FF] animate-spin mx-auto mb-2" />
-            <p className={`${textSecondary} text-sm`}>
-              {gmail.isLoading ? '이메일 가져오는 중...' : '분석 중...'}
-            </p>
-          </div>
-        )}
-        
-        {/* 액션 없음 */}
-        {!gmail.isLoading && !gmail.isAnalyzing && displayActions.length === 0 && (
-          <div className="text-center py-4">
-            <p className={`${textSecondary} text-sm`}>처리할 이메일이 없어요 ✨</p>
-          </div>
-        )}
-        
-        {/* 액션 리스트 */}
-        {displayActions.length > 0 && (
-          <div className="space-y-2">
-            {displayActions.map((action) => {
-              const colors = PRIORITY_COLORS[action.priority] || PRIORITY_COLORS.medium;
-              return (
-                <button
-                  key={action.emailId}
-                  onClick={onViewAll}
-                  className={`w-full ${darkMode ? 'bg-gray-700/50 hover:bg-gray-700' : 'bg-gray-50 hover:bg-gray-100'} rounded-xl p-3 transition-all text-left`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${colors.dot} flex-shrink-0`} />
-                    <div className="flex-1 min-w-0">
-                      <p className={`${textPrimary} text-sm font-medium truncate`}>
-                        {action.email?.from?.name || action.email?.from?.email}
-                      </p>
-                      <p className={`${textSecondary} text-xs truncate`}>
-                        {action.suggestedAction}
-                      </p>
-                    </div>
-                    <ChevronRight size={16} className={textSecondary} />
-                  </div>
-                </button>
-              );
-            })}
-            
-            {/* 더보기 */}
-            {filteredActions.length > 3 && (
-              <button
-                onClick={onViewAll}
-                className={`w-full text-center py-2 ${textSecondary} text-sm hover:text-[#A996FF]`}
-              >
-                +{filteredActions.length - 3}개 더보기
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-    );
+    return <EmailBriefingWidget darkMode={darkMode} onNavigate={onViewAll} />;
   }
   
   // 전체 인박스 모드
@@ -338,10 +329,10 @@ export function EmailInbox({
       <div className="px-4 pt-6 pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={onViewAll} className={`${textSecondary} text-xl`}>←</button>
+            <button onClick={onBack || onViewAll} className={`${textSecondary} text-xl`}>←</button>
             <h1 className={`${textPrimary} text-2xl font-bold`}>인박스 📬</h1>
           </div>
-          <span className={`${textSecondary} text-sm`}>{gmail.actions.length}개 항목</span>
+          <span className={`${textSecondary} text-sm`}>{filteredActions.length}개</span>
         </div>
         
         {/* 연결 상태 바 */}
@@ -372,24 +363,34 @@ export function EmailInbox({
         {/* 필터 탭 */}
         <div className={`${cardBg} rounded-xl p-1 mt-3 flex`}>
           <button
-            onClick={() => setFilter('all')}
+            onClick={() => setFilter('reply')}
             className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filter === 'all' 
-                ? 'bg-white text-gray-800 shadow-sm' 
+              filter === 'reply' 
+                ? 'bg-[#A996FF] text-white shadow-sm' 
                 : `${textSecondary}`
             }`}
           >
-            전체
+            답장 필요
           </button>
           <button
             onClick={() => setFilter('urgent')}
             className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
               filter === 'urgent' 
-                ? 'bg-white text-gray-800 shadow-sm' 
+                ? 'bg-[#A996FF] text-white shadow-sm' 
                 : `${textSecondary}`
             }`}
           >
             긴급
+          </button>
+          <button
+            onClick={() => setFilter('all')}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+              filter === 'all' 
+                ? 'bg-[#A996FF] text-white shadow-sm' 
+                : `${textSecondary}`
+            }`}
+          >
+            전체
           </button>
         </div>
       </div>
@@ -401,7 +402,7 @@ export function EmailInbox({
           <div className="text-center py-12">
             <Loader2 size={32} className="text-[#A996FF] animate-spin mx-auto mb-3" />
             <p className={`${textPrimary} font-medium`}>
-              {gmail.isLoading ? '이메일 가져오는 중...' : 'AI가 분석 중...'}
+              {gmail.isLoading ? '중요 이메일 가져오는 중...' : 'AI가 분석 중...'}
             </p>
             <p className={`${textSecondary} text-sm mt-1`}>잠시만 기다려주세요</p>
           </div>
@@ -410,11 +411,13 @@ export function EmailInbox({
         {/* 빈 상태 */}
         {!gmail.isLoading && !gmail.isAnalyzing && filteredActions.length === 0 && (
           <div className="text-center py-12">
-            <div className="text-4xl mb-3">📭</div>
-            <p className={`${textPrimary} font-medium`}>인박스가 비어있어요</p>
-            <p className={`${textSecondary} text-sm mt-1`}>
-              {filter === 'urgent' ? '긴급한 이메일이 없어요' : '처리할 이메일이 없어요'}
+            <div className="text-4xl mb-3">✨</div>
+            <p className={`${textPrimary} font-medium`}>
+              {filter === 'reply' ? '답장할 이메일이 없어요' : 
+               filter === 'urgent' ? '긴급한 이메일이 없어요' : 
+               '처리할 이메일이 없어요'}
             </p>
+            <p className={`${textSecondary} text-sm mt-1`}>잘 하고 있어요!</p>
           </div>
         )}
         
