@@ -255,7 +255,7 @@ export var AlfredoBriefingV2 = function(props) {
   var hasMoreLines = briefing.lines.length > 2;
   
   return React.createElement('div', { 
-    className: 'rounded-3xl overflow-hidden mb-6 shadow-xl ' +
+    className: 'rounded-3xl overflow-hidden mb-6 shadow-xl animate-fadeIn ' +
       (darkMode 
         ? 'bg-gradient-to-br from-[#2C2C2E] to-[#1D1D1F]' 
         : 'bg-gradient-to-br from-[#E8E4F3] to-[#D4CCE8]')
@@ -263,13 +263,13 @@ export var AlfredoBriefingV2 = function(props) {
     React.createElement('div', { className: 'p-5' },
       // 헤더: 아바타 + 인사 + 모드 선택
       React.createElement('div', { className: 'flex items-start gap-4' },
-        // 알프레도 아바타 (원형)
+        // 알프레도 아바타 (원형) - 글로우 효과 추가
         React.createElement('div', { 
-          className: 'w-16 h-16 rounded-full bg-[#A996FF] flex items-center justify-center text-3xl shadow-lg flex-shrink-0'
+          className: 'w-16 h-16 rounded-full bg-[#A996FF] flex items-center justify-center text-3xl shadow-lg shadow-[#A996FF]/30 flex-shrink-0 animate-fadeIn'
         }, '🐧'),
         
         // 인사말 타이틀
-        React.createElement('div', { className: 'flex-1 min-w-0' },
+        React.createElement('div', { className: 'flex-1 min-w-0 animate-fadeInUp' },
           React.createElement('h1', { 
             className: (darkMode ? 'text-white' : 'text-gray-900') + 
               ' text-2xl font-bold leading-tight whitespace-pre-line'
@@ -280,7 +280,7 @@ export var AlfredoBriefingV2 = function(props) {
         React.createElement('div', { className: 'relative' },
           React.createElement('button', {
             onClick: function() { setShowModeDropdown(!showModeDropdown); },
-            className: 'flex items-center gap-1.5 px-3 py-2 rounded-full transition-all ' +
+            className: 'flex items-center gap-1.5 px-3 py-2 rounded-full transition-all btn-press ' +
               (darkMode ? 'bg-white/10 hover:bg-white/20' : 'bg-white/60 hover:bg-white/80') +
               ' shadow-sm'
           },
@@ -290,13 +290,14 @@ export var AlfredoBriefingV2 = function(props) {
             }, currentMode.label),
             React.createElement(ChevronDown, { 
               size: 14, 
-              className: darkMode ? 'text-gray-300' : 'text-gray-500' 
+              className: (darkMode ? 'text-gray-300' : 'text-gray-500') + 
+                (showModeDropdown ? ' rotate-180' : '') + ' transition-transform'
             })
           ),
           
-          // 드롭다운
+          // 드롭다운 - 애니메이션 적용
           showModeDropdown && React.createElement('div', {
-            className: 'absolute right-0 top-full mt-2 w-36 rounded-2xl shadow-xl overflow-hidden z-10 ' +
+            className: 'absolute right-0 top-full mt-2 w-36 rounded-2xl shadow-xl overflow-hidden z-10 animate-fadeInDown ' +
               (darkMode ? 'bg-[#3A3A3C]' : 'bg-white')
           },
             Object.values(MODES).map(function(m) {
@@ -304,7 +305,7 @@ export var AlfredoBriefingV2 = function(props) {
               return React.createElement('button', {
                 key: m.id,
                 onClick: function() { if (setMode) setMode(m.id); setShowModeDropdown(false); },
-                className: 'w-full flex items-center gap-2 px-4 py-3 transition-all ' +
+                className: 'w-full flex items-center gap-2 px-4 py-3 transition-all btn-press ' +
                   (isActive 
                     ? 'bg-[#A996FF]/20' 
                     : (darkMode ? 'hover:bg-white/10' : 'hover:bg-gray-50'))
@@ -323,18 +324,20 @@ export var AlfredoBriefingV2 = function(props) {
       React.createElement('div', { className: 'mt-4' },
         // 보이는 줄들
         visibleLines.map(function(line, idx) {
+          var delayClass = idx === 0 ? '' : idx === 1 ? 'animate-delay-100' : idx === 2 ? 'animate-delay-200' : 'animate-delay-300';
           return React.createElement('p', {
             key: idx,
-            className: (darkMode ? 'text-gray-200' : 'text-gray-700') + ' text-sm leading-relaxed mb-1.5'
+            className: (darkMode ? 'text-gray-200' : 'text-gray-700') + 
+              ' text-sm leading-relaxed mb-1.5 animate-fadeInUp ' + delayClass
           }, line);
         }),
         
         // 펼쳐진 상태에서 리마인더 버튼
         isExpanded && briefing.reminderItem && React.createElement('button', {
           onClick: function() { if (onAction) onAction('openReminder', briefing.reminderItem.data); },
-          className: 'mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full ' +
+          className: 'mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full animate-fadeInUp animate-delay-300 btn-press ' +
             (darkMode ? 'bg-white/10 hover:bg-white/15' : 'bg-white/60 hover:bg-white/80') + 
-            ' transition-all active:scale-95'
+            ' transition-all'
         },
           React.createElement('span', { className: 'text-pink-400' }, '♡'),
           React.createElement('span', { 
@@ -346,10 +349,10 @@ export var AlfredoBriefingV2 = function(props) {
       // 더보기/접기 토글
       hasMoreLines && React.createElement('button', {
         onClick: function() { setExpanded(!isExpanded); },
-        className: 'w-full flex items-center justify-center pt-4 mt-2'
+        className: 'w-full flex items-center justify-center pt-4 mt-2 btn-press'
       },
         React.createElement('div', { 
-          className: 'w-0 h-0 border-l-8 border-r-8 border-transparent ' +
+          className: 'w-0 h-0 border-l-8 border-r-8 border-transparent transition-transform ' +
             (isExpanded 
               ? 'border-t-8 ' + (darkMode ? 'border-t-gray-400' : 'border-t-gray-500')
               : 'border-b-8 ' + (darkMode ? 'border-b-gray-400' : 'border-b-gray-500'))
