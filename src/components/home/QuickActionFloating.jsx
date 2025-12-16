@@ -19,6 +19,11 @@ export var QuickActionFloating = function(props) {
   var isExpanded = expandedState[0];
   var setExpanded = expandedState[1];
   
+  // 애니메이션 딜레이 클래스
+  var getDelayClass = function(idx) {
+    return 'animate-delay-' + (idx * 100);
+  };
+  
   return React.createElement('div', { 
     className: 'fixed bottom-6 left-6 z-50'
   },
@@ -28,18 +33,19 @@ export var QuickActionFloating = function(props) {
     },
       QUICK_ACTIONS.map(function(action, idx) {
         var Icon = action.icon;
+        var delayClass = getDelayClass(QUICK_ACTIONS.length - 1 - idx);
         return React.createElement('button', {
           key: action.id,
           onClick: function() { 
             if (onAction) onAction(action.id); 
             setExpanded(false);
           },
-          className: 'flex items-center gap-3 px-4 py-3 rounded-2xl shadow-lg transition-all ' +
-            'hover:scale-105 active:scale-95 ' +
+          className: 'flex items-center gap-3 px-4 py-3 rounded-2xl shadow-lg ' +
+            'animate-fadeInUp ' + delayClass + ' btn-press card-hover ' +
             (darkMode ? 'bg-[#2C2C2E]' : 'bg-white')
         },
           React.createElement('div', { 
-            className: action.color + ' w-8 h-8 rounded-xl flex items-center justify-center text-white'
+            className: action.color + ' w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-sm'
           },
             React.createElement(Icon, { size: 16 })
           ),
@@ -53,20 +59,22 @@ export var QuickActionFloating = function(props) {
     // 메인 버튼
     React.createElement('button', {
       onClick: function() { setExpanded(!isExpanded); },
-      className: 'w-14 h-14 rounded-full flex items-center justify-center shadow-xl transition-all ' +
-        'hover:scale-105 active:scale-95 ' +
+      className: 'w-14 h-14 rounded-full flex items-center justify-center shadow-xl transition-all btn-press ' +
         (isExpanded 
-          ? (darkMode ? 'bg-[#3A3A3C]' : 'bg-gray-200')
-          : 'bg-[#A996FF] shadow-[#A996FF]/40')
+          ? (darkMode ? 'bg-[#3A3A3C] rotate-45' : 'bg-gray-200 rotate-45')
+          : 'bg-[#A996FF] shadow-[#A996FF]/40 hover:shadow-xl hover:shadow-[#A996FF]/50')
     },
-      isExpanded 
-        ? React.createElement(X, { size: 24, className: darkMode ? 'text-white' : 'text-gray-700' })
-        : React.createElement(Plus, { size: 24, className: 'text-white' })
+      React.createElement(Plus, { 
+        size: 24, 
+        className: isExpanded 
+          ? (darkMode ? 'text-white' : 'text-gray-700') 
+          : 'text-white'
+      })
     ),
     
     // 배경 오버레이 (펼쳤을 때)
     isExpanded && React.createElement('div', {
-      className: 'fixed inset-0 -z-10',
+      className: 'fixed inset-0 -z-10 bg-black/20 backdrop-blur-sm animate-fadeIn',
       onClick: function() { setExpanded(false); }
     })
   );
@@ -81,15 +89,15 @@ export var ChatFloating = function(props) {
   return React.createElement('button', {
     onClick: onClick,
     className: 'fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center ' +
-      'shadow-xl transition-all hover:scale-105 active:scale-95 ' +
-      'bg-[#A996FF] shadow-[#A996FF]/40'
+      'shadow-xl transition-all btn-press ' +
+      'bg-[#A996FF] shadow-[#A996FF]/40 hover:shadow-xl hover:shadow-[#A996FF]/50 hover:scale-105'
   },
     React.createElement('span', { className: 'text-2xl' }, '🐧'),
     
     // 읽지 않은 메시지 표시
     hasUnread && React.createElement('div', {
       className: 'absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center ' +
-        'text-white text-xs font-bold ring-2 ring-white'
+        'text-white text-xs font-bold ring-2 ring-white notif-badge'
     }, '!')
   );
 };
