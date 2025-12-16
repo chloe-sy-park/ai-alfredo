@@ -4,11 +4,147 @@ import {
   ChevronRight, Clock, Calendar, CheckCircle2, Circle, Target,
   AlertCircle, TrendingUp, TrendingDown, Minus, Sparkles,
   Plus, MessageSquare, Search, Bell, Settings, Inbox, FolderKanban,
-  Heart, Users, Activity, Smile
+  Heart, Users, Activity, Smile, Rocket, Shield, Flame, Check
 } from 'lucide-react';
 import UnifiedTimelineView from './UnifiedTimelineView';
 import { AlfredoEmptyState } from '../common/AlfredoEmptyState';
 import AlfredoStatusBar from '../common/AlfredoStatusBar';
+
+// 알프레도 모드 선택 컴포넌트
+var AlfredoModeSelector = function(props) {
+  var darkMode = props.darkMode;
+  var mood = props.mood;
+  var energy = props.energy;
+  var tasks = props.tasks || [];
+  var currentMode = props.currentMode;
+  var setCurrentMode = props.setCurrentMode;
+  
+  var expandedState = useState(false);
+  var isExpanded = expandedState[0];
+  var setIsExpanded = expandedState[1];
+  
+  var cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
+  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+  var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  var borderColor = darkMode ? 'border-gray-700' : 'border-gray-200';
+  
+  var modes = [
+    { 
+      id: 'focus', 
+      emoji: '🔥', 
+      label: 'Focus 모드', 
+      description: '방해 최소화, 집중 극대화',
+      color: 'text-orange-500',
+      bgColor: 'bg-orange-500/10',
+      borderActive: 'border-orange-500'
+    },
+    { 
+      id: 'care', 
+      emoji: '💙', 
+      label: 'Care 모드', 
+      description: '부드럽게, 천천히',
+      color: 'text-blue-500',
+      bgColor: 'bg-blue-500/10',
+      borderActive: 'border-blue-500'
+    },
+    { 
+      id: 'challenge', 
+      emoji: '🚀', 
+      label: 'Challenge 모드', 
+      description: '도전적으로, 성취감 UP',
+      color: 'text-emerald-500',
+      bgColor: 'bg-emerald-500/10',
+      borderActive: 'border-emerald-500'
+    }
+  ];
+  
+  // 추천 모드 계산
+  var getRecommendedMode = function() {
+    // 에너지 낮거나 기분 안좋으면 Care
+    if ((energy && energy <= 2) || (mood && mood <= 2)) {
+      return 'care';
+    }
+    // 에너지 높고 할일 많으면 Challenge
+    var incompleteTasks = tasks.filter(function(t) { return !t.completed; });
+    if ((energy && energy >= 4) && incompleteTasks.length >= 3) {
+      return 'challenge';
+    }
+    // 기본은 Focus
+    return 'focus';
+  };
+  
+  var recommendedMode = getRecommendedMode();
+  var activeMode = currentMode || recommendedMode;
+  var activeModeData = modes.find(function(m) { return m.id === activeMode; }) || modes[0];
+  var recommendedModeData = modes.find(function(m) { return m.id === recommendedMode; }) || modes[0];
+  
+  // 축소된 상태
+  if (!isExpanded) {
+    return React.createElement('button', {
+      onClick: function() { setIsExpanded(true); },
+      className: cardBg + ' rounded-2xl p-3 mb-4 border ' + borderColor + ' w-full flex items-center justify-between hover:border-[#A996FF]/50 transition-all'
+    },
+      React.createElement('div', { className: 'flex items-center gap-3' },
+        React.createElement('span', { className: 'text-xl' }, '🐧'),
+        React.createElement('span', { className: textSecondary + ' text-sm' }, '알프레도 모드')
+      ),
+      React.createElement('div', { className: 'flex items-center gap-2' },
+        React.createElement('span', { className: textSecondary + ' text-xs' }, '추천:'),
+        React.createElement('span', { className: recommendedModeData.color + ' text-sm font-medium' }, 
+          recommendedModeData.emoji + ' ' + recommendedModeData.label
+        ),
+        currentMode && currentMode === recommendedMode && React.createElement(Check, { 
+          size: 16, 
+          className: 'text-emerald-500' 
+        })
+      )
+    );
+  }
+  
+  // 확장된 상태
+  return React.createElement('div', { className: cardBg + ' rounded-2xl p-4 mb-4 border ' + borderColor },
+    React.createElement('div', { className: 'flex items-center justify-between mb-3' },
+      React.createElement('h3', { className: textPrimary + ' font-bold flex items-center gap-2' },
+        React.createElement('span', null, '🐧'),
+        '알프레도 모드'
+      ),
+      React.createElement('button', {
+        onClick: function() { setIsExpanded(false); },
+        className: 'text-xs text-[#A996FF] font-medium'
+      }, '완료')
+    ),
+    
+    React.createElement('div', { className: 'space-y-2' },
+      modes.map(function(mode) {
+        var isActive = activeMode === mode.id;
+        var isRecommended = recommendedMode === mode.id;
+        
+        return React.createElement('button', {
+          key: mode.id,
+          onClick: function() { 
+            if (setCurrentMode) setCurrentMode(mode.id);
+          },
+          className: 'w-full flex items-center gap-3 p-3 rounded-xl border transition-all ' +
+            (isActive 
+              ? mode.bgColor + ' ' + mode.borderActive + ' border-2'
+              : (darkMode ? 'border-gray-700 hover:bg-gray-700' : 'border-gray-200 hover:bg-gray-50'))
+        },
+          React.createElement('span', { className: 'text-2xl' }, mode.emoji),
+          React.createElement('div', { className: 'flex-1 text-left' },
+            React.createElement('div', { className: 'flex items-center gap-2' },
+              React.createElement('span', { className: textPrimary + ' font-medium text-sm' }, mode.label),
+              isRecommended && React.createElement('span', { 
+                className: 'text-[10px] px-1.5 py-0.5 rounded-full bg-[#A996FF]/20 text-[#A996FF]' 
+              }, '추천')
+            ),
+            React.createElement('p', { className: textSecondary + ' text-xs' }, mode.description)
+          ),
+          isActive && React.createElement(Check, { size: 18, className: mode.color })
+        );
+      })
+    )
+  );
+};
 
 // 알프레도 상세 브리핑 (날씨, 통계, 다음 일정)
 var AlfredoDetailBriefing = function(props) {
@@ -491,6 +627,11 @@ var HomePage = function(props) {
   var onStartFocus = props.onStartFocus;
   var onOpenReminder = props.onOpenReminder;
   var onOpenSearch = props.onOpenSearch;
+  
+  // 알프레도 모드 상태
+  var modeState = useState(null);
+  var alfredoMode = modeState[0];
+  var setAlfredoMode = modeState[1];
 
   var bgColor = darkMode ? 'bg-gray-900' : 'bg-[#F0EBFF]';
   var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
@@ -554,6 +695,25 @@ var HomePage = function(props) {
         onOpenChat: onOpenChat
       }),
       
+      // ⭐ 컨디션 퀵체크 (퀵액션 위로 이동)
+      React.createElement(ConditionQuickCheck, {
+        darkMode: darkMode,
+        mood: mood,
+        energy: energy,
+        setMood: setMood,
+        setEnergy: setEnergy
+      }),
+      
+      // ⭐ 알프레도 모드 선택 (NEW!)
+      React.createElement(AlfredoModeSelector, {
+        darkMode: darkMode,
+        mood: mood,
+        energy: energy,
+        tasks: tasks,
+        currentMode: alfredoMode,
+        setCurrentMode: setAlfredoMode
+      }),
+      
       // 퀵 액션 버튼들
       React.createElement(QuickActions, {
         darkMode: darkMode,
@@ -564,13 +724,14 @@ var HomePage = function(props) {
         onOpenInbox: onOpenInbox
       }),
       
-      // 컨디션 퀵체크
-      React.createElement(ConditionQuickCheck, {
+      // ⭐ 지금 할 일 (Big3 위로 이동)
+      React.createElement(NowCard, {
         darkMode: darkMode,
-        mood: mood,
-        energy: energy,
-        setMood: setMood,
-        setEnergy: setEnergy
+        tasks: tasks,
+        events: events,
+        onStartTask: onStartFocus,
+        onOpenTask: onOpenTask,
+        onAddTask: onOpenAddTask
       }),
       
       // 오늘의 Big3
@@ -588,16 +749,6 @@ var HomePage = function(props) {
         relationships: relationships,
         onOpenTask: onOpenTask,
         onOpenReminder: onOpenReminder
-      }),
-      
-      // 지금 할 일
-      React.createElement(NowCard, {
-        darkMode: darkMode,
-        tasks: tasks,
-        events: events,
-        onStartTask: onStartFocus,
-        onOpenTask: onOpenTask,
-        onAddTask: onOpenAddTask
       }),
       
       // 오늘 일정 타임라인
