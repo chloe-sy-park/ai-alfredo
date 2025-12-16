@@ -8,27 +8,15 @@ import {
 } from 'lucide-react';
 import UnifiedTimelineView from './UnifiedTimelineView';
 import { AlfredoEmptyState } from '../common/AlfredoEmptyState';
+import AlfredoStatusBar from '../common/AlfredoStatusBar';
 
-// 알프레도 브리핑 컴포넌트
-var AlfredoBriefing = function(props) {
+// 알프레도 상세 브리핑 (날씨, 통계, 다음 일정)
+var AlfredoDetailBriefing = function(props) {
   var darkMode = props.darkMode;
   var tasks = props.tasks || [];
   var events = props.events || [];
   var weather = props.weather;
-  var userName = props.userName || 'Boss';
   var onOpenChat = props.onOpenChat;
-  
-  var hour = new Date().getHours();
-  
-  // 시간대별 인사
-  var getGreeting = function() {
-    if (hour < 6) return '새벽이에요, ' + userName + '님 💤';
-    if (hour < 12) return '좋은 아침이에요, ' + userName + '님 ☀️';
-    if (hour < 14) return '점심 맛있게 드셨나요? 🍚';
-    if (hour < 18) return '오후도 화이팅이에요! 💪';
-    if (hour < 22) return '오늘 하루 수고하셨어요 🌙';
-    return '늦은 시간이네요, ' + userName + '님 🌛';
-  };
   
   // 통계 계산
   var todayTasks = tasks.filter(function(t) { return !t.completed; });
@@ -52,73 +40,50 @@ var AlfredoBriefing = function(props) {
   
   // 날씨 아이콘
   var getWeatherIcon = function() {
-    if (!weather) return React.createElement(Sun, { size: 16, className: "text-yellow-400" });
+    if (!weather) return React.createElement(Sun, { size: 14, className: "text-yellow-400" });
     var condition = (weather.condition || '').toLowerCase();
     if (condition.includes('rain') || condition.includes('비')) {
-      return React.createElement(CloudRain, { size: 16, className: "text-blue-400" });
+      return React.createElement(CloudRain, { size: 14, className: "text-blue-400" });
     }
     if (condition.includes('cloud') || condition.includes('구름')) {
-      return React.createElement(Cloud, { size: 16, className: "text-gray-400" });
+      return React.createElement(Cloud, { size: 14, className: "text-gray-400" });
     }
-    return React.createElement(Sun, { size: 16, className: "text-yellow-400" });
+    return React.createElement(Sun, { size: 14, className: "text-yellow-400" });
   };
   
-  var cardBg = darkMode 
-    ? 'bg-gradient-to-br from-[#2D2640] to-[#1F1833]' 
-    : 'bg-gradient-to-br from-[#A996FF]/20 to-[#8B7CF7]/10';
-  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
-  var textSecondary = darkMode ? 'text-gray-300' : 'text-gray-600';
+  var cardBg = darkMode ? 'bg-gray-800/50' : 'bg-white/70';
+  var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  var borderColor = darkMode ? 'border-gray-700/50' : 'border-gray-200/50';
   
   return React.createElement('div', { 
-    className: cardBg + ' rounded-2xl p-4 mb-4 border ' + (darkMode ? 'border-[#A996FF]/20' : 'border-[#A996FF]/30'),
-    onClick: onOpenChat
+    className: cardBg + ' backdrop-blur-sm rounded-xl p-3 mb-4 border ' + borderColor
   },
-    // 헤더: 펭귄 + 인사
-    React.createElement('div', { className: 'flex items-start gap-3 mb-3' },
-      React.createElement('div', { className: 'text-2xl' }, '🐧'),
-      React.createElement('div', { className: 'flex-1' },
-        React.createElement('p', { className: textPrimary + ' font-medium text-sm' }, getGreeting()),
-        React.createElement('p', { className: textSecondary + ' text-xs mt-0.5' },
-          todayTasks.length > 0 
-            ? '오늘 ' + todayTasks.length + '개의 할 일이 기다리고 있어요'
-            : '오늘 할 일을 모두 완료했어요! 🎉'
-        )
-      ),
-      React.createElement(ChevronRight, { size: 18, className: textSecondary })
-    ),
-    
-    // 통계 바
-    React.createElement('div', { className: 'flex items-center gap-4 mb-3 text-xs' },
-      React.createElement('div', { className: 'flex items-center gap-1 ' + textSecondary },
-        React.createElement(Calendar, { size: 12 }),
-        React.createElement('span', null, '미팅 ' + todayMeetings.length + '개')
-      ),
-      urgentTasks.length > 0 && React.createElement('div', { className: 'flex items-center gap-1 text-red-400' },
-        React.createElement(AlertCircle, { size: 12 }),
-        React.createElement('span', null, '긴급 ' + urgentTasks.length + '개')
-      ),
-      React.createElement('div', { className: 'flex items-center gap-1 ' + textSecondary },
-        React.createElement(Target, { size: 12 }),
-        React.createElement('span', null, '할일 ' + todayTasks.length + '개')
-      ),
-      React.createElement('div', { className: 'flex items-center gap-1 text-emerald-400' },
-        React.createElement(CheckCircle2, { size: 12 }),
-        React.createElement('span', null, completedTasks.length + '개 완료')
-      )
-    ),
-    
-    // 날씨 + 다음 일정
-    React.createElement('div', { className: 'flex items-center justify-between text-xs ' + textSecondary },
-      weather && React.createElement('div', { className: 'flex items-center gap-1' },
+    React.createElement('div', { className: 'flex items-center justify-between flex-wrap gap-2 text-xs' },
+      // 날씨
+      weather && React.createElement('div', { className: 'flex items-center gap-1.5 ' + textSecondary },
         getWeatherIcon(),
-        React.createElement('span', null, (weather.temp || 15) + '°C ' + (weather.condition || '맑음'))
+        React.createElement('span', null, (weather.temp || 15) + '°C')
       ),
-      nextEvent && React.createElement('div', { className: 'flex items-center gap-1' },
-        React.createElement(Clock, { size: 12 }),
+      
+      // 미팅
+      React.createElement('div', { className: 'flex items-center gap-1.5 ' + textSecondary },
+        React.createElement(Calendar, { size: 14 }),
+        React.createElement('span', null, '미팅 ' + todayMeetings.length)
+      ),
+      
+      // 긴급
+      urgentTasks.length > 0 && React.createElement('div', { className: 'flex items-center gap-1.5 text-red-400' },
+        React.createElement(AlertCircle, { size: 14 }),
+        React.createElement('span', null, '긴급 ' + urgentTasks.length)
+      ),
+      
+      // 다음 일정
+      nextEvent && React.createElement('div', { className: 'flex items-center gap-1.5 text-emerald-400' },
+        React.createElement(Clock, { size: 14 }),
         React.createElement('span', null,
           new Date(nextEvent.start).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) +
-          ' ' + ((nextEvent.title || nextEvent.summary || '').substring(0, 12) + 
-            ((nextEvent.title || nextEvent.summary || '').length > 12 ? '...' : ''))
+          ' ' + ((nextEvent.title || nextEvent.summary || '').substring(0, 8) + 
+            ((nextEvent.title || nextEvent.summary || '').length > 8 ? '..' : ''))
         )
       )
     )
@@ -451,6 +416,61 @@ var NowCard = function(props) {
   );
 };
 
+// 오늘의 Big3
+var Big3Section = function(props) {
+  var darkMode = props.darkMode;
+  var tasks = props.tasks || [];
+  var onOpenTask = props.onOpenTask;
+  var onAddTask = props.onAddTask;
+  
+  var cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
+  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+  var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  var borderColor = darkMode ? 'border-gray-700' : 'border-gray-200';
+  
+  // Big3: 우선순위 높은 상위 3개
+  var big3 = tasks
+    .filter(function(t) { return !t.completed; })
+    .sort(function(a, b) {
+      var priorityOrder = { high: 0, medium: 1, low: 2 };
+      var aPriority = priorityOrder[a.priority] !== undefined ? priorityOrder[a.priority] : 1;
+      var bPriority = priorityOrder[b.priority] !== undefined ? priorityOrder[b.priority] : 1;
+      return aPriority - bPriority;
+    })
+    .slice(0, 3);
+  
+  if (big3.length === 0) return null;
+  
+  var getRankEmoji = function(idx) {
+    if (idx === 0) return '🥇';
+    if (idx === 1) return '🥈';
+    return '🥉';
+  };
+  
+  return React.createElement('div', { className: cardBg + ' rounded-2xl p-4 mb-4 border ' + borderColor },
+    React.createElement('h3', { className: textPrimary + ' font-bold mb-3 flex items-center gap-2' },
+      React.createElement(Target, { size: 18, className: 'text-[#A996FF]' }),
+      '오늘의 Top 3'
+    ),
+    React.createElement('div', { className: 'space-y-2' },
+      big3.map(function(task, idx) {
+        return React.createElement('button', {
+          key: task.id || idx,
+          onClick: function() { if (onOpenTask) onOpenTask(task); },
+          className: 'w-full flex items-center gap-3 p-2 rounded-xl ' + 
+            (darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50') + ' transition-all text-left'
+        },
+          React.createElement('span', { className: 'text-lg' }, getRankEmoji(idx)),
+          React.createElement('p', { className: textPrimary + ' text-sm font-medium flex-1 truncate' }, task.title),
+          task.priority === 'high' && React.createElement('span', { 
+            className: 'text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400' 
+          }, '긴급')
+        );
+      })
+    )
+  );
+};
+
 var HomePage = function(props) {
   var darkMode = props.darkMode;
   var tasks = props.tasks || [];
@@ -490,6 +510,17 @@ var HomePage = function(props) {
   });
 
   return React.createElement('div', { className: bgColor + ' min-h-screen pb-24' },
+    // 🐧 알프레도 상태바 (상단 고정!)
+    React.createElement(AlfredoStatusBar, {
+      darkMode: darkMode,
+      mood: mood,
+      energy: energy,
+      tasks: tasks,
+      events: events,
+      onOpenChat: onOpenChat,
+      sticky: true
+    }),
+    
     React.createElement('div', { className: 'px-4 pt-4' },
       // 헤더
       React.createElement('div', { className: 'flex items-center justify-between mb-4' },
@@ -514,13 +545,12 @@ var HomePage = function(props) {
         )
       ),
       
-      // 알프레도 브리핑
-      React.createElement(AlfredoBriefing, {
+      // 상세 브리핑 (날씨, 통계, 다음 일정)
+      React.createElement(AlfredoDetailBriefing, {
         darkMode: darkMode,
         tasks: tasks,
         events: events,
         weather: weather,
-        userName: userName,
         onOpenChat: onOpenChat
       }),
       
@@ -541,6 +571,14 @@ var HomePage = function(props) {
         energy: energy,
         setMood: setMood,
         setEnergy: setEnergy
+      }),
+      
+      // 오늘의 Big3
+      React.createElement(Big3Section, {
+        darkMode: darkMode,
+        tasks: tasks,
+        onOpenTask: onOpenTask,
+        onAddTask: onOpenAddTask
       }),
       
       // 잊지 마세요
@@ -566,7 +604,7 @@ var HomePage = function(props) {
       React.createElement('div', { className: 'mt-4' },
         React.createElement('h3', { className: textPrimary + ' font-bold mb-3 flex items-center gap-2' },
           React.createElement(Calendar, { size: 18, className: 'text-emerald-500' }),
-          '오늘 일정'
+          '오늘 타임라인'
         ),
         todayEvents.length > 0 
           ? React.createElement(UnifiedTimelineView, {
