@@ -23,12 +23,12 @@ export var XP_REWARDS = {
   taskComplete: 10,
   taskCompleteHigh: 20,
   focusSession: 15,
-  focusSessionLong: 25, // 25분 이상
+  focusSessionLong: 25,
   streakDay: 30,
   streakWeek: 100,
   questComplete: 50,
   challengeComplete: 200,
-  perfectDay: 50, // 모든 할일 완료
+  perfectDay: 50,
   morningRoutine: 20,
   eveningReview: 15,
   moodLog: 5,
@@ -54,7 +54,7 @@ function loadGameData() {
     questsCompleted: 0,
     badges: [],
     lastActiveDate: null,
-    xpHistory: [] // { date, amount, reason }
+    xpHistory: []
   };
 }
 
@@ -136,7 +136,6 @@ export var LevelXpBar = function(props) {
     className: cardBg + ' rounded-2xl p-4 border ' + borderColor + ' card-hover ' + (onClick ? 'cursor-pointer hover:border-[#A996FF]/50' : ''),
     onClick: onClick
   },
-    // 헤더
     React.createElement('div', { className: 'flex items-center justify-between mb-3' },
       React.createElement('div', { className: 'flex items-center gap-2' },
         React.createElement('span', { className: 'text-2xl' }, levelInfo.title.split(' ')[0]),
@@ -151,7 +150,6 @@ export var LevelXpBar = function(props) {
       )
     ),
     
-    // XP 바
     React.createElement('div', { className: 'mb-2' },
       React.createElement('div', { className: 'flex justify-between text-xs mb-1' },
         React.createElement('span', { className: textSecondary }, levelInfo.xpInLevel + ' / ' + levelInfo.xpForLevel + ' XP'),
@@ -165,7 +163,6 @@ export var LevelXpBar = function(props) {
       )
     ),
     
-    // 다음 레벨 정보
     showDetails && levelInfo.nextLevel && React.createElement('div', { 
       className: 'flex items-center justify-between mt-3 pt-3 border-t ' + (darkMode ? 'border-gray-700' : 'border-gray-100')
     },
@@ -178,7 +175,7 @@ export var LevelXpBar = function(props) {
   );
 };
 
-// 💫 XP 획득 알림 토스트
+// 💫 XP 획득 알림 토스트 - 하단 위치로 변경
 export var XpGainToast = function(props) {
   var amount = props.amount;
   var reason = props.reason;
@@ -196,11 +193,12 @@ export var XpGainToast = function(props) {
   
   if (!isVisible) return null;
   
+  // 하단에 표시 (safe-area-bottom + 플로팅 버튼 위)
   return React.createElement('div', {
-    className: 'fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-fadeInDown'
+    className: 'fixed bottom-32 left-1/2 -translate-x-1/2 z-[60] animate-fadeInUp'
   },
     React.createElement('div', {
-      className: 'bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] text-white px-5 py-3 rounded-full shadow-lg shadow-[#A996FF]/30 flex items-center gap-2'
+      className: 'bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] text-white px-5 py-3 rounded-full shadow-xl shadow-[#A996FF]/40 flex items-center gap-2'
     },
       React.createElement(Sparkles, { size: 18, className: 'animate-pulse-soft' }),
       React.createElement('span', { className: 'font-bold text-lg' }, '+' + amount + ' XP'),
@@ -224,33 +222,26 @@ export var LevelUpModal = function(props) {
   var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
   
   return React.createElement('div', {
-    className: 'fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn',
+    className: 'fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[70] p-4 animate-fadeIn',
     onClick: onClose
   },
     React.createElement('div', {
-      className: cardBg + ' rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl animate-scaleInBounce level-up-celebrate',
+      className: cardBg + ' rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl animate-scaleInBounce level-up-celebrate relative',
       onClick: function(e) { e.stopPropagation(); }
     },
-      // 파티클 효과 (CSS)
-      React.createElement('div', { className: 'absolute inset-0 overflow-hidden pointer-events-none' },
-        React.createElement('div', { className: 'absolute top-0 left-1/4 w-2 h-2 bg-yellow-400 rounded-full animate-bounce-soft animate-delay-100' }),
-        React.createElement('div', { className: 'absolute top-0 right-1/4 w-2 h-2 bg-pink-400 rounded-full animate-bounce-soft animate-delay-200' }),
-        React.createElement('div', { className: 'absolute top-1/4 left-0 w-2 h-2 bg-[#A996FF] rounded-full animate-bounce-soft animate-delay-300' }),
-        React.createElement('div', { className: 'absolute top-1/4 right-0 w-2 h-2 bg-green-400 rounded-full animate-bounce-soft animate-delay-400' })
+      React.createElement('div', { className: 'absolute inset-0 overflow-hidden pointer-events-none rounded-3xl' },
+        React.createElement('div', { className: 'absolute top-4 left-1/4 w-2 h-2 bg-yellow-400 rounded-full animate-bounce-soft animate-delay-100' }),
+        React.createElement('div', { className: 'absolute top-4 right-1/4 w-2 h-2 bg-pink-400 rounded-full animate-bounce-soft animate-delay-200' }),
+        React.createElement('div', { className: 'absolute top-1/4 left-4 w-2 h-2 bg-[#A996FF] rounded-full animate-bounce-soft animate-delay-300' }),
+        React.createElement('div', { className: 'absolute top-1/4 right-4 w-2 h-2 bg-green-400 rounded-full animate-bounce-soft animate-delay-400' })
       ),
       
-      // 축하 아이콘
       React.createElement('div', { className: 'text-7xl mb-4 animate-bounce-soft' }, '🎉'),
-      
-      // 레벨업 텍스트
       React.createElement('h2', { className: 'text-[#A996FF] text-3xl font-bold mb-2 animate-glow' }, 'LEVEL UP!'),
-      
-      // 새 레벨
       React.createElement('div', { className: 'text-6xl my-6' }, levelInfo.title.split(' ')[0]),
       React.createElement('p', { className: textPrimary + ' text-xl font-bold mb-1' }, levelInfo.title.split(' ').slice(1).join(' ')),
       React.createElement('p', { className: textSecondary + ' mb-6' }, 'Level ' + newLevel),
       
-      // 보상
       React.createElement('div', { className: 'bg-amber-500/20 text-amber-500 px-4 py-4 rounded-2xl mb-6 animate-fadeInUp animate-delay-200' },
         React.createElement('div', { className: 'flex items-center justify-center gap-2 mb-2' },
           React.createElement(Gift, { size: 20 }),
@@ -259,7 +250,6 @@ export var LevelUpModal = function(props) {
         React.createElement('p', { className: 'text-sm' }, levelInfo.perks)
       ),
       
-      // 확인 버튼
       React.createElement('button', {
         onClick: onClose,
         className: 'w-full py-4 bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] text-white rounded-2xl font-bold text-lg shadow-lg shadow-[#A996FF]/30 btn-press hover:shadow-xl transition-all'
@@ -283,7 +273,7 @@ export var GameStatsCard = function(props) {
     { icon: '🎯', label: '집중 시간', value: (gameData.focusMinutes || 0) + '분' },
     { icon: '🔥', label: '현재 스트릭', value: (gameData.currentStreak || 0) + '일' },
     { icon: '🏆', label: '최장 스트릭', value: (gameData.longestStreak || 0) + '일' },
-    { icon: '⭐', label: '완료한 퀘스트', value: gameData.questsCompleted || 0 },
+    { icon: '⭐', label: '완료한 퀴스트', value: gameData.questsCompleted || 0 },
     { icon: '🏅', label: '획득한 배지', value: (gameData.badges || []).length }
   ];
   
@@ -352,12 +342,10 @@ export function useGamification() {
   var levelUp = levelUpState[0];
   var setLevelUp = levelUpState[1];
   
-  // 데이터 저장
   useEffect(function() {
     saveGameData(gameData);
   }, [gameData]);
   
-  // XP 추가
   var addXp = function(amount, reason) {
     var oldLevel = getLevelInfo(gameData.totalXp).level;
     
@@ -367,7 +355,7 @@ export function useGamification() {
         date: new Date().toISOString(),
         amount: amount,
         reason: reason
-      }]).slice(-50); // 최근 50개만 유지
+      }]).slice(-50);
       
       return Object.assign({}, prev, {
         totalXp: newXp,
@@ -375,10 +363,8 @@ export function useGamification() {
       });
     });
     
-    // XP 토스트 표시
     setXpToast({ visible: true, amount: amount, reason: reason });
     
-    // 레벨업 체크
     var newLevel = getLevelInfo(gameData.totalXp + amount).level;
     if (newLevel > oldLevel) {
       setTimeout(function() {
@@ -388,7 +374,6 @@ export function useGamification() {
     }
   };
   
-  // 태스크 완료
   var onTaskComplete = function(task) {
     var xp = task && task.priority === 'high' ? XP_REWARDS.taskCompleteHigh : XP_REWARDS.taskComplete;
     addXp(xp, '할일 완료');
@@ -397,7 +382,6 @@ export function useGamification() {
     });
   };
   
-  // 집중 세션 완료
   var onFocusComplete = function(minutes) {
     var xp = minutes >= 25 ? XP_REWARDS.focusSessionLong : XP_REWARDS.focusSession;
     addXp(xp, '집중 완료');
@@ -406,7 +390,6 @@ export function useGamification() {
     });
   };
   
-  // 스트릭 업데이트
   var updateStreak = function() {
     var today = new Date().toDateString();
     if (gameData.lastActiveDate !== today) {
@@ -414,7 +397,6 @@ export function useGamification() {
         var newStreak = prev.currentStreak + 1;
         var xp = newStreak % 7 === 0 ? XP_REWARDS.streakWeek : XP_REWARDS.streakDay;
         
-        // 주간 스트릭 보너스
         if (newStreak % 7 === 0) {
           setTimeout(function() { addXp(xp, '7일 연속!'); }, 500);
         }
@@ -428,15 +410,13 @@ export function useGamification() {
     }
   };
   
-  // 퀘스트 완료
   var onQuestComplete = function() {
-    addXp(XP_REWARDS.questComplete, '퀘스트 완료');
+    addXp(XP_REWARDS.questComplete, '퀴스트 완료');
     setGameData(function(prev) {
       return Object.assign({}, prev, { questsCompleted: prev.questsCompleted + 1 });
     });
   };
   
-  // 배지 획득
   var addBadge = function(badgeId) {
     if (!gameData.badges.includes(badgeId)) {
       setGameData(function(prev) {
@@ -445,24 +425,20 @@ export function useGamification() {
     }
   };
   
-  // 현재 레벨 정보
   var levelInfo = getLevelInfo(gameData.totalXp);
   
   return {
-    // 데이터
     gameData: gameData,
     totalXp: gameData.totalXp,
     level: levelInfo.level,
     levelInfo: levelInfo,
     currentStreak: gameData.currentStreak,
     
-    // 토스트/모달 상태
     xpToast: xpToast,
     hideXpToast: function() { setXpToast(function(prev) { return Object.assign({}, prev, { visible: false }); }); },
     levelUp: levelUp,
     closeLevelUp: function() { setLevelUp({ open: false, level: 0, info: null }); },
     
-    // 액션
     addXp: addXp,
     onTaskComplete: onTaskComplete,
     onFocusComplete: onFocusComplete,
@@ -470,7 +446,6 @@ export function useGamification() {
     onQuestComplete: onQuestComplete,
     addBadge: addBadge,
     
-    // 상수
     XP_REWARDS: XP_REWARDS
   };
 }

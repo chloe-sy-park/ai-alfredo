@@ -26,7 +26,6 @@ var SearchModal = function(props) {
   
   if (!isOpen) return null;
   
-  // 검색 결과
   var filteredTasks = tasks.filter(function(t) {
     return t.title && t.title.toLowerCase().includes(query.toLowerCase());
   }).slice(0, 5);
@@ -39,15 +38,14 @@ var SearchModal = function(props) {
   var hasResults = filteredTasks.length > 0 || filteredEvents.length > 0;
   
   return React.createElement('div', {
-    className: 'fixed inset-0 z-50 animate-fadeIn',
+    className: 'fixed inset-0 z-[60] animate-fadeIn',
     onClick: onClose
   },
     React.createElement('div', { 
       className: 'absolute inset-0 bg-black/40 backdrop-blur-sm' 
     }),
-    // 반응형 모달 너비
     React.createElement('div', {
-      className: 'relative w-full max-w-lg mx-auto mt-16 md:mt-20 px-4',
+      className: 'relative w-full max-w-lg mx-auto mt-20 px-4',
       onClick: function(e) { e.stopPropagation(); }
     },
       React.createElement('div', {
@@ -89,7 +87,6 @@ var SearchModal = function(props) {
               return React.createElement('button', {
                 key: task.id,
                 onClick: function() { if (onSelectTask) onSelectTask(task); onClose(); },
-                // 터치 타겟 44px
                 className: 'w-full flex items-center gap-3 p-3 min-h-[52px] rounded-xl transition-all animate-fadeInUp btn-press ' +
                   'animate-delay-' + (idx * 100) + ' ' +
                   (darkMode ? 'hover:bg-[#3A3A3C]' : 'hover:bg-gray-50')
@@ -177,13 +174,12 @@ var NotificationsModal = function(props) {
   ];
   
   return React.createElement('div', {
-    className: 'fixed inset-0 z-50 flex items-start justify-center md:justify-end p-4 pt-16 animate-fadeIn',
+    className: 'fixed inset-0 z-[60] flex items-start justify-center md:justify-end p-4 pt-20 animate-fadeIn',
     onClick: onClose
   },
     React.createElement('div', { 
       className: 'absolute inset-0 bg-black/20' 
     }),
-    // 반응형: 모바일은 가운데, 태블릿+는 오른쪽
     React.createElement('div', {
       className: (darkMode ? 'bg-[#2C2C2E]' : 'bg-white') + 
         ' w-full max-w-sm md:mr-4 rounded-2xl shadow-2xl overflow-hidden relative animate-scaleIn',
@@ -238,7 +234,7 @@ var NotificationsModal = function(props) {
   );
 };
 
-// 컨디션 선택 모달
+// 컨디션 선택 모달 - 상단 바텀시트로 변경
 var ConditionModal = function(props) {
   var isOpen = props.isOpen;
   var onClose = props.onClose;
@@ -249,30 +245,24 @@ var ConditionModal = function(props) {
   if (!isOpen) return null;
   
   return React.createElement('div', {
-    className: 'fixed inset-0 z-50 flex items-end justify-center animate-fadeIn',
+    className: 'fixed inset-0 z-[60] flex items-start justify-center animate-fadeIn',
     onClick: onClose
   },
     React.createElement('div', { 
       className: 'absolute inset-0 bg-black/40 backdrop-blur-sm'
     }),
-    // 반응형 바텀시트 너비
+    // 상단에서 내려오는 모달
     React.createElement('div', {
       className: (darkMode ? 'bg-[#2C2C2E]' : 'bg-white') + 
-        ' w-full max-w-lg rounded-t-3xl p-6 relative shadow-2xl animate-slideUp safe-area-bottom',
+        ' w-full max-w-lg mx-4 mt-16 rounded-2xl p-5 relative shadow-2xl animate-fadeInDown',
       onClick: function(e) { e.stopPropagation(); }
     },
-      React.createElement('div', { 
-        className: 'w-10 h-1 rounded-full mx-auto mb-6 ' + 
-          (darkMode ? 'bg-gray-600' : 'bg-gray-300')
-      }),
-      
       React.createElement('h3', { 
         className: (darkMode ? 'text-white' : 'text-gray-900') + 
-          ' text-lg md:text-xl font-semibold text-center mb-6' 
+          ' text-base font-semibold text-center mb-4' 
       }, '오늘 컨디션 어때요?'),
       
-      // 터치 타겟 충분히 확보
-      React.createElement('div', { className: 'flex justify-between gap-2 md:gap-3' },
+      React.createElement('div', { className: 'flex justify-between gap-2' },
         Object.keys(CONDITION_EMOJIS).map(function(key, idx) {
           var value = parseInt(key);
           var condition = CONDITION_EMOJIS[key];
@@ -281,13 +271,13 @@ var ConditionModal = function(props) {
           return React.createElement('button', {
             key: key,
             onClick: function() { onSelect(value); onClose(); },
-            className: 'flex-1 flex flex-col items-center p-3 md:p-4 min-h-[80px] rounded-2xl transition-all transform btn-press animate-fadeInUp ' +
-              'animate-delay-' + (idx * 100) + ' ' +
+            className: 'flex-1 flex flex-col items-center p-3 min-h-[72px] rounded-xl transition-all transform btn-press animate-fadeInUp ' +
+              'animate-delay-' + (idx * 50) + ' ' +
               (isSelected 
                 ? 'bg-[#A996FF]/20 ring-2 ring-[#A996FF] scale-105' 
                 : (darkMode ? 'bg-[#3A3A3C] hover:bg-[#48484A]' : 'bg-gray-100 hover:bg-gray-200'))
           },
-            React.createElement('span', { className: 'text-3xl md:text-4xl mb-1 md:mb-2' }, condition.emoji),
+            React.createElement('span', { className: 'text-2xl mb-1' }, condition.emoji),
             React.createElement('span', { 
               className: (darkMode ? 'text-gray-400' : 'text-gray-500') + ' text-xs font-medium' 
             }, condition.label)
@@ -298,7 +288,7 @@ var ConditionModal = function(props) {
   );
 };
 
-// 날씨 상세 모달
+// 날씨 상세 모달 - 중앙 정렬
 var WeatherModal = function(props) {
   var isOpen = props.isOpen;
   var onClose = props.onClose;
@@ -307,8 +297,8 @@ var WeatherModal = function(props) {
   
   if (!isOpen) return null;
   
-  var temp = weather?.temp || 3;
-  var tempLow = weather?.tempLow || -2;
+  var temp = weather?.temp || -3;
+  var tempLow = weather?.tempLow || -5;
   var condition = weather?.condition || '맑음';
   
   var getClothingAdvice = function() {
@@ -320,7 +310,7 @@ var WeatherModal = function(props) {
   };
   
   return React.createElement('div', {
-    className: 'fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn',
+    className: 'fixed inset-0 z-[60] flex items-center justify-center p-4 animate-fadeIn',
     onClick: onClose
   },
     React.createElement('div', { 
@@ -344,10 +334,10 @@ var WeatherModal = function(props) {
           condition.includes('비') ? '🌧️' : condition.includes('구름') ? '⛅' : '☀️'
         ),
         React.createElement('p', { 
-          className: (darkMode ? 'text-white' : 'text-gray-900') + ' text-4xl font-bold mt-4 animate-fadeInUp' 
+          className: (darkMode ? 'text-white' : 'text-gray-900') + ' text-5xl font-bold mt-4 animate-fadeInUp' 
         }, temp + '°'),
         React.createElement('p', { 
-          className: (darkMode ? 'text-gray-400' : 'text-gray-500') + ' text-sm mt-1 animate-fadeInUp animate-delay-100' 
+          className: (darkMode ? 'text-gray-400' : 'text-gray-500') + ' text-sm mt-2 animate-fadeInUp animate-delay-100' 
         }, '최저 ' + tempLow + '° / 최고 ' + temp + '°')
       ),
       
@@ -395,7 +385,6 @@ export var HomeHeader = function(props) {
   var showNotifModal = notifModalState[0];
   var setShowNotifModal = notifModalState[1];
   
-  // 날짜 포맷
   var now = new Date();
   var month = now.getMonth() + 1;
   var date = now.getDate();
@@ -405,8 +394,7 @@ export var HomeHeader = function(props) {
   var minutes = now.getMinutes();
   var timeStr = hours.toString().padStart(2, '0') + ':' + minutes.toString().padStart(2, '0');
   
-  // 날씨 정보
-  var temp = weather?.temp || 3;
+  var temp = weather?.temp || -3;
   var weatherCondition = weather?.condition || '맑음';
   
   var getWeatherIcon = function() {
@@ -421,24 +409,21 @@ export var HomeHeader = function(props) {
   return React.createElement('div', { 
     className: 'sticky top-0 z-40 backdrop-blur-xl safe-area-top ' +
       (darkMode 
-        ? 'bg-[#1D1D1F]/80 border-b border-white/10' 
-        : 'bg-[#F5F5F7]/80 border-b border-black/5')
+        ? 'bg-[#1D1D1F]/90 border-b border-white/10' 
+        : 'bg-[#F5F5F7]/90 border-b border-black/5')
   },
-    // 최대 너비 제한 + 센터 정렬
     React.createElement('div', { 
-      className: 'max-w-3xl mx-auto flex items-center justify-between px-4 md:px-6 lg:px-8 py-2 md:py-3'
+      className: 'max-w-3xl mx-auto flex items-center justify-between px-4 md:px-6 lg:px-8 py-3'
     },
-      // 왼쪽: 날짜/시간 + 날씨 + 컨디션
-      React.createElement('div', { className: 'flex items-center gap-1 md:gap-3' },
-        // 날짜/시간
+      // 왼쪽
+      React.createElement('div', { className: 'flex items-center gap-2 md:gap-3' },
         React.createElement('span', { 
           className: (darkMode ? 'text-white' : 'text-gray-900') + ' text-xs md:text-sm font-semibold' 
         }, month + '/' + date + ' ' + day + ' ' + timeStr),
         
-        // 날씨 - 터치 타겟 44px
         React.createElement('button', {
           onClick: function() { setShowWeatherModal(true); },
-          className: 'flex items-center gap-1 px-2 py-2 min-w-[44px] min-h-[44px] rounded-full transition-all btn-press ' +
+          className: 'flex items-center gap-1 px-2 py-1.5 min-h-[40px] rounded-full transition-all btn-press ' +
             (darkMode ? 'hover:bg-white/10' : 'hover:bg-black/5')
         },
           getWeatherIcon(),
@@ -447,13 +432,12 @@ export var HomeHeader = function(props) {
           }, temp + '°')
         ),
         
-        // 컨디션 - 터치 타겟 44px
         React.createElement('button', {
           onClick: function() { setShowConditionModal(true); },
-          className: 'flex items-center gap-1 px-2 py-2 min-w-[44px] min-h-[44px] rounded-full transition-all btn-press ' +
+          className: 'flex items-center gap-1 px-2 py-1.5 min-h-[40px] rounded-full transition-all btn-press ' +
             (darkMode ? 'hover:bg-white/10' : 'hover:bg-black/5')
         },
-          React.createElement('span', { className: 'text-base md:text-lg' }, currentCondition.emoji),
+          React.createElement('span', { className: 'text-lg' }, currentCondition.emoji),
           React.createElement(ChevronDown, { 
             size: 12, 
             className: (darkMode ? 'text-gray-400' : 'text-gray-500') + ' hidden md:block'
@@ -461,9 +445,8 @@ export var HomeHeader = function(props) {
         )
       ),
       
-      // 오른쪽: 레벨 배지 + 아이콘들
-      React.createElement('div', { className: 'flex items-center gap-0.5 md:gap-1' },
-        // 레벨 배지
+      // 오른쪽
+      React.createElement('div', { className: 'flex items-center gap-1' },
         React.createElement('div', { 
           className: 'flex items-center gap-1 px-2 md:px-3 py-1.5 rounded-full bg-[#A996FF] text-white text-xs md:text-sm font-semibold shadow-lg shadow-[#A996FF]/30'
         },
@@ -471,34 +454,31 @@ export var HomeHeader = function(props) {
           React.createElement('span', null, 'Lv.' + level)
         ),
         
-        // 검색 - 터치 타겟 44px
         React.createElement('button', {
           onClick: function() { setShowSearchModal(true); },
-          className: 'p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-all btn-press ' +
+          className: 'p-2 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-full transition-all btn-press ' +
             (darkMode ? 'hover:bg-white/10 text-gray-300' : 'hover:bg-black/5 text-gray-600')
         },
-          React.createElement(Search, { size: 20 })
+          React.createElement(Search, { size: 18 })
         ),
         
-        // 알림 - 터치 타겟 44px
         React.createElement('button', {
           onClick: function() { setShowNotifModal(true); },
-          className: 'p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-all relative btn-press ' +
+          className: 'p-2 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-full transition-all relative btn-press ' +
             (darkMode ? 'hover:bg-white/10 text-gray-300' : 'hover:bg-black/5 text-gray-600')
         },
-          React.createElement(Bell, { size: 20 }),
+          React.createElement(Bell, { size: 18 }),
           unreadCount > 0 && React.createElement('div', {
             className: 'absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full notif-badge'
           })
         ),
         
-        // 설정 - 터치 타겟 44px
         React.createElement('button', {
           onClick: onOpenSettings,
-          className: 'p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-all btn-press ' +
+          className: 'p-2 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-full transition-all btn-press ' +
             (darkMode ? 'hover:bg-white/10 text-gray-300' : 'hover:bg-black/5 text-gray-600')
         },
-          React.createElement(Settings, { size: 20 })
+          React.createElement(Settings, { size: 18 })
         )
       )
     ),
