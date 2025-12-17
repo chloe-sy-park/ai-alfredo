@@ -15,6 +15,21 @@ var getCategory = function(title) {
   return { icon: Briefcase, label: '할일', color: 'text-purple-500', bg: 'bg-purple-50' };
 };
 
+// 날짜 유효성 체크 및 포맷
+var formatDeadline = function(dateStr) {
+  if (!dateStr) return null;
+  var d = new Date(dateStr);
+  // Invalid Date 체크
+  if (isNaN(d.getTime())) return null;
+  
+  return d.toLocaleDateString('ko-KR', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
 // 알프레도 추천 이유
 var getRecommendReason = function(task) {
   if (!task) return '';
@@ -24,13 +39,16 @@ var getRecommendReason = function(task) {
   // 마감 임박
   if (task.deadline || task.dueDate) {
     var deadline = new Date(task.deadline || task.dueDate);
-    var diffHours = (deadline - now) / 1000 / 60 / 60;
-    
-    if (diffHours > 0 && diffHours <= 2) {
-      return '⚡ 2시간 안에 마감이에요!';
-    }
-    if (diffHours > 0 && diffHours <= 24) {
-      return '📌 오늘 마감이라 먼저 추천해요';
+    // Invalid Date 체크
+    if (!isNaN(deadline.getTime())) {
+      var diffHours = (deadline - now) / 1000 / 60 / 60;
+      
+      if (diffHours > 0 && diffHours <= 2) {
+        return '⚡ 2시간 안에 마감이에요!';
+      }
+      if (diffHours > 0 && diffHours <= 24) {
+        return '📌 오늘 마감이라 먼저 추천해요';
+      }
     }
   }
   
@@ -82,6 +100,7 @@ export var FocusNowCard = function(props) {
   var category = getCategory(task.title);
   var reason = getRecommendReason(task);
   var CategoryIcon = category.icon;
+  var deadlineStr = formatDeadline(task.deadline || task.dueDate);
   
   return React.createElement('div', {
     className: 'bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden'
@@ -113,19 +132,12 @@ export var FocusNowCard = function(props) {
             className: 'text-gray-800 font-semibold text-base truncate'
           }, task.title),
           
-          // 마감 정보
-          (task.deadline || task.dueDate) && React.createElement('div', {
+          // 마감 정보 (유효한 경우만 표시)
+          deadlineStr && React.createElement('div', {
             className: 'flex items-center gap-1 mt-1 text-xs text-gray-400'
           },
             React.createElement(Clock, { size: 12 }),
-            React.createElement('span', null, 
-              new Date(task.deadline || task.dueDate).toLocaleDateString('ko-KR', {
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })
-            )
+            React.createElement('span', null, deadlineStr)
           )
         )
       ),
