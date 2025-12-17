@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { ChevronRight, X, Send, Sparkles } from 'lucide-react';
+import { ChevronRight, X, Send, Sparkles, RefreshCw } from 'lucide-react';
 
 // 🐧 알프레도 메시지 생성
 var getAlfredoMessage = function(props) {
@@ -90,8 +90,8 @@ var getAlfredoMessage = function(props) {
   return { line1: greeting, line2: subtext, urgent: false };
 };
 
-// 📜 대화 히스토리 생성
-var generateChatHistory = function(props) {
+// 📜 초기 대화 히스토리 생성
+var generateInitialHistory = function(props) {
   var tasks = props.tasks || [];
   var events = props.events || [];
   var userName = props.userName || 'Boss';
@@ -104,6 +104,7 @@ var generateChatHistory = function(props) {
   // 아침 인사 (9시 이후면 추가)
   if (hour >= 9) {
     history.push({
+      id: 'init-1',
       time: '09:00',
       type: 'alfredo',
       text: '좋은 아침이에요, ' + userName + '! 물 한 잔 먼저 마셔요 💧'
@@ -120,11 +121,13 @@ var generateChatHistory = function(props) {
         : '알겠어요! 차근차근 해봐요';
     
     history.push({
+      id: 'init-2',
       time: '오늘',
       type: 'action',
       text: userName + '의 컨디션: ' + conditionEmoji
     });
     history.push({
+      id: 'init-3',
       time: '',
       type: 'alfredo',
       text: conditionText
@@ -137,6 +140,7 @@ var generateChatHistory = function(props) {
     var taskHour = 10 + index;
     if (taskHour <= hour) {
       history.push({
+        id: 'task-' + index,
         time: (taskHour < 10 ? '0' : '') + taskHour + ':00',
         type: 'action',
         text: '✅ "' + task.title + '" 완료!'
@@ -145,6 +149,7 @@ var generateChatHistory = function(props) {
       // 칭찬 메시지
       var praises = ['잘했어요! 👏', '대단해요!', '하나 끝! ✨', '좋아요!'];
       history.push({
+        id: 'praise-' + index,
         time: '',
         type: 'alfredo',
         text: praises[index % praises.length]
@@ -152,35 +157,10 @@ var generateChatHistory = function(props) {
     }
   });
   
-  // 점심 인사 (12시 이후면 추가)
-  if (hour >= 12 && hour < 14) {
-    history.push({
-      time: '12:30',
-      type: 'alfredo',
-      text: '점심 드셨어요? 밥 먹고 하는 게 효율적이에요 🍚'
-    });
-  }
-  
-  // 곧 있을 일정
-  var upcomingEvent = events.find(function(e) {
-    var start = new Date(e.start || e.startTime);
-    var diffMin = (start - now) / 1000 / 60;
-    return diffMin > 0 && diffMin <= 60;
-  });
-  
-  if (upcomingEvent) {
-    var eventTime = new Date(upcomingEvent.start || upcomingEvent.startTime);
-    var diffMin = Math.round((eventTime - now) / 1000 / 60);
-    history.push({
-      time: '지금',
-      type: 'notification',
-      text: '⚡ ' + diffMin + '분 뒤 "' + (upcomingEvent.title || upcomingEvent.summary) + '"이에요!'
-    });
-  }
-  
   // 빈 히스토리면 기본 메시지
   if (history.length === 0) {
     history.push({
+      id: 'init-default',
       time: '지금',
       type: 'alfredo',
       text: '안녕하세요 ' + userName + '! 무엇을 도와드릴까요? 💜'
@@ -197,7 +177,7 @@ export var AlfredoIslandMinimal = function(props) {
   var condition = props.condition || 0;
   var userName = props.userName || 'Boss';
   var urgentEvent = props.urgentEvent;
-  var onSendMessage = props.onSendMessage;
+  var onOpenChat = props.onOpenChat; // 전체 채팅 페이지로 이동
   
   var expandedState = useState(false);
   var isExpanded = expandedState[0];
@@ -206,6 +186,15 @@ export var AlfredoIslandMinimal = function(props) {
   var inputState = useState('');
   var inputText = inputState[0];
   var setInputText = inputState[1];
+  
+  var loadingState = useState(false);
+  var isLoading = loadingState[0];
+  var setIsLoading = loadingState[1];
+  
+  // 대화 메시지 (초기 히스토리 + 실제 대화)
+  var messagesState = useState([]);
+  var messages = messagesState[0];
+  var setMessages = messagesState[1];
   
   var chatEndRef = useRef(null);
   
@@ -220,29 +209,149 @@ export var AlfredoIslandMinimal = function(props) {
     });
   }, [tasks, events, condition, userName, urgentEvent]);
   
-  // 대화 히스토리
-  var chatHistory = useMemo(function() {
-    return generateChatHistory({
+  // 초기 히스토리 (한 번만 생성)
+  var initialHistory = useMemo(function() {
+    return generateInitialHistory({
       tasks: tasks,
       events: events,
       userName: userName,
       condition: condition
     });
-  }, [tasks, events, userName, condition]);
+  }, []); // 의존성 비움 - 처음 한 번만
+  
+  // 확장 시 초기 히스토리 로드
+  useEffect(function() {
+    if (isExpanded && messages.length === 0) {
+      setMessages(initialHistory);
+    }
+  }, [isExpanded]);
   
   // 스크롤 to bottom
   useEffect(function() {
     if (isExpanded && chatEndRef.current) {
       chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [isExpanded, chatHistory]);
+  }, [isExpanded, messages]);
+  
+  // Claude API 호출
+  var callClaudeAPI = async function(userMessage) {
+    var today = new Date();
+    var dateStr = today.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'long' });
+    var timeStr = today.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+    
+    var todoTasks = tasks.filter(function(t) { return !t.completed; });
+    var completedCount = tasks.filter(function(t) { return t.completed; }).length;
+    
+    var systemPrompt = '당신은 "알프레도"입니다. 배트맨의 집사 알프레드처럼 사용자(Boss)를 돕는 AI 비서입니다.\n\n' +
+      '## 성격\n' +
+      '- 따뜻하고 친근하지만 전문적\n' +
+      '- 간결하고 실용적인 조언 (2-3문장)\n' +
+      '- 이모지를 적절히 사용 (과하지 않게)\n' +
+      '- 사용자를 "Boss"라고 부름\n' +
+      '- 펭귄 마스코트 🐧\n\n' +
+      '## 현재 상황\n' +
+      '- 날짜: ' + dateStr + '\n' +
+      '- 시간: ' + timeStr + '\n' +
+      '- 사용자 컨디션: ' + condition + '/5\n\n' +
+      '## 오늘의 태스크\n' +
+      (todoTasks.length > 0 
+        ? todoTasks.map(function(t, i) { return (i + 1) + '. ' + t.title; }).join('\n')
+        : '- 할 일 없음') + '\n\n' +
+      '완료: ' + completedCount + '개\n\n' +
+      '## 응답 규칙\n' +
+      '1. 한국어로 답변\n' +
+      '2. 2-3문장으로 간결하게\n' +
+      '3. 현재 컨텍스트 활용\n' +
+      '4. 실행 가능한 조언';
+    
+    // 대화 히스토리에서 user/alfredo 메시지만 추출
+    var conversationMessages = messages
+      .filter(function(m) { return m.type === 'user' || m.type === 'alfredo'; })
+      .slice(-6) // 최근 6개만
+      .map(function(m) {
+        return {
+          role: m.type === 'user' ? 'user' : 'assistant',
+          content: m.text
+        };
+      });
+    
+    conversationMessages.push({ role: 'user', content: userMessage });
+    
+    try {
+      var response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: conversationMessages,
+          systemPrompt: systemPrompt
+        })
+      });
+      
+      var data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Chat failed');
+      }
+      
+      return data.text || '죄송해요, 잠시 문제가 생겼어요 😅';
+    } catch (error) {
+      console.error('Claude API Error:', error);
+      return '네트워크 오류가 발생했어요. 다시 시도해주세요 🐧';
+    }
+  };
   
   // 메시지 전송
-  var handleSend = function() {
-    if (inputText.trim()) {
-      if (onSendMessage) onSendMessage(inputText.trim());
-      setInputText('');
-    }
+  var handleSend = async function() {
+    if (!inputText.trim() || isLoading) return;
+    
+    var userText = inputText.trim();
+    var userId = 'user-' + Date.now();
+    var loadingId = 'loading-' + Date.now();
+    
+    // 사용자 메시지 추가
+    setMessages(function(prev) {
+      return prev.concat([{
+        id: userId,
+        time: '지금',
+        type: 'user',
+        text: userText
+      }]);
+    });
+    
+    setInputText('');
+    setIsLoading(true);
+    
+    // 로딩 메시지 추가
+    setMessages(function(prev) {
+      return prev.concat([{
+        id: loadingId,
+        time: '',
+        type: 'alfredo',
+        text: '...',
+        isLoading: true
+      }]);
+    });
+    
+    // Claude API 호출
+    var responseText = await callClaudeAPI(userText);
+    
+    // 로딩 메시지를 실제 응답으로 교체
+    setMessages(function(prev) {
+      return prev.map(function(msg) {
+        if (msg.id === loadingId) {
+          return {
+            id: loadingId,
+            time: '',
+            type: 'alfredo',
+            text: responseText,
+            isLoading: false
+          };
+        }
+        return msg;
+      });
+    });
+    
+    setIsLoading(false);
   };
   
   var handleKeyPress = function(e) {
@@ -323,14 +432,25 @@ export var AlfredoIslandMinimal = function(props) {
             React.createElement('span', { className: 'text-xl' }, '🐧'),
             React.createElement('span', { className: 'font-semibold text-gray-800' }, '알프레도'),
             React.createElement('span', { 
-              className: 'text-xs text-purple-500 bg-purple-100 px-2 py-0.5 rounded-full'
-            }, '오늘의 대화')
+              className: 'text-xs text-white bg-gradient-to-r from-purple-500 to-indigo-500 px-2 py-0.5 rounded-full'
+            }, 'AI')
           ),
-          React.createElement('button', {
-            className: 'p-1 rounded-full hover:bg-gray-200 transition-colors',
-            onClick: function() { setExpanded(false); }
-          },
-            React.createElement(X, { size: 20, className: 'text-gray-500' })
+          React.createElement('div', { className: 'flex items-center gap-2' },
+            // 전체 채팅으로 이동 버튼
+            onOpenChat && React.createElement('button', {
+              className: 'text-xs text-purple-500 hover:text-purple-600 transition-colors',
+              onClick: function(e) { 
+                e.stopPropagation();
+                setExpanded(false);
+                onOpenChat();
+              }
+            }, '전체 화면 →'),
+            React.createElement('button', {
+              className: 'p-1 rounded-full hover:bg-gray-200 transition-colors',
+              onClick: function() { setExpanded(false); }
+            },
+              React.createElement(X, { size: 20, className: 'text-gray-500' })
+            )
           )
         ),
         
@@ -339,14 +459,15 @@ export var AlfredoIslandMinimal = function(props) {
           className: 'p-4 overflow-y-auto',
           style: { maxHeight: 'calc(70vh - 140px)' }
         },
-          chatHistory.map(function(item, index) {
+          messages.map(function(item, index) {
             var isAction = item.type === 'action';
             var isNotification = item.type === 'notification';
             var isAlfredo = item.type === 'alfredo';
+            var isUser = item.type === 'user';
             
             return React.createElement('div', {
-              key: index,
-              className: 'mb-3'
+              key: item.id || index,
+              className: 'mb-3 ' + (isUser ? 'text-right' : '')
             },
               // 시간 (있을 때만)
               item.time && React.createElement('div', {
@@ -354,18 +475,28 @@ export var AlfredoIslandMinimal = function(props) {
               }, item.time),
               
               // 메시지
-              React.createElement('div', {
-                className: isAction 
-                  ? 'text-sm text-purple-600 bg-purple-50 rounded-lg px-3 py-2 inline-block'
-                  : isNotification
-                    ? 'text-sm text-orange-600 bg-orange-50 rounded-lg px-3 py-2 border border-orange-200'
-                    : isAlfredo
-                      ? 'text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-2'
-                      : 'text-gray-800'
-              }, 
-                isAlfredo && React.createElement('span', { className: 'mr-1' }, '🐧'),
-                item.text
-              )
+              item.isLoading
+                ? React.createElement('div', {
+                    className: 'inline-flex items-center gap-1 bg-gray-50 rounded-lg px-3 py-2'
+                  },
+                    React.createElement('span', { className: 'w-2 h-2 bg-purple-400 rounded-full animate-bounce', style: { animationDelay: '0ms' } }),
+                    React.createElement('span', { className: 'w-2 h-2 bg-purple-400 rounded-full animate-bounce', style: { animationDelay: '150ms' } }),
+                    React.createElement('span', { className: 'w-2 h-2 bg-purple-400 rounded-full animate-bounce', style: { animationDelay: '300ms' } })
+                  )
+                : React.createElement('div', {
+                    className: isUser
+                      ? 'inline-block text-sm text-white bg-purple-500 rounded-2xl rounded-tr-md px-4 py-2'
+                      : isAction 
+                        ? 'text-sm text-purple-600 bg-purple-50 rounded-lg px-3 py-2 inline-block'
+                        : isNotification
+                          ? 'text-sm text-orange-600 bg-orange-50 rounded-lg px-3 py-2 border border-orange-200'
+                          : isAlfredo
+                            ? 'inline-block text-sm text-gray-700 bg-gray-100 rounded-2xl rounded-tl-md px-4 py-2'
+                            : 'text-gray-800'
+                  }, 
+                    isAlfredo && !isUser && React.createElement('span', { className: 'mr-1' }, '🐧'),
+                    item.text
+                  )
             );
           }),
           
@@ -377,26 +508,30 @@ export var AlfredoIslandMinimal = function(props) {
           className: 'p-3 border-t bg-gray-50'
         },
           React.createElement('div', {
-            className: 'flex items-center gap-2 bg-white rounded-full border px-4 py-2'
+            className: 'flex items-center gap-2 bg-white rounded-full border px-4 py-2 ' + (isLoading ? 'opacity-70' : '')
           },
             React.createElement('input', {
               type: 'text',
-              placeholder: '알프레도에게 말하기...',
+              placeholder: isLoading ? '알프레도가 생각 중...' : '알프레도에게 말하기...',
               className: 'flex-1 outline-none text-sm',
               value: inputText,
               onChange: function(e) { setInputText(e.target.value); },
-              onKeyPress: handleKeyPress
+              onKeyPress: handleKeyPress,
+              disabled: isLoading
             }),
             React.createElement('button', {
-              className: 'p-1 text-purple-500 hover:text-purple-600 transition-colors',
-              onClick: handleSend
+              className: 'p-1.5 rounded-full transition-all ' + 
+                (inputText.trim() && !isLoading 
+                  ? 'text-white bg-purple-500 hover:bg-purple-600' 
+                  : 'text-gray-300'),
+              onClick: handleSend,
+              disabled: !inputText.trim() || isLoading
             },
-              React.createElement(Send, { size: 18 })
+              isLoading
+                ? React.createElement(RefreshCw, { size: 16, className: 'animate-spin' })
+                : React.createElement(Send, { size: 16 })
             )
-          ),
-          React.createElement('p', {
-            className: 'text-xs text-gray-400 text-center mt-2'
-          }, '💬 채팅 기능은 곧 업데이트될 예정이에요')
+          )
         )
       )
     )
