@@ -28,8 +28,7 @@ import SearchModal from './components/modals/SearchModal';
 import QuickCaptureModal from './components/modals/QuickCaptureModal';
 import GoogleAuthModal from './components/modals/GoogleAuthModal';
 
-// 알림
-import { SmartNotificationToast, NotificationCenter } from './components/notifications';
+// 알림 - AlfredoNudge로 통합
 import AlfredoNudge from './components/common/AlfredoNudge';
 
 // 🤗 실패 케어 시스템
@@ -581,7 +580,7 @@ var App = function() {
   var deleteEvent = googleCalendar.deleteEvent;
   var userEmail = googleCalendar.userEmail;
   
-  // 알림 훅
+  // 알림 훅 (넛지용 데이터)
   var smartNotifications = useSmartNotifications({
     tasks: tasks,
     events: events,
@@ -809,7 +808,7 @@ var App = function() {
   var handleNudgeAction = function(type, data) {
     switch(type) {
       case 'conditionCheck':
-        setView('HOME');
+        setShowMoodLogModal(true);
         break;
       case 'waterReminder':
         setHealthData(function(prev) {
@@ -823,6 +822,8 @@ var App = function() {
         setView('CALENDAR');
         break;
       case 'focusBreak':
+      case 'lowEnergy':
+        // 휴식 모드 또는 안내
         break;
       case 'halfwayDone':
         setView('WORK');
@@ -830,7 +831,7 @@ var App = function() {
       case 'allDone':
         break;
       case 'eveningReview':
-        handleOpenDayEnd(); // 🤗 하루 마무리 모달 열기
+        handleOpenDayEnd();
         break;
       case 'morningBriefing':
         handleOpenChat();
@@ -944,8 +945,8 @@ var App = function() {
           onOpenEnergyRhythm: function() { setView('ENERGY_RHYTHM'); },
           onOpenProjectDashboard: function() { setView('PROJECT_DASHBOARD'); },
           onOpenSettings: function() { setView('SETTINGS'); },
-          onOpenDayEnd: handleOpenDayEnd, // 🤗 테스트용
-          streakData: streakData, // 🔥 스트릭 데이터 전달
+          onOpenDayEnd: handleOpenDayEnd,
+          streakData: streakData,
           gameState: { level: 5, xp: 450, totalXp: 1000 }
         }));
         
@@ -1043,7 +1044,7 @@ var App = function() {
     // 메인 콘텐츠
     renderPage(),
     
-    // 알프레도 넛지 (말풍선)
+    // 알프레도 넛지 (플로팅 말풍선) - 모든 알림 통합
     showNav && React.createElement(AlfredoNudge, {
       darkMode: darkMode,
       mood: mood,
@@ -1232,20 +1233,7 @@ var App = function() {
           className: 'w-full py-3 ' + (darkMode ? 'text-gray-400' : 'text-gray-500') + ' font-medium'
         }, '닫기')
       )
-    ),
-    
-    // 알림 토스트
-    React.createElement(SmartNotificationToast, {
-      notifications: smartNotifications.notifications,
-      onDismiss: smartNotifications.dismissNotification,
-      onAction: function(notification, action) {
-        if (action === 'start' && notification.task) {
-          handleStartFocus(notification.task);
-        }
-      },
-      darkMode: darkMode,
-      maxShow: 2
-    })
+    )
   );
 };
 
