@@ -33,10 +33,17 @@ var NUDGE_CONFIG = {
   },
   focusBreak: {
     icon: '☕',
-    title: '잠깐 쉬어가세요',
-    message: '오래 집중했어요. 스트레칭 어때요?',
+    title: '에너지 충전 필요',
+    message: '잠깐 쉬어가는 건 어때요?',
     actionLabel: '5분 휴식',
-    color: 'from-rose-500 to-pink-500'
+    color: 'from-emerald-400 to-teal-500'
+  },
+  lowEnergy: {
+    icon: '🔋',
+    title: '에너지가 부족해 보여요',
+    message: '가벼운 스트레칭이나 간식 어때요?',
+    actionLabel: '휴식 타이머',
+    color: 'from-amber-400 to-orange-500'
   },
   halfwayDone: {
     icon: '🔥',
@@ -101,17 +108,22 @@ function determineNudge(props) {
     };
   }
   
-  // 2. 집중 모드 2시간 이상
-  if (focusMinutes >= 120) {
+  // 2. 에너지가 낮을 때 (2 이하)
+  if (energy && energy <= 2) {
+    return { type: 'lowEnergy' };
+  }
+  
+  // 3. 집중 모드 90분 이상 (휴식 권장)
+  if (focusMinutes >= 90) {
     return { type: 'focusBreak' };
   }
   
-  // 3. 모든 할 일 완료
+  // 4. 모든 할 일 완료
   if (totalTasks > 0 && incompleteTasks.length === 0) {
     return { type: 'allDone' };
   }
   
-  // 4. 아침 (6-10시) - 컨디션 미체크 또는 모닝 브리핑
+  // 5. 아침 (6-10시) - 컨디션 미체크 또는 모닝 브리핑
   if (hour >= 6 && hour < 10) {
     if (!mood || !energy) {
       return { type: 'conditionCheck' };
@@ -119,7 +131,7 @@ function determineNudge(props) {
     return { type: 'morningBriefing' };
   }
   
-  // 5. 절반 완료 축하 (30% 이상 완료 시)
+  // 6. 절반 완료 축하 (50% 이상 완료 시)
   if (totalTasks >= 3 && completedTasks.length > 0) {
     var completionRate = completedTasks.length / totalTasks;
     if (completionRate >= 0.5 && completionRate < 1) {
@@ -127,12 +139,12 @@ function determineNudge(props) {
     }
   }
   
-  // 6. 오후 (13-17시) - 물 섭취 체크
+  // 7. 오후 (13-17시) - 물 섭취 체크
   if (hour >= 13 && hour < 17 && waterIntake < waterGoal / 2) {
     return { type: 'waterReminder' };
   }
   
-  // 7. 저녁 전 (17-19시) - 미완료 할 일 리마인더
+  // 8. 저녁 전 (17-19시) - 미완료 할 일 리마인더
   if (hour >= 17 && hour < 19 && incompleteTasks.length > 0) {
     return {
       type: 'taskReminder',
@@ -140,7 +152,7 @@ function determineNudge(props) {
     };
   }
   
-  // 8. 저녁 (21-23시) - 하루 리뷰
+  // 9. 저녁 (21-23시) - 하루 리뷰
   if (hour >= 21 && hour < 23) {
     return { type: 'eveningReview' };
   }
