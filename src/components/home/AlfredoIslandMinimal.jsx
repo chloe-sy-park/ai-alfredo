@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ChevronRight, X, Send, Sparkles, RefreshCw } from 'lucide-react';
 
-// 🐧 알프레도 메시지 생성
+// 🐧 알프레도 메시지 생성 (상황 인식형)
 var getAlfredoMessage = function(props) {
   var tasks = props.tasks || [];
   var events = props.events || [];
@@ -13,6 +13,17 @@ var getAlfredoMessage = function(props) {
   var hour = now.getHours();
   var completed = tasks.filter(function(t) { return t.completed; }).length;
   var total = tasks.length;
+  var remaining = total - completed;
+  
+  // 하루 진행률 계산 (6시~23시 기준)
+  var dayStart = 6;
+  var dayEnd = 23;
+  var dayProgress = Math.min(100, Math.max(0, 
+    ((hour - dayStart) / (dayEnd - dayStart)) * 100
+  ));
+  
+  // 완료율 계산
+  var completionRate = total > 0 ? (completed / total) * 100 : 100;
   
   // 0. 컨디션 아직 안 물어봤을 때
   if (condition === 0) {
@@ -29,12 +40,12 @@ var getAlfredoMessage = function(props) {
     var title = urgentEvent.event.title || urgentEvent.event.summary || '일정';
     return {
       line1: '⚡ ' + urgentEvent.diffMin + '분 뒤 일정!',
-      line2: '"' + title.slice(0, 12) + '" 준비하세요',
+      line2: '\"' + title.slice(0, 12) + '\" 준비하세요',
       urgent: true
     };
   }
   
-  // 2. 컨디션 낮을 때
+  // 2. 컨디션 낮을 때 (우선 처리)
   if (condition <= 2) {
     return {
       line1: '오늘은 무리하지 말아요, ' + userName,
@@ -44,9 +55,9 @@ var getAlfredoMessage = function(props) {
     };
   }
   
-  // 3. 성취도 기반 메시지
+  // 3. 🎯 성취도 + 시간대 복합 분석
   if (total > 0) {
-    var remaining = total - completed;
+    // 3-1. 모두 완료! 🎉
     if (remaining === 0) {
       return {
         line1: '오늘 다 해냈어요! 🎉',
@@ -54,16 +65,60 @@ var getAlfredoMessage = function(props) {
         urgent: false
       };
     }
-    if (completed > 0) {
+    
+    // 3-2. 위기 상황: 하루 80% 이상 지났는데 완료 0개
+    if (dayProgress >= 80 && completed === 0) {
+      if (hour >= 21) {
+        return {
+          line1: '오늘 좀 바빴나봐요 🌙',
+          line2: '괜찮아요, 내일 다시 해봐요',
+          urgent: false
+        };
+      }
       return {
-        line1: '벌써 ' + completed + '개 했어요! 👏',
-        line2: remaining + '개 남았어요. 이거 해볼까요?',
+        line1: '오늘 좀 바빴나봐요',
+        line2: '딱 하나만 해볼까요? ✨',
+        urgent: false
+      };
+    }
+    
+    // 3-3. 위기 상황: 저녁인데 많이 남음 (50% 이상 미완료)
+    if (hour >= 17 && hour < 21 && completionRate < 50) {
+      return {
+        line1: remaining + '개 남았어요',
+        line2: '가장 쉬운 것부터 해볼까요? 💪',
+        urgent: false
+      };
+    }
+    
+    // 3-4. 진행 중: 일부 완료
+    if (completed > 0 && remaining > 0) {
+      // 절반 이상 했으면 칭찬
+      if (completionRate >= 50) {
+        return {
+          line1: '벌써 절반 넘었어요! 👏',
+          line2: remaining + '개만 더 하면 끝!',
+          urgent: false
+        };
+      }
+      return {
+        line1: completed + '개 완료! 잘하고 있어요 👏',
+        line2: remaining + '개 남았어요',
+        urgent: false
+      };
+    }
+    
+    // 3-5. 아직 시작 안 함 (낮 시간)
+    if (completed === 0 && hour < 17) {
+      return {
+        line1: '오늘 할 일이 ' + total + '개 있어요',
+        line2: '첫 번째부터 시작해볼까요? ✨',
         urgent: false
       };
     }
   }
   
-  // 4. 시간대별 기본 메시지
+  // 4. 시간대별 기본 메시지 (할 일 없거나 모두 완료 시)
   var greeting = '';
   var subtext = '';
   
@@ -72,14 +127,15 @@ var getAlfredoMessage = function(props) {
     subtext = '오늘 하루도 함께할게요 ☀️';
   } else if (hour >= 9 && hour < 12) {
     greeting = '좋은 오전이에요, ' + userName;
-    subtext = '첫 번째부터 시작해볼까요?';
+    subtext = '오늘도 화이팅! ✨';
   } else if (hour >= 12 && hour < 14) {
     greeting = '점심은 드셨어요? 🍚';
     subtext = '배고프면 집중력이 떨어져요';
   } else if (hour >= 14 && hour < 17) {
     greeting = '좋은 오후예요, ' + userName;
-    subtext = '지금 이거부터 해볼까요?';
+    subtext = '오늘도 잘하고 있어요 💪';
   } else if (hour >= 17 && hour < 21) {
+    // 할 일 남아있으면 이 분기 안 탐 (위에서 처리됨)
     greeting = '오늘 하루 수고했어요 💜';
     subtext = '이제 좀 쉬어도 돼요';
   } else {
@@ -143,7 +199,7 @@ var generateInitialHistory = function(props) {
         id: 'task-' + index,
         time: (taskHour < 10 ? '0' : '') + taskHour + ':00',
         type: 'action',
-        text: '✅ "' + task.title + '" 완료!'
+        text: '✅ \"' + task.title + '\" 완료!'
       });
       
       // 칭찬 메시지
@@ -242,26 +298,26 @@ export var AlfredoIslandMinimal = function(props) {
     var todoTasks = tasks.filter(function(t) { return !t.completed; });
     var completedCount = tasks.filter(function(t) { return t.completed; }).length;
     
-    var systemPrompt = '당신은 "알프레도"입니다. 배트맨의 집사 알프레드처럼 사용자(Boss)를 돕는 AI 비서입니다.\n\n' +
-      '## 성격\n' +
-      '- 따뜻하고 친근하지만 전문적\n' +
-      '- 간결하고 실용적인 조언 (2-3문장)\n' +
-      '- 이모지를 적절히 사용 (과하지 않게)\n' +
-      '- 사용자를 "Boss"라고 부름\n' +
-      '- 펭귄 마스코트 🐧\n\n' +
-      '## 현재 상황\n' +
-      '- 날짜: ' + dateStr + '\n' +
-      '- 시간: ' + timeStr + '\n' +
-      '- 사용자 컨디션: ' + condition + '/5\n\n' +
-      '## 오늘의 태스크\n' +
+    var systemPrompt = '당신은 \"알프레도\"입니다. 배트맨의 집사 알프레드처럼 사용자(Boss)를 돕는 AI 비서입니다.\\n\\n' +
+      '## 성격\\n' +
+      '- 따뜻하고 친근하지만 전문적\\n' +
+      '- 간결하고 실용적인 조언 (2-3문장)\\n' +
+      '- 이모지를 적절히 사용 (과하지 않게)\\n' +
+      '- 사용자를 \"Boss\"라고 부름\\n' +
+      '- 펭귄 마스코트 🐧\\n\\n' +
+      '## 현재 상황\\n' +
+      '- 날짜: ' + dateStr + '\\n' +
+      '- 시간: ' + timeStr + '\\n' +
+      '- 사용자 컨디션: ' + condition + '/5\\n\\n' +
+      '## 오늘의 태스크\\n' +
       (todoTasks.length > 0 
-        ? todoTasks.map(function(t, i) { return (i + 1) + '. ' + t.title; }).join('\n')
-        : '- 할 일 없음') + '\n\n' +
-      '완료: ' + completedCount + '개\n\n' +
-      '## 응답 규칙\n' +
-      '1. 한국어로 답변\n' +
-      '2. 2-3문장으로 간결하게\n' +
-      '3. 현재 컨텍스트 활용\n' +
+        ? todoTasks.map(function(t, i) { return (i + 1) + '. ' + t.title; }).join('\\n')
+        : '- 할 일 없음') + '\\n\\n' +
+      '완료: ' + completedCount + '개\\n\\n' +
+      '## 응답 규칙\\n' +
+      '1. 한국어로 답변\\n' +
+      '2. 2-3문장으로 간결하게\\n' +
+      '3. 현재 컨텍스트 활용\\n' +
       '4. 실행 가능한 조언';
     
     // 대화 히스토리에서 user/alfredo 메시지만 추출
