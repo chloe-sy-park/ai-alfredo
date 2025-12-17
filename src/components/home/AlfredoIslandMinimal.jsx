@@ -411,7 +411,7 @@ export var AlfredoIslandMinimal = function(props) {
     
     // 확장 상태 (플로팅 대화창)
     isExpanded && React.createElement('div', {
-      className: 'fixed inset-0 z-50 flex items-end justify-center'
+      className: 'fixed inset-0 z-[60] flex flex-col justify-end'
     },
       // 배경 딤
       React.createElement('div', {
@@ -419,117 +419,121 @@ export var AlfredoIslandMinimal = function(props) {
         onClick: function() { setExpanded(false); }
       }),
       
-      // 대화창
+      // 대화창 컨테이너 (하단 여백 확보)
       React.createElement('div', {
-        className: 'relative w-full max-w-lg mx-4 mb-4 bg-white rounded-2xl shadow-2xl overflow-hidden',
-        style: { maxHeight: '70vh' }
+        className: 'relative w-full max-w-lg mx-auto px-4 pb-24'
       },
-        // 헤더
+        // 대화창
         React.createElement('div', {
-          className: 'flex items-center justify-between p-4 border-b bg-gradient-to-r from-purple-50 to-white'
+          className: 'bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col',
+          style: { maxHeight: '60vh' }
         },
-          React.createElement('div', { className: 'flex items-center gap-2' },
-            React.createElement('span', { className: 'text-xl' }, '🐧'),
-            React.createElement('span', { className: 'font-semibold text-gray-800' }, '알프레도'),
-            React.createElement('span', { 
-              className: 'text-xs text-white bg-gradient-to-r from-purple-500 to-indigo-500 px-2 py-0.5 rounded-full'
-            }, 'AI')
-          ),
-          React.createElement('div', { className: 'flex items-center gap-2' },
-            // 전체 채팅으로 이동 버튼
-            onOpenChat && React.createElement('button', {
-              className: 'text-xs text-purple-500 hover:text-purple-600 transition-colors',
-              onClick: function(e) { 
-                e.stopPropagation();
-                setExpanded(false);
-                onOpenChat();
-              }
-            }, '전체 화면 →'),
-            React.createElement('button', {
-              className: 'p-1 rounded-full hover:bg-gray-200 transition-colors',
-              onClick: function() { setExpanded(false); }
-            },
-              React.createElement(X, { size: 20, className: 'text-gray-500' })
-            )
-          )
-        ),
-        
-        // 대화 내용
-        React.createElement('div', {
-          className: 'p-4 overflow-y-auto',
-          style: { maxHeight: 'calc(70vh - 140px)' }
-        },
-          messages.map(function(item, index) {
-            var isAction = item.type === 'action';
-            var isNotification = item.type === 'notification';
-            var isAlfredo = item.type === 'alfredo';
-            var isUser = item.type === 'user';
-            
-            return React.createElement('div', {
-              key: item.id || index,
-              className: 'mb-3 ' + (isUser ? 'text-right' : '')
-            },
-              // 시간 (있을 때만)
-              item.time && React.createElement('div', {
-                className: 'text-xs text-gray-400 mb-1'
-              }, item.time),
-              
-              // 메시지
-              item.isLoading
-                ? React.createElement('div', {
-                    className: 'inline-flex items-center gap-1 bg-gray-50 rounded-lg px-3 py-2'
-                  },
-                    React.createElement('span', { className: 'w-2 h-2 bg-purple-400 rounded-full animate-bounce', style: { animationDelay: '0ms' } }),
-                    React.createElement('span', { className: 'w-2 h-2 bg-purple-400 rounded-full animate-bounce', style: { animationDelay: '150ms' } }),
-                    React.createElement('span', { className: 'w-2 h-2 bg-purple-400 rounded-full animate-bounce', style: { animationDelay: '300ms' } })
-                  )
-                : React.createElement('div', {
-                    className: isUser
-                      ? 'inline-block text-sm text-white bg-purple-500 rounded-2xl rounded-tr-md px-4 py-2'
-                      : isAction 
-                        ? 'text-sm text-purple-600 bg-purple-50 rounded-lg px-3 py-2 inline-block'
-                        : isNotification
-                          ? 'text-sm text-orange-600 bg-orange-50 rounded-lg px-3 py-2 border border-orange-200'
-                          : isAlfredo
-                            ? 'inline-block text-sm text-gray-700 bg-gray-100 rounded-2xl rounded-tl-md px-4 py-2'
-                            : 'text-gray-800'
-                  }, 
-                    isAlfredo && !isUser && React.createElement('span', { className: 'mr-1' }, '🐧'),
-                    item.text
-                  )
-            );
-          }),
-          
-          React.createElement('div', { ref: chatEndRef })
-        ),
-        
-        // 입력창
-        React.createElement('div', {
-          className: 'p-3 border-t bg-gray-50'
-        },
+          // 헤더
           React.createElement('div', {
-            className: 'flex items-center gap-2 bg-white rounded-full border px-4 py-2 ' + (isLoading ? 'opacity-70' : '')
+            className: 'flex items-center justify-between p-4 border-b bg-gradient-to-r from-purple-50 to-white flex-shrink-0'
           },
-            React.createElement('input', {
-              type: 'text',
-              placeholder: isLoading ? '알프레도가 생각 중...' : '알프레도에게 말하기...',
-              className: 'flex-1 outline-none text-sm',
-              value: inputText,
-              onChange: function(e) { setInputText(e.target.value); },
-              onKeyPress: handleKeyPress,
-              disabled: isLoading
+            React.createElement('div', { className: 'flex items-center gap-2' },
+              React.createElement('span', { className: 'text-xl' }, '🐧'),
+              React.createElement('span', { className: 'font-semibold text-gray-800' }, '알프레도'),
+              React.createElement('span', { 
+                className: 'text-xs text-white bg-gradient-to-r from-purple-500 to-indigo-500 px-2 py-0.5 rounded-full'
+              }, 'AI')
+            ),
+            React.createElement('div', { className: 'flex items-center gap-2' },
+              // 전체 채팅으로 이동 버튼
+              onOpenChat && React.createElement('button', {
+                className: 'text-xs text-purple-500 hover:text-purple-600 transition-colors',
+                onClick: function(e) { 
+                  e.stopPropagation();
+                  setExpanded(false);
+                  onOpenChat();
+                }
+              }, '전체 화면 →'),
+              React.createElement('button', {
+                className: 'p-1 rounded-full hover:bg-gray-200 transition-colors',
+                onClick: function() { setExpanded(false); }
+              },
+                React.createElement(X, { size: 20, className: 'text-gray-500' })
+              )
+            )
+          ),
+          
+          // 대화 내용
+          React.createElement('div', {
+            className: 'flex-1 p-4 overflow-y-auto'
+          },
+            messages.map(function(item, index) {
+              var isAction = item.type === 'action';
+              var isNotification = item.type === 'notification';
+              var isAlfredo = item.type === 'alfredo';
+              var isUser = item.type === 'user';
+              
+              return React.createElement('div', {
+                key: item.id || index,
+                className: 'mb-3 ' + (isUser ? 'text-right' : '')
+              },
+                // 시간 (있을 때만)
+                item.time && React.createElement('div', {
+                  className: 'text-xs text-gray-400 mb-1'
+                }, item.time),
+                
+                // 메시지
+                item.isLoading
+                  ? React.createElement('div', {
+                      className: 'inline-flex items-center gap-1 bg-gray-50 rounded-lg px-3 py-2'
+                    },
+                      React.createElement('span', { className: 'w-2 h-2 bg-purple-400 rounded-full animate-bounce', style: { animationDelay: '0ms' } }),
+                      React.createElement('span', { className: 'w-2 h-2 bg-purple-400 rounded-full animate-bounce', style: { animationDelay: '150ms' } }),
+                      React.createElement('span', { className: 'w-2 h-2 bg-purple-400 rounded-full animate-bounce', style: { animationDelay: '300ms' } })
+                    )
+                  : React.createElement('div', {
+                      className: isUser
+                        ? 'inline-block text-sm text-white bg-purple-500 rounded-2xl rounded-tr-md px-4 py-2'
+                        : isAction 
+                          ? 'text-sm text-purple-600 bg-purple-50 rounded-lg px-3 py-2 inline-block'
+                          : isNotification
+                            ? 'text-sm text-orange-600 bg-orange-50 rounded-lg px-3 py-2 border border-orange-200'
+                            : isAlfredo
+                              ? 'inline-block text-sm text-gray-700 bg-gray-100 rounded-2xl rounded-tl-md px-4 py-2'
+                              : 'text-gray-800'
+                    }, 
+                      isAlfredo && !isUser && React.createElement('span', { className: 'mr-1' }, '🐧'),
+                      item.text
+                    )
+              );
             }),
-            React.createElement('button', {
-              className: 'p-1.5 rounded-full transition-all ' + 
-                (inputText.trim() && !isLoading 
-                  ? 'text-white bg-purple-500 hover:bg-purple-600' 
-                  : 'text-gray-300'),
-              onClick: handleSend,
-              disabled: !inputText.trim() || isLoading
+            
+            React.createElement('div', { ref: chatEndRef })
+          ),
+          
+          // 입력창
+          React.createElement('div', {
+            className: 'p-3 border-t bg-gray-50 flex-shrink-0'
+          },
+            React.createElement('div', {
+              className: 'flex items-center gap-2 bg-white rounded-full border px-4 py-2 ' + (isLoading ? 'opacity-70' : '')
             },
-              isLoading
-                ? React.createElement(RefreshCw, { size: 16, className: 'animate-spin' })
-                : React.createElement(Send, { size: 16 })
+              React.createElement('input', {
+                type: 'text',
+                placeholder: isLoading ? '알프레도가 생각 중...' : '알프레도에게 말하기...',
+                className: 'flex-1 outline-none text-sm',
+                value: inputText,
+                onChange: function(e) { setInputText(e.target.value); },
+                onKeyPress: handleKeyPress,
+                disabled: isLoading
+              }),
+              React.createElement('button', {
+                className: 'p-1.5 rounded-full transition-all ' + 
+                  (inputText.trim() && !isLoading 
+                    ? 'text-white bg-purple-500 hover:bg-purple-600' 
+                    : 'text-gray-300'),
+                onClick: handleSend,
+                disabled: !inputText.trim() || isLoading
+              },
+                isLoading
+                  ? React.createElement(RefreshCw, { size: 16, className: 'animate-spin' })
+                  : React.createElement(Send, { size: 16 })
+              )
             )
           )
         )
