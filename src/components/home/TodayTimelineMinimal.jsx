@@ -39,10 +39,12 @@ var getCategoryBg = function(title, isTask, completed) {
   return 'bg-gray-50 border-gray-100';
 };
 
-// 시간 포맷
+// 시간 포맷 (Invalid Date 처리 추가)
 var formatTime = function(date) {
-  if (!date) return '--:--';
+  if (!date) return null;
   var d = new Date(date);
+  // Invalid Date 체크
+  if (isNaN(d.getTime())) return null;
   var hours = d.getHours();
   var minutes = d.getMinutes();
   return (hours < 10 ? '0' : '') + hours + ':' + (minutes < 10 ? '0' : '') + minutes;
@@ -64,6 +66,8 @@ export var TodayTimelineMinimal = function(props) {
     
     return events.filter(function(e) {
       var eventDate = new Date(e.start || e.startTime);
+      // Invalid Date 체크
+      if (isNaN(eventDate.getTime())) return false;
       return eventDate.toDateString() === today;
     }).map(function(e) {
       var eventTime = new Date(e.start || e.startTime);
@@ -84,8 +88,15 @@ export var TodayTimelineMinimal = function(props) {
     return tasks.map(function(t, index) {
       // 마감 시간이 있으면 그 시간, 없으면 순서대로 배치
       var taskTime = null;
+      var timeStr = null;
+      
       if (t.deadline || t.dueDate) {
-        taskTime = new Date(t.deadline || t.dueDate);
+        var parsed = new Date(t.deadline || t.dueDate);
+        // Invalid Date 체크
+        if (!isNaN(parsed.getTime())) {
+          taskTime = parsed;
+          timeStr = formatTime(parsed);
+        }
       }
       
       return {
@@ -93,7 +104,7 @@ export var TodayTimelineMinimal = function(props) {
         type: 'task',
         title: t.title,
         time: taskTime,
-        timeStr: taskTime ? formatTime(taskTime) : null,
+        timeStr: timeStr,
         completed: t.completed,
         original: t
       };
@@ -162,7 +173,7 @@ export var TodayTimelineMinimal = function(props) {
   }, [tasks, todayEvents, now]);
   
   // 현재 시간 포맷
-  var currentTime = formatTime(now);
+  var currentTime = formatTime(now) || '--:--';
   
   // 빈 상태
   var isEmpty = allItems.length === 0 && untimedTasks.length === 0;
