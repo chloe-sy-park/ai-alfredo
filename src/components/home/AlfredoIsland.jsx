@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ChevronRight, ChevronUp, Send, Maximize2, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Send, Maximize2 } from 'lucide-react';
 
 // 시간대 구분
 var getTimeOfDay = function() {
@@ -12,56 +12,18 @@ var getTimeOfDay = function() {
   return 'night';
 };
 
-// 시간대별 인사
-var getGreeting = function(timeOfDay, userName, completedCount, condition) {
+// 실용적인 메시지 생성 (일정/태스크 기반)
+var getPracticalMessage = function(events, tasks, userName, condition) {
   var name = userName || 'Boss';
+  var now = new Date();
   
+  // 컨디션 낮을 때
   if (condition && condition <= 2) {
     return {
-      line1: name + ', 오늘 좀 힘드시구나...',
-      line2: '무리하지 말고, 꼭 해야 할 것만 해요 💜'
+      line1: name + ', 오늘은 무리하지 말아요',
+      line2: '꼭 필요한 것만 천천히 💜'
     };
   }
-  
-  var greetings = {
-    earlyMorning: {
-      line1: '좋은 아침이에요, ' + name + '!',
-      line2: '오늘 하루도 제가 함께할게요 ☀️'
-    },
-    morning: {
-      line1: name + ', 오전 잘 보내고 계세요?',
-      line2: '오늘 할 것들 정리해뒀어요 ✨'
-    },
-    lunch: {
-      line1: name + ', 점심은 드셨어요?',
-      line2: completedCount > 0 
-        ? '오전에 ' + completedCount + '개 해치웠어요! 👏'
-        : '밥 먹고 시작해도 괜찮아요 🍚'
-    },
-    afternoon: {
-      line1: name + ', 오후도 힘내고 있죠?',
-      line2: completedCount > 0
-        ? '벌써 ' + completedCount + '개 완료! 잘하고 있어요 💪'
-        : '지금 시작해도 충분해요!'
-    },
-    evening: {
-      line1: name + ', 오늘 하루 수고했어요!',
-      line2: completedCount > 0
-        ? '오늘 ' + completedCount + '개나 해냈어요 🎉'
-        : '쉬는 날도 필요한 거예요 💜'
-    },
-    night: {
-      line1: name + ', 이 시간엔 쉬셔야죠.',
-      line2: '내일 제가 깨워드릴게요 🌙'
-    }
-  };
-  
-  return greetings[timeOfDay] || greetings.morning;
-};
-
-// 긴급도 체크
-var getUrgentInfo = function(events, tasks) {
-  var now = new Date();
   
   // 30분 이내 일정
   var upcomingEvent = events.find(function(e) {
@@ -73,13 +35,13 @@ var getUrgentInfo = function(events, tasks) {
   if (upcomingEvent) {
     var diffMin = Math.round((new Date(upcomingEvent.start || upcomingEvent.startTime) - now) / 1000 / 60);
     return {
-      isUrgent: true,
-      line1: 'Boss! ' + diffMin + '분 뒤 일정이에요!',
-      line2: (upcomingEvent.title || upcomingEvent.summary) + ' 준비하세요 ⚡'
+      line1: name + ', ' + diffMin + '분 뒤 일정!',
+      line2: '"' + (upcomingEvent.title || upcomingEvent.summary) + '" 준비하세요 ⚡',
+      isUrgent: true
     };
   }
   
-  // 2시간 이내 마감
+  // 2시간 이내 마감 태스크
   var urgentTask = tasks.find(function(t) {
     if (t.completed || (!t.deadline && !t.dueDate)) return false;
     var due = new Date(t.deadline || t.dueDate);
@@ -89,13 +51,56 @@ var getUrgentInfo = function(events, tasks) {
   
   if (urgentTask) {
     return {
-      isUrgent: true,
-      line1: 'Boss! 마감이 코앞이에요!',
-      line2: '"' + urgentTask.title + '" 지금 시작해요 🔥'
+      line1: name + ', 마감이 코앞이에요!',
+      line2: '"' + urgentTask.title + '" 지금 시작해요 🔥',
+      isUrgent: true
     };
   }
   
-  return { isUrgent: false };
+  // 다음 일정 있으면
+  var nextEvent = events.find(function(e) {
+    var start = new Date(e.start || e.startTime);
+    return start > now;
+  });
+  
+  // 미완료 태스크 중 추천
+  var incompleteTasks = tasks.filter(function(t) { return !t.completed; });
+  var recommendedTask = incompleteTasks.find(function(t) {
+    return t.priority === 'high' || t.importance >= 4;
+  }) || incompleteTasks[0];
+  
+  if (nextEvent && recommendedTask) {
+    var eventStart = new Date(nextEvent.start || nextEvent.startTime);
+    var diffHours = Math.round((eventStart - now) / 1000 / 60 / 60);
+    
+    if (diffHours <= 2) {
+      return {
+        line1: name + ', ' + diffHours + '시간 뒤 일정 전까지',
+        line2: '"' + recommendedTask.title + '" 해볼까요? 💪'
+      };
+    }
+  }
+  
+  if (recommendedTask) {
+    return {
+      line1: name + ', 지금 이거 어때요?',
+      line2: '"' + recommendedTask.title + '" 시작해볼까요? ✨'
+    };
+  }
+  
+  // 할 일 없을 때
+  var completedCount = tasks.filter(function(t) { return t.completed; }).length;
+  if (completedCount > 0) {
+    return {
+      line1: name + ', 오늘 ' + completedCount + '개 완료!',
+      line2: '잘하고 있어요 👏'
+    };
+  }
+  
+  return {
+    line1: name + ', 오늘 뭐 해볼까요?',
+    line2: '할 일 추가하거나 저한테 물어봐요 💬'
+  };
 };
 
 // 🐧 다이내믹 아일랜드 메인 컴포넌트
@@ -110,7 +115,7 @@ export var AlfredoIsland = function(props) {
   var onOpenFullChat = props.onOpenFullChat;
   var onAction = props.onAction;
   
-  // 상태: 0=축소, 1=미니확장, 2=풀(외부에서 처리)
+  // 상태: 0=축소, 1=미니확장
   var expandState = useState(0);
   var expandLevel = expandState[0];
   var setExpandLevel = expandState[1];
@@ -119,27 +124,15 @@ export var AlfredoIsland = function(props) {
   var inputText = inputState[0];
   var setInputText = inputState[1];
   
-  // 통계
-  var completedCount = useMemo(function() {
-    return tasks.filter(function(t) { return t.completed; }).length;
-  }, [tasks]);
+  // 실용적 메시지
+  var message = getPracticalMessage(events, tasks, userName, condition);
+  var isUrgent = message.isUrgent;
   
-  // 시간대
-  var timeOfDay = getTimeOfDay();
-  var isNight = timeOfDay === 'night';
-  
-  // 긴급 체크
-  var urgentInfo = getUrgentInfo(events, tasks);
-  
-  // 인사말
-  var greeting = urgentInfo.isUrgent 
-    ? { line1: urgentInfo.line1, line2: urgentInfo.line2 }
-    : getGreeting(timeOfDay, userName, completedCount, condition);
-  
-  // 최근 히스토리 (미니 확장용)
-  var recentHistory = useMemo(function() {
-    if (chatHistory.length === 0) return null;
-    return chatHistory[chatHistory.length - 1];
+  // 최근 대화 2개 (맥락용)
+  var recentChats = useMemo(function() {
+    if (chatHistory.length === 0) return [];
+    // 최근 2개 (유저 + 알프레도 쌍)
+    return chatHistory.slice(-2);
   }, [chatHistory]);
   
   // 토글
@@ -162,102 +155,111 @@ export var AlfredoIsland = function(props) {
     }
   };
   
-  // 배경색 (긴급 여부에 따라)
+  // 배경색 (가독성 개선 - 톤 다운)
   var getBgClass = function() {
-    if (urgentInfo.isUrgent) {
+    if (isUrgent) {
       return darkMode 
-        ? 'bg-gradient-to-r from-orange-600/90 to-red-600/90' 
-        : 'bg-gradient-to-r from-orange-500 to-red-500';
-    }
-    if (isNight) {
-      return darkMode
-        ? 'bg-gradient-to-r from-indigo-900/90 to-purple-900/90'
-        : 'bg-gradient-to-r from-indigo-600 to-purple-600';
+        ? 'bg-gradient-to-r from-orange-900/80 to-red-900/80' 
+        : 'bg-gradient-to-r from-orange-100 to-red-100';
     }
     return darkMode 
-      ? 'bg-gradient-to-r from-[#2C2C2E] to-[#3A3A3C]' 
-      : 'bg-gradient-to-r from-[#E8E4F3] to-[#D4CCE8]';
+      ? 'bg-[#2C2C2E]' 
+      : 'bg-white';
   };
   
-  var textColor = (urgentInfo.isUrgent || isNight) ? 'text-white' : (darkMode ? 'text-white' : 'text-gray-900');
-  var subTextColor = (urgentInfo.isUrgent || isNight) ? 'text-white/80' : (darkMode ? 'text-gray-400' : 'text-gray-600');
+  // 텍스트 색상
+  var textColor = darkMode ? 'text-white' : 'text-gray-900';
+  var subTextColor = isUrgent 
+    ? (darkMode ? 'text-orange-300' : 'text-orange-700')
+    : (darkMode ? 'text-gray-400' : 'text-gray-500');
   
   return React.createElement('div', {
-    className: 'mx-4 mb-4 transition-all duration-300 ease-out'
+    className: 'transition-all duration-300 ease-out'
   },
     // 메인 아일랜드
     React.createElement('div', {
-      className: getBgClass() + ' rounded-2xl shadow-xl overflow-hidden transition-all duration-300 ' +
-        (urgentInfo.isUrgent ? 'animate-pulse-soft ring-2 ring-orange-400/50' : '')
+      className: getBgClass() + ' rounded-2xl shadow-lg overflow-hidden transition-all duration-300 ' +
+        (isUrgent ? 'ring-2 ring-orange-400/50' : (darkMode ? '' : 'border border-gray-100'))
     },
       // 1단계: 축소 상태 (항상 보임)
       React.createElement('button', {
         onClick: handleToggle,
-        className: 'w-full p-4 flex items-center gap-3 text-left transition-all btn-press'
+        className: 'w-full p-4 flex items-center gap-3 text-left transition-all active:scale-[0.99]'
       },
         // 알프레도 아바타
         React.createElement('div', {
-          className: 'w-12 h-12 rounded-full flex items-center justify-center text-2xl flex-shrink-0 ' +
-            (urgentInfo.isUrgent 
-              ? 'bg-white/20' 
-              : 'bg-gradient-to-br from-[#A996FF] to-[#8B7CF7] shadow-lg shadow-[#A996FF]/30')
+          className: 'w-11 h-11 rounded-full flex items-center justify-center text-xl flex-shrink-0 ' +
+            'bg-gradient-to-br from-[#A996FF] to-[#8B7CF7] shadow-md'
         }, '🐧'),
         
-        // 텍스트 (2줄)
+        // 텍스트 (2줄 - 실용 정보)
         React.createElement('div', { className: 'flex-1 min-w-0' },
           React.createElement('p', {
-            className: textColor + ' font-bold text-sm leading-tight truncate'
-          }, greeting.line1),
+            className: textColor + ' font-semibold text-[15px] leading-tight truncate'
+          }, message.line1),
           React.createElement('p', {
             className: subTextColor + ' text-sm leading-tight truncate mt-0.5'
-          }, greeting.line2)
+          }, message.line2)
         ),
         
-        // 화살표
+        // 화살표 (확장 방향 표시)
         React.createElement('div', {
-          className: subTextColor + ' transition-transform duration-300 ' +
-            (expandLevel > 0 ? 'rotate-90' : '')
+          className: (darkMode ? 'text-gray-500' : 'text-gray-400') + ' transition-transform duration-300'
         },
           expandLevel > 0 
             ? React.createElement(ChevronUp, { size: 20 })
-            : React.createElement(ChevronRight, { size: 20 })
+            : React.createElement(ChevronDown, { size: 20 })
         )
       ),
       
       // 2단계: 미니 확장 (expandLevel === 1)
       expandLevel >= 1 && React.createElement('div', {
-        className: 'border-t ' + (darkMode ? 'border-white/10' : 'border-black/5')
+        className: 'border-t ' + (darkMode ? 'border-gray-700' : 'border-gray-100')
       },
-        // 최근 액션/대화 1개
-        recentHistory && React.createElement('div', {
-          className: 'px-4 py-3 ' + (darkMode ? 'bg-black/20' : 'bg-white/30')
+        // 최근 대화 (맥락 있게)
+        recentChats.length > 0 && React.createElement('div', {
+          className: 'px-4 py-3 space-y-2 ' + (darkMode ? 'bg-black/20' : 'bg-gray-50/50')
         },
-          React.createElement('div', { className: 'flex items-center gap-2' },
-            React.createElement('span', { className: 'text-sm' }, 
-              recentHistory.type === 'action' ? '✅' : 
-              recentHistory.type === 'user' ? '💬' : '🐧'
-            ),
-            React.createElement('span', {
-              className: (darkMode ? 'text-gray-300' : 'text-gray-700') + ' text-sm truncate'
-            }, recentHistory.text)
-          )
+          recentChats.map(function(chat, idx) {
+            var isUser = chat.type === 'user';
+            var isAction = chat.type === 'action';
+            
+            return React.createElement('div', {
+              key: idx,
+              className: 'flex items-start gap-2 text-sm'
+            },
+              // 라벨
+              React.createElement('span', {
+                className: 'flex-shrink-0 ' + (
+                  isUser ? (darkMode ? 'text-blue-400' : 'text-blue-600') :
+                  isAction ? (darkMode ? 'text-green-400' : 'text-green-600') :
+                  (darkMode ? 'text-purple-400' : 'text-purple-600')
+                )
+              }, isUser ? '나:' : isAction ? '✓' : '🐧'),
+              
+              // 텍스트
+              React.createElement('span', {
+                className: (darkMode ? 'text-gray-300' : 'text-gray-600') + ' truncate'
+              }, chat.text)
+            );
+          })
         ),
         
-        // 입력창 + 전체보기 버튼
+        // 입력창 + 전체보기 버튼 (균형 맞춤)
         React.createElement('div', {
-          className: 'px-4 py-3 flex items-center gap-2'
+          className: 'px-4 py-3 flex items-center gap-3'
         },
           // 입력창
           React.createElement('div', {
-            className: 'flex-1 flex items-center gap-2 px-3 py-2 rounded-xl ' +
-              (darkMode ? 'bg-black/30' : 'bg-white/50')
+            className: 'flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl ' +
+              (darkMode ? 'bg-gray-800' : 'bg-gray-100')
           },
             React.createElement('input', {
               type: 'text',
               value: inputText,
               onChange: function(e) { setInputText(e.target.value); },
               onKeyPress: handleKeyPress,
-              placeholder: '알프레도에게...',
+              placeholder: '메시지 입력...',
               className: 'flex-1 bg-transparent text-sm outline-none ' +
                 (darkMode ? 'text-white placeholder-gray-500' : 'text-gray-900 placeholder-gray-400')
             }),
@@ -269,15 +271,18 @@ export var AlfredoIsland = function(props) {
             )
           ),
           
-          // 전체보기 버튼
+          // 전체보기 버튼 (더 눈에 띄게)
           React.createElement('button', {
             onClick: function() {
               if (onOpenFullChat) onOpenFullChat();
             },
-            className: 'p-2 rounded-xl transition-all btn-press ' +
-              (darkMode ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-black/5 hover:bg-black/10 text-gray-700')
+            className: 'px-3 py-2.5 rounded-xl font-medium text-sm transition-all active:scale-95 ' +
+              'bg-[#A996FF] text-white hover:bg-[#8B7CF7]'
           },
-            React.createElement(Maximize2, { size: 18 })
+            React.createElement('span', { className: 'flex items-center gap-1' },
+              '전체',
+              React.createElement(Maximize2, { size: 14 })
+            )
           )
         )
       )
