@@ -73,7 +73,7 @@ var NotificationsModal = function(props) {
   );
 };
 
-// 메인 헤더 v2 - 간소화 버전
+// 메인 헤더 v2 - 간소화 버전 (이미지 1 디자인)
 export var HomeHeaderV2 = function(props) {
   var weather = props.weather;
   var level = props.level || 1;
@@ -116,8 +116,10 @@ export var HomeHeaderV2 = function(props) {
     React.createElement('div', { 
       className: 'max-w-3xl mx-auto flex items-center justify-between px-4 md:px-6 lg:px-8 py-4'
     },
-      // 왼쪽: 날짜 + 시간 + 날씨
-      React.createElement('div', { className: 'flex items-center gap-3' },
+      // 왼쪽: 날짜 + 시간 + 날씨 (흰색 박스 안에)
+      React.createElement('div', { 
+        className: 'bg-white rounded-xl px-4 py-2 shadow-sm flex items-center gap-3'
+      },
         // 날짜 + 시간
         React.createElement('div', { 
           className: 'flex items-center gap-2 text-gray-900'

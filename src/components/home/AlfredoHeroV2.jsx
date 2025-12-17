@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Battery, BatteryLow, BatteryMedium, BatteryFull, Zap } from 'lucide-react';
 
 // 시간대 체크
 var getTimeOfDay = function() {
@@ -79,7 +78,7 @@ var generateBriefing = function(props) {
   };
 };
 
-// 🐧 알프레도 히어로 섹션 v2
+// 🐧 알프레도 히어로 섹션 v2 (이미지 2 디자인 기준)
 export var AlfredoHeroV2 = function(props) {
   var userName = props.userName || 'Boss';
   var condition = props.condition || 3;
@@ -98,11 +97,11 @@ export var AlfredoHeroV2 = function(props) {
   var showEnergyPicker = showEnergyState[0];
   var setShowEnergyPicker = showEnergyState[1];
   
-  // 컨디션 이모지
+  // 기분 이모지 (스마일)
   var conditionEmojis = ['😫', '😔', '😐', '😊', '🔥'];
   var conditionLabels = ['아파요', '힘들어요', '보통', '좋아요', '최고!'];
   
-  // 에너지 이모지 (배터리 스타일)
+  // 에너지 이모지 (배터리)
   var energyEmojis = ['🪫', '🔋', '⚡', '💪', '🚀'];
   var energyLabels = ['방전', '낮음', '보통', '충전됨', '폭발!'];
   
@@ -115,9 +114,9 @@ export var AlfredoHeroV2 = function(props) {
     return generateBriefing({ tasks: tasks, events: events, weather: weather, condition: condition });
   }, [tasks, events, weather, condition]);
   
-  // 배경색: 메인 배경과 동일 (#F5F5F7)
+  // 배경색: 메인 배경과 동일 (#F5F5F7) - 헤더와 통일
   return React.createElement('div', {
-    className: 'bg-[#F5F5F7] pt-2 pb-6 px-4'
+    className: 'bg-[#F5F5F7] pt-4 pb-8 px-4'
   },
     React.createElement('div', { 
       className: 'max-w-3xl mx-auto flex items-start gap-4'
@@ -142,20 +141,20 @@ export var AlfredoHeroV2 = function(props) {
       React.createElement('div', {
         className: 'flex-1 pt-2'
       },
-        // 메인 인사말
+        // 메인 인사말 - 큰 폰트
         React.createElement('h1', {
-          className: 'text-3xl md:text-4xl font-bold text-gray-900 leading-tight'
+          className: 'text-3xl md:text-5xl font-bold text-gray-900 leading-tight'
         }, userName + ','),
         React.createElement('h2', {
-          className: 'text-3xl md:text-4xl font-bold text-gray-900 leading-tight mb-4'
+          className: 'text-3xl md:text-5xl font-bold text-gray-900 leading-tight mb-4'
         }, greeting),
         
-        // 기분 + 에너지 버튼
+        // 기분 + 에너지 버튼 (왼쪽: 에너지, 오른쪽: 기분)
         React.createElement('div', { 
-          className: 'flex items-center gap-2 mb-4'
+          className: 'flex items-start gap-3 mb-4'
         },
-          // 기분 버튼 (에너지 아이콘 - 왼쪽)
-          React.createElement('div', { className: 'relative' },
+          // 에너지 버튼 (배터리 - 왼쪽)
+          React.createElement('div', { className: 'relative text-center' },
             React.createElement('button', {
               onClick: function() { 
                 setShowEnergyPicker(!showEnergyPicker); 
@@ -166,12 +165,12 @@ export var AlfredoHeroV2 = function(props) {
               React.createElement('span', null, energyEmojis[energy - 1])
             ),
             React.createElement('span', {
-              className: 'text-xs text-gray-500 text-center block mt-1'
-            }, '(보스의 에너지)'),
+              className: 'text-xs text-gray-500 block mt-1'
+            }, '(보스의 기분)'),
             
             // 에너지 선택 팝업
             showEnergyPicker && React.createElement('div', {
-              className: 'absolute top-full mt-2 left-1/2 -translate-x-1/2 flex gap-1 p-2 rounded-2xl shadow-xl z-50 bg-white border border-gray-100'
+              className: 'absolute top-full mt-6 left-0 flex gap-1 p-2 rounded-2xl shadow-xl z-50 bg-white border border-gray-100'
             },
               energyEmojis.map(function(emoji, i) {
                 return React.createElement('button', {
@@ -187,8 +186,8 @@ export var AlfredoHeroV2 = function(props) {
             )
           ),
           
-          // 기분 버튼 (스마일 아이콘 - 오른쪽)
-          React.createElement('div', { className: 'relative' },
+          // 기분 버튼 (스마일 - 오른쪽)
+          React.createElement('div', { className: 'relative text-center' },
             React.createElement('button', {
               onClick: function() { 
                 setShowConditionPicker(!showConditionPicker); 
@@ -199,12 +198,12 @@ export var AlfredoHeroV2 = function(props) {
               React.createElement('span', null, conditionEmojis[condition - 1])
             ),
             React.createElement('span', {
-              className: 'text-xs text-gray-500 text-center block mt-1'
-            }, '(보스의 기분)'),
+              className: 'text-xs text-gray-500 block mt-1'
+            }, '(보스의 에너지)'),
             
             // 기분 선택 팝업
             showConditionPicker && React.createElement('div', {
-              className: 'absolute top-full mt-2 left-1/2 -translate-x-1/2 flex gap-1 p-2 rounded-2xl shadow-xl z-50 bg-white border border-gray-100'
+              className: 'absolute top-full mt-6 left-0 flex gap-1 p-2 rounded-2xl shadow-xl z-50 bg-white border border-gray-100'
             },
               conditionEmojis.map(function(emoji, i) {
                 return React.createElement('button', {
@@ -221,14 +220,14 @@ export var AlfredoHeroV2 = function(props) {
           )
         ),
         
-        // 강조 브리핑 (볼드)
+        // 강조 브리핑 (볼드) - 더 크게
         React.createElement('p', {
-          className: 'text-base md:text-lg font-bold text-gray-900 mb-1'
+          className: 'text-lg md:text-xl font-bold text-gray-900 mb-1'
         }, briefing.highlight),
         
         // 상세 브리핑 (회색)
         briefing.detail && React.createElement('p', {
-          className: 'text-sm text-gray-500'
+          className: 'text-sm md:text-base text-gray-500 leading-relaxed'
         }, briefing.detail)
       )
     ),
