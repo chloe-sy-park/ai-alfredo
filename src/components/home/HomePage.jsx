@@ -299,13 +299,6 @@ export var HomePage = function(props) {
     }
   };
   
-  // 알프레도에게 메시지
-  var handleSendMessage = function(message) {
-    if (onOpenChat) {
-      onOpenChat(message);
-    }
-  };
-  
   // 배경색
   var bgColor = isNightMode 
     ? 'bg-gradient-to-b from-[#0f0f1a] to-[#1a1a2e]'
@@ -401,7 +394,7 @@ export var HomePage = function(props) {
             condition: condition,
             userName: userName,
             urgentEvent: urgentEvent,
-            onSendMessage: handleSendMessage
+            onOpenChat: onOpenChat
           }),
           
           // 2️⃣ 지금 이거부터
