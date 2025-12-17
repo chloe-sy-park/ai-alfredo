@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { Check, Circle, Briefcase, Heart, Calendar, Clock, Sparkles } from 'lucide-react';
+import React, { useMemo, useEffect, useRef } from 'react';
+import { Check, Circle, Briefcase, Heart, Calendar, Clock } from 'lucide-react';
 
 // 카테고리 아이콘
 var getCategoryIcon = function(title, isTask) {
@@ -20,37 +20,26 @@ var getCategoryIcon = function(title, isTask) {
 };
 
 // 카테고리 배경색
-var getCategoryBg = function(title, isTask, completed) {
-  if (completed) return 'bg-gray-50 border-gray-100';
+var getCategoryBg = function(title, isTask, isPast) {
+  if (isPast) return 'bg-gray-50 border-gray-200';
   
   var lower = (title || '').toLowerCase();
   if (lower.includes('미팅') || lower.includes('회의') || lower.includes('보고') || lower.includes('업무')) {
-    return 'bg-blue-50 border-blue-100';
+    return 'bg-blue-50 border-blue-200';
   }
   if (lower.includes('병원') || lower.includes('치과')) {
-    return 'bg-green-50 border-green-100';
+    return 'bg-green-50 border-green-200';
   }
   if (lower.includes('엄마') || lower.includes('가족') || lower.includes('친구')) {
-    return 'bg-pink-50 border-pink-100';
+    return 'bg-pink-50 border-pink-200';
   }
   if (isTask) {
-    return 'bg-purple-50 border-purple-100';
+    return 'bg-purple-50 border-purple-200';
   }
-  return 'bg-gray-50 border-gray-100';
+  return 'bg-gray-50 border-gray-200';
 };
 
-// 시간 포맷 (Invalid Date 처리 추가)
-var formatTime = function(date) {
-  if (!date) return null;
-  var d = new Date(date);
-  // Invalid Date 체크
-  if (isNaN(d.getTime())) return null;
-  var hours = d.getHours();
-  var minutes = d.getMinutes();
-  return (hours < 10 ? '0' : '') + hours + ':' + (minutes < 10 ? '0' : '') + minutes;
-};
-
-// 📅 오늘 타임라인 (미니멀 + 성취도 + 태스크 포함)
+// 📅 오늘 타임라인 (ADHD 친화적 - 시간 축 + 현재 위치)
 export var TodayTimelineMinimal = function(props) {
   var events = props.events || [];
   var tasks = props.tasks || [];
@@ -59,145 +48,155 @@ export var TodayTimelineMinimal = function(props) {
   var onAddTask = props.onAddTask;
   
   var now = new Date();
+  var currentHour = now.getHours();
+  var currentMinute = now.getMinutes();
   
-  // 오늘 일정 필터
+  var nowMarkerRef = useRef(null);
+  var containerRef = useRef(null);
+  
+  // 타임라인 범위 (6시~23시)
+  var START_HOUR = 6;
+  var END_HOUR = 23;
+  var HOUR_HEIGHT = 60; // 1시간 = 60px
+  
+  // 현재 시간 위치 (px)
+  var nowPosition = useMemo(function() {
+    if (currentHour < START_HOUR) return 0;
+    if (currentHour >= END_HOUR) return (END_HOUR - START_HOUR) * HOUR_HEIGHT;
+    return ((currentHour - START_HOUR) + (currentMinute / 60)) * HOUR_HEIGHT;
+  }, [currentHour, currentMinute]);
+  
+  // 현재 시간 포맷
+  var formatTime = function(hour, minute) {
+    var h = hour < 10 ? '0' + hour : hour;
+    var m = minute !== undefined ? (minute < 10 ? '0' + minute : minute) : '00';
+    return h + ':' + m;
+  };
+  
+  // 오늘 이벤트
   var todayEvents = useMemo(function() {
     var today = now.toDateString();
     
     return events.filter(function(e) {
       var eventDate = new Date(e.start || e.startTime);
-      // Invalid Date 체크
       if (isNaN(eventDate.getTime())) return false;
       return eventDate.toDateString() === today;
     }).map(function(e) {
-      var eventTime = new Date(e.start || e.startTime);
+      var startTime = new Date(e.start || e.startTime);
+      var endTime = e.end ? new Date(e.end) : new Date(startTime.getTime() + 60 * 60 * 1000);
+      
       return {
         id: e.id,
         type: 'event',
         title: e.title || e.summary || '일정',
-        time: eventTime,
-        timeStr: formatTime(eventTime),
-        isPast: eventTime < now,
+        startHour: startTime.getHours(),
+        startMinute: startTime.getMinutes(),
+        endHour: endTime.getHours(),
+        endMinute: endTime.getMinutes(),
+        isPast: startTime < now,
         original: e
       };
     });
   }, [events]);
   
-  // 오늘 태스크
+  // 오늘 태스크 (마감 시간 있는 것만 타임라인에)
   var todayTasks = useMemo(function() {
-    return tasks.map(function(t, index) {
-      // 마감 시간이 있으면 그 시간, 없으면 순서대로 배치
-      var taskTime = null;
-      var timeStr = null;
-      
-      if (t.deadline || t.dueDate) {
-        var parsed = new Date(t.deadline || t.dueDate);
-        // Invalid Date 체크
-        if (!isNaN(parsed.getTime())) {
-          taskTime = parsed;
-          timeStr = formatTime(parsed);
-        }
-      }
+    return tasks.filter(function(t) {
+      return t.deadline || t.dueDate;
+    }).map(function(t) {
+      var deadline = new Date(t.deadline || t.dueDate);
+      if (isNaN(deadline.getTime())) return null;
       
       return {
-        id: t.id || 'task-' + index,
+        id: t.id,
         type: 'task',
         title: t.title,
-        time: taskTime,
-        timeStr: timeStr,
+        startHour: deadline.getHours(),
+        startMinute: deadline.getMinutes(),
         completed: t.completed,
+        isPast: deadline < now && !t.completed,
         original: t
       };
+    }).filter(Boolean);
+  }, [tasks]);
+  
+  // 마감 시간 없는 태스크
+  var untimedTasks = useMemo(function() {
+    return tasks.filter(function(t) {
+      return !t.deadline && !t.dueDate;
     });
   }, [tasks]);
   
-  // 이벤트 + 태스크 합치고 정렬
-  var allItems = useMemo(function() {
-    var items = [];
-    
-    // 시간 있는 이벤트들
-    todayEvents.forEach(function(e) {
-      items.push(e);
-    });
-    
-    // 시간 있는 태스크들 (마감 기준)
-    todayTasks.filter(function(t) { return t.time; }).forEach(function(t) {
-      items.push(t);
-    });
-    
-    // 시간순 정렬
-    items.sort(function(a, b) {
-      if (!a.time) return 1;
-      if (!b.time) return -1;
-      return a.time - b.time;
-    });
-    
-    return items;
-  }, [todayEvents, todayTasks]);
-  
-  // 시간 없는 태스크들 (별도 섹션)
-  var untimedTasks = useMemo(function() {
-    return todayTasks.filter(function(t) { return !t.time; });
-  }, [todayTasks]);
-  
-  // 성취도 계산
+  // 성취도
   var stats = useMemo(function() {
     var completed = tasks.filter(function(t) { return t.completed; }).length;
     var total = tasks.length || 0;
-    
-    // 하루 진행률 계산
-    var dayStart = new Date(now);
-    dayStart.setHours(9, 0, 0, 0);
-    var dayEnd = new Date(now);
-    dayEnd.setHours(21, 0, 0, 0);
-    
-    var dayProgress = 0;
-    if (now >= dayStart && now <= dayEnd) {
-      dayProgress = Math.round(((now - dayStart) / (dayEnd - dayStart)) * 100);
-    } else if (now > dayEnd) {
-      dayProgress = 100;
-    }
-    
-    return {
-      completed: completed,
-      total: total,
-      dayProgress: dayProgress
-    };
-  }, [tasks, now]);
+    return { completed: completed, total: total };
+  }, [tasks]);
   
-  // 현재 시간 포맷
-  var currentTime = formatTime(now) || '--:--';
-  
-  // 빈 상태
-  var isEmpty = allItems.length === 0 && untimedTasks.length === 0;
-  
-  // 완료율에 따른 뱃지 스타일
+  // 뱃지 스타일
   var getBadgeStyle = function() {
-    if (stats.total === 0) return 'text-gray-500 bg-gray-50';
+    if (stats.total === 0) return 'text-gray-500 bg-gray-100';
     if (stats.completed === 0) return 'text-gray-500 bg-gray-100';
     if (stats.completed === stats.total) return 'text-green-600 bg-green-50';
     if (stats.completed >= stats.total / 2) return 'text-purple-600 bg-purple-50';
     return 'text-amber-600 bg-amber-50';
   };
   
-  // 완료율에 따른 이모지
   var getBadgeEmoji = function() {
     if (stats.total === 0) return '';
     if (stats.completed === 0) return '';
     if (stats.completed === stats.total) return ' 🎉';
-    if (stats.completed >= stats.total / 2) return ' ✨';
     return '';
+  };
+  
+  // 현재 시간 마커로 스크롤
+  useEffect(function() {
+    if (nowMarkerRef.current && containerRef.current) {
+      var container = containerRef.current;
+      var marker = nowMarkerRef.current;
+      var markerTop = marker.offsetTop;
+      var containerHeight = container.clientHeight;
+      
+      // 마커가 중앙에 오도록 스크롤
+      container.scrollTop = markerTop - containerHeight / 3;
+    }
+  }, []);
+  
+  // 시간 슬롯 생성
+  var timeSlots = [];
+  for (var h = START_HOUR; h <= END_HOUR; h++) {
+    timeSlots.push(h);
+  }
+  
+  // 특정 시간의 이벤트/태스크 찾기
+  var getItemsAtHour = function(hour) {
+    var items = [];
+    
+    todayEvents.forEach(function(e) {
+      if (e.startHour === hour) {
+        items.push(e);
+      }
+    });
+    
+    todayTasks.forEach(function(t) {
+      if (t.startHour === hour) {
+        items.push(t);
+      }
+    });
+    
+    return items;
   };
   
   return React.createElement('div', {
     className: 'mx-4 mt-4 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden'
   },
-    // 헤더 (성취도 포함)
+    // 헤더
     React.createElement('div', {
-      className: 'p-4 border-b border-gray-50'
+      className: 'p-4 border-b border-gray-100'
     },
       React.createElement('div', {
-        className: 'flex items-center justify-between mb-3'
+        className: 'flex items-center justify-between'
       },
         React.createElement('div', { className: 'flex items-center gap-2' },
           React.createElement('span', { className: 'text-lg' }, '📅'),
@@ -206,147 +205,191 @@ export var TodayTimelineMinimal = function(props) {
             className: 'text-sm font-medium px-2 py-0.5 rounded-full ' + getBadgeStyle()
           }, stats.completed + '/' + stats.total + ' 완료' + getBadgeEmoji())
         ),
-        React.createElement('span', {
-          className: 'text-sm text-gray-500'
-        }, currentTime)
-      ),
-      
-      // 진행 바
-      React.createElement('div', {
-        className: 'h-1.5 bg-gray-100 rounded-full overflow-hidden'
-      },
         React.createElement('div', {
-          className: 'h-full bg-gradient-to-r from-purple-400 to-purple-600 rounded-full transition-all',
-          style: { width: stats.dayProgress + '%' }
-        })
-      ),
-      React.createElement('p', {
-        className: 'text-xs text-gray-400 mt-1'
-      }, stats.dayProgress + '% 지남')
+          className: 'flex items-center gap-1 text-sm font-medium text-purple-600'
+        },
+          React.createElement(Clock, { size: 14 }),
+          formatTime(currentHour, currentMinute)
+        )
+      )
     ),
     
-    // 타임라인 내용
-    React.createElement('div', { className: 'p-4' },
-      // 빈 상태
-      isEmpty
-        ? React.createElement('div', {
-            className: 'text-center py-6'
+    // 타임라인 컨테이너
+    React.createElement('div', {
+      ref: containerRef,
+      className: 'relative overflow-y-auto',
+      style: { maxHeight: '400px' }
+    },
+      // 타임라인 그리드
+      React.createElement('div', {
+        className: 'relative',
+        style: { height: (END_HOUR - START_HOUR + 1) * HOUR_HEIGHT + 'px' }
+      },
+        // 시간 슬롯들
+        timeSlots.map(function(hour, index) {
+          var isPast = hour < currentHour;
+          var isCurrent = hour === currentHour;
+          var items = getItemsAtHour(hour);
+          
+          return React.createElement('div', {
+            key: hour,
+            className: 'absolute left-0 right-0 flex',
+            style: { top: index * HOUR_HEIGHT + 'px', height: HOUR_HEIGHT + 'px' }
           },
-            React.createElement('span', { className: 'text-3xl block mb-2' }, '🐧'),
-            React.createElement('p', { className: 'text-gray-600 font-medium' }, '오늘 일정이 비어있어요'),
-            React.createElement('p', { className: 'text-gray-400 text-sm mt-1' }, '여유로운 하루 보내거나, 할 일을 추가해보세요'),
-            onAddTask && React.createElement('button', {
-              onClick: onAddTask,
-              className: 'mt-4 px-4 py-2 rounded-xl text-sm font-medium ' +
-                'bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors'
-            }, '+ 할 일 추가')
-          )
-        : React.createElement('div', { className: 'space-y-2' },
-            // 시간대별 아이템들
-            allItems.map(function(item, index) {
-              var isTask = item.type === 'task';
-              var isCompleted = isTask ? item.completed : item.isPast;
-              var categoryBg = getCategoryBg(item.title, isTask, isCompleted);
-              var categoryIcon = getCategoryIcon(item.title, isTask);
-              
-              return React.createElement('div', {
-                key: item.id || index,
-                className: 'flex items-center gap-3 cursor-pointer group',
-                onClick: function() {
-                  if (isTask && onStartTask) onStartTask(item.original);
-                  else if (!isTask && onOpenEvent) onOpenEvent(item.original);
-                }
-              },
-                // 시간
-                React.createElement('span', {
-                  className: 'text-sm font-medium w-12 ' + (isCompleted ? 'text-gray-300' : 'text-gray-600')
-                }, item.timeStr || '—'),
-                
-                // 완료 체크
-                isCompleted && React.createElement('div', {
-                  className: 'w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0'
-                },
-                  React.createElement(Check, { size: 12, className: 'text-green-600' })
-                ),
-                
-                // 미완료 원
-                !isCompleted && isTask && React.createElement('div', {
-                  className: 'w-5 h-5 rounded-full border-2 border-purple-300 flex-shrink-0'
-                }),
-                
-                // 일정 내용
-                React.createElement('div', {
-                  className: 'flex-1 flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ' + 
-                    categoryBg + ' ' +
-                    (isCompleted ? 'opacity-50' : 'group-hover:shadow-sm')
-                },
-                  React.createElement('span', { className: 'flex-shrink-0' }, categoryIcon),
-                  React.createElement('span', {
-                    className: 'text-sm truncate ' + (isCompleted ? 'line-through text-gray-400' : 'text-gray-700')
-                  }, item.title),
-                  isTask && !isCompleted && React.createElement('span', {
-                    className: 'ml-auto text-xs text-purple-500 opacity-0 group-hover:opacity-100 transition-opacity'
-                  }, '시작 →')
-                )
-              );
-            }),
-            
-            // 시간 없는 태스크들
-            untimedTasks.length > 0 && React.createElement('div', {
-              className: 'mt-4 pt-3 border-t border-gray-100'
+            // 시간 레이블
+            React.createElement('div', {
+              className: 'w-14 flex-shrink-0 pr-2 text-right ' + 
+                (isPast ? 'text-gray-300' : isCurrent ? 'text-purple-600 font-semibold' : 'text-gray-400')
             },
-              React.createElement('p', {
-                className: 'text-xs text-gray-400 mb-2 flex items-center gap-1'
+              React.createElement('span', { className: 'text-xs' }, formatTime(hour))
+            ),
+            
+            // 구분선 + 콘텐츠 영역
+            React.createElement('div', {
+              className: 'flex-1 border-t relative ' + 
+                (isPast ? 'border-gray-100 bg-gray-50/30' : 'border-gray-200')
+            },
+              // 이벤트/태스크 아이템들
+              items.length > 0 && React.createElement('div', {
+                className: 'absolute left-2 right-2 top-1 space-y-1'
               },
-                React.createElement(Sparkles, { size: 12 }),
-                '오늘 할 일'
-              ),
-              React.createElement('div', { className: 'space-y-2' },
-                untimedTasks.map(function(item, index) {
-                  var isCompleted = item.completed;
-                  var categoryBg = getCategoryBg(item.title, true, isCompleted);
-                  var categoryIcon = getCategoryIcon(item.title, true);
+                items.map(function(item) {
+                  var isTask = item.type === 'task';
+                  var isCompleted = isTask && item.completed;
+                  var categoryBg = getCategoryBg(item.title, isTask, item.isPast);
+                  var categoryIcon = getCategoryIcon(item.title, isTask);
                   
                   return React.createElement('div', {
-                    key: item.id || 'untimed-' + index,
-                    className: 'flex items-center gap-3 cursor-pointer group',
+                    key: item.id,
+                    className: 'flex items-center gap-2 px-2 py-1.5 rounded-lg border cursor-pointer ' +
+                      'transition-all hover:shadow-sm ' + categoryBg +
+                      (isCompleted ? ' opacity-50' : '') +
+                      (item.isPast && !isCompleted ? ' opacity-60' : ''),
                     onClick: function() {
-                      if (onStartTask) onStartTask(item.original);
+                      if (isTask && onStartTask) onStartTask(item.original);
+                      else if (!isTask && onOpenEvent) onOpenEvent(item.original);
                     }
                   },
-                    // 빈 시간 자리
-                    React.createElement('span', { className: 'w-12' }),
-                    
-                    // 완료 체크 또는 원
-                    isCompleted 
+                    // 완료 체크 (태스크만)
+                    isTask && (isCompleted
                       ? React.createElement('div', {
-                          className: 'w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0'
+                          className: 'w-4 h-4 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0'
                         },
-                          React.createElement(Check, { size: 12, className: 'text-green-600' })
+                          React.createElement(Check, { size: 10, className: 'text-green-600' })
                         )
                       : React.createElement('div', {
-                          className: 'w-5 h-5 rounded-full border-2 border-purple-300 flex-shrink-0'
-                        }),
+                          className: 'w-4 h-4 rounded-full border-2 border-purple-300 flex-shrink-0'
+                        })
+                    ),
                     
-                    // 태스크 내용
-                    React.createElement('div', {
-                      className: 'flex-1 flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ' + 
-                        categoryBg + ' ' +
-                        (isCompleted ? 'opacity-50' : 'group-hover:shadow-sm')
-                    },
-                      React.createElement('span', { className: 'flex-shrink-0' }, categoryIcon),
-                      React.createElement('span', {
-                        className: 'text-sm truncate ' + (isCompleted ? 'line-through text-gray-400' : 'text-gray-700')
-                      }, item.title),
-                      !isCompleted && React.createElement('span', {
-                        className: 'ml-auto text-xs text-purple-500 opacity-0 group-hover:opacity-100 transition-opacity'
-                      }, '시작 →')
-                    )
+                    // 아이콘
+                    !isTask && React.createElement('span', { className: 'flex-shrink-0' }, categoryIcon),
+                    
+                    // 제목
+                    React.createElement('span', {
+                      className: 'text-sm truncate ' + 
+                        (isCompleted ? 'line-through text-gray-400' : 'text-gray-700')
+                    }, item.title),
+                    
+                    // 시간 (이벤트만)
+                    !isTask && React.createElement('span', {
+                      className: 'ml-auto text-xs text-gray-400 flex-shrink-0'
+                    }, formatTime(item.startHour, item.startMinute))
                   );
                 })
               )
             )
+          );
+        }),
+        
+        // 🔴 현재 시간 마커 (NOW)
+        currentHour >= START_HOUR && currentHour < END_HOUR && React.createElement('div', {
+          ref: nowMarkerRef,
+          className: 'absolute left-0 right-0 z-10 pointer-events-none',
+          style: { top: nowPosition + 'px' }
+        },
+          // 빨간 선
+          React.createElement('div', {
+            className: 'flex items-center'
+          },
+            // NOW 라벨
+            React.createElement('div', {
+              className: 'w-14 flex-shrink-0 pr-1 flex justify-end'
+            },
+              React.createElement('span', {
+                className: 'text-[10px] font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded'
+              }, 'NOW')
+            ),
+            // 빨간 점 + 선
+            React.createElement('div', {
+              className: 'flex items-center flex-1'
+            },
+              React.createElement('div', {
+                className: 'w-2.5 h-2.5 rounded-full bg-red-500 -ml-1 shadow-sm'
+              }),
+              React.createElement('div', {
+                className: 'flex-1 h-0.5 bg-red-500/70'
+              })
+            )
           )
+        )
+      )
+    ),
+    
+    // 시간 없는 태스크 (하단 섹션)
+    untimedTasks.length > 0 && React.createElement('div', {
+      className: 'border-t border-gray-100 p-4'
+    },
+      React.createElement('p', {
+        className: 'text-xs text-gray-400 mb-2 flex items-center gap-1'
+      },
+        '✨ 시간 미정 할 일'
+      ),
+      React.createElement('div', { className: 'space-y-2' },
+        untimedTasks.slice(0, 3).map(function(task, index) {
+          var isCompleted = task.completed;
+          
+          return React.createElement('div', {
+            key: task.id || 'untimed-' + index,
+            className: 'flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer ' +
+              'transition-all hover:shadow-sm ' +
+              (isCompleted ? 'bg-gray-50 border-gray-200 opacity-50' : 'bg-purple-50 border-purple-200'),
+            onClick: function() {
+              if (onStartTask) onStartTask(task);
+            }
+          },
+            isCompleted
+              ? React.createElement('div', {
+                  className: 'w-4 h-4 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0'
+                },
+                  React.createElement(Check, { size: 10, className: 'text-green-600' })
+                )
+              : React.createElement('div', {
+                  className: 'w-4 h-4 rounded-full border-2 border-purple-300 flex-shrink-0'
+                }),
+            React.createElement('span', {
+              className: 'text-sm truncate ' + (isCompleted ? 'line-through text-gray-400' : 'text-gray-700')
+            }, task.title)
+          );
+        }),
+        untimedTasks.length > 3 && React.createElement('p', {
+          className: 'text-xs text-gray-400 text-center'
+        }, '+' + (untimedTasks.length - 3) + '개 더')
+      )
+    ),
+    
+    // 빈 상태
+    todayEvents.length === 0 && todayTasks.length === 0 && untimedTasks.length === 0 && React.createElement('div', {
+      className: 'p-6 text-center'
+    },
+      React.createElement('span', { className: 'text-3xl block mb-2' }, '🐧'),
+      React.createElement('p', { className: 'text-gray-600 font-medium' }, '오늘 일정이 비어있어요'),
+      React.createElement('p', { className: 'text-gray-400 text-sm mt-1' }, '여유로운 하루 보내거나, 할 일을 추가해보세요'),
+      onAddTask && React.createElement('button', {
+        onClick: onAddTask,
+        className: 'mt-4 px-4 py-2 rounded-xl text-sm font-medium ' +
+          'bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors'
+      }, '+ 할 일 추가')
     )
   );
 };
