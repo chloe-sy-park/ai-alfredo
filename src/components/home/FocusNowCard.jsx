@@ -1,123 +1,152 @@
-import React, { useState } from 'react';
-import { Play, Sparkles, Folder, Clock } from 'lucide-react';
+import React from 'react';
+import { Play, Briefcase, Heart, Clock } from 'lucide-react';
 
-// 🎯 지금 이거부터 카드 - 심플 버전
-export var FocusNowCard = function(props) {
-  var task = props.task;
-  var darkMode = props.darkMode;
-  var onStart = props.onStart;
-  var onLater = props.onLater;
-  
-  // 배경색
-  var bgClass = darkMode ? 'bg-[#2C2C2E]' : 'bg-white';
-  var textColor = darkMode ? 'text-white' : 'text-gray-900';
-  var subTextColor = darkMode ? 'text-gray-400' : 'text-gray-500';
-  
-  if (!task) {
-    // 할 일이 없을 때
-    return React.createElement('div', {
-      className: bgClass + ' rounded-2xl p-5 shadow-lg text-center ' +
-        (darkMode ? '' : 'border border-gray-100')
-    },
-      React.createElement('span', { className: 'text-4xl mb-3 block' }, '🎉'),
-      React.createElement('h3', {
-        className: textColor + ' font-bold text-lg mb-1'
-      }, '오늘 할 일 다 끝!'),
-      React.createElement('p', {
-        className: subTextColor + ' text-sm'
-      }, '푹 쉬거나, 하고 싶은 거 하세요 💜')
-    );
+// 카테고리 판단
+var getCategory = function(title) {
+  var lower = (title || '').toLowerCase();
+  if (lower.includes('미팅') || lower.includes('회의') || lower.includes('보고') || 
+      lower.includes('업무') || lower.includes('메일') || lower.includes('문서')) {
+    return { icon: Briefcase, label: '업무', color: 'text-blue-500', bg: 'bg-blue-50' };
   }
-  
-  // 태그 정보 생성
-  var tags = [];
-  if (task.project) {
-    tags.push({ icon: Folder, label: task.project });
+  if (lower.includes('엄마') || lower.includes('가족') || lower.includes('친구') || 
+      lower.includes('약속') || lower.includes('생일')) {
+    return { icon: Heart, label: '일상', color: 'text-pink-500', bg: 'bg-pink-50' };
   }
+  return { icon: Briefcase, label: '할일', color: 'text-purple-500', bg: 'bg-purple-50' };
+};
+
+// 알프레도 추천 이유
+var getRecommendReason = function(task) {
+  if (!task) return '';
+  
+  var now = new Date();
+  
+  // 마감 임박
   if (task.deadline || task.dueDate) {
     var deadline = new Date(task.deadline || task.dueDate);
-    var now = new Date();
     var diffHours = (deadline - now) / 1000 / 60 / 60;
     
+    if (diffHours > 0 && diffHours <= 2) {
+      return '⚡ 2시간 안에 마감이에요!';
+    }
     if (diffHours > 0 && diffHours <= 24) {
-      tags.push({ icon: Clock, label: '오늘 마감', urgent: true });
-    } else if (diffHours > 24) {
-      tags.push({ icon: Clock, label: deadline.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }) });
-    } else {
-      tags.push({ icon: Clock, label: '마감 지남', urgent: true });
+      return '📌 오늘 마감이라 먼저 추천해요';
     }
   }
   
-  return React.createElement('div', {
-    className: bgClass + ' rounded-2xl overflow-hidden shadow-lg ' +
-      (darkMode ? '' : 'border border-gray-100')
-  },
-    // 헤더
-    React.createElement('div', {
-      className: 'px-5 py-4 flex items-center justify-between'
+  // 높은 우선순위
+  if (task.priority === 'high' || task.importance >= 4) {
+    return '🎯 중요한 일이라 먼저 추천해요';
+  }
+  
+  // 기본
+  return '✨ 이거부터 시작하면 좋을 것 같아요';
+};
+
+// 🎯 지금 이거부터 카드 - 알프레도 느낌
+export var FocusNowCard = function(props) {
+  var task = props.task;
+  var onStart = props.onStart;
+  var onLater = props.onLater;
+  var onAddTask = props.onAddTask;
+  
+  // 빈 상태 - 알프레도가 물어봄
+  if (!task) {
+    return React.createElement('div', {
+      className: 'bg-white rounded-2xl border border-gray-100 shadow-sm p-5'
     },
-      // 왼쪽: 제목 + AI 추천 배지
-      React.createElement('div', { className: 'flex items-center gap-2' },
-        React.createElement('h3', {
-          className: textColor + ' font-bold text-base'
-        }, '지금 이거부터'),
-        React.createElement('span', {
-          className: 'flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ' +
-            'bg-[#A996FF]/20 text-[#A996FF]'
-        },
-          React.createElement(Sparkles, { size: 10 }),
-          ' AI 추천'
+      React.createElement('div', { className: 'flex items-start gap-3' },
+        // 펭귄
+        React.createElement('span', { className: 'text-2xl' }, '🐧'),
+        
+        // 메시지
+        React.createElement('div', { className: 'flex-1' },
+          React.createElement('p', {
+            className: 'text-gray-800 font-medium'
+          }, '오늘 뭐 할까요?'),
+          React.createElement('p', {
+            className: 'text-gray-500 text-sm mt-1'
+          }, '할 일을 추가하면 제가 추천해드릴게요 💜')
         )
       ),
       
-      // 오른쪽: 태그들
-      React.createElement('div', { className: 'flex items-center gap-2' },
-        tags.map(function(tag, idx) {
-          return React.createElement('span', {
-            key: idx,
-            className: 'flex items-center gap-1 px-2 py-1 rounded-lg text-xs ' +
-              (tag.urgent 
-                ? 'bg-red-500/20 text-red-400'
-                : (darkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-500'))
-          },
-            React.createElement(tag.icon, { size: 12 }),
-            tag.label
-          );
-        })
-      )
+      // 추가 버튼
+      onAddTask && React.createElement('button', {
+        onClick: onAddTask,
+        className: 'mt-4 w-full py-3 rounded-xl text-sm font-medium ' +
+          'bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors'
+      }, '+ 할 일 추가하기')
+    );
+  }
+  
+  var category = getCategory(task.title);
+  var reason = getRecommendReason(task);
+  var CategoryIcon = category.icon;
+  
+  return React.createElement('div', {
+    className: 'bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden'
+  },
+    // 알프레도 추천 헤더
+    React.createElement('div', {
+      className: 'px-4 py-3 bg-gradient-to-r from-purple-50 to-white flex items-center gap-2'
+    },
+      React.createElement('span', { className: 'text-lg' }, '🐧'),
+      React.createElement('span', {
+        className: 'text-sm text-purple-600 font-medium'
+      }, reason)
     ),
     
-    // 콘텐츠
-    React.createElement('div', { className: 'px-5 pb-5' },
-      // 태스크 이름 + 액션 버튼
-      React.createElement('div', {
-        className: 'flex items-center justify-between gap-4'
-      },
-        // 태스크 이름
-        React.createElement('p', {
-          className: textColor + ' font-medium text-base flex-1'
-        }, task.title),
+    // 태스크 내용
+    React.createElement('div', { className: 'p-4' },
+      // 카테고리 + 제목
+      React.createElement('div', { className: 'flex items-start gap-3 mb-4' },
+        // 카테고리 아이콘
+        React.createElement('div', {
+          className: 'w-10 h-10 rounded-xl flex items-center justify-center ' + category.bg
+        },
+          React.createElement(CategoryIcon, { size: 20, className: category.color })
+        ),
         
-        // 버튼들
-        React.createElement('div', { className: 'flex items-center gap-2' },
-          // 나중에
-          React.createElement('button', {
-            onClick: function() { if (onLater) onLater(task); },
-            className: 'px-4 py-2 rounded-xl text-sm font-medium transition-all active:scale-95 ' +
-              (darkMode 
-                ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300')
-          }, '나중에'),
+        // 제목
+        React.createElement('div', { className: 'flex-1 min-w-0' },
+          React.createElement('p', {
+            className: 'text-gray-800 font-semibold text-base truncate'
+          }, task.title),
           
-          // 시작하기
-          React.createElement('button', {
-            onClick: function() { if (onStart) onStart(task); },
-            className: 'px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-95 ' +
-              'bg-[#A996FF] text-white hover:bg-[#8B7CF7] flex items-center gap-1'
+          // 마감 정보
+          (task.deadline || task.dueDate) && React.createElement('div', {
+            className: 'flex items-center gap-1 mt-1 text-xs text-gray-400'
           },
-            React.createElement(Play, { size: 14, className: 'fill-current' }),
-            '시작하기'
+            React.createElement(Clock, { size: 12 }),
+            React.createElement('span', null, 
+              new Date(task.deadline || task.dueDate).toLocaleDateString('ko-KR', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })
+            )
           )
+        )
+      ),
+      
+      // 버튼들
+      React.createElement('div', { className: 'flex items-center gap-2' },
+        // 나중에
+        React.createElement('button', {
+          onClick: function() { if (onLater) onLater(task); },
+          className: 'flex-1 py-3 rounded-xl text-sm font-medium transition-all active:scale-98 ' +
+            'bg-gray-100 text-gray-600 hover:bg-gray-200'
+        }, '나중에'),
+        
+        // 시작하기
+        React.createElement('button', {
+          onClick: function() { if (onStart) onStart(task); },
+          className: 'flex-[2] py-3 rounded-xl text-sm font-bold transition-all active:scale-98 ' +
+            'bg-[#A996FF] text-white hover:bg-[#8B7CF7] flex items-center justify-center gap-2'
+        },
+          React.createElement(Play, { size: 16, className: 'fill-current' }),
+          '시작하기'
         )
       )
     )
