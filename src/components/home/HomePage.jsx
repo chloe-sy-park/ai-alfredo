@@ -1,11 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import HomeHeader from './HomeHeader';
-import AlfredoIsland from './AlfredoIsland';
-import AlfredoFullChat from './AlfredoFullChat';
+import AlfredoCard from './AlfredoCard';
 import FocusNowCard from './FocusNowCard';
-import RemindersSection from './RemindersSection';
+import TodayRemindersCard from './TodayRemindersCard';
+import TodayProgressCard from './TodayProgressCard';
 import MiniTimeline from './MiniTimeline';
-import TodayWinsCard from './TodayWinsCard';
 import NightModeView from './NightModeView';
 import { QuickActionFloating, ChatFloating } from './QuickActionFloating';
 import { useGamification, XpGainToast, LevelUpModal } from '../gamification/LevelSystem';
@@ -44,7 +43,7 @@ var generateAlfredoMessage = function(timeOfDay, userName, completedCount, event
       '일찍 일어나셨네요! 물 한 잔 먼저 마셔요 💧'
     ],
     morning: [
-      '오전 잘 보내고 계세요? 오늘 할 것들 정리해두었어요 ✨',
+      '오전 잘 보내고 계세요? 오늘 할 것들 정리해뒀어요 ✨',
       '좋은 아침이에요! 오늘 뭐부터 시작해볼까요?'
     ],
     lunch: [
@@ -52,7 +51,7 @@ var generateAlfredoMessage = function(timeOfDay, userName, completedCount, event
       '밥 먹고 오후도 화이팅! 🍚'
     ],
     afternoon: [
-      '오후도 힘내고 있죠? ' + (completedCount > 0 ? '볌써 ' + completedCount + '개 완료!' : ''),
+      '오후도 힘내고 있죠? ' + (completedCount > 0 ? '벌써 ' + completedCount + '개 완료!' : ''),
       '지금 시작해도 충분해요! 💪'
     ],
     evening: [
@@ -61,7 +60,7 @@ var generateAlfredoMessage = function(timeOfDay, userName, completedCount, event
     ],
     night: [
       name + ', 이 시간엔 쉬셔야죠. 내일 제가 깨워드릴게요 🌙',
-      '오늘 충분히 하셨어요. 푸́ 쉬세요 💤'
+      '오늘 충분히 하셨어요. 푹 쉬세요 💤'
     ]
   };
   
@@ -102,10 +101,10 @@ export var HomePage = function(props) {
   var chatHistory = chatHistoryState[0];
   var setChatHistory = chatHistoryState[1];
   
-  // 풀 채팅 모달
-  var fullChatState = useState(false);
-  var isFullChatOpen = fullChatState[0];
-  var setFullChatOpen = fullChatState[1];
+  // 알림 상태 (휴식, 집중 등)
+  var notificationState = useState(null);
+  var notification = notificationState[0];
+  var setNotification = notificationState[1];
   
   // 게이미피케이션
   var gamification = useGamification();
@@ -252,23 +251,31 @@ export var HomePage = function(props) {
     return incompleteTasks[0];
   }, [tasks]);
   
-  // 리마인더 목록
-  var reminders = useMemo(function() {
+  // 리마인더 목록 + 긴급 카운트
+  var remindersData = useMemo(function() {
     var items = [];
+    var urgentCount = 0;
     
     tasks.forEach(function(t) {
       if (t.completed) return;
       if (t.dueDate || t.deadline) {
         var due = new Date(t.dueDate || t.deadline);
         var now = new Date();
+        var diffHours = (due - now) / 1000 / 60 / 60;
         var diffDays = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
+        
+        // 긴급 (24시간 이내)
+        if (diffHours > 0 && diffHours <= 24) {
+          urgentCount++;
+        }
         
         if (diffDays <= 3) {
           items.push({
             id: 'task-' + t.id,
             type: t.title.includes('메일') || t.title.includes('회신') ? 'email' : 'deadline',
             title: t.title,
-            dueDate: t.dueDate || t.deadline
+            dueDate: t.dueDate || t.deadline,
+            urgent: diffHours > 0 && diffHours <= 24
           });
         }
       }
@@ -278,20 +285,44 @@ export var HomePage = function(props) {
     if (items.length < 2) {
       items.push({
         id: 'sample-1',
-        type: 'payment',
-        title: '카드대금 납부',
-        dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString()
+        type: 'meeting',
+        title: '미팅',
+        dueDate: null
       });
       items.push({
         id: 'sample-2',
+        type: 'email',
+        title: '회신',
+        dueDate: null
+      });
+      items.push({
+        id: 'sample-3',
         type: 'call',
-        title: '엄마에게 연락하기',
+        title: '엄마 연락',
         dueDate: null
       });
     }
     
-    return items.slice(0, 5);
+    return {
+      items: items.slice(0, 5),
+      urgentCount: urgentCount
+    };
   }, [tasks]);
+  
+  var reminders = remindersData.items;
+  var urgentCount = remindersData.urgentCount;
+  
+  // 알림 핸들러
+  var handleNotificationAction = function(action) {
+    if (action === 'rest') {
+      // 휴식 시작
+      if (onStartFocus) {
+        onStartFocus({ type: 'rest', duration: 5 });
+      }
+    }
+    // 알림 닫기
+    setNotification(null);
+  };
   
   // 태스크 시작 → 대화 기록
   var handleStartTask = function(task) {
@@ -330,7 +361,7 @@ export var HomePage = function(props) {
     }
   };
   
-  // 퀘액션 처리 → 대화 기록
+  // 퀵액션 처리 → 대화 기록
   var handleQuickAction = function(actionId) {
     switch (actionId) {
       case 'addTask':
@@ -429,11 +460,6 @@ export var HomePage = function(props) {
     }, 800);
   };
   
-  // 풀 채팅 열기
-  var handleOpenFullChat = function() {
-    setFullChatOpen(true);
-  };
-  
   // 내일 준비 완료
   var handleReadyForTomorrow = function() {
     setChatHistory(function(prev) {
@@ -477,18 +503,18 @@ export var HomePage = function(props) {
         onOpenSettings: function() { handleNavigate('SETTINGS'); }
       }),
       
-      // 🐧 알프레도 아일랜드 (나이트 모드)
-      React.createElement('div', { className: 'pt-4' },
-        React.createElement(AlfredoIsland, {
+      // 🐧 알프레도 카드 (나이트 모드)
+      React.createElement('div', { className: 'max-w-3xl mx-auto px-4 pt-4' },
+        React.createElement(AlfredoCard, {
           darkMode: true,
           userName: userName,
           tasks: tasks,
           events: events,
           condition: condition,
+          notification: notification,
+          onNotificationAction: handleNotificationAction,
           chatHistory: chatHistory,
-          onSendMessage: handleSendMessage,
-          onOpenFullChat: handleOpenFullChat,
-          onStartTask: handleStartTask
+          onSendMessage: handleSendMessage
         })
       ),
       
@@ -507,16 +533,6 @@ export var HomePage = function(props) {
       React.createElement(ChatFloating, {
         onClick: onOpenChat,
         darkMode: true
-      }),
-      
-      // 풀 채팅 모달
-      React.createElement(AlfredoFullChat, {
-        isOpen: isFullChatOpen,
-        onClose: function() { setFullChatOpen(false); },
-        darkMode: true,
-        chatHistory: chatHistory,
-        onSendMessage: handleSendMessage,
-        userName: userName
       }),
       
       // XP 토스트
@@ -538,7 +554,7 @@ export var HomePage = function(props) {
     );
   }
   
-  // ☀️ 일반 모드 렌더링
+  // ☀️ 일반 모드 렌더링 - 새 레이아웃
   return React.createElement('div', { className: bgColor + ' min-h-screen' },
     // 고정 헤더
     React.createElement(HomeHeader, {
@@ -555,74 +571,62 @@ export var HomePage = function(props) {
       onOpenSettings: function() { handleNavigate('SETTINGS'); }
     }),
     
-    // 메인 콘텐츠
+    // 메인 콘텐츠 - 세로 배치
     React.createElement('div', { 
-      className: 'max-w-3xl mx-auto px-4 md:px-6 lg:px-8 pt-4 pb-28 space-y-6'
+      className: 'max-w-3xl mx-auto px-4 md:px-6 lg:px-8 pt-4 pb-28 space-y-5'
     },
-      // 🐧 알프레도 다이내믹 아일랜드
-      React.createElement(AlfredoIsland, {
+      // 1️⃣ 알프레도 카드 (알림 통합 + 플로팅 채팅)
+      React.createElement(AlfredoCard, {
         darkMode: darkMode,
         userName: userName,
         tasks: tasks,
         events: events,
         condition: condition,
+        notification: notification,
+        onNotificationAction: handleNotificationAction,
         chatHistory: chatHistory,
-        onSendMessage: handleSendMessage,
-        onOpenFullChat: handleOpenFullChat,
-        onStartTask: handleStartTask
+        onSendMessage: handleSendMessage
       }),
       
-      // 🎉 오늘의 작은 승리 (저녁/밤 또는 완료한 게 있을 때)
-      (isEveningOrNight || todayStats.completed > 0) && React.createElement(TodayWinsCard, {
+      // 2️⃣ 오늘 잊지마세요 + Today 기분/에너지
+      React.createElement(TodayRemindersCard, {
         darkMode: darkMode,
-        tasks: tasks,
+        reminders: reminders,
+        urgentCount: urgentCount,
+        condition: condition,
+        onConditionChange: handleConditionChange,
+        onReminderClick: function(reminder) {
+          console.log('Reminder clicked:', reminder);
+        }
+      }),
+      
+      // 3️⃣ 지금 이거부터 (AI 추천)
+      React.createElement(FocusNowCard, {
+        task: focusTask,
+        darkMode: darkMode,
+        onStart: handleStartTask,
+        onLater: function() {}
+      }),
+      
+      // 4️⃣ 진행률/성취감 카드
+      React.createElement(TodayProgressCard, {
+        darkMode: darkMode,
+        completedCount: todayStats.completed,
+        totalCount: todayStats.total || 3,
         focusMinutes: gamification.gameData?.focusMinutes || 0,
-        waterCount: 3, // TODO: 실제 데이터 연동
-        streak: gamification.currentStreak || 0,
-        yesterdayCompleted: 3, // TODO: 실제 데이터 연동
         onClick: function() { handleNavigate('STATS'); }
       }),
       
-      // 📊 2컴럼 그리드
-      React.createElement('div', { 
-        className: 'grid grid-cols-1 md:grid-cols-2 gap-6'
-      },
-        // 왼쪽 컴럼
-        React.createElement('div', { className: 'space-y-6' },
-          // 🎯 지금 집중할 것
-          React.createElement(FocusNowCard, {
-            task: focusTask,
-            darkMode: darkMode,
-            userName: userName,
-            condition: condition,
-            onStart: handleStartTask,
-            onLater: function() {}
-          }),
-          
-          // 🔔 잊지 마세요
-          React.createElement(RemindersSection, {
-            reminders: reminders,
-            darkMode: darkMode,
-            onReminderClick: function(reminder) {
-              console.log('Reminder clicked:', reminder);
-            }
-          })
-        ),
-        
-        // 오른쪽 컴럼
-        React.createElement('div', { className: 'space-y-6' },
-          // 📅 오늘 타임라인
-          React.createElement(MiniTimeline, {
-            events: todayEvents,
-            tasks: tasks,
-            darkMode: darkMode,
-            condition: condition,
-            onStartTask: handleStartTask,
-            onOpenEvent: onOpenEvent,
-            onAddTask: onOpenAddTask
-          })
-        )
-      )
+      // 5️⃣ 오늘 타임라인
+      React.createElement(MiniTimeline, {
+        events: todayEvents,
+        tasks: tasks,
+        darkMode: darkMode,
+        condition: condition,
+        onStartTask: handleStartTask,
+        onOpenEvent: onOpenEvent,
+        onAddTask: onOpenAddTask
+      })
     ),
     
     // 플로팅 버튼들
@@ -634,16 +638,6 @@ export var HomePage = function(props) {
     React.createElement(ChatFloating, {
       onClick: onOpenChat,
       darkMode: darkMode
-    }),
-    
-    // 풀 채팅 모달
-    React.createElement(AlfredoFullChat, {
-      isOpen: isFullChatOpen,
-      onClose: function() { setFullChatOpen(false); },
-      darkMode: darkMode,
-      chatHistory: chatHistory,
-      onSendMessage: handleSendMessage,
-      userName: userName
     }),
     
     // XP 토스트
