@@ -158,25 +158,36 @@ export var TodayTimelineMinimal = function(props) {
       dayProgress = 100;
     }
     
-    // 빈 시간 계산
-    var busyMinutes = todayEvents.length * 60;
-    var totalMinutes = 12 * 60;
-    var freeMinutes = Math.max(0, totalMinutes - busyMinutes);
-    var freeHours = Math.floor(freeMinutes / 60);
-    
     return {
       completed: completed,
       total: total,
-      dayProgress: dayProgress,
-      freeHours: freeHours
+      dayProgress: dayProgress
     };
-  }, [tasks, todayEvents, now]);
+  }, [tasks, now]);
   
   // 현재 시간 포맷
   var currentTime = formatTime(now) || '--:--';
   
   // 빈 상태
   var isEmpty = allItems.length === 0 && untimedTasks.length === 0;
+  
+  // 완료율에 따른 뱃지 스타일
+  var getBadgeStyle = function() {
+    if (stats.total === 0) return 'text-gray-500 bg-gray-50';
+    if (stats.completed === 0) return 'text-gray-500 bg-gray-100';
+    if (stats.completed === stats.total) return 'text-green-600 bg-green-50';
+    if (stats.completed >= stats.total / 2) return 'text-purple-600 bg-purple-50';
+    return 'text-amber-600 bg-amber-50';
+  };
+  
+  // 완료율에 따른 이모지
+  var getBadgeEmoji = function() {
+    if (stats.total === 0) return '';
+    if (stats.completed === 0) return '';
+    if (stats.completed === stats.total) return ' 🎉';
+    if (stats.completed >= stats.total / 2) return ' ✨';
+    return '';
+  };
   
   return React.createElement('div', {
     className: 'mx-4 mt-4 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden'
@@ -192,8 +203,8 @@ export var TodayTimelineMinimal = function(props) {
           React.createElement('span', { className: 'text-lg' }, '📅'),
           React.createElement('span', { className: 'font-semibold text-gray-800' }, '오늘'),
           stats.total > 0 && React.createElement('span', {
-            className: 'text-sm text-purple-600 font-medium bg-purple-50 px-2 py-0.5 rounded-full'
-          }, stats.completed + '/' + stats.total + ' 완료 ✨')
+            className: 'text-sm font-medium px-2 py-0.5 rounded-full ' + getBadgeStyle()
+          }, stats.completed + '/' + stats.total + ' 완료' + getBadgeEmoji())
         ),
         React.createElement('span', {
           className: 'text-sm text-gray-500'
@@ -335,19 +346,7 @@ export var TodayTimelineMinimal = function(props) {
                 })
               )
             )
-          ),
-      
-      // 빈 시간 안내
-      !isEmpty && stats.freeHours > 0 && React.createElement('div', {
-        className: 'mt-4 pt-3 border-t border-gray-50'
-      },
-        React.createElement('p', {
-          className: 'text-sm text-gray-500'
-        },
-          '✨ 빈 시간 약 ', 
-          React.createElement('span', { className: 'font-medium text-purple-600' }, stats.freeHours + '시간')
-        )
-      )
+          )
     )
   );
 };
