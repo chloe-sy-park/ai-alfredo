@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import HomeHeader from './HomeHeader';
-import AlfredoHeroSection from './AlfredoHeroSection';
+import HomeHeaderV2 from './HomeHeaderV2';
+import AlfredoHeroV2 from './AlfredoHeroV2';
 import TodayRemindersCard from './TodayRemindersCard';
 import FocusNowCard from './FocusNowCard';
 import TodayTop3Card from './TodayTop3Card';
@@ -21,7 +21,7 @@ var getTimeOfDay = function() {
   return 'night';
 };
 
-// 🏠 홈페이지 v3 - 단순화된 레이아웃
+// 🏠 홈페이지 v4 - 통일된 배경색 + 새로운 레이아웃
 export var HomePage = function(props) {
   var darkMode = props.darkMode;
   var tasks = props.tasks || [];
@@ -74,10 +74,10 @@ export var HomePage = function(props) {
     return { completed: completed, total: total };
   }, [tasks]);
   
-  // Apple 스타일 배경색
+  // 통일된 배경색 (#F5F5F7)
   var bgColor = isNightMode 
     ? 'bg-gradient-to-b from-[#0a0a0f] to-[#1a1a2e]'
-    : (darkMode ? 'bg-[#1D1D1F]' : 'bg-[#F5F5F7]');
+    : 'bg-[#F5F5F7]';
   
   // 컨디션 변경
   var handleConditionChange = function(newCondition) {
@@ -226,33 +226,21 @@ export var HomePage = function(props) {
   // 🌙 나이트 모드 렌더링
   if (isNightMode) {
     return React.createElement('div', { className: bgColor + ' min-h-screen' },
-      React.createElement(HomeHeader, {
-        darkMode: true,
-        condition: condition,
-        setCondition: handleConditionChange,
+      React.createElement(HomeHeaderV2, {
         weather: weather,
-        level: gamification.level || 1,
-        userName: userName,
-        tasks: tasks,
-        events: events,
-        onSelectTask: onOpenTask,
-        onSelectEvent: onOpenEvent,
-        onOpenSettings: function() { handleNavigate('SETTINGS'); }
+        level: gamification.level || 1
       }),
       
-      React.createElement('div', { className: 'max-w-3xl mx-auto px-4 pt-4' },
-        React.createElement(AlfredoHeroSection, {
-          darkMode: true,
-          userName: userName,
-          condition: condition,
-          energy: energy,
-          weather: weather,
-          onConditionChange: handleConditionChange,
-          onEnergyChange: handleEnergyChange,
-          completedCount: todayStats.completed,
-          totalCount: todayStats.total
-        })
-      ),
+      React.createElement(AlfredoHeroV2, {
+        userName: userName,
+        condition: condition,
+        energy: energy,
+        weather: weather,
+        tasks: tasks,
+        events: todayEvents,
+        onConditionChange: handleConditionChange,
+        onEnergyChange: handleEnergyChange
+      }),
       
       React.createElement(NightModeView, {
         darkMode: true,
@@ -286,41 +274,31 @@ export var HomePage = function(props) {
     );
   }
   
-  // ☀️ 일반 모드 렌더링 - v3 레이아웃
+  // ☀️ 일반 모드 렌더링 - v4 레이아웃 (통일된 배경색)
   return React.createElement('div', { className: bgColor + ' min-h-screen' },
-    // 고정 헤더
-    React.createElement(HomeHeader, {
-      darkMode: darkMode,
-      condition: condition,
-      setCondition: handleConditionChange,
+    // 헤더 (배경색 동일)
+    React.createElement(HomeHeaderV2, {
       weather: weather,
-      level: gamification.level || 1,
-      userName: userName,
-      tasks: tasks,
-      events: events,
-      onSelectTask: onOpenTask,
-      onSelectEvent: onOpenEvent,
-      onOpenSettings: function() { handleNavigate('SETTINGS'); }
+      level: gamification.level || 1
     }),
     
-    // 메인 콘텐츠 - v3 세로 배치
+    // 알프레도 히어로 섹션 (배경색 동일)
+    React.createElement(AlfredoHeroV2, {
+      userName: userName,
+      condition: condition,
+      energy: energy,
+      weather: weather,
+      tasks: tasks,
+      events: todayEvents,
+      onConditionChange: handleConditionChange,
+      onEnergyChange: handleEnergyChange
+    }),
+    
+    // 메인 콘텐츠 - 카드들
     React.createElement('div', { 
-      className: 'max-w-3xl mx-auto px-4 md:px-6 lg:px-8 pt-4 pb-28 space-y-5'
+      className: 'max-w-3xl mx-auto px-4 md:px-6 lg:px-8 pb-28 space-y-5'
     },
-      // 1️⃣ 알프레도 히어로 섹션 (이미지 + 인사말 + 기분/에너지)
-      React.createElement(AlfredoHeroSection, {
-        darkMode: darkMode,
-        userName: userName,
-        condition: condition,
-        energy: energy,
-        weather: weather,
-        onConditionChange: handleConditionChange,
-        onEnergyChange: handleEnergyChange,
-        completedCount: todayStats.completed,
-        totalCount: todayStats.total
-      }),
-      
-      // 2️⃣ 오늘 잊지마세요
+      // 1️⃣ 오늘 잊지마세요
       remindersData.items.length > 0 && React.createElement(TodayRemindersCard, {
         darkMode: darkMode,
         reminders: remindersData.items,
@@ -332,7 +310,7 @@ export var HomePage = function(props) {
         }
       }),
       
-      // 3️⃣ 지금 이거부터 (AI 추천)
+      // 2️⃣ 지금 이거부터 (AI 추천)
       focusTask && React.createElement(FocusNowCard, {
         task: focusTask,
         darkMode: darkMode,
@@ -340,7 +318,7 @@ export var HomePage = function(props) {
         onLater: function() {}
       }),
       
-      // 4️⃣ 오늘의 Top 3 ⭐ NEW
+      // 3️⃣ 오늘의 Top 3
       React.createElement(TodayTop3Card, {
         darkMode: darkMode,
         tasks: tasks,
@@ -348,7 +326,7 @@ export var HomePage = function(props) {
         onStartTask: handleStartTask
       }),
       
-      // 5️⃣ 진행률/성취감 카드
+      // 4️⃣ 진행률/성취감 카드
       React.createElement(TodayProgressCard, {
         darkMode: darkMode,
         completedCount: todayStats.completed,
@@ -357,7 +335,7 @@ export var HomePage = function(props) {
         onClick: function() { handleNavigate('STATS'); }
       }),
       
-      // 6️⃣ 오늘 타임라인
+      // 5️⃣ 오늘 타임라인
       React.createElement(MiniTimeline, {
         events: todayEvents,
         tasks: tasks,
