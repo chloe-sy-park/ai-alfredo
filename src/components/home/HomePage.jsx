@@ -44,7 +44,7 @@ var generateAlfredoMessage = function(timeOfDay, userName, completedCount, event
       '일찍 일어나셨네요! 물 한 잔 먼저 마셔요 💧'
     ],
     morning: [
-      '오전 잘 보내고 계세요? 오늘 할 것들 정리해뒀어요 ✨',
+      '오전 잘 보내고 계세요? 오늘 할 것들 정리해두었어요 ✨',
       '좋은 아침이에요! 오늘 뭐부터 시작해볼까요?'
     ],
     lunch: [
@@ -52,7 +52,7 @@ var generateAlfredoMessage = function(timeOfDay, userName, completedCount, event
       '밥 먹고 오후도 화이팅! 🍚'
     ],
     afternoon: [
-      '오후도 힘내고 있죠? ' + (completedCount > 0 ? '벌써 ' + completedCount + '개 완료!' : ''),
+      '오후도 힘내고 있죠? ' + (completedCount > 0 ? '볌써 ' + completedCount + '개 완료!' : ''),
       '지금 시작해도 충분해요! 💪'
     ],
     evening: [
@@ -61,7 +61,7 @@ var generateAlfredoMessage = function(timeOfDay, userName, completedCount, event
     ],
     night: [
       name + ', 이 시간엔 쉬셔야죠. 내일 제가 깨워드릴게요 🌙',
-      '오늘 충분히 하셨어요. 푹 쉬세요 💤'
+      '오늘 충분히 하셨어요. 푸́ 쉬세요 💤'
     ]
   };
   
@@ -330,7 +330,7 @@ export var HomePage = function(props) {
     }
   };
   
-  // 퀵액션 처리 → 대화 기록
+  // 퀘액션 처리 → 대화 기록
   var handleQuickAction = function(actionId) {
     switch (actionId) {
       case 'addTask':
@@ -487,7 +487,8 @@ export var HomePage = function(props) {
           condition: condition,
           chatHistory: chatHistory,
           onSendMessage: handleSendMessage,
-          onOpenFullChat: handleOpenFullChat
+          onOpenFullChat: handleOpenFullChat,
+          onStartTask: handleStartTask
         })
       ),
       
@@ -567,7 +568,8 @@ export var HomePage = function(props) {
         condition: condition,
         chatHistory: chatHistory,
         onSendMessage: handleSendMessage,
-        onOpenFullChat: handleOpenFullChat
+        onOpenFullChat: handleOpenFullChat,
+        onStartTask: handleStartTask
       }),
       
       // 🎉 오늘의 작은 승리 (저녁/밤 또는 완료한 게 있을 때)
@@ -581,11 +583,11 @@ export var HomePage = function(props) {
         onClick: function() { handleNavigate('STATS'); }
       }),
       
-      // 📊 2컬럼 그리드
+      // 📊 2컴럼 그리드
       React.createElement('div', { 
         className: 'grid grid-cols-1 md:grid-cols-2 gap-6'
       },
-        // 왼쪽 컬럼
+        // 왼쪽 컴럼
         React.createElement('div', { className: 'space-y-6' },
           // 🎯 지금 집중할 것
           React.createElement(FocusNowCard, {
@@ -607,9 +609,9 @@ export var HomePage = function(props) {
           })
         ),
         
-        // 오른쪽 컬럼
+        // 오른쪽 컴럼
         React.createElement('div', { className: 'space-y-6' },
-          // 🗓️ 오늘 타임라인
+          // 📅 오늘 타임라인
           React.createElement(MiniTimeline, {
             events: todayEvents,
             tasks: tasks,
