@@ -13,7 +13,7 @@ export default function Chat() {
     {
       id: '1',
       role: 'assistant',
-      content: '안녕하세요! 알프레도예요 🐧 오늘 하루는 어떻게 도와드릴까요?',
+      content: '오늘 뭐부터 시작할까요?',
       timestamp: new Date()
     }
   ]);
@@ -43,17 +43,50 @@ export default function Chat() {
     setInput('');
     setIsLoading(true);
 
-    // TODO: 실제 API 연동
-    setTimeout(() => {
+    try {
+      // 실제 API 호출
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [...messages, userMessage].map(m => ({
+            role: m.role,
+            content: m.content
+          })),
+          context: {
+            time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+            day: new Date().toLocaleDateString('ko-KR', { weekday: 'long' }),
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('API request failed');
+      }
+
+      const data = await response.json();
+      
       const assistantMessage: Message = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: '네, 알겠어요! 제가 도와드릴게요. 🐧',
+        content: data.text || '죄송해요, 잠시 문제가 생겼어요.',
         timestamp: new Date()
       };
       setMessages((prev) => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error('Chat error:', error);
+      const errorMessage: Message = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: '연결에 문제가 있어요. 잠시 후 다시 시도해주세요.',
+        timestamp: new Date()
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
