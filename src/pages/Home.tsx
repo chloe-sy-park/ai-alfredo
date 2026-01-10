@@ -1,5 +1,5 @@
 import Card from '@/components/common/Card';
-import { Calendar, CheckCircle2, Clock, Sparkles, Sun, CloudSun } from 'lucide-react';
+import { Calendar, CheckCircle2, Clock, Sparkles, CloudSun } from 'lucide-react';
 
 export default function Home() {
   return (
@@ -30,7 +30,7 @@ export default function Home() {
           <CloudSun className="text-amber-400" size={28} />
           <div>
             <p className="text-2xl font-semibold">12°</p>
-            <p className="text-xs text-gray-500">말음</p>
+            <p className="text-xs text-gray-500">맑음</p>
           </div>
         </Card>
         <Card className="flex-1">
@@ -125,7 +125,7 @@ export default function Home() {
         <h2 className="font-semibold mb-2">📌 기억해야 할 것</h2>
         <ul className="space-y-1 text-sm text-gray-600">
           <li>• 오후 3시 약 먹기</li>
-          <li>• 톤으로 세금계산서 체크</li>
+          <li>• 토스로 세금계산서 체크</li>
         </ul>
       </Card>
     </div>

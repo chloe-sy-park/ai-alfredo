@@ -1,5 +1,5 @@
 import { useAuthStore } from '@/stores/authStore';
-import { Bell, Wifi, WifiOff } from 'lucide-react';
+import { Bell, WifiOff } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function StatusBar() {
