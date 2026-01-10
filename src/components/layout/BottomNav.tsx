@@ -25,7 +25,7 @@ export default function BottomNav() {
               }`
             }
           >
-            {({ isActive }) => (
+            {({ isActive }: { isActive: boolean }) => (
               <>
                 <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
                 <span className="text-xs mt-1 font-medium">{label}</span>
