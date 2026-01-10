@@ -1,14 +1,41 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "installCommand": "npm install",
-  "framework": "vite",
-  "functions": {
-    "api/transcribe.js": {
-      "maxDuration": 60
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
     },
-    "api/analyze-meeting.js": {
-      "maxDuration": 60
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
     }
-  }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Credentials", "value": "true" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT" },
+        { "key": "Access-Control-Allow-Headers", "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization" }
+      ]
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/morning-briefing",
+      "schedule": "0,30 6-10 * * *"
+    },
+    {
+      "path": "/api/cron/evening-wrapup",
+      "schedule": "0 18-22 * * *"
+    },
+    {
+      "path": "/api/cron/meeting-reminders",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/dna-analysis",
+      "schedule": "0 3 * * *"
+    }
+  ]
 }
