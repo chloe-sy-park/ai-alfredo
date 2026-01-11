@@ -19,3 +19,6 @@ export { useHabitStore } from './habitStore';
 
 // Focus Store
 export { useFocusStore } from './focusStore';
+
+// DNA Store
+export { useDNAStore } from './dnaStore';

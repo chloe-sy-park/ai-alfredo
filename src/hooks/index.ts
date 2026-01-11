@@ -5,3 +5,9 @@ export { useHabits } from './useHabits';
 export { useFocusSessions } from './useFocusSessions';
 export { usePenguin } from './usePenguin';
 export { useConversations } from './useConversations';
+
+// DNA 분석 훅
+export { useDNAEngine, useDNARecommendations } from './useDNAEngine';
+
+// 모바일 최적화 훅
+export { useMobileOptimizations, usePullToRefresh, useKeyboardHeight, useHaptic } from './useMobileOptimizations';
