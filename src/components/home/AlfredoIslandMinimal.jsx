@@ -1,6 +1,76 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ChevronRight, X, Send, Sparkles, RefreshCw } from 'lucide-react';
 
+// 🐧 알프레도 표정 시스템
+var ALFREDO_EXPRESSIONS = {
+  default: { emoji: '🐧', label: '기본' },
+  happy: { emoji: '😊🐧', label: '기쁨' },
+  excited: { emoji: '🎉🐧', label: '신남' },
+  cheer: { emoji: '💪🐧', label: '응원' },
+  comfort: { emoji: '🤗🐧', label: '위로' },
+  worried: { emoji: '😰🐧', label: '걱정' },
+  sleepy: { emoji: '😴🐧', label: '졸림' },
+  thinking: { emoji: '🤔🐧', label: '생각' },
+  love: { emoji: '💜🐧', label: '애정' }
+};
+
+// 상황에 따른 표정 결정
+var getAlfredoExpression = function(props) {
+  var tasks = props.tasks || [];
+  var condition = props.condition || 0;
+  var urgentEvent = props.urgentEvent;
+  var messageType = props.messageType || {};
+  
+  var now = new Date();
+  var hour = now.getHours();
+  var completed = tasks.filter(function(t) { return t.completed; }).length;
+  var total = tasks.length;
+  var completionRate = total > 0 ? (completed / total) * 100 : 0;
+  
+  // 1. 긴급 상황 - 걱정 표정
+  if (urgentEvent || messageType.urgent) {
+    return ALFREDO_EXPRESSIONS.worried;
+  }
+  
+  // 2. 밤 시간 (21시~5시) - 졸림 표정
+  if (hour >= 21 || hour < 5) {
+    return ALFREDO_EXPRESSIONS.sleepy;
+  }
+  
+  // 3. 컨디션 낮음 (1-2) - 위로 표정
+  if (condition > 0 && condition <= 2) {
+    return ALFREDO_EXPRESSIONS.comfort;
+  }
+  
+  // 4. 모든 태스크 완료 - 신남 표정
+  if (total > 0 && completed === total) {
+    return ALFREDO_EXPRESSIONS.excited;
+  }
+  
+  // 5. 절반 이상 완료 - 기쁨 표정
+  if (completionRate >= 50 && completed > 0) {
+    return ALFREDO_EXPRESSIONS.happy;
+  }
+  
+  // 6. 컨디션 물어볼 때 - 애정 표정
+  if (condition === 0) {
+    return ALFREDO_EXPRESSIONS.love;
+  }
+  
+  // 7. 할 일 많이 남음 + 저녁 - 응원 표정
+  if (hour >= 17 && total > 0 && completionRate < 50) {
+    return ALFREDO_EXPRESSIONS.cheer;
+  }
+  
+  // 8. 컨디션 좋음 (4-5) - 기쁨 표정
+  if (condition >= 4) {
+    return ALFREDO_EXPRESSIONS.happy;
+  }
+  
+  // 기본 표정
+  return ALFREDO_EXPRESSIONS.default;
+};
+
 // 🐧 알프레도 메시지 생성 (상황 인식형)
 var getAlfredoMessage = function(props) {
   var tasks = props.tasks || [];
@@ -40,7 +110,7 @@ var getAlfredoMessage = function(props) {
     var title = urgentEvent.event.title || urgentEvent.event.summary || '일정';
     return {
       line1: '⚡ ' + urgentEvent.diffMin + '분 뒤 일정!',
-      line2: '\"' + title.slice(0, 12) + '\" 준비하세요',
+      line2: '"' + title.slice(0, 12) + '" 준비하세요',
       urgent: true
     };
   }
@@ -62,7 +132,8 @@ var getAlfredoMessage = function(props) {
       return {
         line1: '오늘 다 해냈어요! 🎉',
         line2: '정말 대단해요, ' + userName,
-        urgent: false
+        urgent: false,
+        allDone: true
       };
     }
     
@@ -87,7 +158,8 @@ var getAlfredoMessage = function(props) {
       return {
         line1: remaining + '개 남았어요',
         line2: '가장 쉬운 것부터 해볼까요? 💪',
-        urgent: false
+        urgent: false,
+        needCheer: true
       };
     }
     
@@ -98,7 +170,8 @@ var getAlfredoMessage = function(props) {
         return {
           line1: '벌써 절반 넘었어요! 👏',
           line2: remaining + '개만 더 하면 끝!',
-          urgent: false
+          urgent: false,
+          goodProgress: true
         };
       }
       return {
@@ -199,7 +272,7 @@ var generateInitialHistory = function(props) {
         id: 'task-' + index,
         time: (taskHour < 10 ? '0' : '') + taskHour + ':00',
         type: 'action',
-        text: '✅ \"' + task.title + '\" 완료!'
+        text: '✅ "' + task.title + '" 완료!'
       });
       
       // 칭찬 메시지
@@ -265,6 +338,16 @@ export var AlfredoIslandMinimal = function(props) {
     });
   }, [tasks, events, condition, userName, urgentEvent]);
   
+  // 표정 결정
+  var expression = useMemo(function() {
+    return getAlfredoExpression({
+      tasks: tasks,
+      condition: condition,
+      urgentEvent: urgentEvent,
+      messageType: message
+    });
+  }, [tasks, condition, urgentEvent, message]);
+  
   // 초기 히스토리 (한 번만 생성)
   var initialHistory = useMemo(function() {
     return generateInitialHistory({
@@ -298,26 +381,26 @@ export var AlfredoIslandMinimal = function(props) {
     var todoTasks = tasks.filter(function(t) { return !t.completed; });
     var completedCount = tasks.filter(function(t) { return t.completed; }).length;
     
-    var systemPrompt = '당신은 \"알프레도\"입니다. 배트맨의 집사 알프레드처럼 사용자(Boss)를 돕는 AI 비서입니다.\\n\\n' +
-      '## 성격\\n' +
-      '- 따뜻하고 친근하지만 전문적\\n' +
-      '- 간결하고 실용적인 조언 (2-3문장)\\n' +
-      '- 이모지를 적절히 사용 (과하지 않게)\\n' +
-      '- 사용자를 \"Boss\"라고 부름\\n' +
-      '- 펭귄 마스코트 🐧\\n\\n' +
-      '## 현재 상황\\n' +
-      '- 날짜: ' + dateStr + '\\n' +
-      '- 시간: ' + timeStr + '\\n' +
-      '- 사용자 컨디션: ' + condition + '/5\\n\\n' +
-      '## 오늘의 태스크\\n' +
+    var systemPrompt = '당신은 "알프레도"입니다. 배트맨의 집사 알프레드처럼 사용자(Boss)를 돕는 AI 비서입니다.\n\n' +
+      '## 성격\n' +
+      '- 따뜻하고 친근하지만 전문적\n' +
+      '- 간결하고 실용적인 조언 (2-3문장)\n' +
+      '- 이모지를 적절히 사용 (과하지 않게)\n' +
+      '- 사용자를 "Boss"라고 부름\n' +
+      '- 펭귄 마스코트 🐧\n\n' +
+      '## 현재 상황\n' +
+      '- 날짜: ' + dateStr + '\n' +
+      '- 시간: ' + timeStr + '\n' +
+      '- 사용자 컨디션: ' + condition + '/5\n\n' +
+      '## 오늘의 태스크\n' +
       (todoTasks.length > 0 
-        ? todoTasks.map(function(t, i) { return (i + 1) + '. ' + t.title; }).join('\\n')
-        : '- 할 일 없음') + '\\n\\n' +
-      '완료: ' + completedCount + '개\\n\\n' +
-      '## 응답 규칙\\n' +
-      '1. 한국어로 답변\\n' +
-      '2. 2-3문장으로 간결하게\\n' +
-      '3. 현재 컨텍스트 활용\\n' +
+        ? todoTasks.map(function(t, i) { return (i + 1) + '. ' + t.title; }).join('\n')
+        : '- 할 일 없음') + '\n\n' +
+      '완료: ' + completedCount + '개\n\n' +
+      '## 응답 규칙\n' +
+      '1. 한국어로 답변\n' +
+      '2. 2-3문장으로 간결하게\n' +
+      '3. 현재 컨텍스트 활용\n' +
       '4. 실행 가능한 조언';
     
     // 대화 히스토리에서 user/alfredo 메시지만 추출
@@ -424,9 +507,18 @@ export var AlfredoIslandMinimal = function(props) {
       ? 'bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200'
       : message.askCondition
         ? 'bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200'
-        : 'bg-white border-gray-100';
+        : message.allDone
+          ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'
+          : 'bg-white border-gray-100';
   
   var textColor = message.urgent ? 'text-orange-800' : 'text-gray-800';
+  
+  // 표정 애니메이션 클래스
+  var expressionAnimation = message.urgent 
+    ? 'animate-bounce' 
+    : message.allDone 
+      ? 'animate-pulse'
+      : '';
   
   return React.createElement(React.Fragment, null,
     // 축소 상태 (2줄)
@@ -435,10 +527,10 @@ export var AlfredoIslandMinimal = function(props) {
       onClick: function() { setExpanded(true); }
     },
       React.createElement('div', { className: 'p-4 flex items-center gap-3' },
-        // 펭귄 (긴급시 애니메이션)
+        // 펭귄 표정 (상황별 변화)
         React.createElement('div', { 
-          className: 'text-2xl ' + (message.urgent ? 'animate-bounce' : '')
-        }, '🐧'),
+          className: 'text-2xl flex-shrink-0 ' + expressionAnimation
+        }, expression.emoji),
         
         // 텍스트
         React.createElement('div', { className: 'flex-1 min-w-0' },
@@ -489,7 +581,8 @@ export var AlfredoIslandMinimal = function(props) {
             className: 'flex items-center justify-between p-4 border-b bg-gradient-to-r from-purple-50 to-white flex-shrink-0'
           },
             React.createElement('div', { className: 'flex items-center gap-2' },
-              React.createElement('span', { className: 'text-xl' }, '🐧'),
+              // 헤더에서도 현재 표정 표시
+              React.createElement('span', { className: 'text-xl' }, expression.emoji),
               React.createElement('span', { className: 'font-semibold text-gray-800' }, '알프레도'),
               React.createElement('span', { 
                 className: 'text-xs text-white bg-gradient-to-r from-purple-500 to-indigo-500 px-2 py-0.5 rounded-full'
@@ -553,7 +646,8 @@ export var AlfredoIslandMinimal = function(props) {
                               ? 'inline-block text-sm text-gray-700 bg-gray-100 rounded-2xl rounded-tl-md px-4 py-2'
                               : 'text-gray-800'
                     }, 
-                      isAlfredo && !isUser && React.createElement('span', { className: 'mr-1' }, '🐧'),
+                      // 알프레도 메시지에 현재 표정 표시
+                      isAlfredo && !isUser && React.createElement('span', { className: 'mr-1' }, expression.emoji.charAt(0) === '🐧' ? '🐧' : expression.emoji.slice(0, 2)),
                       item.text
                     )
               );
