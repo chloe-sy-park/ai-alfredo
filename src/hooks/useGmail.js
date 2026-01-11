@@ -17,8 +17,8 @@ const DEFAULT_SETTINGS = {
   maxEmails: 20,            // 10, 20, 50
   autoSyncMinutes: 30,      // 15, 30, 60, 0(수동)
   enabled: true,            // Gmail 연동 활성화
-  // 새로운 필터 옵션
-  priorityFilter: 'smart',  // 'smart' | 'important' | 'all'
+  // 필터 옵션 - 기본값을 'all'로 변경 (테스트용)
+  priorityFilter: 'all',    // 'smart' | 'important' | 'all'
   // smart: 중요 + 별표 + VIP 발신자
   // important: Gmail 중요 표시만
   // all: 전체 (기간 내)
@@ -32,10 +32,10 @@ export function useGmail() {
   const [isLoading, setIsLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState(null);
-  const [needsReauth, setNeedsReauth] = useState(false); // 🆕 재인증 필요 상태
+  const [needsReauth, setNeedsReauth] = useState(false);
   const [lastFetch, setLastFetch] = useState(null);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
-  const [vipSenders, setVipSenders] = useState([]); // VIP 발신자 목록
+  const [vipSenders, setVipSenders] = useState([]);
   
   const autoSyncRef = useRef(null);
 
@@ -80,7 +80,7 @@ export function useGmail() {
     localStorage.setItem(STORAGE_KEYS.VIP_SENDERS, JSON.stringify(updated));
   }, [vipSenders]);
 
-  // 쿼리 빌드 (설정 기반) - 중요/답변필요 우선
+  // 쿼리 빌드 (설정 기반)
   const buildQuery = useCallback((options = {}) => {
     const period = options.fetchPeriod || settings.fetchPeriod;
     const filter = options.priorityFilter || settings.priorityFilter;
@@ -96,44 +96,36 @@ export function useGmail() {
     
     // 필터 설정
     if (filter === 'important') {
-      // Gmail이 중요 표시한 것만
       parts.push('is:important');
     } else if (filter === 'smart') {
-      // 중요 OR 별표 OR VIP 발신자
       const smartParts = ['is:important', 'is:starred'];
-      
-      // VIP 발신자 추가
       vipSenders.forEach(sender => {
         smartParts.push(`from:${sender}`);
       });
-      
-      // OR 조건으로 묶기 (최소 중요+별표는 포함)
       if (smartParts.length > 0) {
         parts.push(`(${smartParts.join(' OR ')})`);
       }
     }
     // 'all'은 추가 필터 없음
     
-    return parts.join(' ');
+    const query = parts.join(' ');
+    console.log('📧 Gmail query:', query);
+    return query;
   }, [settings, vipSenders]);
 
-  // 🆕 강제 재연결 (scope 변경 시)
+  // 강제 재연결 (scope 변경 시)
   const forceReconnect = useCallback(async () => {
     console.log('🔄 Gmail: Force reconnecting...');
     
-    // 기존 연결 해제
     if (disconnect) {
       disconnect();
     }
     
-    // 상태 초기화
     setNeedsReauth(false);
     setError(null);
     
-    // 잠시 대기 후 재연결
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    // 새로 연결 (새 scope로)
     if (connect) {
       await connect();
       return true;
@@ -143,13 +135,21 @@ export function useGmail() {
 
   // 이메일 목록 가져오기
   const fetchEmails = useCallback(async (options = {}) => {
+    console.log('📧 Gmail fetchEmails 시작');
+    console.log('📧 isConnected:', isConnected);
+    console.log('📧 settings.enabled:', settings.enabled);
+    
     const token = getAccessToken();
+    console.log('📧 token exists:', !!token);
+    
     if (!token) {
+      console.error('📧 토큰 없음!');
       setError('Google에 연결되어 있지 않습니다');
       return [];
     }
 
     if (!settings.enabled) {
+      console.log('📧 Gmail 비활성화 상태');
       return emails;
     }
 
@@ -159,6 +159,8 @@ export function useGmail() {
     try {
       const query = buildQuery(options);
       const maxResults = options.maxEmails || settings.maxEmails;
+      
+      console.log('📧 API 호출 시작 - maxResults:', maxResults);
 
       // 이메일 ID 목록 가져오기
       const listResponse = await fetch('/api/gmail', {
@@ -175,8 +177,12 @@ export function useGmail() {
         }),
       });
 
-      // 🆕 401/403 에러 감지 - 재인증 필요
+      console.log('📧 API 응답 status:', listResponse.status);
+
       if (!listResponse.ok) {
+        const errorText = await listResponse.text();
+        console.error('📧 API 에러:', errorText);
+        
         if (listResponse.status === 401 || listResponse.status === 403) {
           console.warn('🔐 Gmail: Auth error, needs reauth');
           setNeedsReauth(true);
@@ -185,13 +191,16 @@ export function useGmail() {
         throw new Error('이메일 목록을 가져오는데 실패했습니다');
       }
 
-      // 성공하면 needsReauth 해제
       setNeedsReauth(false);
 
       const listData = await listResponse.json();
+      console.log('📧 이메일 목록 응답:', listData);
+      
       const messageIds = (listData.emails || []).map(m => m.id);
+      console.log('📧 가져온 이메일 수:', messageIds.length);
 
       if (messageIds.length === 0) {
+        console.log('📧 이메일 없음');
         setEmails([]);
         localStorage.setItem(STORAGE_KEYS.EMAILS, '[]');
         setLastFetch(new Date());
@@ -200,6 +209,7 @@ export function useGmail() {
       }
 
       // 이메일 상세 가져오기
+      console.log('📧 상세 정보 가져오기...');
       const detailResponse = await fetch('/api/gmail', {
         method: 'POST',
         headers: {
@@ -222,6 +232,7 @@ export function useGmail() {
 
       const detailData = await detailResponse.json();
       const fetchedEmails = detailData.emails || [];
+      console.log('📧 상세 정보 가져옴:', fetchedEmails.length, '개');
 
       setEmails(fetchedEmails);
       localStorage.setItem(STORAGE_KEYS.EMAILS, JSON.stringify(fetchedEmails));
@@ -230,21 +241,25 @@ export function useGmail() {
       setLastFetch(now);
       localStorage.setItem(STORAGE_KEYS.LAST_FETCH, now.toISOString());
 
+      console.log('📧 fetchEmails 완료!');
       return fetchedEmails;
     } catch (err) {
-      console.error('Fetch emails error:', err);
+      console.error('📧 Fetch emails error:', err);
       setError(err.message);
       return [];
     } finally {
       setIsLoading(false);
     }
-  }, [getAccessToken, settings, buildQuery, emails]);
+  }, [getAccessToken, settings, buildQuery, emails, isConnected]);
 
   // AI로 이메일 분석하여 액션 추출
   const analyzeEmails = useCallback(async (emailsToAnalyze = null) => {
     const targetEmails = emailsToAnalyze || emails;
     
+    console.log('📧 analyzeEmails 시작 - 이메일 수:', targetEmails.length);
+    
     if (targetEmails.length === 0) {
+      console.log('📧 분석할 이메일 없음');
       return [];
     }
 
@@ -252,7 +267,6 @@ export function useGmail() {
     setError(null);
 
     try {
-      // 이메일 요약 생성 (API 토큰 절약)
       const emailSummaries = targetEmails.slice(0, 15).map(email => ({
         id: email.id,
         from: email.from?.name || email.from?.email || 'Unknown',
@@ -266,7 +280,8 @@ export function useGmail() {
         category: email.category,
       }));
 
-      // Claude API 호출
+      console.log('📧 AI 분석 요청...');
+      
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
@@ -324,7 +339,6 @@ ${JSON.stringify(emailSummaries, null, 2)}
       const data = await response.json();
       let analysisResult = [];
 
-      // JSON 추출 시도
       try {
         const content = data.reply || data.content || '';
         const jsonMatch = content.match(/\[[\s\S]*\]/);
@@ -335,7 +349,6 @@ ${JSON.stringify(emailSummaries, null, 2)}
         console.error('Failed to parse AI response:', parseError);
       }
 
-      // 이메일 정보와 합치기
       const enrichedActions = analysisResult.map(action => {
         const email = targetEmails.find(e => e.id === action.emailId);
         return {
@@ -353,12 +366,14 @@ ${JSON.stringify(emailSummaries, null, 2)}
         };
       }).filter(a => a.email && a.actionType !== 'ignore');
 
+      console.log('📧 AI 분석 완료 - 액션 수:', enrichedActions.length);
+      
       setActions(enrichedActions);
       localStorage.setItem(STORAGE_KEYS.ACTIONS, JSON.stringify(enrichedActions));
 
       return enrichedActions;
     } catch (err) {
-      console.error('Analyze emails error:', err);
+      console.error('📧 Analyze emails error:', err);
       setError(err.message);
       return [];
     } finally {
@@ -368,6 +383,7 @@ ${JSON.stringify(emailSummaries, null, 2)}
 
   // 이메일 가져오기 + 분석 한번에
   const fetchAndAnalyze = useCallback(async (options = {}) => {
+    console.log('📧 fetchAndAnalyze 시작');
     const fetchedEmails = await fetchEmails(options);
     if (fetchedEmails.length > 0) {
       await analyzeEmails(fetchedEmails);
@@ -420,7 +436,6 @@ ${JSON.stringify(emailSummaries, null, 2)}
         return true;
       }
       
-      // 401/403이면 재인증 필요
       if (response.status === 401 || response.status === 403) {
         setNeedsReauth(true);
       }
@@ -458,6 +473,7 @@ ${JSON.stringify(emailSummaries, null, 2)}
 
   // Gmail 활성화/비활성화
   const toggleGmail = useCallback((enabled) => {
+    console.log('📧 toggleGmail:', enabled);
     updateSettings({ enabled });
     if (!enabled) {
       setEmails([]);
@@ -469,6 +485,7 @@ ${JSON.stringify(emailSummaries, null, 2)}
 
   // Gmail 연결 (Google 로그인 트리거)
   const connectGmail = useCallback(async () => {
+    console.log('📧 connectGmail 시작 - isConnected:', isConnected);
     if (!isConnected) {
       if (connect) {
         await connect();
@@ -482,26 +499,20 @@ ${JSON.stringify(emailSummaries, null, 2)}
 
   // === 브리핑용 통계 ===
   
-  // 답장 필요한 액션만 필터
   const replyActions = actions.filter(a => a.actionType === 'reply');
-  
-  // 긴급 답장 (urgent + high)
   const urgentReplyActions = replyActions.filter(a => 
     a.priority === 'urgent' || a.priority === 'high'
   );
 
-  // 통계
   const stats = {
     total: emails.length,
     unread: emails.filter(e => e.isUnread).length,
     urgent: actions.filter(a => a.priority === 'urgent').length,
     needsAction: actions.filter(a => ['reply', 'schedule', 'task'].includes(a.actionType)).length,
-    // 브리핑용
     needsReply: replyActions.length,
     urgentReply: urgentReplyActions.length,
   };
 
-  // 마지막 동기화 시간 표시용
   const getLastSyncText = useCallback(() => {
     if (!lastFetch) return '동기화 안됨';
     
@@ -514,7 +525,6 @@ ${JSON.stringify(emailSummaries, null, 2)}
     return `${Math.floor(diff / 1440)}일 전`;
   }, [lastFetch]);
 
-  // 브리핑 메시지 생성
   const getBriefingMessage = useCallback(() => {
     if (!settings.enabled || !isConnected) return null;
     if (needsReauth) return '📧 Gmail 재연결 필요';
@@ -532,12 +542,12 @@ ${JSON.stringify(emailSummaries, null, 2)}
     isGmailEnabled: settings.enabled,
     emails,
     actions,
-    replyActions,        // 답장 필요한 것만
-    urgentReplyActions,  // 긴급 답장
+    replyActions,
+    urgentReplyActions,
     isLoading,
     isAnalyzing,
     error,
-    needsReauth,         // 🆕 재인증 필요 여부
+    needsReauth,
     lastFetch,
     stats,
     settings,
@@ -552,7 +562,7 @@ ${JSON.stringify(emailSummaries, null, 2)}
     convertToTask,
     toggleGmail,
     connectGmail,
-    forceReconnect,      // 🆕 강제 재연결
+    forceReconnect,
     updateSettings,
     addVipSender,
     removeVipSender,
