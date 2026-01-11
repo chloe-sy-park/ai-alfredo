@@ -2,6 +2,7 @@ import React from 'react';
 
 // 🐧 알프레도 저녁 브리핑 시스템 V2
 // Day One 스타일의 하루 마무리 + 회고 시스템
+// + 🧬 DNA 기반 스트레스/워라밸 감지
 
 // ============================================================
 // 1. 저녁 인사 패턴 (하루 마무리용)
@@ -67,6 +68,46 @@ var EVENING_GREETINGS = {
     '오늘은 태스크 없이 자유롭게 보냈네요! 🎉',
     '할 일 없는 날도 필요해요. 잘 쉬었어요?',
     '여유로운 하루였네요. 이런 날도 소중해요 💜'
+  ]
+};
+
+// ============================================================
+// 🧬 DNA 기반 저녁 메시지
+// ============================================================
+
+var DNA_EVENING_MESSAGES = {
+  // 번아웃 감지
+  burnout: [
+    { line1: '요즘 너무 달렸어요 💜', line2: '오늘부터 조금씩 쉬어가요' },
+    { line1: 'Boss, 번아웃 신호가 보여요', line2: '내일은 진짜 좀 쉬어요, 약속! 🙏' },
+    { line1: '캘린더 보니까 쉴 틈이 없었네요', line2: '오늘 밤은 푹 쉬세요 💜' }
+  ],
+  // 스트레스 높음
+  highStress: [
+    { line1: '오늘도 바빴죠? 💜', line2: '이제 충분히 쉬어요' },
+    { line1: '하루 수고 많았어요', line2: '오늘 밤은 나를 위한 시간! 🌙' },
+    { line1: '요즘 일정이 빡빡하네요', line2: '오늘은 푹 쉬세요 💜' }
+  ],
+  // 워라밸 나쁨
+  poorWorkLife: [
+    { line1: '요즘 개인 시간이 부족해 보여요', line2: '오늘 저녁은 나를 위해 써봐요 💜' },
+    { line1: '일만 하면 지쳐요', line2: '오늘은 좋아하는 거 하면서 쉬어요 🌙' },
+    { line1: '워라밸 충전이 필요해 보여요', line2: '내일부터 조금씩 균형 잡아봐요 💜' }
+  ],
+  // 크로노타입 - 아침형 저녁
+  morningPersonEvening: [
+    { line1: '아침형이라 피곤하시죠? 🌙', line2: '일찍 주무세요! 내일 또 힘내야죠' },
+    { line1: '저녁이라 에너지 떨어졌죠?', line2: '오늘은 여기까지! 푹 쉬세요 💜' }
+  ],
+  // 크로노타입 - 저녁형 저녁
+  eveningPersonEvening: [
+    { line1: '저녁형이라 아직 괜찮으시죠? 🌙', line2: '그래도 적당히 하고 쉬어요!' },
+    { line1: '밤이 파워타임이지만~', line2: '오늘은 충전하는 시간으로! 💜' }
+  ],
+  // 오늘 미팅 많았음
+  busyMeetingDay: [
+    { line1: '오늘 미팅이 많았네요 💜', line2: '말 많이 해서 지쳤을 거예요. 쉬세요!' },
+    { line1: '미팅 연속이었죠?', line2: '이제 조용히 혼자만의 시간 가져요 🌙' }
   ]
 };
 
@@ -347,18 +388,79 @@ export var generateEveningBriefingV2 = function(props) {
 };
 
 // ============================================================
-// 8. 간단한 저녁 메시지 (아일랜드용)
+// 8. 간단한 저녁 메시지 (아일랜드용) + 🧬 DNA 통합
 // ============================================================
 
 export var getSimpleEveningMessage = function(props) {
   var tasks = props.tasks || [];
+  var events = props.events || [];
   var condition = props.condition || 3;
   var userName = props.userName || 'Boss';
+  var dnaInsight = props.dnaInsight; // 🧬 DNA 인사이트
   
   var completed = tasks.filter(function(t) { return t.completed; }).length;
   var remaining = tasks.filter(function(t) { return !t.completed; }).length;
   var total = tasks.length;
   var rate = total > 0 ? Math.round((completed / total) * 100) : 100;
+  
+  // 오늘 미팅 수 계산
+  var now = new Date();
+  var todayEvents = events.filter(function(e) {
+    var eventDate = new Date(e.start || e.startTime);
+    return eventDate.toDateString() === now.toDateString();
+  });
+  var meetingCount = todayEvents.length;
+  
+  // ============================================================
+  // 🧬 DNA 기반 메시지 우선 처리
+  // ============================================================
+  
+  if (dnaInsight) {
+    // 1. 번아웃 감지 (최우선)
+    if (dnaInsight.stressLevel === 'burnout') {
+      var burnoutMsgs = DNA_EVENING_MESSAGES.burnout;
+      var burnoutMsg = burnoutMsgs[Math.floor(Math.random() * burnoutMsgs.length)];
+      return { ...burnoutMsg, type: 'dna-burnout' };
+    }
+    
+    // 2. 스트레스 높음
+    if (dnaInsight.stressLevel === 'high') {
+      var stressMsgs = DNA_EVENING_MESSAGES.highStress;
+      var stressMsg = stressMsgs[Math.floor(Math.random() * stressMsgs.length)];
+      return { ...stressMsg, type: 'dna-stress' };
+    }
+    
+    // 3. 워라밸 나쁨 (스트레스 보통일 때)
+    if (dnaInsight.workLifeBalance === 'poor') {
+      var wlbMsgs = DNA_EVENING_MESSAGES.poorWorkLife;
+      var wlbMsg = wlbMsgs[Math.floor(Math.random() * wlbMsgs.length)];
+      return { ...wlbMsg, type: 'dna-worklife' };
+    }
+    
+    // 4. 오늘 미팅이 많았을 때 (5개 이상)
+    if (meetingCount >= 5) {
+      var busyMsgs = DNA_EVENING_MESSAGES.busyMeetingDay;
+      var busyMsg = busyMsgs[Math.floor(Math.random() * busyMsgs.length)];
+      return { ...busyMsg, type: 'dna-busy' };
+    }
+    
+    // 5. 크로노타입 기반 (컨디션 괜찮을 때만)
+    if (dnaInsight.chronotype && condition >= 3) {
+      if (dnaInsight.chronotype === 'morning') {
+        var morningMsgs = DNA_EVENING_MESSAGES.morningPersonEvening;
+        var morningMsg = morningMsgs[Math.floor(Math.random() * morningMsgs.length)];
+        return { ...morningMsg, type: 'dna-chronotype' };
+      } else if (dnaInsight.chronotype === 'evening') {
+        var eveningMsgs = DNA_EVENING_MESSAGES.eveningPersonEvening;
+        var eveningMsg = eveningMsgs[Math.floor(Math.random() * eveningMsgs.length)];
+        return { ...eveningMsg, type: 'dna-chronotype' };
+      }
+    }
+  }
+  
+  // ============================================================
+  // 기존 로직 (DNA 메시지 없을 때)
+  // ============================================================
   
   // 태스크 없는 날
   if (total === 0) {
@@ -521,5 +623,6 @@ export default {
   getSimpleEveningMessage: getSimpleEveningMessage,
   EveningBriefingCardV2: EveningBriefingCardV2,
   EVENING_GREETINGS: EVENING_GREETINGS,
-  REFLECTION_PROMPTS: REFLECTION_PROMPTS
+  REFLECTION_PROMPTS: REFLECTION_PROMPTS,
+  DNA_EVENING_MESSAGES: DNA_EVENING_MESSAGES
 };
