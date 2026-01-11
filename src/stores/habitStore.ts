@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { habitsApi } from '../lib/api';
-import type { Habit, HabitLog, HabitCategory, HabitFrequency } from '../types/database';
+import type { Habit, HabitLog, HabitCategory } from '../types/database';
 
 interface HabitWithStatus extends Habit {
   completed_today: boolean;

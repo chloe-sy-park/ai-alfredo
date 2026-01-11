@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Mic, Plus, ChevronLeft } from 'lucide-react';
+import { Send, Mic, Plus } from 'lucide-react';
 import { useConversationStore } from '../stores/conversationStore';
 import type { Message } from '../types/database';
 
@@ -11,7 +11,6 @@ export default function Chat() {
     error,
     sendMessage,
     createConversation,
-    currentConversation,
   } = useConversationStore();
 
   const [input, setInput] = useState('');

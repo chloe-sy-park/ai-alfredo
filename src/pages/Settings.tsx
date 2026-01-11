@@ -30,8 +30,8 @@ export default function Settings() {
       <Card>
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-full bg-lavender-100 flex items-center justify-center">
-            {user?.picture ? (
-              <img src={user.picture} alt="" className="w-full h-full rounded-full" />
+            {user?.avatar_url ? (
+              <img src={user.avatar_url} alt="" className="w-full h-full rounded-full" />
             ) : (
               <User size={32} className="text-lavender-400" />
             )}

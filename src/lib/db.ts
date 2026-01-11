@@ -1,5 +1,5 @@
 import Dexie, { Table } from 'dexie';
-import type { Task } from '@/stores/taskStore';
+import type { Task } from '../types/database';
 
 // 오프라인 큐 아이템
 export interface OfflineQueueItem {

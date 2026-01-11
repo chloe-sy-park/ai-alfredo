@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { conversationsApi } from '../lib/api';
 import type { Conversation, Message } from '../types/database';
 
@@ -24,8 +24,6 @@ export function useConversations(): UseConversationsReturn {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [streamingMessage, setStreamingMessage] = useState('');
-
-  const abortControllerRef = useRef<AbortController | null>(null);
 
   // 대화 목록 조회
   const fetchConversations = useCallback(async () => {

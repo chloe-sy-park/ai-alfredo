@@ -23,7 +23,7 @@ export const supabase: SupabaseClient<Database> = createClient<Database>(
 
 // 인증 상태 변경 리스너
 export function onAuthStateChange(callback: (session: any) => void) {
-  return supabase.auth.onAuthStateChange((event, session) => {
+  return supabase.auth.onAuthStateChange((_event, session) => {
     callback(session);
   });
 }

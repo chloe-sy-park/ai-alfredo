@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
-import { supabase, onAuthStateChange, signOut as supabaseSignOut } from '../lib/supabase';
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import { onAuthStateChange, signOut as supabaseSignOut } from '../lib/supabase';
 import { authApi } from '../lib/api';
 import type { User } from '../types/database';
 
