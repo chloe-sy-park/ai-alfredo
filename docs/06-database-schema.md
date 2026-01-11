@@ -1,767 +1,709 @@
-# 06. 데이터베이스 스키마
+# 🗄️ 알프레도 ERD (Entity Relationship Diagram)
 
-> Supabase + 클라이언트 사이드 암호화 구조
-
----
-
-## 🏗️ 저장소 구조
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Supabase                              │
-├─────────────────────┬───────────────────────────────────┤
-│  Auth (내장)        │  Database                          │
-│  - Google OAuth     │  ┌─────────────┐ ┌──────────────┐ │
-│  - 세션 관리        │  │ 평문 테이블  │ │ 암호화 테이블 │ │
-│                     │  │ - users     │ │ - tasks_enc  │ │
-│                     │  │ - settings  │ │ - calendar   │ │
-│                     │  │ - dna       │ │   _cache_enc │ │
-│                     │  │ - nudge_log │ └──────────────┘ │
-│                     │  └─────────────┘                   │
-└─────────────────────┴───────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────┐
-│                 로컬 (IndexedDB)                         │
-│  - offline_queue (오프라인 작업 큐)                      │
-│  - cache (빠른 로딩용)                                   │
-│  - encryption_key (마스터키 - 기기별)                    │
-└─────────────────────────────────────────────────────────┘
-```
-
-### 설계 원칙
-
-| 원칙 | 설명 |
-|------|------|
-| **E2E 암호화** | 민감 데이터는 클라이언트에서 암호화 후 저장 |
-| **쿼리 가능성** | 날짜, 상태 등 필터 필요한 필드는 평문 유지 |
-| **오프라인 우선** | IndexedDB로 즉시 반응, 백그라운드 동기화 |
-| **ADHD 친화적** | 사용자에게 저장소 선택 강요 안 함 |
+> **버전**: v1.0  
+> **작성일**: 2025-01-11  
+> **목표**: Q1 MVP 완성을 위한 전체 데이터베이스 스키마 설계
 
 ---
 
-## 📋 테이블 상세
+## 📊 전체 ERD 다이어그램
 
-### 1. users (평문)
+```mermaid
+erDiagram
+    %% ========== 핵심 사용자 ========== %%
+    users ||--o{ user_settings : has
+    users ||--o{ tasks : creates
+    users ||--o{ habits : creates
+    users ||--o{ focus_sessions : creates
+    users ||--o{ daily_conditions : logs
+    users ||--o{ conversations : has
+    users ||--|| penguin_status : has
+    users ||--o{ calendar_events : syncs
+    users ||--o{ calendar_insights : has
 
-```sql
-CREATE TABLE users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
-  -- Google 연동
-  google_id TEXT UNIQUE,
-  email TEXT,
-  name TEXT,
-  avatar_url TEXT,
-  
-  -- 암호화 키 (서버 저장용 - 기기 분실 대비)
-  encrypted_master_key TEXT,  -- 사용자 비밀번호로 암호화된 마스터키
-  key_salt TEXT,
-  
-  -- 메타
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  last_active_at TIMESTAMPTZ,
-  onboarding_completed BOOLEAN DEFAULT FALSE,
-  
-  -- 구독 (나중에)
-  plan TEXT DEFAULT 'free'
-);
-```
-
----
-
-### 2. settings (평문)
-
-```sql
-CREATE TABLE settings (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  
-  -- 온보딩 답변
-  help_type TEXT,  -- 'work_life' | 'habits' | 'emotions' | 'all'
-  
-  -- 프라이버시 레벨
-  privacy_level TEXT DEFAULT 'balanced',  -- 'minimal' | 'balanced' | 'full'
-  
-  -- 톤 설정
-  tone_preset TEXT DEFAULT 'butler',
-  -- 'friend' | 'butler' | 'secretary' | 'coach' | 'trainer'
-  tone_warmth INT DEFAULT 4,      -- 1-5
-  tone_proactivity INT DEFAULT 3,
-  tone_directness INT DEFAULT 3,
-  tone_humor INT DEFAULT 2,
-  tone_pressure INT DEFAULT 2,
-  
-  -- 상황별 톤 오버라이드
-  tone_overrides JSONB DEFAULT '{}',
-  /*
-    {
-      "morning_briefing": "butler",
-      "evening_wrapup": "friend",
-      "deadline_approaching": "coach",
-      "stress_detected": "friend",
-      "focus_mode": "secretary"
-    }
-  */
-  
-  -- 알림 설정
-  notification_enabled BOOLEAN DEFAULT TRUE,
-  morning_briefing_time TIME DEFAULT '08:00',
-  evening_wrapup_time TIME DEFAULT '21:00',
-  
-  -- 뷰 설정
-  default_view TEXT DEFAULT 'integrated',  -- 'work' | 'life' | 'integrated'
-  
-  -- 우선순위 가중치
-  priority_weights JSONB DEFAULT '{
-    "deadline": "high",
-    "starred": "high", 
-    "waiting": "high",
-    "duration": "medium",
-    "deferred": "medium",
-    "scheduled": "high"
-  }',
-  
-  -- 동기부여 스타일
-  motivation_style TEXT DEFAULT 'balanced',  -- 'flow' | 'balanced' | 'gamification'
-  
-  -- 기타
-  duration_preference TEXT DEFAULT 'balanced',  -- 'big_first' | 'small_first' | 'balanced'
-  timezone TEXT DEFAULT 'Asia/Seoul',
-  
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  
-  UNIQUE(user_id)
-);
-```
-
----
-
-### 3. dna_insights (평문 - 패턴만)
-
-```sql
-CREATE TABLE dna_insights (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  
-  -- 크로노타입
-  chronotype TEXT,  -- 'morning' | 'evening' | 'unknown'
-  chronotype_confidence INT,  -- 1-3 (⭐ 수)
-  
-  -- 에너지 패턴
-  energy_pattern JSONB,
-  /*
-    {
-      "early_morning": "low",   // 6-9시
-      "late_morning": "medium", // 9-12시
-      "early_afternoon": "low", // 12-15시
-      "late_afternoon": "high", // 15-18시
-      "evening": "medium"       // 18-21시
-    }
-  */
-  peak_hours INT[],  -- [14, 15, 16]
-  
-  -- 미팅 스트레스
-  meeting_stress_threshold INT DEFAULT 3,
-  
-  -- 요일별 패턴
-  busiest_day TEXT,
-  lightest_day TEXT,
-  day_patterns JSONB,
-  /*
-    {
-      "monday": { "avg_meetings": 3, "avg_tasks_completed": 5 },
-      "tuesday": { "avg_meetings": 4, "avg_tasks_completed": 3 },
-      ...
-    }
-  */
-  
-  -- 워라밸
-  work_life_balance TEXT,  -- 'good' | 'moderate' | 'poor'
-  
-  -- 집중 시간
-  focus_hours INT[],
-  avg_focus_duration INT,  -- 분 단위
-  
-  -- 스트레스 레벨 (최근)
-  current_stress TEXT,  -- 'low' | 'medium' | 'high'
-  stress_signals JSONB,  -- 감지된 신호들
-  
-  -- 학습 기록
-  total_data_days INT DEFAULT 0,
-  last_analysis_at TIMESTAMPTZ,
-  
-  -- 전체 인사이트 (확장용)
-  insights JSONB DEFAULT '{}',
-  
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  
-  UNIQUE(user_id)
-);
-```
-
----
-
-### 4. tasks_encrypted (암호화)
-
-```sql
-CREATE TABLE tasks_encrypted (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  
-  -- 암호화된 데이터 (AES-256-GCM)
-  encrypted_data TEXT NOT NULL,
-  /*
-    복호화하면:
-    {
-      "title": "주간보고서 제출",
-      "description": "Q4 실적 포함",
-      "tags": ["보고서", "팀장"],
-      "estimated_minutes": 30,
-      "actual_minutes": null,
-      "waiting_for": "boss",  // 'external' | 'boss' | 'team' | null
-      "waiting_for_name": "김팀장",
-      "notes": "..."
-    }
-  */
-  
-  -- 검색/필터용 (평문, 민감하지 않음)
-  category TEXT,  -- 'work' | 'life'
-  status TEXT DEFAULT 'pending',
-  -- 'pending' | 'in_progress' | 'completed' | 'cancelled'
-  starred BOOLEAN DEFAULT FALSE,
-  
-  -- 날짜 (평문, 쿼리 필요)
-  deadline TIMESTAMPTZ,
-  scheduled_date DATE,
-  completed_at TIMESTAMPTZ,
-  
-  -- 우선순위 계산용
-  defer_count INT DEFAULT 0,
-  priority_score INT,  -- 계산된 점수 캐시
-  has_waiting BOOLEAN DEFAULT FALSE,  -- 누군가 기다리는지
-  
-  -- 시간 추정 (평문, 에너지 매칭용)
-  estimated_minutes INT,
-  
-  -- 반복 설정
-  recurrence_rule TEXT,  -- RRULE 형식
-  parent_task_id UUID REFERENCES tasks_encrypted(id),
-  
-  -- 메타
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 인덱스
-CREATE INDEX idx_tasks_user_status ON tasks_encrypted(user_id, status);
-CREATE INDEX idx_tasks_user_category ON tasks_encrypted(user_id, category, status);
-CREATE INDEX idx_tasks_scheduled ON tasks_encrypted(user_id, scheduled_date) WHERE scheduled_date IS NOT NULL;
-CREATE INDEX idx_tasks_deadline ON tasks_encrypted(user_id, deadline) WHERE deadline IS NOT NULL;
-CREATE INDEX idx_tasks_starred ON tasks_encrypted(user_id, starred) WHERE starred = TRUE;
-```
-
----
-
-### 5. calendar_cache_encrypted (암호화)
-
-```sql
-CREATE TABLE calendar_cache_encrypted (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  
-  -- Google Calendar 원본 ID
-  google_event_id TEXT,
-  google_calendar_id TEXT,
-  
-  -- 암호화된 데이터
-  encrypted_data TEXT NOT NULL,
-  /*
-    복호화하면:
-    {
-      "title": "팀 미팅",
-      "description": "주간 싱크",
-      "location": "회의실 A",
-      "attendees": [
-        { "email": "kim@...", "name": "김철수" }
-      ],
-      "meeting_link": "https://meet.google.com/...",
-      "organizer": "lee@..."
-    }
-  */
-  
-  -- 쿼리용 (평문)
-  event_type TEXT,  -- 'meeting' | 'focus' | 'personal' | 'travel' | 'other'
-  start_time TIMESTAMPTZ NOT NULL,
-  end_time TIMESTAMPTZ NOT NULL,
-  is_all_day BOOLEAN DEFAULT FALSE,
-  attendee_count INT DEFAULT 0,  -- 참석자 수 (강도 계산용)
-  
-  -- 동기화
-  etag TEXT,  -- Google 변경 감지용
-  last_synced_at TIMESTAMPTZ,
-  
-  -- 메타
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  
-  UNIQUE(user_id, google_event_id)
-);
-
--- 인덱스
-CREATE INDEX idx_calendar_user_time ON calendar_cache_encrypted(user_id, start_time);
-CREATE INDEX idx_calendar_user_date ON calendar_cache_encrypted(user_id, DATE(start_time));
-```
-
----
-
-### 6. nudge_log (평문)
-
-```sql
-CREATE TABLE nudge_log (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  
-  -- 넛지 타입
-  nudge_type TEXT NOT NULL,
-  /*
-    'morning_briefing' | 'evening_wrapup' | 
-    'meeting_reminder' | 'focus_time' | 
-    'neglected_task' | 'overload' | 
-    'rest_needed' | 'end_of_work' | 'late_warning'
-  */
-  
-  -- 대상 (있으면)
-  target_task_id UUID REFERENCES tasks_encrypted(id) ON DELETE SET NULL,
-  target_event_id UUID REFERENCES calendar_cache_encrypted(id) ON DELETE SET NULL,
-  
-  -- 상태
-  sent_at TIMESTAMPTZ DEFAULT NOW(),
-  read_at TIMESTAMPTZ,
-  action_taken TEXT,  -- 'dismissed' | 'clicked' | 'snoozed' | 'completed'
-  
-  -- 분석용 컨텍스트
-  context JSONB
-  /*
-    {
-      "tone_used": "butler",
-      "energy_level": "low",
-      "pending_tasks": 5,
-      "meetings_today": 3
-    }
-  */
-);
-
--- 인덱스 (쿨다운 체크용)
-CREATE INDEX idx_nudge_user_type_time ON nudge_log(user_id, nudge_type, sent_at DESC);
-
--- 오래된 로그 자동 삭제 (30일)
--- Supabase에서 pg_cron으로 설정
-```
-
----
-
-### 7. briefing_history (암호화)
-
-```sql
-CREATE TABLE briefing_history (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  
-  -- 타입
-  briefing_type TEXT NOT NULL,  -- 'morning' | 'evening' | 'weekly'
-  
-  -- 암호화된 내용
-  content_encrypted TEXT,
-  /*
-    복호화하면:
-    {
-      "greeting": "좋은 아침이에요!",
-      "summary": "오늘 미팅 3개...",
-      "top3": [...],
-      "comment": "..."
-    }
-  */
-  
-  -- 메타데이터 (평문, 분석용)
-  task_count INT,
-  meeting_count INT,
-  intensity_level TEXT,  -- 'light' | 'normal' | 'heavy' | 'very_heavy'
-  tone_used TEXT,
-  
-  -- 시간
-  generated_at TIMESTAMPTZ DEFAULT NOW(),
-  viewed_at TIMESTAMPTZ
-);
-
--- 인덱스
-CREATE INDEX idx_briefing_user_type ON briefing_history(user_id, briefing_type, generated_at DESC);
-```
-
----
-
-### 8. habits (암호화)
-
-```sql
-CREATE TABLE habits (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  
-  -- 암호화된 데이터
-  encrypted_data TEXT NOT NULL,
-  /*
-    복호화하면:
-    {
-      "title": "물 마시기",
-      "description": "하루 8잔",
-      "icon": "💧",
-      "target_count": 8,
-      "unit": "잔"
-    }
-  */
-  
-  -- 쿼리용 (평문)
-  category TEXT,  -- 'health' | 'productivity' | 'mindfulness' | 'social' | 'other'
-  frequency TEXT,  -- 'daily' | 'weekly' | 'weekdays' | 'weekends'
-  is_active BOOLEAN DEFAULT TRUE,
-  
-  -- 통계 (평문)
-  current_streak INT DEFAULT 0,
-  best_streak INT DEFAULT 0,
-  total_completions INT DEFAULT 0,
-  
-  -- 순서
-  sort_order INT DEFAULT 0,
-  
-  -- 메타
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 인덱스
-CREATE INDEX idx_habits_user_active ON habits(user_id, is_active);
-```
-
----
-
-### 9. habit_logs (평문)
-
-```sql
-CREATE TABLE habit_logs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  habit_id UUID REFERENCES habits(id) ON DELETE CASCADE,
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  
-  log_date DATE NOT NULL,
-  completed_count INT DEFAULT 1,
-  
-  -- 메모 (선택, 암호화 고려)
-  note_encrypted TEXT,
-  
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  
-  UNIQUE(habit_id, log_date)
-);
-
--- 인덱스
-CREATE INDEX idx_habit_logs_user_date ON habit_logs(user_id, log_date DESC);
-CREATE INDEX idx_habit_logs_habit_date ON habit_logs(habit_id, log_date DESC);
-```
-
----
-
-## 🔐 암호화 구현
-
-### 클라이언트 사이드
-
-```typescript
-import CryptoJS from 'crypto-js';
-
-class EncryptionService {
-  private masterKey: string | null = null;
-  
-  // 마스터키 생성 (첫 가입 시)
-  generateMasterKey(): string {
-    const array = new Uint8Array(32);
-    crypto.getRandomValues(array);
-    return Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
-  }
-  
-  // 마스터키 설정
-  setMasterKey(key: string) {
-    this.masterKey = key;
-  }
-  
-  // 데이터 암호화
-  encrypt(data: object): string {
-    if (!this.masterKey) throw new Error('Master key not set');
-    const json = JSON.stringify(data);
-    return CryptoJS.AES.encrypt(json, this.masterKey).toString();
-  }
-  
-  // 데이터 복호화
-  decrypt<T>(encrypted: string): T {
-    if (!this.masterKey) throw new Error('Master key not set');
-    const bytes = CryptoJS.AES.decrypt(encrypted, this.masterKey);
-    const json = bytes.toString(CryptoJS.enc.Utf8);
-    return JSON.parse(json) as T;
-  }
-  
-  // 마스터키를 비밀번호로 암호화 (서버 백업용)
-  encryptMasterKey(masterKey: string, password: string): { encrypted: string; salt: string } {
-    const salt = CryptoJS.lib.WordArray.random(128/8).toString();
-    const key = CryptoJS.PBKDF2(password, salt, { keySize: 256/32, iterations: 10000 });
-    const encrypted = CryptoJS.AES.encrypt(masterKey, key.toString()).toString();
-    return { encrypted, salt };
-  }
-}
-
-export const encryption = new EncryptionService();
-```
-
-### 사용 예시
-
-```typescript
-// 태스크 저장
-async function saveTask(task: TaskInput) {
-  const sensitiveData = {
-    title: task.title,
-    description: task.description,
-    tags: task.tags,
-    notes: task.notes,
-    waiting_for: task.waitingFor,
-    waiting_for_name: task.waitingForName
-  };
-  
-  const { data, error } = await supabase
-    .from('tasks_encrypted')
-    .insert({
-      user_id: userId,
-      encrypted_data: encryption.encrypt(sensitiveData),
-      // 평문 필드
-      category: task.category,
-      status: 'pending',
-      deadline: task.deadline,
-      scheduled_date: task.scheduledDate,
-      starred: task.starred,
-      estimated_minutes: task.estimatedMinutes,
-      has_waiting: !!task.waitingFor
-    });
+    %% ========== 대화 시스템 ========== %%
+    conversations ||--o{ messages : contains
+    conversations ||--o{ conversation_summaries : generates
     
-  return data;
-}
-
-// 태스크 조회
-async function getTasks(filters: TaskFilters) {
-  const { data } = await supabase
-    .from('tasks_encrypted')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('status', 'pending')
-    .order('priority_score', { ascending: false });
-  
-  // 복호화
-  return data?.map(task => ({
-    ...task,
-    ...encryption.decrypt<TaskSensitiveData>(task.encrypted_data)
-  }));
-}
-```
-
----
-
-## 📱 로컬 IndexedDB 스키마
-
-```typescript
-import Dexie, { Table } from 'dexie';
-
-interface OfflineAction {
-  id?: number;
-  action: 'create' | 'update' | 'delete';
-  table: string;
-  data: any;
-  createdAt: Date;
-}
-
-interface CachedTask {
-  id: string;
-  encrypted_data: string;
-  category: string;
-  status: string;
-  deadline?: Date;
-  scheduled_date?: string;
-  starred: boolean;
-  priority_score?: number;
-  updated_at: Date;
-}
-
-interface LocalKey {
-  userId: string;
-  masterKey: string;  // 기기에만 저장
-}
-
-class AlfredoDB extends Dexie {
-  offlineQueue!: Table<OfflineAction>;
-  tasksCache!: Table<CachedTask>;
-  calendarCache!: Table<any>;
-  settingsCache!: Table<any>;
-  keys!: Table<LocalKey>;
-  
-  constructor() {
-    super('alfredo');
+    %% ========== 게이미피케이션 ========== %%
+    penguin_status ||--o{ penguin_items : owns
+    penguin_status ||--o{ xp_history : tracks
     
-    this.version(1).stores({
-      offlineQueue: '++id, action, table, createdAt',
-      tasksCache: 'id, category, status, deadline, scheduled_date, priority_score',
-      calendarCache: 'id, start_time',
-      settingsCache: 'userId',
-      keys: 'userId'
-    });
-  }
-}
+    %% ========== 습관 & 태스크 ========== %%
+    habits ||--o{ habit_logs : records
+    tasks ||--o{ task_history : tracks
+    
+    %% ========== 리포트 ========== %%
+    users ||--o{ daily_summaries : generates
+    users ||--o{ weekly_insights : generates
 
-export const localDB = new AlfredoDB();
+    %% ========== 테이블 정의 ========== %%
+    users {
+        uuid id PK
+        string email UK
+        string name
+        string picture
+        string google_id UK
+        boolean is_onboarded
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    user_settings {
+        uuid id PK
+        uuid user_id FK
+        string tone_preset
+        json tone_axes
+        string privacy_level
+        string default_view
+        json notifications
+        json priority_weights
+        json onboarding_answers
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    tasks {
+        uuid id PK
+        uuid user_id FK
+        string title
+        text description
+        string status
+        string category
+        boolean is_starred
+        boolean is_top_three
+        date due_date
+        time due_time
+        int estimated_minutes
+        int actual_minutes
+        int defer_count
+        json tags
+        json subtasks
+        timestamp completed_at
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    task_history {
+        uuid id PK
+        uuid task_id FK
+        string action
+        json old_value
+        json new_value
+        timestamp created_at
+    }
+
+    habits {
+        uuid id PK
+        uuid user_id FK
+        string title
+        text description
+        string frequency
+        json target_days
+        int current_streak
+        int best_streak
+        int total_completions
+        boolean is_active
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    habit_logs {
+        uuid id PK
+        uuid habit_id FK
+        date log_date
+        boolean completed
+        text note
+        timestamp created_at
+    }
+
+    focus_sessions {
+        uuid id PK
+        uuid user_id FK
+        uuid task_id FK
+        string mode
+        int planned_minutes
+        int actual_minutes
+        int breaks_taken
+        string end_reason
+        timestamp started_at
+        timestamp ended_at
+    }
+
+    daily_conditions {
+        uuid id PK
+        uuid user_id FK
+        date log_date UK
+        int energy_level
+        int mood_level
+        int focus_level
+        json factors
+        text note
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    penguin_status {
+        uuid id PK
+        uuid user_id FK
+        string name
+        int level
+        int current_xp
+        int total_xp
+        int coins
+        string current_mood
+        string current_outfit
+        json unlocked_items
+        json achievements
+        timestamp last_interaction
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    penguin_items {
+        uuid id PK
+        string item_id UK
+        string name
+        string category
+        string rarity
+        int price
+        string image_url
+        boolean is_default
+    }
+
+    xp_history {
+        uuid id PK
+        uuid penguin_id FK
+        int amount
+        string source
+        string description
+        timestamp created_at
+    }
+
+    conversations {
+        uuid id PK
+        uuid user_id FK
+        string type
+        string context
+        timestamp started_at
+        timestamp ended_at
+    }
+
+    messages {
+        uuid id PK
+        uuid conversation_id FK
+        string role
+        text content
+        json metadata
+        timestamp created_at
+    }
+
+    conversation_summaries {
+        uuid id PK
+        uuid conversation_id FK
+        text summary
+        json extracted_tasks
+        json extracted_insights
+        timestamp created_at
+    }
+
+    calendar_events {
+        uuid id PK
+        uuid user_id FK
+        string google_event_id UK
+        string title
+        timestamp start_time
+        timestamp end_time
+        boolean is_all_day
+        string location
+        int attendee_count
+        string category
+        string importance
+        string energy_drain
+        timestamp synced_at
+    }
+
+    calendar_insights {
+        uuid id PK
+        uuid user_id FK
+        string insight_type
+        json insight_data
+        int confidence
+        boolean is_validated
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    briefings {
+        uuid id PK
+        uuid user_id FK
+        string type
+        text content
+        json context_data
+        boolean was_read
+        timestamp created_at
+    }
+
+    daily_summaries {
+        uuid id PK
+        uuid user_id FK
+        date summary_date UK
+        int tasks_completed
+        int tasks_deferred
+        int focus_minutes
+        int meetings_attended
+        json mood_trend
+        json highlights
+        json areas_for_improvement
+        int productivity_score
+        timestamp created_at
+    }
+
+    weekly_insights {
+        uuid id PK
+        uuid user_id FK
+        date week_start UK
+        json patterns_discovered
+        json correlations
+        json recommendations
+        json achievements
+        int overall_score
+        timestamp created_at
+    }
 ```
 
 ---
 
-## 🔄 동기화 플로우
+## 📁 테이블 상세 명세
 
-```
-┌──────────────┐      ┌──────────────┐      ┌──────────────┐
-│    Client    │      │   Supabase   │      │    Google    │
-└──────┬───────┘      └──────┬───────┘      └──────┬───────┘
-       │                     │                     │
-       │  1. 앱 시작         │                     │
-       │  ──────────────────>│                     │
-       │     settings 조회   │                     │
-       │  <──────────────────│                     │
-       │                     │                     │
-       │  2. 로컬 캐시 로드   │                     │
-       │  (IndexedDB)        │                     │
-       │                     │                     │
-       │  3. 캘린더 동기화    │                     │
-       │  ─────────────────────────────────────────>
-       │                Calendar API               │
-       │  <─────────────────────────────────────────
-       │                     │                     │
-       │  4. 캐시 업데이트    │                     │
-       │  ──────────────────>│                     │
-       │   (암호화된 상태)   │                     │
-       │                     │                     │
-       │  5. 오프라인 작업   │                     │
-       │  (IndexedDB 큐)     │                     │
-       │                     │                     │
-       │  6. 온라인 복귀     │                     │
-       │  ──────────────────>│                     │
-       │   큐 처리 & 동기화  │                     │
-       │                     │                     │
-```
+### 1. Core - 핵심 사용자
 
-### 오프라인 큐 처리
+#### `users` - 사용자 기본 정보
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| id | UUID | PK | 고유 식별자 |
+| email | VARCHAR(255) | UK, NOT NULL | 이메일 주소 |
+| name | VARCHAR(100) | NOT NULL | 표시 이름 |
+| picture | TEXT | - | 프로필 이미지 URL |
+| google_id | VARCHAR(255) | UK | Google OAuth ID |
+| is_onboarded | BOOLEAN | DEFAULT false | 온보딩 완료 여부 |
+| created_at | TIMESTAMP | NOT NULL | 생성 시간 |
+| updated_at | TIMESTAMP | NOT NULL | 수정 시간 |
+
+#### `user_settings` - 사용자 설정
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| id | UUID | PK | 고유 식별자 |
+| user_id | UUID | FK, UK | users.id 참조 |
+| tone_preset | VARCHAR(50) | NOT NULL | 톤 프리셋 (gentle_friend, mentor, ceo, cheerleader, silent_partner) |
+| tone_axes | JSONB | NOT NULL | 5축 톤 설정 {warmth, proactivity, directness, humor, pressure} |
+| privacy_level | VARCHAR(20) | NOT NULL | 프라이버시 레벨 (open_book, selective, minimal) |
+| default_view | VARCHAR(20) | NOT NULL | 기본 뷰 모드 (integrated, work, life) |
+| notifications | JSONB | NOT NULL | 알림 설정 |
+| priority_weights | JSONB | NOT NULL | 우선순위 가중치 |
+| onboarding_answers | JSONB | - | 온보딩 응답 데이터 |
+| created_at | TIMESTAMP | NOT NULL | 생성 시간 |
+| updated_at | TIMESTAMP | NOT NULL | 수정 시간 |
+
+---
+
+### 2. Tasks - 태스크 관리
+
+#### `tasks` - 태스크
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| id | UUID | PK | 고유 식별자 |
+| user_id | UUID | FK, NOT NULL | users.id 참조 |
+| title | VARCHAR(500) | NOT NULL | 태스크 제목 |
+| description | TEXT | - | 상세 설명 |
+| status | VARCHAR(20) | NOT NULL | 상태 (todo, in_progress, done, deferred) |
+| category | VARCHAR(20) | NOT NULL | 카테고리 (work, life) |
+| is_starred | BOOLEAN | DEFAULT false | 중요 표시 |
+| is_top_three | BOOLEAN | DEFAULT false | 오늘의 탑3 |
+| due_date | DATE | - | 마감일 |
+| due_time | TIME | - | 마감 시간 |
+| estimated_minutes | INT | - | 예상 소요 시간 (분) |
+| actual_minutes | INT | - | 실제 소요 시간 (분) |
+| defer_count | INT | DEFAULT 0 | 미룬 횟수 |
+| tags | JSONB | DEFAULT '[]' | 태그 배열 |
+| subtasks | JSONB | DEFAULT '[]' | 하위 태스크 (Magic ToDo 분해용) |
+| completed_at | TIMESTAMP | - | 완료 시간 |
+| created_at | TIMESTAMP | NOT NULL | 생성 시간 |
+| updated_at | TIMESTAMP | NOT NULL | 수정 시간 |
+
+**인덱스:**
+- `idx_tasks_user_status` (user_id, status)
+- `idx_tasks_user_date` (user_id, due_date)
+- `idx_tasks_top_three` (user_id, is_top_three) WHERE is_top_three = true
+
+#### `task_history` - 태스크 변경 이력
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| id | UUID | PK | 고유 식별자 |
+| task_id | UUID | FK, NOT NULL | tasks.id 참조 |
+| action | VARCHAR(50) | NOT NULL | 액션 유형 (created, updated, deferred, completed, deleted) |
+| old_value | JSONB | - | 이전 값 |
+| new_value | JSONB | - | 새 값 |
+| created_at | TIMESTAMP | NOT NULL | 생성 시간 |
+
+---
+
+### 3. Habits - 습관 관리
+
+#### `habits` - 습관 정의
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| id | UUID | PK | 고유 식별자 |
+| user_id | UUID | FK, NOT NULL | users.id 참조 |
+| title | VARCHAR(200) | NOT NULL | 습관 이름 |
+| description | TEXT | - | 설명 |
+| frequency | VARCHAR(20) | NOT NULL | 빈도 (daily, weekly, custom) |
+| target_days | JSONB | - | 목표 요일 [0-6] (월-일) |
+| current_streak | INT | DEFAULT 0 | 현재 스트릭 |
+| best_streak | INT | DEFAULT 0 | 최고 스트릭 |
+| total_completions | INT | DEFAULT 0 | 총 완료 횟수 |
+| is_active | BOOLEAN | DEFAULT true | 활성화 여부 |
+| created_at | TIMESTAMP | NOT NULL | 생성 시간 |
+| updated_at | TIMESTAMP | NOT NULL | 수정 시간 |
+
+#### `habit_logs` - 습관 기록
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| id | UUID | PK | 고유 식별자 |
+| habit_id | UUID | FK, NOT NULL | habits.id 참조 |
+| log_date | DATE | NOT NULL | 기록 날짜 |
+| completed | BOOLEAN | NOT NULL | 완료 여부 |
+| note | TEXT | - | 메모 |
+| created_at | TIMESTAMP | NOT NULL | 생성 시간 |
+
+**인덱스:**
+- `idx_habit_logs_date` (habit_id, log_date) UNIQUE
+
+---
+
+### 4. Focus - 집중 세션
+
+#### `focus_sessions` - 집중 타이머 세션
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| id | UUID | PK | 고유 식별자 |
+| user_id | UUID | FK, NOT NULL | users.id 참조 |
+| task_id | UUID | FK | tasks.id 참조 (선택) |
+| mode | VARCHAR(30) | NOT NULL | 모드 (pomodoro, flow, body_double, deep_work) |
+| planned_minutes | INT | NOT NULL | 계획 시간 (분) |
+| actual_minutes | INT | - | 실제 시간 (분) |
+| breaks_taken | INT | DEFAULT 0 | 휴식 횟수 |
+| end_reason | VARCHAR(30) | - | 종료 사유 (completed, interrupted, abandoned) |
+| started_at | TIMESTAMP | NOT NULL | 시작 시간 |
+| ended_at | TIMESTAMP | - | 종료 시간 |
+
+---
+
+### 5. Conditions - 컨디션 & 웰니스
+
+#### `daily_conditions` - 일일 컨디션
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| id | UUID | PK | 고유 식별자 |
+| user_id | UUID | FK, NOT NULL | users.id 참조 |
+| log_date | DATE | NOT NULL | 기록 날짜 |
+| energy_level | INT | CHECK 1-5 | 에너지 레벨 (1-5) |
+| mood_level | INT | CHECK 1-5 | 기분 레벨 (1-5) |
+| focus_level | INT | CHECK 1-5 | 집중력 레벨 (1-5) |
+| factors | JSONB | DEFAULT '[]' | 영향 요인 (sleep_quality, exercise, stress 등) |
+| note | TEXT | - | 메모 |
+| created_at | TIMESTAMP | NOT NULL | 생성 시간 |
+| updated_at | TIMESTAMP | NOT NULL | 수정 시간 |
+
+**인덱스:**
+- `idx_conditions_user_date` (user_id, log_date) UNIQUE
+
+---
+
+### 6. Penguin - 펭귄 게이미피케이션
+
+#### `penguin_status` - 펭귄 상태
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| id | UUID | PK | 고유 식별자 |
+| user_id | UUID | FK, UK | users.id 참조 |
+| name | VARCHAR(50) | DEFAULT '알프레도' | 펭귄 이름 |
+| level | INT | DEFAULT 1 | 레벨 |
+| current_xp | INT | DEFAULT 0 | 현재 경험치 (레벨 내) |
+| total_xp | INT | DEFAULT 0 | 누적 경험치 |
+| coins | INT | DEFAULT 0 | 보유 코인 |
+| current_mood | VARCHAR(30) | DEFAULT 'happy' | 현재 기분 |
+| current_outfit | VARCHAR(50) | - | 현재 착용 아이템 |
+| unlocked_items | JSONB | DEFAULT '[]' | 해금된 아이템 ID 배열 |
+| achievements | JSONB | DEFAULT '[]' | 달성한 업적 배열 |
+| last_interaction | TIMESTAMP | - | 마지막 상호작용 |
+| created_at | TIMESTAMP | NOT NULL | 생성 시간 |
+| updated_at | TIMESTAMP | NOT NULL | 수정 시간 |
+
+#### `penguin_items` - 펭귄 아이템 카탈로그
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| id | UUID | PK | 고유 식별자 |
+| item_id | VARCHAR(50) | UK | 아이템 코드 |
+| name | VARCHAR(100) | NOT NULL | 아이템 이름 |
+| category | VARCHAR(30) | NOT NULL | 카테고리 (hat, accessory, background, effect) |
+| rarity | VARCHAR(20) | NOT NULL | 희귀도 (common, rare, epic, legendary) |
+| price | INT | NOT NULL | 코인 가격 |
+| image_url | TEXT | NOT NULL | 이미지 URL |
+| is_default | BOOLEAN | DEFAULT false | 기본 제공 여부 |
+
+#### `xp_history` - 경험치 히스토리
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| id | UUID | PK | 고유 식별자 |
+| penguin_id | UUID | FK, NOT NULL | penguin_status.id 참조 |
+| amount | INT | NOT NULL | 획득/소모 XP |
+| source | VARCHAR(50) | NOT NULL | 출처 (task_complete, habit_streak, focus_session 등) |
+| description | VARCHAR(200) | - | 설명 |
+| created_at | TIMESTAMP | NOT NULL | 생성 시간 |
+
+---
+
+### 7. Conversations - AI 대화
+
+#### `conversations` - 대화 세션
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| id | UUID | PK | 고유 식별자 |
+| user_id | UUID | FK, NOT NULL | users.id 참조 |
+| type | VARCHAR(30) | NOT NULL | 타입 (chat, briefing, nudge, onboarding) |
+| context | VARCHAR(100) | - | 컨텍스트 (morning, evening, task_help 등) |
+| started_at | TIMESTAMP | NOT NULL | 시작 시간 |
+| ended_at | TIMESTAMP | - | 종료 시간 |
+
+#### `messages` - 메시지
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| id | UUID | PK | 고유 식별자 |
+| conversation_id | UUID | FK, NOT NULL | conversations.id 참조 |
+| role | VARCHAR(20) | NOT NULL | 역할 (user, assistant, system) |
+| content | TEXT | NOT NULL | 메시지 내용 |
+| metadata | JSONB | - | 메타데이터 (토큰 수, 모델 등) |
+| created_at | TIMESTAMP | NOT NULL | 생성 시간 |
+
+#### `conversation_summaries` - 대화 요약
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| id | UUID | PK | 고유 식별자 |
+| conversation_id | UUID | FK, UK | conversations.id 참조 |
+| summary | TEXT | NOT NULL | 요약 내용 |
+| extracted_tasks | JSONB | - | 추출된 태스크 |
+| extracted_insights | JSONB | - | 추출된 인사이트 |
+| created_at | TIMESTAMP | NOT NULL | 생성 시간 |
+
+---
+
+### 8. Calendar - 캘린더 연동
+
+#### `calendar_events` - 캘린더 이벤트 (캐시)
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| id | UUID | PK | 고유 식별자 |
+| user_id | UUID | FK, NOT NULL | users.id 참조 |
+| google_event_id | VARCHAR(255) | UK | Google 이벤트 ID |
+| title | VARCHAR(500) | NOT NULL | 이벤트 제목 |
+| start_time | TIMESTAMP | NOT NULL | 시작 시간 |
+| end_time | TIMESTAMP | NOT NULL | 종료 시간 |
+| is_all_day | BOOLEAN | DEFAULT false | 종일 이벤트 |
+| location | TEXT | - | 장소 |
+| attendee_count | INT | DEFAULT 0 | 참석자 수 |
+| category | VARCHAR(30) | - | 카테고리 (meeting, focus, personal, travel, meal, other) |
+| importance | VARCHAR(20) | - | 중요도 (high, medium, low) |
+| energy_drain | VARCHAR(20) | - | 에너지 소모 (high, medium, low) |
+| synced_at | TIMESTAMP | NOT NULL | 동기화 시간 |
+
+**인덱스:**
+- `idx_calendar_user_time` (user_id, start_time)
+
+#### `calendar_insights` - 캘린더 인사이트 (DNA 확장)
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| id | UUID | PK | 고유 식별자 |
+| user_id | UUID | FK, NOT NULL | users.id 참조 |
+| insight_type | VARCHAR(50) | NOT NULL | 타입 (chronotype, energy_pattern, work_style, stress_signal 등) |
+| insight_data | JSONB | NOT NULL | 인사이트 데이터 |
+| confidence | INT | CHECK 1-3 | 확신도 (1-3, ⭐~⭐⭐⭐) |
+| is_validated | BOOLEAN | DEFAULT false | 사용자 검증 여부 |
+| created_at | TIMESTAMP | NOT NULL | 생성 시간 |
+| updated_at | TIMESTAMP | NOT NULL | 수정 시간 |
+
+---
+
+### 9. Briefings - 브리핑
+
+#### `briefings` - 브리핑 히스토리
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| id | UUID | PK | 고유 식별자 |
+| user_id | UUID | FK, NOT NULL | users.id 참조 |
+| type | VARCHAR(30) | NOT NULL | 타입 (morning, evening, nudge, weekly) |
+| content | TEXT | NOT NULL | 브리핑 내용 |
+| context_data | JSONB | - | 컨텍스트 데이터 |
+| was_read | BOOLEAN | DEFAULT false | 읽음 여부 |
+| created_at | TIMESTAMP | NOT NULL | 생성 시간 |
+
+---
+
+### 10. Reports - 리포트 & 인사이트
+
+#### `daily_summaries` - 일일 요약
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| id | UUID | PK | 고유 식별자 |
+| user_id | UUID | FK, NOT NULL | users.id 참조 |
+| summary_date | DATE | NOT NULL | 요약 날짜 |
+| tasks_completed | INT | DEFAULT 0 | 완료 태스크 수 |
+| tasks_deferred | INT | DEFAULT 0 | 미룬 태스크 수 |
+| focus_minutes | INT | DEFAULT 0 | 집중 시간 (분) |
+| meetings_attended | INT | DEFAULT 0 | 참석 미팅 수 |
+| mood_trend | JSONB | - | 기분 추이 |
+| highlights | JSONB | - | 하이라이트 |
+| areas_for_improvement | JSONB | - | 개선점 |
+| productivity_score | INT | - | 생산성 점수 (0-100) |
+| created_at | TIMESTAMP | NOT NULL | 생성 시간 |
+
+**인덱스:**
+- `idx_daily_summary_date` (user_id, summary_date) UNIQUE
+
+#### `weekly_insights` - 주간 인사이트
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| id | UUID | PK | 고유 식별자 |
+| user_id | UUID | FK, NOT NULL | users.id 참조 |
+| week_start | DATE | NOT NULL | 주 시작일 (월요일) |
+| patterns_discovered | JSONB | - | 발견된 패턴 |
+| correlations | JSONB | - | 상관관계 (예: "운동한 날 생산성 높음") |
+| recommendations | JSONB | - | 추천 사항 |
+| achievements | JSONB | - | 주간 업적 |
+| overall_score | INT | - | 종합 점수 (0-100) |
+| created_at | TIMESTAMP | NOT NULL | 생성 시간 |
+
+**인덱스:**
+- `idx_weekly_insights_week` (user_id, week_start) UNIQUE
+
+---
+
+## 📱 로컬 저장소 (IndexedDB)
+
+서버와 별도로 오프라인 지원을 위한 로컬 스토리지:
 
 ```typescript
-async function processOfflineQueue() {
-  const queue = await localDB.offlineQueue.toArray();
-  
-  for (const action of queue) {
-    try {
-      switch (action.action) {
-        case 'create':
-          await supabase.from(action.table).insert(action.data);
-          break;
-        case 'update':
-          await supabase.from(action.table).update(action.data).eq('id', action.data.id);
-          break;
-        case 'delete':
-          await supabase.from(action.table).delete().eq('id', action.data.id);
-          break;
-      }
-      
-      // 성공하면 큐에서 제거
-      await localDB.offlineQueue.delete(action.id!);
-    } catch (error) {
-      console.error('Sync failed:', error);
-      // 실패하면 큐에 유지, 다음에 재시도
-    }
-  }
+// Dexie 스키마
+{
+  tasks: 'id, status, category, isStarred, isTopThree, dueDate, createdAt',
+  offlineQueue: 'id, action, table, createdAt',
+  cache: 'key, expiresAt',
+  calendar: 'id, startTime, category',
+  briefings: 'id, type, createdAt',
+  habits: 'id, frequency, createdAt'
 }
-
-// 온라인 상태 감지
-window.addEventListener('online', processOfflineQueue);
 ```
 
 ---
 
-## 📊 테이블 요약
+## 🔄 데이터 흐름
 
-| 테이블 | 암호화 | 용도 | 예상 크기/유저 |
-|--------|--------|------|---------------|
-| users | ❌ | 인증, 기본 정보 | ~1KB |
-| settings | ❌ | 앱 설정 | ~2KB |
-| dna_insights | ❌ | 학습된 패턴 | ~5KB |
-| tasks_encrypted | ✅ | 태스크 | ~50KB/년 |
-| calendar_cache_encrypted | ✅ | 캘린더 캐시 | ~30KB/월 |
-| nudge_log | ❌ | 알림 기록 | ~10KB/월 |
-| briefing_history | ✅ | 브리핑 내용 | ~20KB/월 |
-| habits | ✅ | 습관 | ~5KB |
-| habit_logs | ❌ | 습관 완료 | ~10KB/년 |
-
-**총 예상**: ~200KB/유저/년
-**Supabase 무료 티어 (500MB)**: ~2,500명 수용
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        사용자 상호작용                                │
+└─────────────────────────────────────────────────────────────────────┘
+                                   │
+                                   ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                      IndexedDB (로컬 캐시)                           │
+│   ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐               │
+│   │  tasks  │  │ calendar│  │ habits  │  │briefings│               │
+│   └─────────┘  └─────────┘  └─────────┘  └─────────┘               │
+└─────────────────────────────────────────────────────────────────────┘
+                                   │
+                          오프라인 큐로 동기화
+                                   │
+                                   ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                      Supabase (PostgreSQL)                          │
+│   ┌──────────────────────────────────────────────────────────────┐  │
+│   │                        Core                                   │  │
+│   │   users ──── user_settings                                    │  │
+│   └──────────────────────────────────────────────────────────────┘  │
+│   ┌──────────────────────────────────────────────────────────────┐  │
+│   │                    Productivity                               │  │
+│   │   tasks ──── task_history                                     │  │
+│   │   habits ──── habit_logs                                      │  │
+│   │   focus_sessions                                              │  │
+│   └──────────────────────────────────────────────────────────────┘  │
+│   ┌──────────────────────────────────────────────────────────────┐  │
+│   │                    Gamification                               │  │
+│   │   penguin_status ──── penguin_items                           │  │
+│   │   xp_history                                                  │  │
+│   └──────────────────────────────────────────────────────────────┘  │
+│   ┌──────────────────────────────────────────────────────────────┐  │
+│   │                    Intelligence                               │  │
+│   │   conversations ──── messages ──── conversation_summaries     │  │
+│   │   calendar_events ──── calendar_insights                      │  │
+│   │   daily_conditions                                            │  │
+│   └──────────────────────────────────────────────────────────────┘  │
+│   ┌──────────────────────────────────────────────────────────────┐  │
+│   │                    Reports                                    │  │
+│   │   briefings                                                   │  │
+│   │   daily_summaries ──── weekly_insights                        │  │
+│   └──────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+                                   │
+                                   ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                      External Services                              │
+│   ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐    │
+│   │ Google Calendar │  │   Google Gmail  │  │   Claude API    │    │
+│   └─────────────────┘  └─────────────────┘  └─────────────────┘    │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## 🔒 Row Level Security (RLS)
+## 📅 구현 로드맵
 
+| 주차 | 테이블 | 우선순위 |
+|------|--------|----------|
+| **W1 (1/6-12)** | 현재 문서 완성 | 🔴 High |
+| **W2 (1/13-19)** | `daily_conditions` | 🔴 High |
+| **W3 (1/20-26)** | `penguin_status`, `penguin_items`, `xp_history`, `habits`, `habit_logs`, `tasks` (subtasks 추가), `focus_sessions` | 🔴 High |
+| **W4 (1/27-31)** | `daily_summaries`, `weekly_insights` | 🟡 Medium |
+| **2월** | `calendar_insights` (DNA 확장) | 🟡 Medium |
+
+---
+
+## 🔐 보안 고려사항
+
+### Row Level Security (RLS)
+모든 테이블에 RLS 적용:
 ```sql
--- 모든 테이블에 RLS 활성화
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE dna_insights ENABLE ROW LEVEL SECURITY;
-ALTER TABLE tasks_encrypted ENABLE ROW LEVEL SECURITY;
-ALTER TABLE calendar_cache_encrypted ENABLE ROW LEVEL SECURITY;
-ALTER TABLE nudge_log ENABLE ROW LEVEL SECURITY;
-ALTER TABLE briefing_history ENABLE ROW LEVEL SECURITY;
-ALTER TABLE habits ENABLE ROW LEVEL SECURITY;
-ALTER TABLE habit_logs ENABLE ROW LEVEL SECURITY;
+-- 예시: tasks 테이블
+ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
 
--- 본인 데이터만 접근 가능
-CREATE POLICY "Users can only access own data" ON settings
-  FOR ALL USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can only access own data" ON tasks_encrypted
-  FOR ALL USING (auth.uid() = user_id);
-
--- (모든 테이블에 동일하게 적용)
+CREATE POLICY "Users can only access their own tasks"
+ON tasks FOR ALL
+USING (user_id = auth.uid());
 ```
+
+### 민감 데이터
+- `conversations.messages`: 암호화 고려
+- `daily_conditions`: 건강 관련 데이터 - 별도 암호화
+- `calendar_insights`: 패턴 데이터 - 익명화 필요시 처리
 
 ---
 
-## 🗑️ 데이터 정리 정책
+## 📝 변경 이력
 
-```sql
--- 30일 지난 nudge_log 자동 삭제 (pg_cron)
-SELECT cron.schedule(
-  'cleanup-nudge-log',
-  '0 3 * * *',  -- 매일 새벽 3시
-  $$DELETE FROM nudge_log WHERE sent_at < NOW() - INTERVAL '30 days'$$
-);
-
--- 1년 지난 briefing_history 자동 삭제
-SELECT cron.schedule(
-  'cleanup-briefing-history',
-  '0 4 * * 0',  -- 매주 일요일 새벽 4시
-  $$DELETE FROM briefing_history WHERE generated_at < NOW() - INTERVAL '1 year'$$
-);
-
--- 완료된 태스크 6개월 후 아카이브 (나중에 구현)
-```
+| 날짜 | 버전 | 변경 내용 |
+|------|------|----------|
+| 2025-01-11 | v1.0 | Q1 로드맵 기반 ERD 전면 재설계 |
+| 2024-12-XX | v0.1 | 초기 스키마 설계 |
 
 ---
 
-## 🚀 구현 우선순위
-
-1. **Phase 1**: users, settings, tasks_encrypted (기본 기능)
-2. **Phase 2**: calendar_cache_encrypted, dna_insights (DNA 분석)
-3. **Phase 3**: nudge_log, briefing_history (브리핑 시스템)
-4. **Phase 4**: habits, habit_logs (습관 트래킹)
-5. **Phase 5**: 오프라인 동기화, 암호화 백업
+*이 문서는 알프레도 Q1 MVP를 위한 데이터베이스 스키마 설계서입니다.*
