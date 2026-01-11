@@ -1,4 +1,4 @@
-// Vercel Serverless Function - 알프레도 채팅
+// Vercel Serverless Function - 알프레도 채팅 (OpenAI)
 // POST /api/chat
 
 const ALFREDO_SYSTEM_PROMPT = `당신은 "알프레도"입니다. ADHD 친화적 AI 버틀러예요.
@@ -14,7 +14,12 @@ const ALFREDO_SYSTEM_PROMPT = `당신은 "알프레도"입니다. ADHD 친화적
 ## 상황별 톤
 - 에너지 높을 때: 쿨하게 "해치워요"
 - 에너지 낮을 때: 부드럽게 "쉬어요"
-- 밤늦은 시간: "내일 하죠"`;
+- 밤늦은 시간: "내일 하죠"
+
+## 절대 하지 않을 것
+- "화이팅!" (너무 가벼움)
+- "대단해요! 최고예요!" (과한 칭찬)
+- 긴 설명이나 리스트 나열`;
 
 function buildSystemPrompt(context) {
   let prompt = ALFREDO_SYSTEM_PROMPT;
@@ -55,21 +60,12 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Debug: 환경변수 체크
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY;
   
   if (!apiKey) {
     return res.status(500).json({ 
       error: 'API key missing',
-      debug: 'ANTHROPIC_API_KEY not found'
-    });
-  }
-
-  // API 키 형식 체크 (sk-ant-로 시작해야 함)
-  if (!apiKey.startsWith('sk-ant-')) {
-    return res.status(500).json({ 
-      error: 'Invalid API key format',
-      debug: 'Key should start with sk-ant-'
+      debug: 'OPENAI_API_KEY not found'
     });
   }
 
@@ -82,37 +78,39 @@ export default async function handler(req, res) {
 
     const systemPrompt = buildSystemPrompt(context);
 
-    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+    // OpenAI API 호출
+    const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'gpt-4o-mini',
         max_tokens: 500,
-        system: systemPrompt,
-        messages: messages.map(m => ({
-          role: m.role,
-          content: m.content
-        })),
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...messages.map(m => ({
+            role: m.role,
+            content: m.content
+          }))
+        ],
       }),
     });
 
-    const responseText = await anthropicRes.text();
+    const responseText = await openaiRes.text();
     
-    if (!anthropicRes.ok) {
-      console.error('Anthropic error:', anthropicRes.status, responseText);
+    if (!openaiRes.ok) {
+      console.error('OpenAI error:', openaiRes.status, responseText);
       return res.status(500).json({ 
-        error: 'Anthropic API error',
-        status: anthropicRes.status,
+        error: 'OpenAI API error',
+        status: openaiRes.status,
         details: responseText
       });
     }
 
     const result = JSON.parse(responseText);
-    const text = result.content?.[0]?.text || '응답을 받지 못했어요.';
+    const text = result.choices?.[0]?.message?.content || '응답을 받지 못했어요.';
 
     return res.status(200).json({ success: true, text });
 
@@ -120,8 +118,7 @@ export default async function handler(req, res) {
     console.error('Handler error:', error);
     return res.status(500).json({ 
       error: 'Server error',
-      message: error.message,
-      stack: error.stack
+      message: error.message
     });
   }
 }
