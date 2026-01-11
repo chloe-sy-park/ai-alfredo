@@ -27,21 +27,48 @@ function buildSystemPrompt(context) {
   let prompt = ALFREDO_SYSTEM_PROMPT;
   
   const now = new Date();
-  const options = { timeZone: 'Asia/Seoul', month: 'long', day: 'numeric', weekday: 'long' };
-  const dateStr = now.toLocaleDateString('ko-KR', options);
+  const koreaTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+  const options = { month: 'long', day: 'numeric', weekday: 'long' };
+  const dateStr = koreaTime.toLocaleDateString('ko-KR', options);
+  const hour = koreaTime.getHours();
   
-  prompt += `\n\n## 현재: ${dateStr}`;
+  prompt += `\n\n## 현재 상황`;
+  prompt += `\n- 날짜: ${dateStr}`;
+  prompt += `\n- 시간: ${hour}시`;
   
   if (context) {
     if (context.energy !== undefined) {
-      prompt += `\n- 에너지: ${context.energy}%`;
+      prompt += `\n- 사용자 에너지: ${context.energy}%`;
     }
+    
+    // 할 일 목록
     if (context.tasks && context.tasks.length > 0) {
       const todo = context.tasks.filter(t => t.status !== 'done');
-      prompt += `\n- 할 일: ${todo.length}개`;
+      const done = context.tasks.filter(t => t.status === 'done');
+      prompt += `\n- 할 일: ${todo.length}개 남음`;
       if (todo.length > 0) {
         prompt += ` (${todo.map(t => t.title).join(', ')})`;
       }
+      if (done.length > 0) {
+        prompt += `\n- 완료: ${done.length}개`;
+      }
+    }
+    
+    // 캘린더 일정 (중요!)
+    if (context.events && context.events.length > 0) {
+      prompt += `\n- 일정: ${context.events.length}개`;
+      const eventList = context.events.map(e => {
+        const startDate = new Date(e.start);
+        const timeStr = startDate.toLocaleTimeString('ko-KR', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          timeZone: 'Asia/Seoul'
+        });
+        return `${timeStr} ${e.title}`;
+      }).join(', ');
+      prompt += ` (${eventList})`;
+    } else {
+      prompt += `\n- 일정: 없음 (캘린더 연동 확인 필요할 수 있음)`;
     }
   }
   
@@ -79,6 +106,9 @@ export default async function handler(req, res) {
     }
 
     const systemPrompt = buildSystemPrompt(context);
+    
+    // 디버깅: context 로깅
+    console.log('Context received:', JSON.stringify(context, null, 2));
 
     // Claude API 호출
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
