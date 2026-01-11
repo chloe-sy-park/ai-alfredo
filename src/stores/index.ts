@@ -10,3 +10,12 @@ export { useSettingsStore } from './settingsStore';
 
 // Penguin Store
 export { usePenguinStore } from './penguinStore';
+
+// Conversation Store
+export { useConversationStore } from './conversationStore';
+
+// Habit Store
+export { useHabitStore } from './habitStore';
+
+// Focus Store
+export { useFocusStore } from './focusStore';
