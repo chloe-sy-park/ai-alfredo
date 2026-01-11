@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ChevronRight, X, Send, Sparkles, RefreshCw } from 'lucide-react';
+import { getSimpleBriefingMessage, generateMorningBriefingV2 } from '../alfredo/MorningBriefingV2';
 
 // 🐧 알프레도 표정 시스템
 var ALFREDO_EXPRESSIONS = {
@@ -19,7 +20,7 @@ var getAlfredoExpression = function(props) {
   var tasks = props.tasks || [];
   var condition = props.condition || 0;
   var urgentEvent = props.urgentEvent;
-  var messageType = props.messageType || {};
+  var messageType = props.messageType || '';
   
   var now = new Date();
   var hour = now.getHours();
@@ -28,7 +29,7 @@ var getAlfredoExpression = function(props) {
   var completionRate = total > 0 ? (completed / total) * 100 : 0;
   
   // 1. 긴급 상황 - 걱정 표정
-  if (urgentEvent || messageType.urgent) {
+  if (urgentEvent || messageType === 'urgent') {
     return ALFREDO_EXPRESSIONS.worried;
   }
   
@@ -53,7 +54,7 @@ var getAlfredoExpression = function(props) {
   }
   
   // 6. 컨디션 물어볼 때 - 애정 표정
-  if (condition === 0) {
+  if (condition === 0 || messageType === 'askCondition') {
     return ALFREDO_EXPRESSIONS.love;
   }
   
@@ -71,228 +72,98 @@ var getAlfredoExpression = function(props) {
   return ALFREDO_EXPRESSIONS.default;
 };
 
-// 🐧 알프레도 메시지 생성 (상황 인식형)
-var getAlfredoMessage = function(props) {
-  var tasks = props.tasks || [];
-  var events = props.events || [];
-  var condition = props.condition || 0;
-  var userName = props.userName || 'Boss';
-  var urgentEvent = props.urgentEvent;
-  
-  var now = new Date();
-  var hour = now.getHours();
-  var completed = tasks.filter(function(t) { return t.completed; }).length;
-  var total = tasks.length;
-  var remaining = total - completed;
-  
-  // 하루 진행률 계산 (6시~23시 기준)
-  var dayStart = 6;
-  var dayEnd = 23;
-  var dayProgress = Math.min(100, Math.max(0, 
-    ((hour - dayStart) / (dayEnd - dayStart)) * 100
-  ));
-  
-  // 완료율 계산
-  var completionRate = total > 0 ? (completed / total) * 100 : 100;
-  
-  // 0. 컨디션 아직 안 물어봤을 때
-  if (condition === 0) {
-    return {
-      line1: '안녕하세요, ' + userName + '!',
-      line2: '오늘 컨디션은 어때요? 💜',
-      urgent: false,
-      askCondition: true
-    };
-  }
-  
-  // 1. 긴급 일정 (30분 이내)
-  if (urgentEvent) {
-    var title = urgentEvent.event.title || urgentEvent.event.summary || '일정';
-    return {
-      line1: '⚡ ' + urgentEvent.diffMin + '분 뒤 일정!',
-      line2: '"' + title.slice(0, 12) + '" 준비하세요',
-      urgent: true
-    };
-  }
-  
-  // 2. 컨디션 낮을 때 (우선 처리)
-  if (condition <= 2) {
-    return {
-      line1: '오늘은 무리하지 말아요, ' + userName,
-      line2: '꼭 필요한 것만 천천히 💜',
-      urgent: false,
-      lowEnergy: true
-    };
-  }
-  
-  // 3. 🎯 성취도 + 시간대 복합 분석
-  if (total > 0) {
-    // 3-1. 모두 완료! 🎉
-    if (remaining === 0) {
-      return {
-        line1: '오늘 다 해냈어요! 🎉',
-        line2: '정말 대단해요, ' + userName,
-        urgent: false,
-        allDone: true
-      };
-    }
-    
-    // 3-2. 위기 상황: 하루 80% 이상 지났는데 완료 0개
-    if (dayProgress >= 80 && completed === 0) {
-      if (hour >= 21) {
-        return {
-          line1: '오늘 좀 바빴나봐요 🌙',
-          line2: '괜찮아요, 내일 다시 해봐요',
-          urgent: false
-        };
-      }
-      return {
-        line1: '오늘 좀 바빴나봐요',
-        line2: '딱 하나만 해볼까요? ✨',
-        urgent: false
-      };
-    }
-    
-    // 3-3. 위기 상황: 저녁인데 많이 남음 (50% 이상 미완료)
-    if (hour >= 17 && hour < 21 && completionRate < 50) {
-      return {
-        line1: remaining + '개 남았어요',
-        line2: '가장 쉬운 것부터 해볼까요? 💪',
-        urgent: false,
-        needCheer: true
-      };
-    }
-    
-    // 3-4. 진행 중: 일부 완료
-    if (completed > 0 && remaining > 0) {
-      // 절반 이상 했으면 칭찬
-      if (completionRate >= 50) {
-        return {
-          line1: '벌써 절반 넘었어요! 👏',
-          line2: remaining + '개만 더 하면 끝!',
-          urgent: false,
-          goodProgress: true
-        };
-      }
-      return {
-        line1: completed + '개 완료! 잘하고 있어요 👏',
-        line2: remaining + '개 남았어요',
-        urgent: false
-      };
-    }
-    
-    // 3-5. 아직 시작 안 함 (낮 시간)
-    if (completed === 0 && hour < 17) {
-      return {
-        line1: '오늘 할 일이 ' + total + '개 있어요',
-        line2: '첫 번째부터 시작해볼까요? ✨',
-        urgent: false
-      };
-    }
-  }
-  
-  // 4. 시간대별 기본 메시지 (할 일 없거나 모두 완료 시)
-  var greeting = '';
-  var subtext = '';
-  
-  if (hour >= 5 && hour < 9) {
-    greeting = '좋은 아침이에요, ' + userName;
-    subtext = '오늘 하루도 함께할게요 ☀️';
-  } else if (hour >= 9 && hour < 12) {
-    greeting = '좋은 오전이에요, ' + userName;
-    subtext = '오늘도 화이팅! ✨';
-  } else if (hour >= 12 && hour < 14) {
-    greeting = '점심은 드셨어요? 🍚';
-    subtext = '배고프면 집중력이 떨어져요';
-  } else if (hour >= 14 && hour < 17) {
-    greeting = '좋은 오후예요, ' + userName;
-    subtext = '오늘도 잘하고 있어요 💪';
-  } else if (hour >= 17 && hour < 21) {
-    // 할 일 남아있으면 이 분기 안 탐 (위에서 처리됨)
-    greeting = '오늘 하루 수고했어요 💜';
-    subtext = '이제 좀 쉬어도 돼요';
-  } else {
-    greeting = '이 시간엔 쉬셔야죠 🌙';
-    subtext = '내일도 함께할게요';
-  }
-  
-  return { line1: greeting, line2: subtext, urgent: false };
-};
-
-// 📜 초기 대화 히스토리 생성
+// 📜 초기 대화 히스토리 생성 (theSkimm 스타일 적용)
 var generateInitialHistory = function(props) {
   var tasks = props.tasks || [];
   var events = props.events || [];
   var userName = props.userName || 'Boss';
   var condition = props.condition || 3;
+  var weather = props.weather;
+  
+  // 브리핑 V2로 전체 브리핑 생성
+  var briefing = generateMorningBriefingV2({
+    tasks: tasks,
+    events: events,
+    condition: condition,
+    userName: userName,
+    weather: weather
+  });
   
   var history = [];
   var now = new Date();
   var hour = now.getHours();
   
-  // 아침 인사 (9시 이후면 추가)
-  if (hour >= 9) {
+  // 1. 스몰토크 인사 (theSkimm 스타일)
+  history.push({
+    id: 'init-1',
+    time: '오늘',
+    type: 'alfredo',
+    text: briefing.greeting
+  });
+  
+  // 2. 날씨 인사이트 (있을 경우)
+  if (briefing.weather) {
     history.push({
-      id: 'init-1',
-      time: '09:00',
+      id: 'init-2',
+      time: '',
       type: 'alfredo',
-      text: '좋은 아침이에요, ' + userName + '! 물 한 잔 먼저 마셔요 💧'
+      text: briefing.weather
     });
   }
   
-  // 컨디션 기록
-  if (condition > 0) {
-    var conditionEmoji = ['😫', '😔', '😐', '😊', '🔥'][condition - 1];
-    var conditionText = condition <= 2 
-      ? '오늘은 좀 힘드시군요. 무리하지 마세요 💜'
-      : condition >= 4
-        ? '컨디션 좋으시네요! 오늘 잘 될 거예요 ✨'
-        : '알겠어요! 차근차근 해봐요';
-    
-    history.push({
-      id: 'init-2',
-      time: '오늘',
-      type: 'action',
-      text: userName + '의 컨디션: ' + conditionEmoji
-    });
+  // 3. 일정 인사이트 (있을 경우)
+  if (briefing.event) {
     history.push({
       id: 'init-3',
       time: '',
-      type: 'alfredo',
-      text: conditionText
+      type: 'notification',
+      text: briefing.event
     });
   }
   
-  // 완료된 태스크들
-  var completed = tasks.filter(function(t) { return t.completed; });
-  completed.forEach(function(task, index) {
-    var taskHour = 10 + index;
-    if (taskHour <= hour) {
+  // 4. 태스크 인사이트
+  if (briefing.task) {
+    history.push({
+      id: 'init-4',
+      time: '',
+      type: 'action',
+      text: briefing.task.summary
+    });
+    if (briefing.task.suggestion) {
       history.push({
-        id: 'task-' + index,
-        time: (taskHour < 10 ? '0' : '') + taskHour + ':00',
-        type: 'action',
-        text: '✅ "' + task.title + '" 완료!'
-      });
-      
-      // 칭찬 메시지
-      var praises = ['잘했어요! 👏', '대단해요!', '하나 끝! ✨', '좋아요!'];
-      history.push({
-        id: 'praise-' + index,
+        id: 'init-5',
         time: '',
         type: 'alfredo',
-        text: praises[index % praises.length]
+        text: briefing.task.suggestion
+      });
+    }
+  }
+  
+  // 5. 완료된 태스크들 (오늘 기록)
+  var completed = tasks.filter(function(t) { return t.completed; });
+  completed.forEach(function(task, index) {
+    if (index < 3) { // 최대 3개만 표시
+      history.push({
+        id: 'task-' + index,
+        time: '',
+        type: 'action',
+        text: '✅ \"' + task.title.slice(0, 20) + '\" 완료!'
       });
     }
   });
   
-  // 빈 히스토리면 기본 메시지
-  if (history.length === 0) {
+  // 완료된 게 있으면 칭찬
+  if (completed.length > 0) {
+    var praises = [
+      '잘하고 있어요! 👏',
+      '대단해요, Boss! ✨',
+      '오늘도 착착 진행 중! 💜'
+    ];
     history.push({
-      id: 'init-default',
-      time: '지금',
+      id: 'praise',
+      time: '',
       type: 'alfredo',
-      text: '안녕하세요 ' + userName + '! 무엇을 도와드릴까요? 💜'
+      text: praises[Math.floor(Math.random() * praises.length)]
     });
   }
   
@@ -306,6 +177,7 @@ export var AlfredoIslandMinimal = function(props) {
   var condition = props.condition || 0;
   var userName = props.userName || 'Boss';
   var urgentEvent = props.urgentEvent;
+  var weather = props.weather;
   var onOpenChat = props.onOpenChat; // 전체 채팅 페이지로 이동
   
   var expandedState = useState(false);
@@ -327,16 +199,17 @@ export var AlfredoIslandMinimal = function(props) {
   
   var chatEndRef = useRef(null);
   
-  // 메시지 생성
+  // 메시지 생성 (MorningBriefingV2 사용)
   var message = useMemo(function() {
-    return getAlfredoMessage({
+    return getSimpleBriefingMessage({
       tasks: tasks,
       events: events,
       condition: condition,
       userName: userName,
-      urgentEvent: urgentEvent
+      urgentEvent: urgentEvent,
+      weather: weather
     });
-  }, [tasks, events, condition, userName, urgentEvent]);
+  }, [tasks, events, condition, userName, urgentEvent, weather]);
   
   // 표정 결정
   var expression = useMemo(function() {
@@ -344,9 +217,9 @@ export var AlfredoIslandMinimal = function(props) {
       tasks: tasks,
       condition: condition,
       urgentEvent: urgentEvent,
-      messageType: message
+      messageType: message.type
     });
-  }, [tasks, condition, urgentEvent, message]);
+  }, [tasks, condition, urgentEvent, message.type]);
   
   // 초기 히스토리 (한 번만 생성)
   var initialHistory = useMemo(function() {
@@ -354,7 +227,8 @@ export var AlfredoIslandMinimal = function(props) {
       tasks: tasks,
       events: events,
       userName: userName,
-      condition: condition
+      condition: condition,
+      weather: weather
     });
   }, []); // 의존성 비움 - 처음 한 번만
   
@@ -381,13 +255,19 @@ export var AlfredoIslandMinimal = function(props) {
     var todoTasks = tasks.filter(function(t) { return !t.completed; });
     var completedCount = tasks.filter(function(t) { return t.completed; }).length;
     
-    var systemPrompt = '당신은 "알프레도"입니다. 배트맨의 집사 알프레드처럼 사용자(Boss)를 돕는 AI 비서입니다.\n\n' +
+    var systemPrompt = '당신은 \"알프레도\"입니다. 배트맨의 집사 알프레드처럼 사용자(Boss)를 돕는 AI 비서입니다.\n\n' +
       '## 성격\n' +
       '- 따뜻하고 친근하지만 전문적\n' +
+      '- theSkimm처럼 친구가 말하는 듯한 자연스러운 어조\n' +
       '- 간결하고 실용적인 조언 (2-3문장)\n' +
       '- 이모지를 적절히 사용 (과하지 않게)\n' +
-      '- 사용자를 "Boss"라고 부름\n' +
+      '- 사용자를 \"Boss\"라고 부름\n' +
       '- 펭귄 마스코트 🐧\n\n' +
+      '## ADHD 친화적 응답 규칙\n' +
+      '- 한 번에 하나의 행동만 제안\n' +
+      '- 컨디션 낮으면 격려 위주\n' +
+      '- 실패해도 괜찮다는 메시지\n' +
+      '- 직접 질문보다 스몰토크로 자연스럽게\n\n' +
       '## 현재 상황\n' +
       '- 날짜: ' + dateStr + '\n' +
       '- 시간: ' + timeStr + '\n' +
@@ -500,23 +380,23 @@ export var AlfredoIslandMinimal = function(props) {
     }
   };
   
-  // 스타일
-  var bgColor = message.urgent 
+  // 스타일 (메시지 타입에 따른 색상)
+  var bgColor = message.type === 'urgent' 
     ? 'bg-gradient-to-r from-orange-50 to-red-50 border-orange-200' 
-    : message.lowEnergy
+    : message.type === 'lowEnergy'
       ? 'bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200'
-      : message.askCondition
+      : message.type === 'askCondition'
         ? 'bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200'
-        : message.allDone
+        : message.type === 'allDone'
           ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'
           : 'bg-white border-gray-100';
   
-  var textColor = message.urgent ? 'text-orange-800' : 'text-gray-800';
+  var textColor = message.type === 'urgent' ? 'text-orange-800' : 'text-gray-800';
   
   // 표정 애니메이션 클래스
-  var expressionAnimation = message.urgent 
+  var expressionAnimation = message.type === 'urgent' 
     ? 'animate-bounce' 
-    : message.allDone 
+    : message.type === 'allDone' 
       ? 'animate-pulse'
       : '';
   
@@ -538,12 +418,12 @@ export var AlfredoIslandMinimal = function(props) {
             className: 'font-medium truncate ' + textColor 
           }, message.line1),
           React.createElement('p', { 
-            className: 'text-sm truncate ' + (message.urgent ? 'text-orange-600' : 'text-gray-500')
+            className: 'text-sm truncate ' + (message.type === 'urgent' ? 'text-orange-600' : 'text-gray-500')
           }, message.line2)
         ),
         
         // 화살표 또는 AI 배지
-        message.askCondition
+        message.type === 'askCondition'
           ? React.createElement('span', {
               className: 'flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-600'
             },
