@@ -5,18 +5,18 @@ import { Check, Circle, Briefcase, Heart, Calendar, Clock } from 'lucide-react';
 var getCategoryIcon = function(title, isTask) {
   var lower = (title || '').toLowerCase();
   if (lower.includes('미팅') || lower.includes('회의') || lower.includes('보고') || lower.includes('업무')) {
-    return React.createElement(Briefcase, { size: 14, className: 'text-blue-500' });
+    return React.createElement(Briefcase, { size: 16, className: 'text-blue-500' });
   }
   if (lower.includes('병원') || lower.includes('치과') || lower.includes('약')) {
     return '🏥';
   }
   if (lower.includes('엄마') || lower.includes('가족') || lower.includes('친구') || lower.includes('약속')) {
-    return React.createElement(Heart, { size: 14, className: 'text-pink-500' });
+    return React.createElement(Heart, { size: 16, className: 'text-pink-500' });
   }
   if (isTask) {
-    return React.createElement(Circle, { size: 14, className: 'text-purple-400' });
+    return React.createElement(Circle, { size: 16, className: 'text-purple-400' });
   }
-  return React.createElement(Calendar, { size: 14, className: 'text-gray-400' });
+  return React.createElement(Calendar, { size: 16, className: 'text-gray-400' });
 };
 
 // 카테고리 배경색
@@ -57,7 +57,7 @@ export var TodayTimelineMinimal = function(props) {
   // 타임라인 범위 (6시~23시)
   var START_HOUR = 6;
   var END_HOUR = 23;
-  var HOUR_HEIGHT = 60; // 1시간 = 60px
+  var HOUR_HEIGHT = 64; // 1시간 = 64px (모바일 터치 영역 확보)
   
   // 현재 시간 위치 (px)
   var nowPosition = useMemo(function() {
@@ -199,16 +199,16 @@ export var TodayTimelineMinimal = function(props) {
         className: 'flex items-center justify-between'
       },
         React.createElement('div', { className: 'flex items-center gap-2' },
-          React.createElement('span', { className: 'text-lg' }, '📅'),
-          React.createElement('span', { className: 'font-semibold text-gray-800' }, '오늘'),
+          React.createElement('span', { className: 'text-xl' }, '📅'),
+          React.createElement('span', { className: 'font-semibold text-gray-800 text-base' }, '오늘'),
           stats.total > 0 && React.createElement('span', {
-            className: 'text-sm font-medium px-2 py-0.5 rounded-full ' + getBadgeStyle()
+            className: 'text-sm font-medium px-2.5 py-1 rounded-full ' + getBadgeStyle()
           }, stats.completed + '/' + stats.total + ' 완료' + getBadgeEmoji())
         ),
         React.createElement('div', {
-          className: 'flex items-center gap-1 text-sm font-medium text-purple-600'
+          className: 'flex items-center gap-1.5 text-sm font-medium text-purple-600'
         },
-          React.createElement(Clock, { size: 14 }),
+          React.createElement(Clock, { size: 16 }),
           formatTime(currentHour, currentMinute)
         )
       )
@@ -218,7 +218,10 @@ export var TodayTimelineMinimal = function(props) {
     React.createElement('div', {
       ref: containerRef,
       className: 'relative overflow-y-auto',
-      style: { maxHeight: '400px' }
+      style: { 
+        maxHeight: '400px',
+        WebkitOverflowScrolling: 'touch'
+      }
     },
       // 타임라인 그리드
       React.createElement('div', {
@@ -238,10 +241,10 @@ export var TodayTimelineMinimal = function(props) {
           },
             // 시간 레이블
             React.createElement('div', {
-              className: 'w-14 flex-shrink-0 pr-2 text-right ' + 
+              className: 'w-16 flex-shrink-0 pr-2 text-right ' + 
                 (isPast ? 'text-gray-300' : isCurrent ? 'text-purple-600 font-semibold' : 'text-gray-400')
             },
-              React.createElement('span', { className: 'text-xs' }, formatTime(hour))
+              React.createElement('span', { className: 'text-sm' }, formatTime(hour))
             ),
             
             // 구분선 + 콘텐츠 영역
@@ -251,7 +254,7 @@ export var TodayTimelineMinimal = function(props) {
             },
               // 이벤트/태스크 아이템들
               items.length > 0 && React.createElement('div', {
-                className: 'absolute left-2 right-2 top-1 space-y-1'
+                className: 'absolute left-2 right-2 top-1.5 space-y-1.5'
               },
                 items.map(function(item) {
                   var isTask = item.type === 'task';
@@ -261,10 +264,11 @@ export var TodayTimelineMinimal = function(props) {
                   
                   return React.createElement('div', {
                     key: item.id,
-                    className: 'flex items-center gap-2 px-2 py-1.5 rounded-lg border cursor-pointer ' +
-                      'transition-all hover:shadow-sm ' + categoryBg +
+                    className: 'flex items-center gap-2.5 px-3 py-2.5 rounded-xl border cursor-pointer ' +
+                      'transition-all active:scale-98 active:bg-opacity-80 ' + categoryBg +
                       (isCompleted ? ' opacity-50' : '') +
                       (item.isPast && !isCompleted ? ' opacity-60' : ''),
+                    style: { minHeight: '44px' },
                     onClick: function() {
                       if (isTask && onStartTask) onStartTask(item.original);
                       else if (!isTask && onOpenEvent) onOpenEvent(item.original);
@@ -273,12 +277,12 @@ export var TodayTimelineMinimal = function(props) {
                     // 완료 체크 (태스크만)
                     isTask && (isCompleted
                       ? React.createElement('div', {
-                          className: 'w-4 h-4 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0'
+                          className: 'w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0'
                         },
-                          React.createElement(Check, { size: 10, className: 'text-green-600' })
+                          React.createElement(Check, { size: 12, className: 'text-green-600' })
                         )
                       : React.createElement('div', {
-                          className: 'w-4 h-4 rounded-full border-2 border-purple-300 flex-shrink-0'
+                          className: 'w-5 h-5 rounded-full border-2 border-purple-300 flex-shrink-0'
                         })
                     ),
                     
@@ -287,7 +291,7 @@ export var TodayTimelineMinimal = function(props) {
                     
                     // 제목
                     React.createElement('span', {
-                      className: 'text-sm truncate ' + 
+                      className: 'text-sm truncate flex-1 ' + 
                         (isCompleted ? 'line-through text-gray-400' : 'text-gray-700')
                     }, item.title),
                     
@@ -314,10 +318,10 @@ export var TodayTimelineMinimal = function(props) {
           },
             // NOW 라벨
             React.createElement('div', {
-              className: 'w-14 flex-shrink-0 pr-1 flex justify-end'
+              className: 'w-16 flex-shrink-0 pr-1 flex justify-end'
             },
               React.createElement('span', {
-                className: 'text-[10px] font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded'
+                className: 'text-xs font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded'
               }, 'NOW')
             ),
             // 빨간 점 + 선
@@ -325,7 +329,7 @@ export var TodayTimelineMinimal = function(props) {
               className: 'flex items-center flex-1'
             },
               React.createElement('div', {
-                className: 'w-2.5 h-2.5 rounded-full bg-red-500 -ml-1 shadow-sm'
+                className: 'w-3 h-3 rounded-full bg-red-500 -ml-1.5 shadow-sm'
               }),
               React.createElement('div', {
                 className: 'flex-1 h-0.5 bg-red-500/70'
@@ -341,7 +345,7 @@ export var TodayTimelineMinimal = function(props) {
       className: 'border-t border-gray-100 p-4'
     },
       React.createElement('p', {
-        className: 'text-xs text-gray-400 mb-2 flex items-center gap-1'
+        className: 'text-xs text-gray-400 mb-3 flex items-center gap-1'
       },
         '✨ 시간 미정 할 일'
       ),
@@ -351,21 +355,22 @@ export var TodayTimelineMinimal = function(props) {
           
           return React.createElement('div', {
             key: task.id || 'untimed-' + index,
-            className: 'flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer ' +
-              'transition-all hover:shadow-sm ' +
+            className: 'flex items-center gap-2.5 px-3 py-3 rounded-xl border cursor-pointer ' +
+              'transition-all active:scale-98 ' +
               (isCompleted ? 'bg-gray-50 border-gray-200 opacity-50' : 'bg-purple-50 border-purple-200'),
+            style: { minHeight: '48px' },
             onClick: function() {
               if (onStartTask) onStartTask(task);
             }
           },
             isCompleted
               ? React.createElement('div', {
-                  className: 'w-4 h-4 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0'
+                  className: 'w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0'
                 },
-                  React.createElement(Check, { size: 10, className: 'text-green-600' })
+                  React.createElement(Check, { size: 12, className: 'text-green-600' })
                 )
               : React.createElement('div', {
-                  className: 'w-4 h-4 rounded-full border-2 border-purple-300 flex-shrink-0'
+                  className: 'w-5 h-5 rounded-full border-2 border-purple-300 flex-shrink-0'
                 }),
             React.createElement('span', {
               className: 'text-sm truncate ' + (isCompleted ? 'line-through text-gray-400' : 'text-gray-700')
@@ -373,7 +378,7 @@ export var TodayTimelineMinimal = function(props) {
           );
         }),
         untimedTasks.length > 3 && React.createElement('p', {
-          className: 'text-xs text-gray-400 text-center'
+          className: 'text-xs text-gray-400 text-center py-1'
         }, '+' + (untimedTasks.length - 3) + '개 더')
       )
     ),
@@ -382,13 +387,13 @@ export var TodayTimelineMinimal = function(props) {
     todayEvents.length === 0 && todayTasks.length === 0 && untimedTasks.length === 0 && React.createElement('div', {
       className: 'p-6 text-center'
     },
-      React.createElement('span', { className: 'text-3xl block mb-2' }, '🐧'),
-      React.createElement('p', { className: 'text-gray-600 font-medium' }, '오늘 일정이 비어있어요'),
+      React.createElement('span', { className: 'text-4xl block mb-3' }, '🐧'),
+      React.createElement('p', { className: 'text-gray-600 font-medium text-base' }, '오늘 일정이 비어있어요'),
       React.createElement('p', { className: 'text-gray-400 text-sm mt-1' }, '여유로운 하루 보내거나, 할 일을 추가해보세요'),
       onAddTask && React.createElement('button', {
         onClick: onAddTask,
-        className: 'mt-4 px-4 py-2 rounded-xl text-sm font-medium ' +
-          'bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors'
+        className: 'mt-4 min-h-[44px] px-5 py-2.5 rounded-xl text-sm font-medium ' +
+          'bg-purple-50 text-purple-600 hover:bg-purple-100 active:bg-purple-200 transition-colors'
       }, '+ 할 일 추가')
     )
   );
