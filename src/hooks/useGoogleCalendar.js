@@ -2,8 +2,8 @@
 // 🔧 단순화: 앱 시작 시 API 호출 없음, 실제 사용 시에만 401 처리
 import { useState, useCallback, useEffect, useRef } from 'react';
 
-// Google OAuth 설정
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1042496826498-3t0uuv38l48n8tgj23e0c3oknkrn8m4j.apps.googleusercontent.com';
+// Google OAuth 설정 - 환경변수 또는 하드코딩 (반드시 일치해야 함!)
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '201358208682-tuujh9me9tvcdn5rsbhf86v5n4n9du9b.apps.googleusercontent.com';
 
 // Gmail scope 포함
 const SCOPES = [
@@ -107,7 +107,7 @@ export function useGoogleCalendar() {
 
   // 토큰 응답 처리 (OAuth 로그인 성공 후)
   const handleTokenResponse = useCallback(async (response) => {
-    console.log('Token response received:', response.error ? 'Error' : 'Success');
+    console.log('✅ Token response received:', response.error ? 'Error' : 'Success');
     
     if (response.error) {
       console.error('OAuth error:', response.error);
@@ -154,20 +154,22 @@ export function useGoogleCalendar() {
     
     const createClient = () => {
       if (typeof google === 'undefined' || !google.accounts?.oauth2) {
+        console.log('⏳ Waiting for Google Identity Services...');
         return false;
       }
 
       try {
+        console.log('🔧 Initializing Google OAuth with Client ID:', GOOGLE_CLIENT_ID.substring(0, 20) + '...');
         tokenClientRef.current = google.accounts.oauth2.initTokenClient({
           client_id: GOOGLE_CLIENT_ID,
           scope: SCOPES,
           callback: handleTokenResponse,
         });
         isInitializedRef.current = true;
-        console.log('Google OAuth initialized successfully');
+        console.log('✅ Google OAuth initialized successfully');
         return true;
       } catch (e) {
-        console.error('Failed to initialize Google OAuth:', e);
+        console.error('❌ Failed to initialize Google OAuth:', e);
         return false;
       }
     };
@@ -180,6 +182,9 @@ export function useGoogleCalendar() {
       attempts++;
       if (createClient() || attempts >= maxAttempts) {
         clearInterval(checkGIS);
+        if (attempts >= maxAttempts) {
+          console.error('❌ Google Identity Services failed to load after 5 seconds');
+        }
       }
     }, 100);
   }, [handleTokenResponse]);
@@ -222,11 +227,13 @@ export function useGoogleCalendar() {
 
   // Google 연결
   const connect = useCallback(async () => {
+    console.log('🔗 Connect called, isInitialized:', isInitializedRef.current);
     setIsLoading(true);
     setError(null);
 
     try {
       if (!tokenClientRef.current) {
+        console.log('⏳ Waiting for token client...');
         let attempts = 0;
         await new Promise((resolve, reject) => {
           const checkClient = setInterval(() => {
@@ -243,7 +250,7 @@ export function useGoogleCalendar() {
       }
 
       if (tokenClientRef.current) {
-        console.log('Requesting access token...');
+        console.log('🚀 Requesting access token...');
         tokenClientRef.current.requestAccessToken();
       } else {
         throw new Error('Google OAuth가 초기화되지 않았습니다.');
