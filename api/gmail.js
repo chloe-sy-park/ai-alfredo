@@ -1,16 +1,26 @@
 // Vercel Serverless Function - Gmail 연동
-// POST /api/gmail
+// POST /api/gmail (메인 API)
+// GET /api/gmail (서비스 워커 호환용)
 
 const GMAIL_API_BASE = 'https://www.googleapis.com/gmail/v1';
 
 export default async function handler(req, res) {
   // CORS 헤더
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
+  }
+
+  // GET 요청 - 서비스 워커 캐싱 호환용 (빈 응답)
+  if (req.method === 'GET') {
+    return res.status(200).json({ 
+      success: true, 
+      message: 'Gmail API is ready. Use POST for operations.',
+      emails: [] 
+    });
   }
 
   if (req.method !== 'POST') {
