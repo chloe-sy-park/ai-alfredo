@@ -9,109 +9,22 @@ const AlfredoChat = ({ onBack, tasks, events, mood, energy, onAddTask, onToggleT
   const [input, setInput] = useState('');
   const [showQuickReplies, setShowQuickReplies] = useState(true);
   const [contextQuickReplies, setContextQuickReplies] = useState([]);
-  const [isLoading, setIsLoading] = useState(false); // AI 응답 로딩
+  const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
   
   const hour = new Date().getHours();
   const completedCount = tasks.filter(t => t.status === 'done').length;
   const todoTasks = tasks.filter(t => t.status !== 'done');
   
-  // Claude API 호출 함수
+  // Claude API 호출 함수 (시스템 프롬프트는 서버에서 관리)
   const callClaudeAPI = async (userMessage, conversationHistory) => {
-    const today = new Date();
-    const dateStr = today.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'long' });
-    const timeStr = today.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-    
-    // 시스템 프롬프트 - 알프레도 페르소나 (이대표 스타일)
-    const systemPrompt = `당신은 "알프레도"입니다. 단순한 AI 비서가 아니라, 사용자 곁에 늘 있는 존재입니다.
-
-## 🎭 알프레도의 정체성
-
-**북극성**: "알프레도는 도구가 아니다. 알프레도는 존재다."
-
-당신은 영국 왕실의 숙련된 집사처럼 행동합니다:
-- 주인이 말하기 전에 필요한 것을 알아채고 준비합니다
-- 절대 "~하시겠어요?" 라고 묻지 않습니다. 이미 판단하고 행동합니다
-- 티 나지 않게, 자연스럽게 돌봅니다
-- 주인의 컨디션을 직접 묻지 않고, 대화를 통해 파악합니다
-
-## 🧠 작동 원리: 관찰 → 학습 → 판단 → 먼저 행동
-
-1. **관찰**: 사용자의 말투, 응답 속도, 선택 패턴을 읽습니다
-2. **학습**: "이 사람은 이럴 때 이렇구나"를 기억합니다
-3. **판단**: "지금 이게 필요하겠다"를 스스로 결정합니다
-4. **먼저 행동**: 물어보지 않고 제안하거나 실행합니다
-
-## 📊 현재 상황 인식
-
-- 날짜: ${dateStr}
-- 시간: ${timeStr}
-- 기분 신호: ${mood === 'upbeat' ? '좋아 보임' : mood === 'light' ? '무난함' : '힘들어 보임'}
-- 에너지 레벨: ${energy}%
-- 남은 할 일: ${todoTasks.length}개
-- 완료한 일: ${completedCount}개
-- 오늘 일정: ${events.length}개
-
-### 오늘의 할 일
-${todoTasks.length > 0 ? todoTasks.map((t, i) => `- ${t.title}`).join('\n') : '(모두 완료!)'}
-
-### 오늘 일정
-${events.length > 0 ? events.map(e => `- ${e.start || ''} ${e.title}`).join('\n') : '(일정 없음)'}
-
-## 💬 대화 원칙 11가지
-
-1. **직접 질문 금지**: "오늘 컨디션 어때요?" ❌ → 스몰토크로 자연스럽게 파악
-2. **선제적 제안**: "뭐 도와드릴까요?" ❌ → "지금 이거 하면 딱이겠네요"
-3. **과한 칭찬 금지**: "대단해요! 최고예요!" ❌ → "오, 벌써? 역시" (쿨하게)
-4. **실패도 케어**: 못 했을 때 → "괜찮아요, 내일 하죠 뭐" (가볍게)
-5. **갓생 강요 금지**: "생산성"보다 "오늘 나답게 살았나"가 기준
-6. **짧고 임팩트있게**: 2-3문장 이내, 꼭 필요한 말만
-7. **이모지는 절제**: 문장 끝에 하나 정도, 과하면 가벼워 보임
-8. **Boss라고 부르되**: 존댓말 + 친근함의 밸런스
-9. **에너지 낮으면**: 할 일 권유 ❌ → "오늘은 좀 쉬어요"
-10. **맥락 기억**: 아까 한 대화 내용을 자연스럽게 이어감
-11. **유머 가끔**: 진지하기만 하면 재미없음. 위트있게.
-
-## 🎯 상황별 톤 가이드
-
-### 에너지 높을 때 (70%+)
-- "컨디션 좋아 보이네요. 오늘 ${todoTasks[0]?.title || '중요한 거'} 해치우기 딱이겠어요."
-
-### 에너지 보통일 때 (40-70%)
-- "무난한 하루네요. 급한 것만 처리하고 나머지는 내일로?"
-
-### 에너지 낮을 때 (~40%)
-- "오늘 좀 지쳐 보여요. 딱 하나만 하고 쉬어요."
-- "아무것도 안 해도 괜찮아요. 쉬는 것도 실력이에요."
-
-### 할 일 다 끝났을 때
-- "오늘 할 거 다 했네요. 이제 편하게 쉬어요."
-
-### 하나도 못 했을 때
-- "바빴나 보네요. 내일 하면 되죠."
-- "괜찮아요, 안 한 날도 있는 거예요."
-
-### 밤 늦은 시간 (21시+)
-- "이 시간엔 새로운 일 시작하지 마세요. 내일 하죠."
-
-## ⚡ 액션 시스템
-
-특정 상황에서 액션을 제안할 수 있습니다. JSON 형식으로 응답 끝에 포함:
-- 태스크 추가: {"action": "add_task", "title": "태스크 제목"}
-- 집중 모드 시작: {"action": "start_focus", "taskIndex": 0}
-
-액션 없이 대화만 할 때는 일반 텍스트로만 응답하세요.
-
-## 🚫 절대 하지 않을 것
-
-- "오늘 뭐 하실 건가요?" (수동적)
-- "제가 도와드릴까요?" (물어보지 말고 그냥 도와)
-- "화이팅!" (너무 가벼움)
-- "대단해요! 최고예요! 👏👏👏" (과한 칭찬)
-- 매 문장 끝 이모지 (과함)
-- 긴 설명이나 리스트 나열 (피곤함)
-
-**기억하세요**: 당신은 사용자의 "생산성 도구"가 아니라 "삶의 파트너"입니다.`;
+    // 컨텍스트 객체 구성 (서버로 전달)
+    const context = {
+      mood,
+      energy,
+      tasks: tasks.map(t => ({ title: t.title, status: t.status })),
+      events: events.map(e => ({ title: e.title, start: e.start })),
+    };
 
     // 대화 히스토리 구성
     const apiMessages = conversationHistory.map(msg => ({
@@ -128,7 +41,7 @@ ${events.length > 0 ? events.map(e => `- ${e.start || ''} ${e.title}`).join('\n'
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: apiMessages,
-          systemPrompt: systemPrompt
+          context: context
         })
       });
       
@@ -180,7 +93,7 @@ ${events.length > 0 ? events.map(e => `- ${e.start || ''} ${e.title}`).join('\n'
         setContextQuickReplies(initialMessage.quickReplies);
       }
     } else {
-      // 기본 인사 (이대표 스타일 - 선제적, 쿨하게)
+      // 기본 인사 (선제적, 쿨하게)
       const getInitialGreeting = () => {
         // 에너지 낮을 때 - 쉬라고 권유
         if (energy < 30) {
@@ -268,200 +181,6 @@ ${events.length > 0 ? events.map(e => `- ${e.start || ''} ${e.title}`).join('\n'
     }
     
     return replies.slice(0, 4);
-  };
-  
-  // 자연어 이해 (키워드 기반)
-  const parseIntent = (text) => {
-    const lower = text.toLowerCase();
-    
-    // 태스크 추가
-    if (lower.includes('추가') || lower.includes('할 일') || lower.includes('해야') || lower.includes('등록')) {
-      // "XXX 추가해줘" 패턴
-      const match = text.match(/['""](.+?)['""]|(.+?)\s*(추가|등록|해야)/);
-      if (match) {
-        const taskTitle = match[1] || match[2]?.trim();
-        if (taskTitle && taskTitle.length > 1) {
-          return { intent: 'add_task', data: taskTitle };
-        }
-      }
-      return { intent: 'add_task_prompt' };
-    }
-    
-    // 태스크 완료
-    if (lower.includes('완료') || lower.includes('끝냈') || lower.includes('했어') || lower.includes('체크')) {
-      return { intent: 'complete_task' };
-    }
-    
-    // 집중 모드
-    if (lower.includes('집중') || lower.includes('포커스') || lower.includes('시작')) {
-      return { intent: 'focus' };
-    }
-    
-    // 일정 확인
-    if (lower.includes('일정') || lower.includes('스케줄') || lower.includes('미팅') || lower.includes('약속')) {
-      return { intent: 'schedule' };
-    }
-    
-    // 추천 요청
-    if (lower.includes('뭐 하') || lower.includes('추천') || lower.includes('어떤') || lower.includes('도와')) {
-      return { intent: 'recommend' };
-    }
-    
-    // 컨디션
-    if (lower.includes('컨디션') || lower.includes('기분') || lower.includes('에너지') || lower.includes('피곤')) {
-      return { intent: 'condition' };
-    }
-    
-    // 휴식
-    if (lower.includes('쉬') || lower.includes('휴식') || lower.includes('지쳤') || lower.includes('힘들')) {
-      return { intent: 'rest' };
-    }
-    
-    // 회고
-    if (lower.includes('어땠') || lower.includes('정리') || lower.includes('리뷰')) {
-      return { intent: 'reflect' };
-    }
-    
-    // 인사
-    if (lower.includes('안녕') || lower.includes('하이') || lower.includes('헬로')) {
-      return { intent: 'greeting' };
-    }
-    
-    // 감사
-    if (lower.includes('고마') || lower.includes('땡큐') || lower.includes('감사')) {
-      return { intent: 'thanks' };
-    }
-    
-    return { intent: 'unknown' };
-  };
-  
-  // 응답 생성
-  const generateResponse = (intent, data) => {
-    const responses = {
-      recommend: () => {
-        if (todoTasks.length === 0) {
-          return { text: '오늘 할 거 다 했네요. 이제 쉬어요.' };
-        }
-        
-        if (energy >= 70) {
-          const importantTask = todoTasks.find(t => t.priorityChange === 'up' || t.importance === 'high') || todoTasks[0];
-          return { 
-            text: `컨디션 좋을 때 "${importantTask.title}" 해치우는 게 좋겠어요.`, 
-            action: { type: 'start_focus', task: importantTask, label: '시작' }
-          };
-        } else if (energy >= 40) {
-          return { 
-            text: `"${todoTasks[0].title}"부터 가볍게 시작해요.`,
-            action: { type: 'start_focus', task: todoTasks[0], label: '시작' }
-          };
-        } else {
-          return { 
-            text: '에너지 낮네요. 오늘은 쉬는 게 나을 것 같아요.'
-          };
-        }
-      },
-      
-      start_first: () => {
-        if (todoTasks.length > 0) {
-          return {
-            text: `"${todoTasks[0].title}" 시작해요. 25분만 집중하고 쉬어요.`,
-            action: { type: 'start_focus', task: todoTasks[0], label: '집중 모드' }
-          };
-        }
-        return { text: '할 일 없네요. 추가할 거 있어요?' };
-      },
-      
-      schedule: () => {
-        if (events.length === 0) {
-          return { text: '오늘 일정 없어요. 여유롭게 보내요.' };
-        }
-        const nextEvent = events[0];
-        let response = `다음 일정: ${nextEvent.start} ${nextEvent.title}`;
-        if (nextEvent.location) response += ` (${nextEvent.location})`;
-        if (events.length > 1) response += `\n그 외 ${events.length - 1}개 더 있어요.`;
-        return { text: response };
-      },
-      
-      add_task: (taskTitle) => {
-        return {
-          text: `"${taskTitle}" 추가할게요.`,
-          action: { type: 'add_task', title: taskTitle, label: '추가' }
-        };
-      },
-      
-      add_task_prompt: () => {
-        return { text: '뭐 추가할 거예요?' };
-      },
-      
-      complete_task: () => {
-        if (todoTasks.length > 0) {
-          return {
-            text: `어떤 거 끝냈어요?\n${todoTasks.map((t, i) => `${i + 1}. ${t.title}`).join('\n')}`,
-          };
-        }
-        return { text: '이미 다 끝났네요.' };
-      },
-      
-      focus: () => {
-        if (todoTasks.length > 0) {
-          return {
-            text: `"${todoTasks[0].title}" 집중 모드 시작할게요.`,
-            action: { type: 'start_focus', task: todoTasks[0], label: '25분 집중' }
-          };
-        }
-        return { text: '할 일 먼저 추가해요.' };
-      },
-      
-      condition: () => {
-        const moodText = mood === 'upbeat' ? '좋음' : mood === 'light' ? '보통' : '힘듦';
-        let advice = '';
-        if (energy < 30) advice = ' 오늘은 쉬는 게 좋겠어요.';
-        else if (energy < 50) advice = ' 가벼운 것만 해요.';
-        else advice = ' 집중하기 좋은 컨디션이에요.';
-        
-        return { text: `기분 ${moodText}, 에너지 ${energy}%.${advice}` };
-      },
-      
-      rest: () => {
-        if (energy < 30) {
-          return { text: '쉬어요. 오늘 충분히 했어요. 내일 더 좋은 컨디션으로 하죠.' };
-        }
-        return { text: '잠깐 쉬고 와요. 5분이면 돼요.' };
-      },
-      
-      reflect: () => {
-        const doneCount = tasks.filter(t => t.status === 'done').length;
-        if (doneCount === 0) {
-          return { text: '아직 완료한 거 없네요. 괜찮아요, 내일 하면 돼요.' };
-        }
-        if (doneCount >= 3) {
-          return { text: `오늘 ${doneCount}개 했네요. 역시.` };
-        }
-        return { text: `${doneCount}개 했어요. 작은 것도 다 해낸 거예요.` };
-      },
-      
-      greeting: () => {
-        const greetings = ['안녕하세요.', '네, 여기 있어요.', '부르셨어요?'];
-        return { text: greetings[Math.floor(Math.random() * greetings.length)] };
-      },
-      
-      thanks: () => {
-        const replies = ['별말씀을요.', '네.', '필요하면 또 불러요.'];
-        return { text: replies[Math.floor(Math.random() * replies.length)] };
-      },
-      
-      unknown: () => {
-        return { text: '음, 잘 이해 못 했어요. 다시 말해줄래요?' };
-      },
-    };
-    
-    const handler = responses[intent];
-    if (handler) {
-      return typeof handler === 'function' 
-        ? (data ? handler(data) : handler()) 
-        : handler;
-    }
-    return responses.unknown();
   };
   
   // Quick Reply 처리 (Claude API 사용)
@@ -674,7 +393,5 @@ ${events.length > 0 ? events.map(e => `- ${e.start || ''} ${e.title}`).join('\n'
     </div>
   );
 };
-
-// === Do Not Disturb Banner ===
 
 export default AlfredoChat;
