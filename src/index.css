@@ -6,6 +6,37 @@
 html, body, #root {
   height: 100%;
   width: 100%;
+  /* iOS Safari 100vh 이슈 해결 */
+  height: 100dvh;
+  height: -webkit-fill-available;
+}
+
+body {
+  /* iOS 바운스 스크롤 비활성화 */
+  overscroll-behavior-y: none;
+  /* 터치 하이라이트 제거 */
+  -webkit-tap-highlight-color: transparent;
+  /* 텍스트 선택 방지 */
+  -webkit-user-select: none;
+  user-select: none;
+  /* 하드웨어 가속 */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+
+/* 입력 필드는 텍스트 선택 허용 */
+input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* iOS 입력 필드 줌 방지 */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+textarea {
+  font-size: 16px !important;
 }
 
 /* ===== Custom Animations ===== */
@@ -40,7 +71,7 @@ html, body, #root {
   }
 }
 
-/* Slide Up (바텀시트용) */
+/* Slide Up (바톰시트용) */
 @keyframes slideUp {
   from { transform: translateY(100%); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
@@ -352,4 +383,85 @@ html, body, #root {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* ===== Mobile Keyboard Handling ===== */
+.keyboard-aware {
+  /* 키보드가 올라왔을 때 화면 조정 */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  transition: transform 0.3s ease-out;
+}
+
+/* ===== GPU Acceleration for smooth animations ===== */
+.gpu-accelerate {
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* ===== Pull to Refresh Indicator ===== */
+.pull-indicator {
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.pull-indicator.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(60px);
+}
+
+/* ===== Active States for Touch ===== */
+.touch-active:active {
+  background-color: rgba(169, 150, 255, 0.1);
+  transition: background-color 0.1s;
+}
+
+/* ===== Bottom Sheet ===== */
+.bottom-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-radius: 20px 20px 0 0;
+  padding: 20px;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  transform: translateY(100%);
+  transition: transform 0.3s ease-out;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.1);
+  z-index: 50;
+}
+
+.bottom-sheet.open {
+  transform: translateY(0);
+}
+
+.bottom-sheet-handle {
+  width: 40px;
+  height: 4px;
+  background: #E5E5E5;
+  border-radius: 2px;
+  margin: 0 auto 16px;
+}
+
+/* ===== Overlay ===== */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: 40;
+  pointer-events: none;
+}
+
+.overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
 }

@@ -11,24 +11,32 @@ const navItems = [
 
 export default function BottomNav() {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 safe-area-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-100 safe-area-bottom z-50">
       <div className="flex justify-around items-center h-16 max-w-lg mx-auto">
         {navItems.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
             to={to}
             className={({ isActive }) =>
-              `flex flex-col items-center justify-center w-16 h-full transition-colors ${
+              `flex flex-col items-center justify-center touch-target transition-all duration-200 ${
                 isActive
-                  ? 'text-lavender-500'
-                  : 'text-gray-400 hover:text-gray-600'
+                  ? 'text-lavender-500 scale-105'
+                  : 'text-gray-400 active:text-gray-600 active:scale-95'
               }`
             }
           >
             {({ isActive }: { isActive: boolean }) => (
               <>
-                <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
-                <span className="text-xs mt-1 font-medium">{label}</span>
+                <div className={`p-1 rounded-xl transition-colors ${
+                  isActive ? 'bg-lavender-100' : ''
+                }`}>
+                  <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                </div>
+                <span className={`text-xs mt-0.5 font-medium transition-all ${
+                  isActive ? 'opacity-100' : 'opacity-70'
+                }`}>
+                  {label}
+                </span>
               </>
             )}
           </NavLink>
