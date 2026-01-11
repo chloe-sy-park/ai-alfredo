@@ -3,6 +3,7 @@ import { Settings, Cloud, Sun, CloudRain, Moon, Star } from 'lucide-react';
 import AlfredoIslandMinimal from './AlfredoIslandMinimal';
 import FocusNowCard from './FocusNowCard';
 import TodayTimelineMinimal from './TodayTimelineMinimal';
+import DNAInsightCard from './DNAInsightCard';
 import { useGamification, XpGainToast, LevelUpModal } from '../gamification/LevelSystem';
 
 // 요일 이름
@@ -421,6 +422,17 @@ export var HomePage = function(props) {
           onViewDetails: function() { setForceNormalView(true); }
         })
       : React.createElement('div', { className: 'flex-1 pb-24' },
+          // 🧬 DNA 인사이트 카드
+          React.createElement(DNAInsightCard, {
+            dnaProfile: dnaProfile,
+            dnaAnalysisPhase: dnaAnalysisPhase,
+            dnaSuggestions: dnaSuggestions,
+            getBestFocusTime: getBestFocusTime,
+            getChronotype: getChronotype,
+            getStressLevel: getStressLevel,
+            getPeakHours: getPeakHours
+          }),
+          
           // 지금 이거부터
           React.createElement('div', { className: 'mx-4 mt-2' },
             React.createElement(FocusNowCard, {
