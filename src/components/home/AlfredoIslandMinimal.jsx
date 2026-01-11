@@ -269,6 +269,16 @@ export var AlfredoIslandMinimal = function(props) {
   var weather = props.weather;
   var onOpenChat = props.onOpenChat;
   
+  // 🧬 DNA 인사이트
+  var dnaProfile = props.dnaProfile;
+  var dnaSuggestions = props.dnaSuggestions;
+  var dnaAnalysisPhase = props.dnaAnalysisPhase;
+  var getMorningBriefing = props.getMorningBriefing;
+  var getEveningMessage = props.getEveningMessage;
+  var getStressLevel = props.getStressLevel;
+  var getBestFocusTime = props.getBestFocusTime;
+  var getChronotype = props.getChronotype;
+  
   var expandedState = useState(false);
   var isExpanded = expandedState[0];
   var setExpanded = expandedState[1];
@@ -295,24 +305,70 @@ export var AlfredoIslandMinimal = function(props) {
   
   var isEvening = timeOfDay === 'evening' || timeOfDay === 'night';
   
-  // 메시지 생성 (시간대별 분기)
+  // 🧬 DNA 기반 메시지 생성 (시간대별 분기)
   var message = useMemo(function() {
+    // DNA 인사이트가 있으면 활용
+    var dnaInsight = null;
+    if (dnaProfile && dnaAnalysisPhase) {
+      var stressLevel = getStressLevel ? getStressLevel() : 'normal';
+      var chronotype = getChronotype ? getChronotype() : null;
+      var bestFocusTime = getBestFocusTime ? getBestFocusTime() : null;
+      
+      dnaInsight = {
+        stressLevel: stressLevel,
+        chronotype: chronotype,
+        bestFocusTime: bestFocusTime,
+        phase: dnaAnalysisPhase,
+        suggestions: dnaSuggestions || []
+      };
+    }
+    
     if (isEvening) {
+      // 저녁: DNA getEveningMessage 사용 가능하면 활용
+      if (getEveningMessage && dnaProfile) {
+        var completed = tasks.filter(function(t) { return t.completed; }).length;
+        var dnaEvening = getEveningMessage(completed, tasks.length);
+        if (dnaEvening) {
+          return {
+            line1: dnaEvening,
+            line2: '',
+            type: 'evening',
+            dnaInsight: dnaInsight
+          };
+        }
+      }
       return getSimpleEveningMessage({
         tasks: tasks,
         condition: condition,
-        userName: userName
+        userName: userName,
+        dnaInsight: dnaInsight
       });
     }
+    
+    // 아침/오후: DNA getMorningBriefing 사용 가능하면 활용
+    if (getMorningBriefing && dnaProfile) {
+      var nextEvent = events && events.length > 0 ? events[0] : null;
+      var dnaMorning = getMorningBriefing(events, nextEvent);
+      if (dnaMorning) {
+        return {
+          line1: dnaMorning,
+          line2: '',
+          type: 'morning',
+          dnaInsight: dnaInsight
+        };
+      }
+    }
+    
     return getSimpleBriefingMessage({
       tasks: tasks,
       events: events,
       condition: condition,
       userName: userName,
       urgentEvent: urgentEvent,
-      weather: weather
+      weather: weather,
+      dnaInsight: dnaInsight
     });
-  }, [tasks, events, condition, userName, urgentEvent, weather, isEvening]);
+  }, [tasks, events, condition, userName, urgentEvent, weather, isEvening, dnaProfile, dnaAnalysisPhase, dnaSuggestions, getMorningBriefing, getEveningMessage, getStressLevel, getBestFocusTime, getChronotype]);
   
   // 표정 결정
   var expression = useMemo(function() {
@@ -370,7 +426,7 @@ export var AlfredoIslandMinimal = function(props) {
       '- 간결하고 실용적인 조언 (2-3문장)\n' +
       '- 이모지를 적절히 사용 (과하지 않게)\n' +
       '- 사용자를 \"Boss\"라고 부름\n' +
-      '- 펭귄 마스코트 🐧\n\n' +
+      '- 펜귄 마스코트 🐧\n\n' +
       '## ADHD 친화적 응답 규칙\n' +
       '- 한 번에 하나의 행동만 제안\n' +
       '- 컨디션 낮으면 격려 위주\n' +
@@ -518,7 +574,7 @@ export var AlfredoIslandMinimal = function(props) {
       onClick: function() { setExpanded(true); }
     },
       React.createElement('div', { className: 'p-4 flex items-center gap-3' },
-        // 펭귄 표정 (상황별 변화)
+        // 펜귄 표정 (상황별 변화)
         React.createElement('div', { 
           className: 'text-2xl flex-shrink-0 ' + expressionAnimation
         }, expression.emoji),
@@ -552,7 +608,7 @@ export var AlfredoIslandMinimal = function(props) {
     isExpanded && React.createElement('div', {
       className: 'fixed inset-0 z-[60] flex flex-col justify-end'
     },
-      // 배경 딤
+      // 배경 딘
       React.createElement('div', {
         className: 'absolute inset-0 bg-black/40',
         onClick: function() { setExpanded(false); }
