@@ -1,14 +1,24 @@
 // Vercel Serverless Function - Google Calendar 연동
-// POST /api/calendar
+// POST /api/calendar (메인 API)
+// GET /api/calendar (서비스 워커 호환용)
 
 export default async function handler(req, res) {
   // CORS 헤더
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
+  }
+
+  // GET 요청 - 서비스 워커 캐싱 호환용 (빈 응답)
+  if (req.method === 'GET') {
+    return res.status(200).json({ 
+      success: true, 
+      message: 'Calendar API is ready. Use POST for operations.',
+      events: [] 
+    });
   }
 
   if (req.method !== 'POST') {
