@@ -1,7 +1,36 @@
+import { useEffect } from 'react';
 import Card from '@/components/common/Card';
-import { Heart, Droplets, Moon, Footprints, Apple, Smile } from 'lucide-react';
+import { Heart, Droplets, Moon, Footprints, Apple, Smile, CheckCircle2 } from 'lucide-react';
+import { useHabitStore } from '@/stores/habitStore';
 
 export default function Life() {
+  const { habits, isLoading, fetchHabits, logHabit, getTodayHabits, getCompletedToday } = useHabitStore();
+
+  useEffect(() => {
+    fetchHabits();
+  }, [fetchHabits]);
+
+  const todayHabits = getTodayHabits();
+  const completedToday = getCompletedToday();
+
+  // 습관 완료 핸들러
+  const handleHabitComplete = async (habitId: string, currentlyCompleted: boolean) => {
+    await logHabit(habitId, !currentlyCompleted);
+  };
+
+  // 하드코딩된 기본 습관 (실제 데이터 없을 때)
+  const defaultHabits = [
+    { id: '1', icon: <Droplets />, label: '물 8잔', progress: 5, total: 8, color: 'blue' as const, completed: false },
+    { id: '2', icon: <Moon />, label: '7시간 수면', progress: 1, total: 1, color: 'purple' as const, completed: true },
+    { id: '3', icon: <Footprints />, label: '10,000보', progress: 6234, total: 10000, color: 'green' as const, completed: false },
+    { id: '4', icon: <Apple />, label: '비타민', progress: 0, total: 1, color: 'orange' as const, completed: false },
+  ];
+
+  // 주간 습관 현황 계산
+  const weekDays = ['월', '화', '수', '목', '금', '토', '일'];
+  const today = new Date().getDay();
+  const adjustedToday = today === 0 ? 6 : today - 1; // 월요일부터 시작
+
   return (
     <div className="p-4 space-y-4 max-w-lg mx-auto animate-fade-in">
       {/* 헤더 */}
@@ -15,20 +44,56 @@ export default function Life() {
         <h2 className="font-semibold mb-3 flex items-center gap-2">
           <Heart className="text-pink-400" size={18} />
           오늘의 셀프케어
+          <span className="text-sm font-normal text-gray-400">
+            ({completedToday.length}/{todayHabits.length || defaultHabits.length})
+          </span>
         </h2>
-        <div className="grid grid-cols-2 gap-3">
-          <HabitItem icon={<Droplets />} label="물 8잔" progress={5} total={8} color="blue" />
-          <HabitItem icon={<Moon />} label="7시간 수면" progress={1} total={1} color="purple" done />
-          <HabitItem icon={<Footprints />} label="10,000보" progress={6234} total={10000} color="green" />
-          <HabitItem icon={<Apple />} label="비타민" progress={0} total={1} color="orange" />
-        </div>
+        
+        {isLoading ? (
+          <div className="grid grid-cols-2 gap-3">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="h-24 bg-gray-100 rounded-xl animate-pulse" />
+            ))}
+          </div>
+        ) : habits.length === 0 ? (
+          // 기본 습관 표시
+          <div className="grid grid-cols-2 gap-3">
+            {defaultHabits.map((habit) => (
+              <HabitItem
+                key={habit.id}
+                icon={habit.icon}
+                label={habit.label}
+                progress={habit.progress}
+                total={habit.total}
+                color={habit.color}
+                done={habit.completed}
+                onClick={() => {}}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {todayHabits.map((habit) => (
+              <HabitItem
+                key={habit.id}
+                icon={getHabitIcon(habit.category)}
+                label={habit.title}
+                progress={habit.completed_today ? 1 : 0}
+                total={1}
+                color={getHabitColor(habit.category)}
+                done={habit.completed_today}
+                onClick={() => handleHabitComplete(habit.id, habit.completed_today)}
+              />
+            ))}
+          </div>
+        )}
       </Card>
 
       {/* 기분 트래커 */}
       <Card>
         <h2 className="font-semibold mb-3 flex items-center gap-2">
           <Smile className="text-amber-400" size={18} />
-          오늘 기분은 어때요?
+          오늘 기분은 어떠요?
         </h2>
         <div className="flex justify-around">
           {[
@@ -53,24 +118,24 @@ export default function Life() {
       <Card>
         <h2 className="font-semibold mb-3">이번 주 습관 현황</h2>
         <div className="flex justify-between">
-          {['월', '화', '수', '목', '금', '토', '일'].map((day, i) => (
+          {weekDays.map((day, i) => (
             <div key={day} className="flex flex-col items-center gap-1">
               <span className="text-xs text-gray-400">{day}</span>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
-                i < 5
-                  ? i % 2 === 0
-                    ? 'bg-lavender-400 text-white'
-                    : 'bg-lavender-200 text-lavender-700'
-                  : 'bg-gray-100 text-gray-400'
+                i < adjustedToday
+                  ? 'bg-lavender-400 text-white'
+                  : i === adjustedToday
+                    ? 'bg-lavender-200 text-lavender-700 ring-2 ring-lavender-400'
+                    : 'bg-gray-100 text-gray-400'
               }`}>
-                {i < 5 ? (i % 2 === 0 ? '✓' : '·') : ''}
+                {i < adjustedToday ? <CheckCircle2 size={14} /> : i === adjustedToday ? '•' : ''}
               </div>
             </div>
           ))}
         </div>
       </Card>
 
-      {/* 알프레도 팀 */}
+      {/* 알프레도 팁 */}
       <Card variant="glass">
         <div className="flex gap-3">
           <span className="text-3xl">🐧</span>
@@ -106,6 +171,28 @@ export default function Life() {
   );
 }
 
+// 습관 아이콘 가져오기
+function getHabitIcon(category: string) {
+  switch (category) {
+    case 'health': return <Heart size={18} />;
+    case 'exercise': return <Footprints size={18} />;
+    case 'mindfulness': return <Moon size={18} />;
+    case 'nutrition': return <Apple size={18} />;
+    default: return <Droplets size={18} />;
+  }
+}
+
+// 습관 색상 가져오기
+function getHabitColor(category: string): 'blue' | 'purple' | 'green' | 'orange' {
+  switch (category) {
+    case 'health': return 'purple';
+    case 'exercise': return 'green';
+    case 'mindfulness': return 'blue';
+    case 'nutrition': return 'orange';
+    default: return 'blue';
+  }
+}
+
 interface HabitItemProps {
   icon: React.ReactNode;
   label: string;
@@ -113,9 +200,10 @@ interface HabitItemProps {
   total: number;
   color: 'blue' | 'purple' | 'green' | 'orange';
   done?: boolean;
+  onClick: () => void;
 }
 
-function HabitItem({ icon, label, progress, total, color, done }: HabitItemProps) {
+function HabitItem({ icon, label, progress, total, color, done, onClick }: HabitItemProps) {
   const percentage = Math.min((progress / total) * 100, 100);
   
   const colors = {
@@ -133,7 +221,11 @@ function HabitItem({ icon, label, progress, total, color, done }: HabitItemProps
   };
 
   return (
-    <div className={`p-3 rounded-xl ${colors[color]}`}>
+    <button 
+      onClick={onClick}
+      className={`p-3 rounded-xl text-left transition-all ${colors[color]} ${done ? 'ring-2 ring-offset-2' : ''}`}
+      style={{ ['--tw-ring-color' as string]: done ? progressColors[color].replace('bg-', '') : undefined }}
+    >
       <div className="flex items-center gap-2 mb-2">
         {icon}
         <span className="text-sm font-medium">{label}</span>
@@ -148,6 +240,6 @@ function HabitItem({ icon, label, progress, total, color, done }: HabitItemProps
       <p className="text-xs mt-1 opacity-70">
         {progress.toLocaleString()} / {total.toLocaleString()}
       </p>
-    </div>
+    </button>
   );
 }
