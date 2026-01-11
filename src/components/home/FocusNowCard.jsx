@@ -75,12 +75,12 @@ export var FocusNowCard = function(props) {
     },
       React.createElement('div', { className: 'flex items-start gap-3' },
         // 펭귄
-        React.createElement('span', { className: 'text-2xl' }, '🐧'),
+        React.createElement('span', { className: 'text-3xl' }, '🐧'),
         
         // 메시지
         React.createElement('div', { className: 'flex-1' },
           React.createElement('p', {
-            className: 'text-gray-800 font-medium'
+            className: 'text-gray-800 font-medium text-base'
           }, '오늘 뭐 할까요?'),
           React.createElement('p', {
             className: 'text-gray-500 text-sm mt-1'
@@ -91,8 +91,8 @@ export var FocusNowCard = function(props) {
       // 추가 버튼
       onAddTask && React.createElement('button', {
         onClick: onAddTask,
-        className: 'mt-4 w-full py-3 rounded-xl text-sm font-medium ' +
-          'bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors'
+        className: 'mt-4 w-full min-h-[48px] py-3 rounded-xl text-sm font-medium ' +
+          'bg-purple-50 text-purple-600 hover:bg-purple-100 active:bg-purple-200 transition-colors'
       }, '+ 할 일 추가하기')
     );
   }
@@ -109,7 +109,7 @@ export var FocusNowCard = function(props) {
     React.createElement('div', {
       className: 'px-4 py-3 bg-gradient-to-r from-purple-50 to-white flex items-center gap-2'
     },
-      React.createElement('span', { className: 'text-lg' }, '🐧'),
+      React.createElement('span', { className: 'text-xl' }, '🐧'),
       React.createElement('span', {
         className: 'text-sm text-purple-600 font-medium'
       }, reason)
@@ -121,22 +121,22 @@ export var FocusNowCard = function(props) {
       React.createElement('div', { className: 'flex items-start gap-3 mb-4' },
         // 카테고리 아이콘
         React.createElement('div', {
-          className: 'w-10 h-10 rounded-xl flex items-center justify-center ' + category.bg
+          className: 'w-12 h-12 rounded-xl flex items-center justify-center ' + category.bg
         },
-          React.createElement(CategoryIcon, { size: 20, className: category.color })
+          React.createElement(CategoryIcon, { size: 22, className: category.color })
         ),
         
         // 제목
         React.createElement('div', { className: 'flex-1 min-w-0' },
           React.createElement('p', {
-            className: 'text-gray-800 font-semibold text-base truncate'
+            className: 'text-gray-800 font-semibold text-base leading-snug'
           }, task.title),
           
           // 마감 정보 (유효한 경우만 표시)
           deadlineStr && React.createElement('div', {
-            className: 'flex items-center gap-1 mt-1 text-xs text-gray-400'
+            className: 'flex items-center gap-1.5 mt-1.5 text-xs text-gray-400'
           },
-            React.createElement(Clock, { size: 12 }),
+            React.createElement(Clock, { size: 14 }),
             React.createElement('span', null, deadlineStr)
           )
         )
@@ -147,17 +147,17 @@ export var FocusNowCard = function(props) {
         // 나중에
         React.createElement('button', {
           onClick: function() { if (onLater) onLater(task); },
-          className: 'flex-1 py-3 rounded-xl text-sm font-medium transition-all active:scale-98 ' +
-            'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          className: 'flex-1 min-h-[48px] py-3 rounded-xl text-sm font-medium transition-all active:scale-95 ' +
+            'bg-gray-100 text-gray-600 hover:bg-gray-200 active:bg-gray-300'
         }, '나중에'),
         
         // 시작하기
         React.createElement('button', {
           onClick: function() { if (onStart) onStart(task); },
-          className: 'flex-[2] py-3 rounded-xl text-sm font-bold transition-all active:scale-98 ' +
-            'bg-[#A996FF] text-white hover:bg-[#8B7CF7] flex items-center justify-center gap-2'
+          className: 'flex-[2] min-h-[48px] py-3 rounded-xl text-sm font-bold transition-all active:scale-95 ' +
+            'bg-[#A996FF] text-white hover:bg-[#8B7CF7] active:bg-[#7B6AE0] flex items-center justify-center gap-2'
         },
-          React.createElement(Play, { size: 16, className: 'fill-current' }),
+          React.createElement(Play, { size: 18, className: 'fill-current' }),
           '시작하기'
         )
       )
