@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { dnaEngine, DNAProfile, DNABasedSuggestion, CalendarEvent } from '@/services/dna';
-import { useAuthStore } from '@/stores/authStore';
+import { dnaEngine, DNAProfile, DNABasedSuggestion, CalendarEvent } from '../services/dna';
+import { useAuthStore } from '../stores/authStore';
 
 /**
  * DNA 엔진 훅
