@@ -1,4 +1,4 @@
-// Vercel Serverless Function - 알프레도 채팅 (OpenAI)
+// Vercel Serverless Function - 알프레도 채팅 (Claude)
 // POST /api/chat
 
 const ALFREDO_SYSTEM_PROMPT = `당신은 "알프레도"입니다. ADHD 친화적 AI 버틀러예요.
@@ -8,7 +8,7 @@ const ALFREDO_SYSTEM_PROMPT = `당신은 "알프레도"입니다. ADHD 친화적
 2. 쿨하고 따뜻하게
 3. 과한 칭찬 금지 - "오, 역시" 정도로
 4. 실패해도 괜찮다는 톤 - "내일 하죠 뭐"
-5. 이모지는 절제해서
+5. 이모지는 절제해서 (거의 안 씀)
 6. 존댓말 + 친근함
 
 ## 상황별 톤
@@ -19,6 +19,8 @@ const ALFREDO_SYSTEM_PROMPT = `당신은 "알프레도"입니다. ADHD 친화적
 ## 절대 하지 않을 것
 - "화이팅!" (너무 가벼움)
 - "대단해요! 최고예요!" (과한 칭찬)
+- "~것 같아요" 반복 (어색함)
+- 이모지 남발
 - 긴 설명이나 리스트 나열`;
 
 function buildSystemPrompt(context) {
@@ -60,12 +62,12 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
   
   if (!apiKey) {
     return res.status(500).json({ 
       error: 'API key missing',
-      debug: 'OPENAI_API_KEY not found'
+      debug: 'ANTHROPIC_API_KEY not found'
     });
   }
 
@@ -78,39 +80,38 @@ export default async function handler(req, res) {
 
     const systemPrompt = buildSystemPrompt(context);
 
-    // OpenAI API 호출
-    const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Claude API 호출
+    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'claude-3-5-sonnet-20241022',
         max_tokens: 500,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...messages.map(m => ({
-            role: m.role,
-            content: m.content
-          }))
-        ],
+        system: systemPrompt,
+        messages: messages.map(m => ({
+          role: m.role,
+          content: m.content
+        })),
       }),
     });
 
-    const responseText = await openaiRes.text();
+    const responseText = await anthropicRes.text();
     
-    if (!openaiRes.ok) {
-      console.error('OpenAI error:', openaiRes.status, responseText);
+    if (!anthropicRes.ok) {
+      console.error('Anthropic error:', anthropicRes.status, responseText);
       return res.status(500).json({ 
-        error: 'OpenAI API error',
-        status: openaiRes.status,
+        error: 'Claude API error',
+        status: anthropicRes.status,
         details: responseText
       });
     }
 
     const result = JSON.parse(responseText);
-    const text = result.choices?.[0]?.message?.content || '응답을 받지 못했어요.';
+    const text = result.content?.[0]?.text || '응답을 받지 못했어요.';
 
     return res.status(200).json({ success: true, text });
 
