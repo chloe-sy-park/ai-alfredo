@@ -1,12 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  picture?: string;
-}
+import { authApi } from '../lib/api';
+import { supabase, signOut as supabaseSignOut } from '../lib/supabase';
+import type { User } from '../types/database';
 
 export interface Tokens {
   accessToken: string;
@@ -20,15 +16,17 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   isOnboarded: boolean;
-  
+
   // Actions
   setAuth: (user: User, tokens: Tokens) => void;
   loginWithGoogle: () => Promise<void>;
   handleCallback: (code: string) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
   completeOnboarding: () => void;
   getAccessToken: () => string | null;
   isTokenExpired: () => boolean;
+  refreshToken: () => Promise<boolean>;
+  initialize: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -37,29 +35,69 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       tokens: null,
       isAuthenticated: false,
-      isLoading: false,
+      isLoading: true,
       isOnboarded: false,
 
+      // 초기화 - 앱 시작 시 세션 확인
+      initialize: async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (session?.user) {
+            // Supabase 세션이 있으면 상태 업데이트
+            set({
+              isAuthenticated: true,
+              isLoading: false,
+              tokens: {
+                accessToken: session.access_token,
+                refreshToken: session.refresh_token,
+                expiresAt: session.expires_at ? session.expires_at * 1000 : Date.now() + 3600000,
+              },
+            });
+          } else {
+            // 로컬 저장소에서 복원 시도
+            const storedState = get();
+            if (storedState.tokens && !storedState.isTokenExpired()) {
+              set({ isLoading: false });
+            } else {
+              set({ 
+                isLoading: false, 
+                isAuthenticated: false,
+                user: null,
+                tokens: null,
+              });
+            }
+          }
+        } catch (error) {
+          console.error('인증 초기화 오류:', error);
+          set({ isLoading: false });
+        }
+      },
+
       setAuth: (user, tokens) => {
-        set({ 
-          user, 
+        set({
+          user,
           tokens,
           isAuthenticated: true,
-          isLoading: false 
+          isLoading: false,
         });
       },
 
       loginWithGoogle: async () => {
         set({ isLoading: true });
         try {
-          const response = await fetch('/api/auth/google');
-          const data = await response.json();
-          
-          if (data.authUrl) {
+          const redirectUri = `${window.location.origin}/auth/callback`;
+          const response = await authApi.getGoogleAuthUrl(redirectUri);
+
+          if (response.success && response.data?.auth_url) {
+            // CSRF state 저장
+            if (response.data.state) {
+              localStorage.setItem('oauth_state', response.data.state);
+            }
             // Google OAuth 페이지로 리다이렉트
-            window.location.href = data.authUrl;
+            window.location.href = response.data.auth_url;
           } else {
-            throw new Error('Failed to get auth URL');
+            throw new Error(response.error?.message || 'Failed to get auth URL');
           }
         } catch (error) {
           console.error('Google login failed:', error);
@@ -71,29 +109,31 @@ export const useAuthStore = create<AuthState>()(
       handleCallback: async (code: string) => {
         set({ isLoading: true });
         try {
-          const response = await fetch('/api/auth/callback', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ code }),
-          });
+          const redirectUri = `${window.location.origin}/auth/callback`;
+          const response = await authApi.handleCallback(code, redirectUri);
 
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Callback failed');
+          if (response.success && response.data) {
+            const { user, session } = response.data;
+
+            set({
+              user,
+              tokens: session ? {
+                accessToken: session.access_token,
+                refreshToken: session.refresh_token,
+                expiresAt: session.expires_at ? session.expires_at * 1000 : Date.now() + 3600000,
+              } : null,
+              isAuthenticated: true,
+              isLoading: false,
+              isOnboarded: user?.is_onboarded || false,
+            });
+
+            // OAuth state 정리
+            localStorage.removeItem('oauth_state');
+
+            return true;
+          } else {
+            throw new Error(response.error?.message || 'Callback failed');
           }
-
-          const data = await response.json();
-          
-          set({
-            user: data.user,
-            tokens: data.tokens,
-            isAuthenticated: true,
-            isLoading: false,
-          });
-
-          return true;
         } catch (error) {
           console.error('Auth callback failed:', error);
           set({ isLoading: false });
@@ -101,13 +141,23 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      logout: () => {
-        set({ 
-          user: null, 
-          tokens: null,
-          isAuthenticated: false,
-          isOnboarded: false 
-        });
+      logout: async () => {
+        try {
+          await authApi.logout();
+          await supabaseSignOut();
+        } catch (error) {
+          console.error('Logout error:', error);
+        } finally {
+          set({
+            user: null,
+            tokens: null,
+            isAuthenticated: false,
+            isOnboarded: false,
+          });
+          // 로컬 스토리지 정리
+          localStorage.removeItem('alfredo-auth');
+          localStorage.removeItem('oauth_state');
+        }
       },
 
       completeOnboarding: () => {
@@ -117,32 +167,57 @@ export const useAuthStore = create<AuthState>()(
       getAccessToken: () => {
         const { tokens } = get();
         if (!tokens) return null;
-        
-        // 토큰 만료 체크
+
         if (get().isTokenExpired()) {
-          // TODO: refresh token으로 갱신
+          // 토큰 만료 시 refresh 시도
+          get().refreshToken();
           return null;
         }
-        
+
         return tokens.accessToken;
       },
 
       isTokenExpired: () => {
         const { tokens } = get();
         if (!tokens) return true;
-        
+
         // 5분 여유를 두고 만료 체크
         return Date.now() > (tokens.expiresAt - 5 * 60 * 1000);
+      },
+
+      refreshToken: async () => {
+        const { tokens } = get();
+        if (!tokens?.refreshToken) return false;
+
+        try {
+          const response = await authApi.refreshToken(tokens.refreshToken);
+
+          if (response.success && response.data) {
+            set({
+              tokens: {
+                accessToken: response.data.access_token,
+                refreshToken: response.data.refresh_token,
+                expiresAt: response.data.expires_at * 1000,
+              },
+            });
+            return true;
+          }
+        } catch (error) {
+          console.error('Token refresh failed:', error);
+          // 리프레시 실패 시 로그아웃
+          get().logout();
+        }
+        return false;
       },
     }),
     {
       name: 'alfredo-auth',
-      partialize: (state) => ({ 
+      partialize: (state) => ({
         user: state.user,
         tokens: state.tokens,
         isAuthenticated: state.isAuthenticated,
         isOnboarded: state.isOnboarded,
-      })
+      }),
     }
   )
 );

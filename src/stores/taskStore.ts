@@ -1,237 +1,177 @@
 import { create } from 'zustand';
-import { db } from '@/lib/db';
-import { api } from '@/lib/api';
-
-export type TaskStatus = 'todo' | 'in_progress' | 'done' | 'deferred';
-export type TaskCategory = 'work' | 'life';
-
-export interface Task {
-  id: string;
-  title: string;
-  description?: string;
-  status: TaskStatus;
-  category: TaskCategory;
-  isStarred: boolean;
-  isTopThree: boolean;
-  dueDate?: string;
-  dueTime?: string;
-  estimatedMinutes?: number;
-  actualMinutes?: number;
-  deferCount: number;
-  tags: string[];
-  createdAt: string;
-  updatedAt: string;
-  completedAt?: string;
-}
-
-interface TaskFilters {
-  status?: TaskStatus[];
-  category?: TaskCategory;
-  isStarred?: boolean;
-  isTopThree?: boolean;
-  searchQuery?: string;
-}
+import { tasksApi } from '../lib/api';
+import type { Task, TaskStatus, TaskCategory, PriorityLevel } from '../types/database';
 
 interface TaskState {
   tasks: Task[];
-  filters: TaskFilters;
   isLoading: boolean;
-  
+  error: string | null;
+  filter: {
+    status?: TaskStatus;
+    category?: TaskCategory;
+    priority?: PriorityLevel;
+    isTop3?: boolean;
+  };
+
   // Actions
-  setFilters: (filters: TaskFilters) => void;
   fetchTasks: () => Promise<void>;
-  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'deferCount'>) => Promise<Task>;
-  updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
-  deleteTask: (id: string) => Promise<void>;
-  toggleStar: (id: string) => Promise<void>;
-  toggleTopThree: (id: string) => Promise<void>;
-  deferTask: (id: string) => Promise<void>;
-  completeTask: (id: string) => Promise<void>;
-  
-  // Computed
-  getFilteredTasks: () => Task[];
-  getTodayTopThree: () => Task[];
+  createTask: (data: Partial<Task>) => Promise<Task | null>;
+  updateTask: (id: string, data: Partial<Task>) => Promise<Task | null>;
+  deleteTask: (id: string) => Promise<boolean>;
+  completeTask: (id: string) => Promise<{ task: Task; rewards?: any } | null>;
+  deferTask: (id: string) => Promise<Task | null>;
+  setFilter: (filter: Partial<TaskState['filter']>) => void;
+  clearError: () => void;
+
+  // Selectors
+  getTop3Tasks: () => Task[];
+  getPendingTasks: () => Task[];
   getTasksByCategory: (category: TaskCategory) => Task[];
 }
 
-export const useTaskStore = create<TaskState>()((set, get) => ({
+export const useTaskStore = create<TaskState>((set, get) => ({
   tasks: [],
-  filters: {},
   isLoading: false,
-
-  setFilters: (filters) => set({ filters }),
+  error: null,
+  filter: {},
 
   fetchTasks: async () => {
-    set({ isLoading: true });
+    set({ isLoading: true, error: null });
+
     try {
-      // 먼저 로컬 DB에서 로드
-      const localTasks = await db.tasks.toArray();
-      set({ tasks: localTasks });
+      const { filter } = get();
+      const params: Record<string, string> = {};
+      
+      if (filter.status) params.status = filter.status;
+      if (filter.category) params.category = filter.category;
+      if (filter.priority) params.priority = filter.priority;
+      if (filter.isTop3 !== undefined) params.is_top3 = String(filter.isTop3);
 
-      // 온라인이면 서버와 동기화
-      if (navigator.onLine) {
-        const serverTasks = await api.get<Task[]>('/api/tasks');
-        await db.tasks.clear();
-        await db.tasks.bulkPut(serverTasks);
-        set({ tasks: serverTasks });
+      const response = await tasksApi.list(params);
+
+      if (response.success && response.data) {
+        set({ tasks: response.data, isLoading: false });
+      } else {
+        set({ error: response.error?.message || '태스크 조회 실패', isLoading: false });
       }
-    } catch (error) {
-      console.error('Failed to fetch tasks:', error);
-    } finally {
-      set({ isLoading: false });
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : '알 수 없는 오류', isLoading: false });
     }
   },
 
-  addTask: async (taskData) => {
-    const newTask: Task = {
-      ...taskData,
-      id: crypto.randomUUID(),
-      deferCount: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+  createTask: async (data) => {
+    try {
+      const response = await tasksApi.create(data as any);
 
-    // Optimistic update
-    set((state) => ({ tasks: [...state.tasks, newTask] }));
-    await db.tasks.add(newTask);
-
-    // 온라인이면 서버에도 저장
-    if (navigator.onLine) {
-      try {
-        await api.post('/api/tasks', newTask);
-      } catch (error) {
-        // 오프라인 큐에 추가
-        await db.offlineQueue.add({
-          id: crypto.randomUUID(),
-          action: 'create',
-          table: 'tasks',
-          data: newTask,
-          createdAt: new Date().toISOString()
-        });
+      if (response.success && response.data) {
+        set(state => ({ tasks: [response.data!, ...state.tasks] }));
+        return response.data;
+      } else {
+        set({ error: response.error?.message || '태스크 생성 실패' });
+        return null;
       }
-    } else {
-      await db.offlineQueue.add({
-        id: crypto.randomUUID(),
-        action: 'create',
-        table: 'tasks',
-        data: newTask,
-        createdAt: new Date().toISOString()
-      });
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : '알 수 없는 오류' });
+      return null;
     }
-
-    return newTask;
   },
 
-  updateTask: async (id, updates) => {
-    const updatedData = { ...updates, updatedAt: new Date().toISOString() };
+  updateTask: async (id, data) => {
+    try {
+      const response = await tasksApi.update(id, data);
 
-    // Optimistic update
-    set((state) => ({
-      tasks: state.tasks.map((t) =>
-        t.id === id ? { ...t, ...updatedData } : t
-      )
-    }));
-    await db.tasks.update(id, updatedData);
-
-    if (navigator.onLine) {
-      try {
-        await api.patch(`/api/tasks/${id}`, updatedData);
-      } catch (error) {
-        await db.offlineQueue.add({
-          id: crypto.randomUUID(),
-          action: 'update',
-          table: 'tasks',
-          recordId: id,
-          data: updatedData,
-          createdAt: new Date().toISOString()
-        });
+      if (response.success && response.data) {
+        set(state => ({
+          tasks: state.tasks.map(t => (t.id === id ? response.data! : t)),
+        }));
+        return response.data;
+      } else {
+        set({ error: response.error?.message || '태스크 수정 실패' });
+        return null;
       }
-    } else {
-      await db.offlineQueue.add({
-        id: crypto.randomUUID(),
-        action: 'update',
-        table: 'tasks',
-        recordId: id,
-        data: updatedData,
-        createdAt: new Date().toISOString()
-      });
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : '알 수 없는 오류' });
+      return null;
     }
   },
 
   deleteTask: async (id) => {
-    // Optimistic update
-    set((state) => ({
-      tasks: state.tasks.filter((t) => t.id !== id)
-    }));
-    await db.tasks.delete(id);
+    try {
+      const response = await tasksApi.delete(id);
 
-    if (navigator.onLine) {
-      try {
-        await api.delete(`/api/tasks/${id}`);
-      } catch (error) {
-        await db.offlineQueue.add({
-          id: crypto.randomUUID(),
-          action: 'delete',
-          table: 'tasks',
-          recordId: id,
-          createdAt: new Date().toISOString()
-        });
+      if (response.success) {
+        set(state => ({
+          tasks: state.tasks.filter(t => t.id !== id),
+        }));
+        return true;
+      } else {
+        set({ error: response.error?.message || '태스크 삭제 실패' });
+        return false;
       }
-    }
-  },
-
-  toggleStar: async (id) => {
-    const task = get().tasks.find((t) => t.id === id);
-    if (task) {
-      await get().updateTask(id, { isStarred: !task.isStarred });
-    }
-  },
-
-  toggleTopThree: async (id) => {
-    const task = get().tasks.find((t) => t.id === id);
-    if (task) {
-      await get().updateTask(id, { isTopThree: !task.isTopThree });
-    }
-  },
-
-  deferTask: async (id) => {
-    const task = get().tasks.find((t) => t.id === id);
-    if (task) {
-      await get().updateTask(id, {
-        status: 'deferred',
-        deferCount: task.deferCount + 1
-      });
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : '알 수 없는 오류' });
+      return false;
     }
   },
 
   completeTask: async (id) => {
-    await get().updateTask(id, {
-      status: 'done',
-      completedAt: new Date().toISOString()
-    });
-  },
+    try {
+      const response = await tasksApi.complete(id);
 
-  getFilteredTasks: () => {
-    const { tasks, filters } = get();
-    return tasks.filter((task) => {
-      if (filters.status && !filters.status.includes(task.status)) return false;
-      if (filters.category && task.category !== filters.category) return false;
-      if (filters.isStarred !== undefined && task.isStarred !== filters.isStarred) return false;
-      if (filters.isTopThree !== undefined && task.isTopThree !== filters.isTopThree) return false;
-      if (filters.searchQuery) {
-        const query = filters.searchQuery.toLowerCase();
-        return task.title.toLowerCase().includes(query) ||
-               task.description?.toLowerCase().includes(query);
+      if (response.success && response.data) {
+        const result = response.data;
+        const updatedTask = result.task || result;
+        
+        set(state => ({
+          tasks: state.tasks.map(t => (t.id === id ? updatedTask : t)),
+        }));
+        
+        return result;
+      } else {
+        set({ error: response.error?.message || '태스크 완료 실패' });
+        return null;
       }
-      return true;
-    });
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : '알 수 없는 오류' });
+      return null;
+    }
   },
 
-  getTodayTopThree: () => {
-    return get().tasks.filter((t) => t.isTopThree && t.status !== 'done');
+  deferTask: async (id) => {
+    try {
+      const response = await tasksApi.defer(id);
+
+      if (response.success && response.data) {
+        set(state => ({
+          tasks: state.tasks.map(t => (t.id === id ? response.data! : t)),
+        }));
+        return response.data;
+      } else {
+        set({ error: response.error?.message || '태스크 미루기 실패' });
+        return null;
+      }
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : '알 수 없는 오류' });
+      return null;
+    }
+  },
+
+  setFilter: (filter) => {
+    set(state => ({ filter: { ...state.filter, ...filter } }));
+  },
+
+  clearError: () => set({ error: null }),
+
+  // Selectors
+  getTop3Tasks: () => {
+    return get().tasks.filter(t => t.is_top3 && t.status !== 'done');
+  },
+
+  getPendingTasks: () => {
+    return get().tasks.filter(t => t.status === 'pending');
   },
 
   getTasksByCategory: (category) => {
-    return get().tasks.filter((t) => t.category === category);
-  }
+    return get().tasks.filter(t => t.category === category);
+  },
 }));
