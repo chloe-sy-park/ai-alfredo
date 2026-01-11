@@ -81,7 +81,7 @@ var NightModeView = function(props) {
   );
 };
 
-// ⚡ 긴급 일정 알림 배너
+// ⚡ 긴급 일정 알림 배너 (컴팩트)
 var UrgentEventBanner = function(props) {
   var event = props.event;
   var diffMin = props.diffMin;
@@ -92,19 +92,15 @@ var UrgentEventBanner = function(props) {
   var isVeryUrgent = diffMin <= 10;
   
   return React.createElement('div', {
-    className: 'mx-4 mt-4 rounded-2xl p-4 flex items-center gap-3 animate-pulse ' +
-      (isVeryUrgent ? 'bg-red-500' : 'bg-orange-500')
+    className: 'mx-4 mt-2 rounded-xl p-3 flex items-center gap-2 ' +
+      (isVeryUrgent ? 'bg-red-500 animate-pulse' : 'bg-orange-500')
   },
-    React.createElement('span', { className: 'text-2xl' }, '⚡'),
+    React.createElement('span', { className: 'text-lg' }, '⚡'),
     React.createElement('div', { className: 'flex-1 min-w-0' },
       React.createElement('p', {
-        className: 'text-white font-bold'
-      }, diffMin + '분 뒤 일정이에요!'),
-      React.createElement('p', {
-        className: 'text-white/80 text-sm truncate'
-      }, title)
-    ),
-    React.createElement('span', { className: 'text-white/60 text-sm' }, '준비하세요')
+        className: 'text-white font-medium text-sm'
+      }, diffMin + '분 뒤: ' + title.slice(0, 15) + (title.length > 15 ? '...' : ''))
+    )
   );
 };
 
@@ -153,7 +149,7 @@ var ConditionCheckModal = function(props) {
   );
 };
 
-// 🏠 홈페이지 (나이트모드 + 컨디션체크 + 알림)
+// 🏠 홈페이지 (Sticky 알프레도 + 나이트모드)
 export var HomePage = function(props) {
   var darkMode = props.darkMode;
   var tasks = props.tasks || [];
@@ -170,7 +166,7 @@ export var HomePage = function(props) {
   var userName = props.userName || 'Boss';
   
   // 상태
-  var conditionState = useState(mood || 0); // 0 = 아직 안 물어봄
+  var conditionState = useState(mood || 0);
   var condition = conditionState[0];
   var setCondition = conditionState[1];
   
@@ -197,12 +193,10 @@ export var HomePage = function(props) {
   
   // 컨디션 체크 (처음 열 때 한 번)
   useEffect(function() {
-    // 오늘 이미 체크했는지 확인
     var today = new Date().toDateString();
     var lastCheck = localStorage.getItem('lastConditionCheck');
     
     if (lastCheck !== today && condition === 0 && !isNightMode) {
-      // 1초 후 모달 표시
       var timer = setTimeout(function() {
         setShowConditionModal(true);
       }, 1000);
@@ -256,7 +250,7 @@ export var HomePage = function(props) {
     
     if (incompleteTasks.length === 0) return null;
     
-    // 긴급 태스크 (2시간 이내)
+    // 긴급 태스크
     var urgentTask = incompleteTasks.find(function(t) {
       if (!t.deadline && !t.dueDate) return false;
       var deadline = new Date(t.deadline || t.dueDate);
@@ -281,7 +275,6 @@ export var HomePage = function(props) {
     setShowConditionPicker(false);
     setShowConditionModal(false);
     
-    // 오늘 체크 기록
     localStorage.setItem('lastConditionCheck', new Date().toDateString());
     
     if (gamification && gamification.addXp) {
@@ -305,100 +298,110 @@ export var HomePage = function(props) {
     : 'bg-[#F5F5F7]';
   
   return React.createElement('div', {
-    className: 'min-h-screen ' + bgColor
+    className: 'min-h-screen flex flex-col ' + bgColor
   },
-    // 헤더
+    // ====== STICKY 영역: 헤더 + 알프레도 ======
     React.createElement('div', {
-      className: 'px-4 pt-12 pb-2'
+      className: 'sticky top-0 z-40 ' + (isNightMode ? 'bg-[#0f0f1a]/95' : 'bg-[#F5F5F7]/95') + ' backdrop-blur-md'
     },
+      // 헤더
       React.createElement('div', {
-        className: 'flex items-center justify-between'
+        className: 'px-4 pt-12 pb-2'
       },
-        // 왼쪽: 날짜 + 날씨
-        React.createElement('div', { className: 'flex items-center gap-2' },
-          React.createElement('span', {
-            className: 'text-lg font-semibold ' + (isNightMode ? 'text-white' : 'text-gray-800')
-          }, dateStr),
-          React.createElement('span', { className: 'flex items-center gap-1' },
-            getWeatherIcon(weather, isNightMode),
-            weather && weather.temp && React.createElement('span', {
-              className: 'text-sm ' + (isNightMode ? 'text-gray-400' : 'text-gray-500')
-            }, weather.temp + '°')
-          )
-        ),
-        
-        // 오른쪽: 컨디션 + 설정
-        React.createElement('div', { className: 'flex items-center gap-2' },
-          // 컨디션
-          React.createElement('div', { className: 'relative' },
-            React.createElement('button', {
-              className: 'text-xl p-1 rounded-full transition-colors ' +
-                (isNightMode ? 'hover:bg-white/10' : 'hover:bg-gray-200'),
-              onClick: function() { setShowConditionPicker(!showConditionPicker); }
-            }, condition > 0 ? CONDITION_EMOJI[condition - 1] : '❓'),
-            
-            // 컨디션 피커
-            showConditionPicker && React.createElement('div', {
-              className: 'absolute right-0 top-full mt-2 bg-white rounded-xl shadow-lg border p-2 flex gap-1 z-50'
-            },
-              CONDITION_EMOJI.map(function(emoji, index) {
-                return React.createElement('button', {
-                  key: index,
-                  className: 'text-xl p-2 hover:bg-gray-100 rounded-lg transition-colors ' +
-                    (condition === index + 1 ? 'bg-purple-100' : ''),
-                  onClick: function() { handleConditionChange(index + 1); }
-                }, emoji);
-              })
+        React.createElement('div', {
+          className: 'flex items-center justify-between'
+        },
+          // 왼쪽: 날짜 + 날씨
+          React.createElement('div', { className: 'flex items-center gap-2' },
+            React.createElement('span', {
+              className: 'text-lg font-semibold ' + (isNightMode ? 'text-white' : 'text-gray-800')
+            }, dateStr),
+            React.createElement('span', { className: 'flex items-center gap-1' },
+              getWeatherIcon(weather, isNightMode),
+              weather && weather.temp && React.createElement('span', {
+                className: 'text-sm ' + (isNightMode ? 'text-gray-400' : 'text-gray-500')
+              }, weather.temp + '°')
             )
           ),
           
-          // 설정
-          React.createElement('button', {
-            className: 'p-2 rounded-full transition-colors ' +
-              (isNightMode ? 'hover:bg-white/10' : 'hover:bg-gray-200'),
-            onClick: function() { if (setView) setView('SETTINGS'); }
-          },
-            React.createElement(Settings, { 
-              size: 20, 
-              className: isNightMode ? 'text-gray-400' : 'text-gray-500'
-            })
+          // 오른쪽: 컨디션 + 설정
+          React.createElement('div', { className: 'flex items-center gap-2' },
+            // 컨디션
+            React.createElement('div', { className: 'relative' },
+              React.createElement('button', {
+                className: 'text-xl p-1 rounded-full transition-colors ' +
+                  (isNightMode ? 'hover:bg-white/10' : 'hover:bg-gray-200'),
+                onClick: function() { setShowConditionPicker(!showConditionPicker); }
+              }, condition > 0 ? CONDITION_EMOJI[condition - 1] : '❓'),
+              
+              // 컨디션 피커
+              showConditionPicker && React.createElement('div', {
+                className: 'absolute right-0 top-full mt-2 bg-white rounded-xl shadow-lg border p-2 flex gap-1 z-50'
+              },
+                CONDITION_EMOJI.map(function(emoji, index) {
+                  return React.createElement('button', {
+                    key: index,
+                    className: 'text-xl p-2 hover:bg-gray-100 rounded-lg transition-colors ' +
+                      (condition === index + 1 ? 'bg-purple-100' : ''),
+                    onClick: function() { handleConditionChange(index + 1); }
+                  }, emoji);
+                })
+              )
+            ),
+            
+            // 설정
+            React.createElement('button', {
+              className: 'p-2 rounded-full transition-colors ' +
+                (isNightMode ? 'hover:bg-white/10' : 'hover:bg-gray-200'),
+              onClick: function() { if (setView) setView('SETTINGS'); }
+            },
+              React.createElement(Settings, { 
+                size: 20, 
+                className: isNightMode ? 'text-gray-400' : 'text-gray-500'
+              })
+            )
           )
         )
-      )
+      ),
+      
+      // 긴급 알림 (있을 때만)
+      !isNightMode && urgentEvent && React.createElement(UrgentEventBanner, {
+        event: urgentEvent.event,
+        diffMin: urgentEvent.diffMin
+      }),
+      
+      // 알프레도 아일랜드 (항상 보임)
+      !isNightMode && React.createElement(AlfredoIslandMinimal, {
+        tasks: tasks,
+        events: todayEvents,
+        condition: condition,
+        userName: userName,
+        urgentEvent: urgentEvent,
+        onOpenChat: onOpenChat
+      }),
+      
+      // 하단 그라데이션 페이드
+      !isNightMode && React.createElement('div', {
+        className: 'h-4 bg-gradient-to-b from-[#F5F5F7]/95 to-transparent'
+      })
     ),
     
     // 배경 클릭으로 피커 닫기
     showConditionPicker && React.createElement('div', {
-      className: 'fixed inset-0 z-40',
+      className: 'fixed inset-0 z-30',
       onClick: function() { setShowConditionPicker(false); }
     }),
     
-    // 메인 콘텐츠
+    // ====== 스크롤 콘텐츠 영역 ======
     isNightMode
       ? React.createElement(NightModeView, {
           userName: userName,
           tasks: tasks,
           onViewDetails: function() { setForceNormalView(true); }
         })
-      : React.createElement('div', { className: 'pb-24' },
-          // ⚡ 긴급 일정 알림
-          urgentEvent && React.createElement(UrgentEventBanner, {
-            event: urgentEvent.event,
-            diffMin: urgentEvent.diffMin
-          }),
-          
-          // 1️⃣ 알프레도 아일랜드
-          React.createElement(AlfredoIslandMinimal, {
-            tasks: tasks,
-            events: todayEvents,
-            condition: condition,
-            userName: userName,
-            urgentEvent: urgentEvent,
-            onOpenChat: onOpenChat
-          }),
-          
-          // 2️⃣ 지금 이거부터
-          React.createElement('div', { className: 'mx-4 mt-4' },
+      : React.createElement('div', { className: 'flex-1 pb-24' },
+          // 지금 이거부터
+          React.createElement('div', { className: 'mx-4 mt-2' },
             React.createElement(FocusNowCard, {
               task: focusTask,
               darkMode: false,
@@ -408,7 +411,7 @@ export var HomePage = function(props) {
             })
           ),
           
-          // 3️⃣ 오늘 타임라인 (성취도 포함)
+          // 오늘 타임라인
           React.createElement(TodayTimelineMinimal, {
             events: todayEvents,
             tasks: tasks,
