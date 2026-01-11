@@ -12,6 +12,170 @@ export class DNAMessageGenerator {
   }
 
   /**
+   * Day 1 메시지 생성 (연동 직후)
+   */
+  generateDay1Messages(): DNABasedSuggestion[] {
+    const suggestions: DNABasedSuggestion[] = [];
+    const chronotype = this.profile.chronotype.type;
+    const meetingRatio = this.profile.workStyle.meetingRatio;
+
+    // 크로노타입 안내
+    if (chronotype !== 'neutral') {
+      suggestions.push({
+        type: 'insight',
+        message: chronotype === 'morning'
+          ? '첫 일정이 보통 오전이시네요. 아침형이신 것 같아요 🌅'
+          : '첫 일정이 늦은 편이시네요. 저녁형이신가 봐요 🌙',
+        basedOn: ['chronotype'],
+        priority: 'medium'
+      });
+    }
+
+    // 미팅 비율 안내
+    if (meetingRatio > 0.5) {
+      suggestions.push({
+        type: 'insight',
+        message: '미팅이 많으시네요! 혼자 집중할 시간도 챙겨드릴게요.',
+        basedOn: ['work_style'],
+        priority: 'medium'
+      });
+    }
+
+    return suggestions;
+  }
+
+  /**
+   * Week 1 메시지 생성 (1주일 후)
+   */
+  generateWeek1Messages(): DNABasedSuggestion[] {
+    const suggestions: DNABasedSuggestion[] = [];
+    const busiestDay = this.profile.weekdayPatterns.busiestDay;
+    const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+
+    // 가장 바쁜 요일 안내
+    suggestions.push({
+      type: 'insight',
+      message: `${dayNames[busiestDay]}요일이 보통 제일 바쁘시네요. 그 전날 미리 준비해두면 좋을 것 같아요.`,
+      basedOn: ['weekday_pattern'],
+      priority: 'medium'
+    });
+
+    // 에너지 패턴 안내
+    const peakHours = this.profile.energyPattern.peakHours;
+    if (peakHours.length > 0) {
+      const peakStart = Math.min(...peakHours);
+      const peakEnd = Math.max(...peakHours);
+      suggestions.push({
+        type: 'insight',
+        message: `${peakStart}시-${peakEnd}시가 집중하기 좋은 시간인 것 같아요! 중요한 작업은 이때 추천드려요.`,
+        basedOn: ['energy_pattern'],
+        priority: 'high'
+      });
+    }
+
+    return suggestions;
+  }
+
+  /**
+   * Week 2 메시지 생성 (2주일 후)
+   */
+  generateWeek2Messages(): DNABasedSuggestion[] {
+    const suggestions: DNABasedSuggestion[] = [];
+    const focusSlots = this.profile.focusTime.bestSlots;
+
+    // 최적 집중 시간 안내
+    if (focusSlots.length > 0) {
+      const bestSlot = focusSlots.find(s => s.quality === 'excellent') || focusSlots[0];
+      const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+      suggestions.push({
+        type: 'insight',
+        message: `${dayNames[bestSlot.dayOfWeek]}요일 ${bestSlot.startHour}시-${bestSlot.endHour}시가 딥워크하기 최고예요!`,
+        basedOn: ['focus_time'],
+        priority: 'high'
+      });
+    }
+
+    return suggestions;
+  }
+
+  /**
+   * 스트레스 관련 메시지 생성
+   */
+  generateStressMessages(): DNABasedSuggestion[] {
+    const suggestions: DNABasedSuggestion[] = [];
+    const stressLevel = this.profile.stressIndicators.level;
+    const signals = this.profile.stressIndicators.signals;
+
+    if (stressLevel === 'burnout') {
+      suggestions.push({
+        type: 'warning',
+        message: '요즘 너무 바쁘셨던 것 같아요. 오늘은 좀 쉬어도 괜찮아요 💜',
+        basedOn: ['stress_level'],
+        priority: 'high'
+      });
+    } else if (stressLevel === 'high') {
+      suggestions.push({
+        type: 'nudge',
+        message: '일정이 좀 빡빡했죠? 중간중간 휴식 잊지 마세요!',
+        basedOn: ['stress_level'],
+        priority: 'medium'
+      });
+    }
+
+    // 주말 근무 경고
+    if (signals.includes('weekend_work')) {
+      suggestions.push({
+        type: 'warning',
+        message: '주말에도 일정이 있으셨네요. 충분한 휴식이 필요해요.',
+        basedOn: ['work_life_balance'],
+        priority: 'medium'
+      });
+    }
+
+    return suggestions;
+  }
+
+  /**
+   * 워라밸 관련 메시지 생성
+   */
+  generateWorkLifeBalanceMessages(): DNABasedSuggestion[] {
+    const suggestions: DNABasedSuggestion[] = [];
+    const workLifeBalance = this.profile.workLifeBalance;
+
+    if (workLifeBalance.status === 'poor') {
+      suggestions.push({
+        type: 'warning',
+        message: '업무 비중이 높은 편이에요. 개인 시간도 챙겨보는 건 어떨까요?',
+        basedOn: ['work_life_balance'],
+        priority: 'medium',
+        actionable: {
+          label: '라이프 탭 보기',
+          action: 'open_life'
+        }
+      });
+    } else if (workLifeBalance.status === 'good') {
+      suggestions.push({
+        type: 'insight',
+        message: '일과 쉼의 균형이 좋은 편이에요! 잘하고 계세요 👏',
+        basedOn: ['work_life_balance'],
+        priority: 'low'
+      });
+    }
+
+    // 퇴근 후 업무 경고
+    if (workLifeBalance.afterHoursWorkDays > 2) {
+      suggestions.push({
+        type: 'nudge',
+        message: '저녁 시간에도 종종 일정이 있으시네요. 퇴근 후엔 충분히 쉬세요!',
+        basedOn: ['work_life_balance'],
+        priority: 'medium'
+      });
+    }
+
+    return suggestions;
+  }
+
+  /**
    * 아침 브리핑 메시지 생성
    */
   generateMorningBriefing(todayEventCount: number, nextMeeting?: { title: string; time: string }): string {

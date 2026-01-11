@@ -125,11 +125,6 @@ export function ProactiveNudge({
 
   // 적절한 대화 찾기
   const findAppropriateDialog = useCallback((): DialogType | null => {
-    const _now = new Date();
-    // hour and day available for future time-based logic
-    const _hour = _now.getHours();
-    const _day = _now.getDay();
-
     // 우선순위별로 정렬된 대화 목록
     const eligibleDialogs: DialogType[] = [];
 

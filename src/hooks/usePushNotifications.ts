@@ -155,7 +155,6 @@ export function usePushNotifications() {
         tag,
         data: { type, actions, ...data },
         requireInteraction,
-        vibrate: [200, 100, 200],
         silent: false
       });
     }
