@@ -51,6 +51,13 @@ var MorePage = function(props) {
   
   // Gmail 훅
   var gmail = useGmail();
+  
+  // 디버깅: Gmail 상태 출력
+  console.log('📧 MorePage - gmail 상태:', {
+    isConnected: gmail.isConnected,
+    isGmailEnabled: gmail.isGmailEnabled,
+    isLoading: gmail.isLoading
+  });
 
   // 다크모드 색상
   var bgGradient = darkMode 
@@ -127,6 +134,7 @@ var MorePage = function(props) {
 
   // Gmail 토글 핸들러
   var handleGmailToggle = async function() {
+    console.log('🔘 Gmail 토글 클릭! isGmailEnabled:', gmail.isGmailEnabled);
     if (gmail.isGmailEnabled) {
       // 비활성화
       gmail.toggleGmail(false);
@@ -138,8 +146,15 @@ var MorePage = function(props) {
 
   // Gmail 동기화 핸들러
   var handleGmailSync = async function() {
+    console.log('🔄 Gmail 동기화 버튼 클릭!');
+    console.log('🔄 gmail.isConnected:', gmail.isConnected);
+    console.log('🔄 gmail.isGmailEnabled:', gmail.isGmailEnabled);
+    
     if (gmail.isConnected && gmail.isGmailEnabled) {
+      console.log('🔄 조건 충족! fetchAndAnalyze 호출...');
       await gmail.fetchAndAnalyze();
+    } else {
+      console.log('🔄 조건 미충족! isConnected 또는 isGmailEnabled가 false');
     }
   };
 
