@@ -2,6 +2,7 @@ import React from 'react';
 
 // 🐧 알프레도 브리핑 시스템 V2
 // theSkimm 스타일의 친근하고 자연스러운 톤
+// + DNA 기반 스트레스 감지 및 톤 조절
 
 // ============================================================
 // 1. 스몰토크 패턴 (직접 묻지 않고 자연스럽게)
@@ -86,6 +87,71 @@ var SMALLTALK_PATTERNS = {
     ]
   }
 };
+
+// ============================================================
+// 🧬 DNA 기반 스트레스 메시지
+// ============================================================
+
+var STRESS_MESSAGES = {
+  burnout: {
+    morning: [
+      { line1: 'Boss, 요즘 많이 지쳤죠? 💜', line2: '오늘은 진짜 쉬어도 괜찮아요' },
+      { line1: '캘린더 보니까 너무 바빴어요', line2: '오늘은 가볍게만 해요, 제발요 🙏' },
+      { line1: '요즘 일정이 너무 빡빡했어요', line2: '쉬는 것도 일이에요. 오늘 좀 쉬어요 💜' }
+    ],
+    afternoon: [
+      { line1: '오후예요. 무리하지 말아요', line2: '꼭 필요한 것만 천천히 💜' },
+      { line1: '요즘 너무 달렸어요', line2: '오후는 가볍게 보내요' }
+    ],
+    evening: [
+      { line1: '오늘 하루도 수고했어요 💜', line2: '이제 진짜 쉬세요. 내일은 더 나을 거예요' },
+      { line1: '저녁이에요. 오늘은 여기까지!', line2: '충분히 잘하고 있어요 💜' }
+    ]
+  },
+  high: {
+    morning: [
+      { line1: '요즘 바쁘시죠? 💜', line2: '오늘은 무리하지 말아요' },
+      { line1: '캘린더 좀 빡빡해 보여요', line2: '가장 중요한 것만 해요' }
+    ],
+    afternoon: [
+      { line1: '오후예요, 좀 쉬어가요', line2: '급한 것만 하고 나머지는 내일! 💜' }
+    ],
+    evening: [
+      { line1: '오늘 많이 하셨어요', line2: '이제 좀 쉬어도 돼요 💜' }
+    ]
+  },
+  normal: null,
+  low: null
+};
+
+// ============================================================
+// 🧬 DNA 기반 크로노타입 메시지
+// ============================================================
+
+var CHRONOTYPE_MESSAGES = {
+  morning: {
+    earlyMorning: { line1: '아침형이시죠? ☀️', line2: '지금이 골든타임! 중요한 거 먼저 해요' },
+    lateMorning: { line1: '오전 집중 시간이에요!', line2: '에너지 높을 때 중요한 일 해요 💪' },
+    afternoon: null,
+    evening: { line1: '저녁이에요, Boss', line2: '아침형이라 피곤하시죠? 이제 쉬어요 💜' }
+  },
+  evening: {
+    earlyMorning: { line1: '아침이에요~ ☕', line2: '저녁형이라 천천히 시작해도 돼요' },
+    lateMorning: { line1: '오전이에요, 가볍게 시작해요', line2: '오후에 본격적으로 달려요!' },
+    afternoon: { line1: '오후예요! 🔥', line2: '저녁형의 파워타임! 지금 집중해요' },
+    evening: { line1: '저녁이에요, 에너지 충전 완료?', line2: '집중하기 좋은 시간이에요 ✨' }
+  }
+};
+
+// ============================================================
+// 🧬 DNA 기반 피크타임 메시지
+// ============================================================
+
+var PEAK_TIME_MESSAGES = [
+  { line1: '지금이 골든타임이에요! ⚡', line2: '에너지 높을 때 중요한 일 해요' },
+  { line1: '지금 집중력 최고일 때! 🔥', line2: '중요한 태스크 하나 끝내봐요' },
+  { line1: '피크타임이에요! ✨', line2: '지금 시작하면 잘 될 거예요' }
+];
 
 // ============================================================
 // 2. 날씨 기반 인사이트
@@ -320,7 +386,7 @@ export var generateMorningBriefingV2 = function(props) {
 };
 
 // ============================================================
-// 6. 간단한 2줄 메시지 생성 (아일랜드용)
+// 6. 간단한 2줄 메시지 생성 (아일랜드용) + DNA 통합
 // ============================================================
 
 export var getSimpleBriefingMessage = function(props) {
@@ -330,6 +396,7 @@ export var getSimpleBriefingMessage = function(props) {
   var userName = props.userName || 'Boss';
   var weather = props.weather;
   var urgentEvent = props.urgentEvent;
+  var dnaInsight = props.dnaInsight; // 🧬 DNA 인사이트 추가
   
   var now = new Date();
   var hour = now.getHours();
@@ -342,6 +409,55 @@ export var getSimpleBriefingMessage = function(props) {
   var dayEnd = 23;
   var dayProgress = Math.min(100, Math.max(0, ((hour - dayStart) / (dayEnd - dayStart)) * 100));
   var completionRate = total > 0 ? (completed / total) * 100 : 100;
+  
+  // 시간대 구분
+  var timeOfDay = 'morning';
+  if (hour >= 5 && hour < 10) timeOfDay = 'earlyMorning';
+  else if (hour >= 10 && hour < 12) timeOfDay = 'lateMorning';
+  else if (hour >= 12 && hour < 18) timeOfDay = 'afternoon';
+  else if (hour >= 18 && hour < 22) timeOfDay = 'evening';
+  else timeOfDay = 'night';
+  
+  var briefTimeOfDay = 'morning';
+  if (hour >= 12 && hour < 18) briefTimeOfDay = 'afternoon';
+  else if (hour >= 18 && hour < 22) briefTimeOfDay = 'evening';
+  
+  // ============================================================
+  // 🧬 DNA 기반 메시지 우선 처리
+  // ============================================================
+  
+  if (dnaInsight) {
+    // 1. 스트레스/번아웃 최우선
+    if (dnaInsight.stressLevel === 'burnout') {
+      var burnoutMsgs = STRESS_MESSAGES.burnout[briefTimeOfDay] || STRESS_MESSAGES.burnout.morning;
+      var burnoutMsg = burnoutMsgs[Math.floor(Math.random() * burnoutMsgs.length)];
+      return { ...burnoutMsg, type: 'dna-burnout' };
+    }
+    
+    if (dnaInsight.stressLevel === 'high') {
+      var stressMsgs = STRESS_MESSAGES.high[briefTimeOfDay] || STRESS_MESSAGES.high.morning;
+      var stressMsg = stressMsgs[Math.floor(Math.random() * stressMsgs.length)];
+      return { ...stressMsg, type: 'dna-stress' };
+    }
+    
+    // 2. 피크 타임 (긴급 일정 없고, 컨디션 괜찮을 때만)
+    if (dnaInsight.isPeakTime && !urgentEvent && condition >= 3) {
+      var peakMsg = PEAK_TIME_MESSAGES[Math.floor(Math.random() * PEAK_TIME_MESSAGES.length)];
+      return { ...peakMsg, type: 'dna-peak' };
+    }
+    
+    // 3. 크로노타입 기반 (컨디션 괜찮을 때만)
+    if (dnaInsight.chronotype && condition >= 3) {
+      var chronoMsgs = CHRONOTYPE_MESSAGES[dnaInsight.chronotype];
+      if (chronoMsgs && chronoMsgs[timeOfDay]) {
+        return { ...chronoMsgs[timeOfDay], type: 'dna-chronotype' };
+      }
+    }
+  }
+  
+  // ============================================================
+  // 기존 로직 (DNA 메시지 없을 때)
+  // ============================================================
   
   // 0. 컨디션 미확인
   if (condition === 0) {
@@ -530,5 +646,8 @@ export default {
   getSimpleBriefingMessage: getSimpleBriefingMessage,
   MorningBriefingCardV2: MorningBriefingCardV2,
   SMALLTALK_PATTERNS: SMALLTALK_PATTERNS,
-  WEATHER_INSIGHTS: WEATHER_INSIGHTS
+  WEATHER_INSIGHTS: WEATHER_INSIGHTS,
+  STRESS_MESSAGES: STRESS_MESSAGES,
+  CHRONOTYPE_MESSAGES: CHRONOTYPE_MESSAGES,
+  PEAK_TIME_MESSAGES: PEAK_TIME_MESSAGES
 };
