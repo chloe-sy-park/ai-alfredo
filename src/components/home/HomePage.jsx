@@ -165,6 +165,17 @@ export var HomePage = function(props) {
   var onStartFocus = props.onStartFocus;
   var userName = props.userName || 'Boss';
   
+  // 🧬 DNA 인사이트 props
+  var dnaProfile = props.dnaProfile;
+  var dnaSuggestions = props.dnaSuggestions;
+  var dnaAnalysisPhase = props.dnaAnalysisPhase;
+  var getMorningBriefing = props.getMorningBriefing;
+  var getEveningMessage = props.getEveningMessage;
+  var getStressLevel = props.getStressLevel;
+  var getBestFocusTime = props.getBestFocusTime;
+  var getPeakHours = props.getPeakHours;
+  var getChronotype = props.getChronotype;
+  
   // 상태
   var conditionState = useState(mood || 0);
   var condition = conditionState[0];
@@ -377,7 +388,17 @@ export var HomePage = function(props) {
         condition: condition,
         userName: userName,
         urgentEvent: urgentEvent,
-        onOpenChat: onOpenChat
+        onOpenChat: onOpenChat,
+        // 🧬 DNA 인사이트
+        dnaProfile: dnaProfile,
+        dnaSuggestions: dnaSuggestions,
+        dnaAnalysisPhase: dnaAnalysisPhase,
+        getMorningBriefing: getMorningBriefing,
+        getEveningMessage: getEveningMessage,
+        getStressLevel: getStressLevel,
+        getBestFocusTime: getBestFocusTime,
+        getPeakHours: getPeakHours,
+        getChronotype: getChronotype
       }),
       
       // 하단 그라데이션 페이드
