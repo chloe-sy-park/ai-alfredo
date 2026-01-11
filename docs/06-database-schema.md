@@ -1,6 +1,6 @@
 # 🗄️ 알프레도 ERD (Entity Relationship Diagram)
 
-> **버전**: v1.0  
+> **버전**: v1.1  
 > **작성일**: 2025-01-11  
 > **목표**: Q1 MVP 완성을 위한 전체 데이터베이스 스키마 설계
 
@@ -12,6 +12,7 @@
 erDiagram
     %% ========== 핵심 사용자 ========== %%
     users ||--o{ user_settings : has
+    users ||--o{ user_subscriptions : has
     users ||--o{ tasks : creates
     users ||--o{ habits : creates
     users ||--o{ focus_sessions : creates
@@ -59,6 +60,19 @@ erDiagram
         json notifications
         json priority_weights
         json onboarding_answers
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    user_subscriptions {
+        uuid id PK
+        uuid user_id FK
+        string plan_type
+        string status
+        timestamp started_at
+        timestamp expires_at
+        string payment_provider
+        string payment_id
         timestamp created_at
         timestamp updated_at
     }
@@ -304,6 +318,29 @@ erDiagram
 | onboarding_answers | JSONB | - | 온보딩 응답 데이터 |
 | created_at | TIMESTAMP | NOT NULL | 생성 시간 |
 | updated_at | TIMESTAMP | NOT NULL | 수정 시간 |
+
+#### `user_subscriptions` - 구독 정보 (Premium/Free 구분)
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| id | UUID | PK | 고유 식별자 |
+| user_id | UUID | FK, NOT NULL | users.id 참조 |
+| plan_type | VARCHAR(20) | NOT NULL | 플랜 타입 (free, premium, trial) |
+| status | VARCHAR(20) | NOT NULL | 상태 (active, cancelled, expired, past_due) |
+| started_at | TIMESTAMP | NOT NULL | 구독 시작일 |
+| expires_at | TIMESTAMP | - | 만료일 (free는 null) |
+| payment_provider | VARCHAR(30) | - | 결제 제공자 (stripe, apple, google) |
+| payment_id | VARCHAR(255) | - | 외부 결제 ID |
+| created_at | TIMESTAMP | NOT NULL | 생성 시간 |
+| updated_at | TIMESTAMP | NOT NULL | 수정 시간 |
+
+**인덱스:**
+- `idx_subscriptions_user` (user_id)
+- `idx_subscriptions_status` (status, expires_at)
+
+**활용:**
+- 광고 표시 여부 판단: `plan_type = 'free'`
+- Premium 기능 접근 제어
+- 구독 만료 알림
 
 ---
 
@@ -628,7 +665,7 @@ erDiagram
 │                      Supabase (PostgreSQL)                          │
 │   ┌──────────────────────────────────────────────────────────────┐  │
 │   │                        Core                                   │  │
-│   │   users ──── user_settings                                    │  │
+│   │   users ──── user_settings ──── user_subscriptions            │  │
 │   └──────────────────────────────────────────────────────────────┘  │
 │   ┌──────────────────────────────────────────────────────────────┐  │
 │   │                    Productivity                               │  │
@@ -674,6 +711,7 @@ erDiagram
 | **W3 (1/20-26)** | `penguin_status`, `penguin_items`, `xp_history`, `habits`, `habit_logs`, `tasks` (subtasks 추가), `focus_sessions` | 🔴 High |
 | **W4 (1/27-31)** | `daily_summaries`, `weekly_insights` | 🟡 Medium |
 | **2월** | `calendar_insights` (DNA 확장) | 🟡 Medium |
+| **추후** | `user_subscriptions` (수익화 시점) | 🟢 Low |
 
 ---
 
@@ -694,6 +732,7 @@ USING (user_id = auth.uid());
 - `conversations.messages`: 암호화 고려
 - `daily_conditions`: 건강 관련 데이터 - 별도 암호화
 - `calendar_insights`: 패턴 데이터 - 익명화 필요시 처리
+- `user_subscriptions`: 결제 정보 - payment_id만 저장, 카드 정보는 외부 서비스에서 관리
 
 ---
 
@@ -701,6 +740,7 @@ USING (user_id = auth.uid());
 
 | 날짜 | 버전 | 변경 내용 |
 |------|------|----------|
+| 2025-01-11 | v1.1 | `user_subscriptions` 테이블 추가 (Premium/Free 구분용) |
 | 2025-01-11 | v1.0 | Q1 로드맵 기반 ERD 전면 재설계 |
 | 2024-12-XX | v0.1 | 초기 스키마 설계 |
 
