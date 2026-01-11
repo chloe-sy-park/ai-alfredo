@@ -4,13 +4,14 @@ import { ArrowLeft, Send, Sparkles, Calendar, Target, Clock, Zap, CheckCircle2, 
 // Common Components
 import { AlfredoAvatar } from '../common';
 
-const AlfredoChat = ({ onBack, tasks, events, mood, energy, onAddTask, onToggleTask, onStartFocus, initialMessage }) => {
+const AlfredoChat = ({ onBack, tasks, events, mood, energy, onAddTask, onToggleTask, onStartFocus, initialMessage, dnaProfile }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [showQuickReplies, setShowQuickReplies] = useState(true);
   const [contextQuickReplies, setContextQuickReplies] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
   
   const hour = new Date().getHours();
   const completedCount = tasks.filter(t => t.status === 'done').length;
@@ -24,6 +25,14 @@ const AlfredoChat = ({ onBack, tasks, events, mood, energy, onAddTask, onToggleT
       energy,
       tasks: tasks.map(t => ({ title: t.title, status: t.status })),
       events: events.map(e => ({ title: e.title, start: e.start })),
+      // DNA 인사이트 추가
+      dna: dnaProfile ? {
+        chronotype: dnaProfile.chronotype,
+        peakHours: dnaProfile.peakProductivityHours,
+        stressLevel: dnaProfile.stressIndicators?.level,
+        workLifeBalance: dnaProfile.workLifeBalance,
+        busiestDay: dnaProfile.busiestDay
+      } : null
     };
 
     // 대화 히스토리 구성
@@ -166,15 +175,14 @@ const AlfredoChat = ({ onBack, tasks, events, mood, energy, onAddTask, onToggleT
     
     if (todoTasks.length > 0) {
       replies.push({ label: '지금 뭐 하면 좋을까?', key: 'recommend' });
-      replies.push({ label: `"${todoTasks[0]?.title}" 시작할래`, key: 'start_first' });
+      replies.push({ label: `"${todoTasks[0]?.title?.slice(0, 8)}${todoTasks[0]?.title?.length > 8 ? '...' : ''}" 시작`, key: 'start_first' });
     }
     
     if (events.length > 0) {
-      replies.push({ label: '다음 일정 알려줘', key: 'schedule' });
+      replies.push({ label: '다음 일정', key: 'schedule' });
     }
     
-    replies.push({ label: '할 일 추가할래', key: 'add_task' });
-    replies.push({ label: '오늘 어땠어?', key: 'reflect' });
+    replies.push({ label: '할 일 추가', key: 'add_task' });
     
     if (energy < 50) {
       replies.push({ label: '쉬어도 될까?', key: 'rest' });
@@ -235,6 +243,9 @@ const AlfredoChat = ({ onBack, tasks, events, mood, energy, onAddTask, onToggleT
     setShowQuickReplies(false);
     setIsLoading(true);
     
+    // 키보드 닫기
+    inputRef.current?.blur();
+    
     // 로딩 메시지 표시
     setMessages(prev => [...prev, { id: loadingId, type: 'alfredo', text: '...', isLoading: true }]);
     
@@ -281,14 +292,23 @@ const AlfredoChat = ({ onBack, tasks, events, mood, energy, onAddTask, onToggleT
   };
   
   return (
-    <div className="h-full flex flex-col bg-[#F0EBFF]">
+    <div 
+      className="h-full flex flex-col bg-[#F0EBFF]"
+      style={{
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)'
+      }}
+    >
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 bg-white/80 backdrop-blur-xl border-b border-black/5 flex-shrink-0">
-        <button onClick={onBack} className="w-10 h-10 rounded-full hover:bg-black/5 flex items-center justify-center text-gray-500">
-          <ArrowLeft size={20} />
+        <button 
+          onClick={onBack} 
+          className="min-w-[44px] min-h-[44px] rounded-full hover:bg-black/5 active:bg-black/10 flex items-center justify-center text-gray-500 transition-colors"
+        >
+          <ArrowLeft size={22} />
         </button>
         <AlfredoAvatar size="md" />
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <h1 className="font-bold text-gray-800 flex items-center gap-1.5">
             알프레도
             <span className="text-[10px] px-1.5 py-0.5 bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] text-white rounded-full font-medium">AI</span>
@@ -305,30 +325,33 @@ const AlfredoChat = ({ onBack, tasks, events, mood, energy, onAddTask, onToggleT
       </div>
       
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div 
+        className="flex-1 overflow-y-auto p-4 space-y-4"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
         {messages.map(msg => (
           msg.type === 'alfredo' ? (
             <div key={msg.id} className="flex items-start gap-2">
               <AlfredoAvatar size="sm" />
-              <div className="flex flex-col gap-2 max-w-[80%]">
-                <div className="bg-white rounded-xl rounded-tl-md p-3 shadow-sm">
+              <div className="flex flex-col gap-2 max-w-[85%]">
+                <div className="bg-white rounded-2xl rounded-tl-md p-4 shadow-sm">
                   {msg.isLoading ? (
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5 py-1">
                       <span className="w-2 h-2 bg-[#A996FF] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
                       <span className="w-2 h-2 bg-[#A996FF] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
                       <span className="w-2 h-2 bg-[#A996FF] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
                     </div>
                   ) : (
-                    <p className="text-sm text-gray-800 whitespace-pre-line">{msg.text}</p>
+                    <p className="text-[15px] leading-relaxed text-gray-800 whitespace-pre-line">{msg.text}</p>
                   )}
                 </div>
                 {msg.action && !msg.isLoading && (
                   <button
                     onClick={() => handleAction(msg.action)}
-                    className="self-start px-4 py-2 bg-[#A996FF] text-white text-sm font-bold rounded-xl shadow-md shadow-[#A996FF]/20 active:scale-95 transition-transform flex items-center gap-2"
+                    className="self-start min-h-[44px] px-5 py-2.5 bg-[#A996FF] text-white text-sm font-bold rounded-xl shadow-md shadow-[#A996FF]/20 active:scale-95 transition-transform flex items-center gap-2"
                   >
-                    {msg.action.type === 'start_focus' && <Zap size={14} />}
-                    {msg.action.type === 'add_task' && <Plus size={14} />}
+                    {msg.action.type === 'start_focus' && <Zap size={16} />}
+                    {msg.action.type === 'add_task' && <Plus size={16} />}
                     {msg.action.label}
                   </button>
                 )}
@@ -336,8 +359,8 @@ const AlfredoChat = ({ onBack, tasks, events, mood, energy, onAddTask, onToggleT
             </div>
           ) : (
             <div key={msg.id} className="flex justify-end">
-              <div className="bg-[#A996FF] text-white rounded-xl rounded-tr-md p-3 shadow-sm max-w-[80%]">
-                <p className="text-sm whitespace-pre-line">{msg.text}</p>
+              <div className="bg-[#A996FF] text-white rounded-2xl rounded-tr-md p-4 shadow-sm max-w-[85%]">
+                <p className="text-[15px] leading-relaxed whitespace-pre-line">{msg.text}</p>
               </div>
             </div>
           )
@@ -345,12 +368,12 @@ const AlfredoChat = ({ onBack, tasks, events, mood, energy, onAddTask, onToggleT
         
         {/* Quick Replies */}
         {showQuickReplies && !isLoading && (
-          <div className="flex flex-wrap gap-2 pl-10">
+          <div className="flex flex-wrap gap-2 pl-10 pb-2">
             {getQuickReplies().map(reply => (
               <button 
                 key={reply.key}
                 onClick={() => handleQuickReply(reply)}
-                className="px-3 py-2 bg-white rounded-full text-sm text-[#A996FF] border border-[#E5E0FF] hover:bg-[#F5F3FF] transition-colors shadow-sm"
+                className="min-h-[40px] px-4 py-2 bg-white rounded-full text-sm text-[#A996FF] border border-[#E5E0FF] hover:bg-[#F5F3FF] active:bg-[#EDE8FF] transition-colors shadow-sm"
               >
                 {reply.label}
               </button>
@@ -365,27 +388,28 @@ const AlfredoChat = ({ onBack, tasks, events, mood, energy, onAddTask, onToggleT
       <div className="p-4 bg-white/80 backdrop-blur-xl border-t border-black/5 flex-shrink-0">
         <div className="flex items-center gap-2">
           <input 
+            ref={inputRef}
             type="text" 
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyPress={e => e.key === 'Enter' && !isLoading && handleSend()}
             placeholder={isLoading ? "알프레도가 생각 중..." : "알프레도에게 말하기..."}
             disabled={isLoading}
-            className={`flex-1 px-4 py-3 rounded-full bg-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-[#A996FF]/30 ${isLoading ? 'opacity-50' : ''}`}
+            className={`flex-1 min-h-[48px] px-5 py-3 rounded-full bg-gray-100 text-[15px] focus:outline-none focus:ring-2 focus:ring-[#A996FF]/30 ${isLoading ? 'opacity-50' : ''}`}
           />
           <button 
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
-            className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${
+            className={`min-w-[48px] min-h-[48px] rounded-full flex items-center justify-center transition-all ${
               input.trim() && !isLoading
-                ? 'bg-[#A996FF] text-white shadow-lg shadow-[#A996FF]/30' 
+                ? 'bg-[#A996FF] text-white shadow-lg shadow-[#A996FF]/30 active:scale-95' 
                 : 'bg-gray-100 text-gray-300'
             }`}
           >
             {isLoading ? (
-              <RefreshCw size={18} className="animate-spin" />
+              <RefreshCw size={20} className="animate-spin" />
             ) : (
-              <Send size={18} />
+              <Send size={20} />
             )}
           </button>
         </div>
