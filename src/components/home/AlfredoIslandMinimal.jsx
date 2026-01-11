@@ -235,7 +235,7 @@ var generateInitialHistory = function(props) {
           id: 'task-' + index,
           time: '',
           type: 'action',
-          text: '✅ \"' + task.title.slice(0, 20) + '\" 완료!'
+          text: '✅ "' + task.title.slice(0, 20) + '" 완료!'
         });
       }
     });
@@ -278,6 +278,7 @@ export var AlfredoIslandMinimal = function(props) {
   var getStressLevel = props.getStressLevel;
   var getBestFocusTime = props.getBestFocusTime;
   var getChronotype = props.getChronotype;
+  var getPeakHours = props.getPeakHours;
   
   var expandedState = useState(false);
   var isExpanded = expandedState[0];
@@ -307,17 +308,23 @@ export var AlfredoIslandMinimal = function(props) {
   
   // 🧬 DNA 기반 메시지 생성 (시간대별 분기)
   var message = useMemo(function() {
-    // DNA 인사이트가 있으면 활용
+    // DNA 인사이트 구성 (완전한 형태)
     var dnaInsight = null;
     if (dnaProfile && dnaAnalysisPhase) {
       var stressLevel = getStressLevel ? getStressLevel() : 'normal';
       var chronotype = getChronotype ? getChronotype() : null;
       var bestFocusTime = getBestFocusTime ? getBestFocusTime() : null;
+      var peakHours = getPeakHours ? getPeakHours() : null;
+      
+      // dnaProfile에서 워라밸 상태 추출
+      var workLifeBalance = dnaProfile.workLifeBalance || null;
       
       dnaInsight = {
         stressLevel: stressLevel,
         chronotype: chronotype,
         bestFocusTime: bestFocusTime,
+        peakHours: peakHours,
+        workLifeBalance: workLifeBalance,
         phase: dnaAnalysisPhase,
         suggestions: dnaSuggestions || []
       };
@@ -339,6 +346,7 @@ export var AlfredoIslandMinimal = function(props) {
       }
       return getSimpleEveningMessage({
         tasks: tasks,
+        events: events,
         condition: condition,
         userName: userName,
         dnaInsight: dnaInsight
@@ -368,7 +376,7 @@ export var AlfredoIslandMinimal = function(props) {
       weather: weather,
       dnaInsight: dnaInsight
     });
-  }, [tasks, events, condition, userName, urgentEvent, weather, isEvening, dnaProfile, dnaAnalysisPhase, dnaSuggestions, getMorningBriefing, getEveningMessage, getStressLevel, getBestFocusTime, getChronotype]);
+  }, [tasks, events, condition, userName, urgentEvent, weather, isEvening, dnaProfile, dnaAnalysisPhase, dnaSuggestions, getMorningBriefing, getEveningMessage, getStressLevel, getBestFocusTime, getChronotype, getPeakHours]);
   
   // 표정 결정
   var expression = useMemo(function() {
@@ -419,13 +427,13 @@ export var AlfredoIslandMinimal = function(props) {
       ? '지금은 저녁/밤이에요. 하루를 마무리하는 대화를 나눠요. 성취를 인정하고, 쉬라고 격려해요.' 
       : '지금은 아침/낮이에요. 하루를 계획하고 시작하는 대화를 나눠요.';
     
-    var systemPrompt = '당신은 \"알프레도\"입니다. 배트맨의 집사 알프레드처럼 사용자(Boss)를 돕는 AI 비서입니다.\n\n' +
+    var systemPrompt = '당신은 "알프레도"입니다. 배트맨의 집사 알프레드처럼 사용자(Boss)를 돕는 AI 비서입니다.\n\n' +
       '## 성격\n' +
       '- 따뜻하고 친근하지만 전문적\n' +
       '- theSkimm처럼 친구가 말하는 듯한 자연스러운 어조\n' +
       '- 간결하고 실용적인 조언 (2-3문장)\n' +
       '- 이모지를 적절히 사용 (과하지 않게)\n' +
-      '- 사용자를 \"Boss\"라고 부름\n' +
+      '- 사용자를 "Boss"라고 부름\n' +
       '- 펜귄 마스코트 🐧\n\n' +
       '## ADHD 친화적 응답 규칙\n' +
       '- 한 번에 하나의 행동만 제안\n' +
@@ -556,7 +564,9 @@ export var AlfredoIslandMinimal = function(props) {
           ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'
           : message.type === 'noTasks'
             ? 'bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200'
-            : 'bg-white border-gray-100';
+            : (message.type && message.type.startsWith('dna-'))
+              ? 'bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200'
+              : 'bg-white border-gray-100';
   
   var textColor = message.type === 'urgent' ? 'text-orange-800' : 'text-gray-800';
   
@@ -597,10 +607,17 @@ export var AlfredoIslandMinimal = function(props) {
               React.createElement(Sparkles, { size: 12 }),
               '체크'
             )
-          : React.createElement(ChevronRight, { 
-              size: 20, 
-              className: 'text-gray-400 flex-shrink-0' 
-            })
+          : (message.type && message.type.startsWith('dna-'))
+            ? React.createElement('span', {
+                className: 'flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-600'
+              },
+                React.createElement(Sparkles, { size: 12 }),
+                'DNA'
+              )
+            : React.createElement(ChevronRight, { 
+                size: 20, 
+                className: 'text-gray-400 flex-shrink-0' 
+              })
       )
     ),
     
