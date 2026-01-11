@@ -11,16 +11,16 @@ var DAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
 // 날씨 아이콘
 var getWeatherIcon = function(weather, isNight) {
-  if (isNight) return React.createElement(Moon, { size: 16, className: 'text-indigo-400' });
-  if (!weather) return React.createElement(Sun, { size: 16, className: 'text-yellow-500' });
+  if (isNight) return React.createElement(Moon, { size: 18, className: 'text-indigo-400' });
+  if (!weather) return React.createElement(Sun, { size: 18, className: 'text-yellow-500' });
   var condition = (weather.condition || '').toLowerCase();
   if (condition.includes('rain') || condition.includes('비')) {
-    return React.createElement(CloudRain, { size: 16, className: 'text-blue-400' });
+    return React.createElement(CloudRain, { size: 18, className: 'text-blue-400' });
   }
   if (condition.includes('cloud') || condition.includes('구름')) {
-    return React.createElement(Cloud, { size: 16, className: 'text-gray-400' });
+    return React.createElement(Cloud, { size: 18, className: 'text-gray-400' });
   }
-  return React.createElement(Sun, { size: 16, className: 'text-yellow-500' });
+  return React.createElement(Sun, { size: 18, className: 'text-yellow-500' });
 };
 
 // 컨디션 이모지
@@ -36,7 +36,7 @@ var NightModeView = function(props) {
   var total = tasks.length;
   
   return React.createElement('div', {
-    className: 'mx-4 mt-4 space-y-4'
+    className: 'mx-4 mt-4 space-y-4 pb-safe'
   },
     // 알프레도 나이트 메시지
     React.createElement('div', {
@@ -66,10 +66,10 @@ var NightModeView = function(props) {
       ),
       React.createElement('div', { className: 'space-y-2' },
         React.createElement('button', {
-          className: 'w-full py-3 rounded-xl bg-white/10 text-white/80 text-sm hover:bg-white/20 transition-colors'
+          className: 'w-full min-h-[48px] py-3 rounded-xl bg-white/10 text-white/80 text-sm hover:bg-white/20 active:bg-white/25 transition-colors'
         }, '💧 물 한 잔 마시기'),
         React.createElement('button', {
-          className: 'w-full py-3 rounded-xl bg-white/10 text-white/80 text-sm hover:bg-white/20 transition-colors'
+          className: 'w-full min-h-[48px] py-3 rounded-xl bg-white/10 text-white/80 text-sm hover:bg-white/20 active:bg-white/25 transition-colors'
         }, '📱 폰 내려놓기')
       )
     ),
@@ -77,7 +77,7 @@ var NightModeView = function(props) {
     // 상세 보기 버튼
     React.createElement('button', {
       onClick: onViewDetails,
-      className: 'w-full py-3 text-indigo-300 text-sm hover:text-white transition-colors'
+      className: 'w-full min-h-[48px] py-3 text-indigo-300 text-sm hover:text-white active:text-white/80 transition-colors'
     }, '오늘 기록 보기 →')
   );
 };
@@ -93,10 +93,10 @@ var UrgentEventBanner = function(props) {
   var isVeryUrgent = diffMin <= 10;
   
   return React.createElement('div', {
-    className: 'mx-4 mt-2 rounded-xl p-3 flex items-center gap-2 ' +
+    className: 'mx-4 mt-2 rounded-xl p-3 flex items-center gap-3 min-h-[52px] ' +
       (isVeryUrgent ? 'bg-red-500 animate-pulse' : 'bg-orange-500')
   },
-    React.createElement('span', { className: 'text-lg' }, '⚡'),
+    React.createElement('span', { className: 'text-xl' }, '⚡'),
     React.createElement('div', { className: 'flex-1 min-w-0' },
       React.createElement('p', {
         className: 'text-white font-medium text-sm'
@@ -123,10 +123,10 @@ var ConditionCheckModal = function(props) {
     
     // 모달
     React.createElement('div', {
-      className: 'relative bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl'
+      className: 'relative bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl mx-4'
     },
       React.createElement('div', { className: 'text-center mb-6' },
-        React.createElement('span', { className: 'text-4xl block mb-3' }, '🐧'),
+        React.createElement('span', { className: 'text-5xl block mb-3' }, '🐧'),
         React.createElement('h3', {
           className: 'text-lg font-bold text-gray-800'
         }, userName + ', 오늘 컨디션 어때요?'),
@@ -135,13 +135,14 @@ var ConditionCheckModal = function(props) {
         }, '알려주시면 맞춰서 도와드릴게요')
       ),
       
+      // 컨디션 버튼들 - 터치 타겟 확대
       React.createElement('div', {
-        className: 'flex justify-center gap-2'
+        className: 'flex justify-center gap-1'
       },
         CONDITION_EMOJI.map(function(emoji, index) {
           return React.createElement('button', {
             key: index,
-            className: 'text-3xl p-3 hover:bg-gray-100 rounded-xl transition-all hover:scale-110',
+            className: 'text-3xl min-w-[56px] min-h-[56px] p-3 hover:bg-gray-100 active:bg-purple-100 rounded-xl transition-all active:scale-95',
             onClick: function() { onSelect(index + 1); }
           }, emoji);
         })
@@ -310,18 +311,26 @@ export var HomePage = function(props) {
     : 'bg-[#F5F5F7]';
   
   return React.createElement('div', {
-    className: 'min-h-screen flex flex-col ' + bgColor
+    className: 'min-h-screen flex flex-col ' + bgColor,
+    style: {
+      // iOS safe area 대응
+      paddingTop: 'env(safe-area-inset-top)',
+      paddingBottom: 'env(safe-area-inset-bottom)'
+    }
   },
     // ====== STICKY 영역: 헤더 + 알프레도 ======
     React.createElement('div', {
-      className: 'sticky top-0 z-40 ' + (isNightMode ? 'bg-[#0f0f1a]/95' : 'bg-[#F5F5F7]/95') + ' backdrop-blur-md'
+      className: 'sticky top-0 z-40 ' + (isNightMode ? 'bg-[#0f0f1a]/95' : 'bg-[#F5F5F7]/95') + ' backdrop-blur-md',
+      style: {
+        paddingTop: 'max(env(safe-area-inset-top), 12px)'
+      }
     },
       // 헤더
       React.createElement('div', {
-        className: 'px-4 pt-12 pb-2'
+        className: 'px-4 pb-2'
       },
         React.createElement('div', {
-          className: 'flex items-center justify-between'
+          className: 'flex items-center justify-between min-h-[44px]'
         },
           // 왼쪽: 날짜 + 날씨
           React.createElement('div', { className: 'flex items-center gap-2' },
@@ -337,12 +346,12 @@ export var HomePage = function(props) {
           ),
           
           // 오른쪽: 컨디션 + 설정
-          React.createElement('div', { className: 'flex items-center gap-2' },
-            // 컨디션
+          React.createElement('div', { className: 'flex items-center gap-1' },
+            // 컨디션 - 터치 타겟 확대
             React.createElement('div', { className: 'relative' },
               React.createElement('button', {
-                className: 'text-xl p-1 rounded-full transition-colors ' +
-                  (isNightMode ? 'hover:bg-white/10' : 'hover:bg-gray-200'),
+                className: 'text-xl min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-colors ' +
+                  (isNightMode ? 'hover:bg-white/10 active:bg-white/20' : 'hover:bg-gray-200 active:bg-gray-300'),
                 onClick: function() { setShowConditionPicker(!showConditionPicker); }
               }, condition > 0 ? CONDITION_EMOJI[condition - 1] : '❓'),
               
@@ -353,7 +362,7 @@ export var HomePage = function(props) {
                 CONDITION_EMOJI.map(function(emoji, index) {
                   return React.createElement('button', {
                     key: index,
-                    className: 'text-xl p-2 hover:bg-gray-100 rounded-lg transition-colors ' +
+                    className: 'text-xl min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-gray-100 active:bg-purple-100 rounded-lg transition-colors ' +
                       (condition === index + 1 ? 'bg-purple-100' : ''),
                     onClick: function() { handleConditionChange(index + 1); }
                   }, emoji);
@@ -361,14 +370,14 @@ export var HomePage = function(props) {
               )
             ),
             
-            // 설정
+            // 설정 - 터치 타겟 확대
             React.createElement('button', {
-              className: 'p-2 rounded-full transition-colors ' +
-                (isNightMode ? 'hover:bg-white/10' : 'hover:bg-gray-200'),
+              className: 'min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-colors ' +
+                (isNightMode ? 'hover:bg-white/10 active:bg-white/20' : 'hover:bg-gray-200 active:bg-gray-300'),
               onClick: function() { if (setView) setView('SETTINGS'); }
             },
               React.createElement(Settings, { 
-                size: 20, 
+                size: 22, 
                 className: isNightMode ? 'text-gray-400' : 'text-gray-500'
               })
             )
@@ -421,7 +430,13 @@ export var HomePage = function(props) {
           tasks: tasks,
           onViewDetails: function() { setForceNormalView(true); }
         })
-      : React.createElement('div', { className: 'flex-1 pb-24' },
+      : React.createElement('div', { 
+          className: 'flex-1 overflow-y-auto',
+          style: {
+            paddingBottom: 'calc(96px + env(safe-area-inset-bottom))',
+            WebkitOverflowScrolling: 'touch'
+          }
+        },
           // 🧬 DNA 인사이트 카드
           React.createElement(DNAInsightCard, {
             dnaProfile: dnaProfile,
