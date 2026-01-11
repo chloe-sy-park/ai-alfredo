@@ -1,67 +1,56 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '../types/database';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase 환경 변수가 설정되지 않았습니다.');
+  console.warn('⚠️ Supabase 환경 변수가 설정되지 않았습니다.');
 }
 
-export const supabase = createClient(
+export const supabase: SupabaseClient<Database> = createClient<Database>(
   supabaseUrl || 'https://placeholder.supabase.co',
   supabaseAnonKey || 'placeholder-key',
   {
     auth: {
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: true
-    }
+      detectSessionInUrl: true,
+      storage: localStorage,
+    },
   }
 );
 
-// 타입 정의
-export type Database = {
-  public: {
-    Tables: {
-      users: {
-        Row: {
-          id: string;
-          email: string;
-          name: string;
-          avatar_url: string | null;
-          is_onboarded: boolean;
-          privacy_level: 'open_book' | 'selective' | 'minimal';
-          tone_preset: string;
-          tone_axes: Record<string, number>;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: Omit<Database['public']['Tables']['users']['Row'], 'created_at' | 'updated_at'>;
-        Update: Partial<Database['public']['Tables']['users']['Insert']>;
-      };
-      tasks: {
-        Row: {
-          id: string;
-          user_id: string;
-          title: string;
-          description: string | null;
-          status: 'todo' | 'in_progress' | 'done' | 'deferred';
-          category: 'work' | 'life';
-          is_starred: boolean;
-          is_top_three: boolean;
-          due_date: string | null;
-          due_time: string | null;
-          estimated_minutes: number | null;
-          actual_minutes: number | null;
-          defer_count: number;
-          tags: string[];
-          created_at: string;
-          updated_at: string;
-          completed_at: string | null;
-        };
-        Insert: Omit<Database['public']['Tables']['tasks']['Row'], 'created_at' | 'updated_at'>;
-        Update: Partial<Database['public']['Tables']['tasks']['Insert']>;
-      };
-    };
-  };
-};
+// 인증 상태 변경 리스너
+export function onAuthStateChange(callback: (session: any) => void) {
+  return supabase.auth.onAuthStateChange((event, session) => {
+    callback(session);
+  });
+}
+
+// 현재 세션 가져오기
+export async function getSession() {
+  const { data: { session }, error } = await supabase.auth.getSession();
+  if (error) {
+    console.error('세션 조회 오류:', error);
+    return null;
+  }
+  return session;
+}
+
+// 액세스 토큰 가져오기
+export async function getAccessToken(): Promise<string | null> {
+  const session = await getSession();
+  return session?.access_token || null;
+}
+
+// 로그아웃
+export async function signOut() {
+  const { error } = await supabase.auth.signOut();
+  if (error) {
+    console.error('로그아웃 오류:', error);
+    throw error;
+  }
+}
+
+export default supabase;
