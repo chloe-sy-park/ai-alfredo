@@ -22,7 +22,7 @@ export class DNAMessageGenerator {
     // 크로노타입 안내
     if (chronotype !== 'neutral') {
       suggestions.push({
-        type: 'insight',
+        type: 'briefing',
         message: chronotype === 'morning'
           ? '첫 일정이 보통 오전이시네요. 아침형이신 것 같아요 🌅'
           : '첫 일정이 늦은 편이시네요. 저녁형이신가 봐요 🌙',
@@ -34,7 +34,7 @@ export class DNAMessageGenerator {
     // 미팅 비율 안내
     if (meetingRatio > 0.5) {
       suggestions.push({
-        type: 'insight',
+        type: 'nudge',
         message: '미팅이 많으시네요! 혼자 집중할 시간도 챙겨드릴게요.',
         basedOn: ['work_style'],
         priority: 'medium'
@@ -54,9 +54,9 @@ export class DNAMessageGenerator {
 
     // 가장 바쁜 요일 안내
     suggestions.push({
-      type: 'insight',
+      type: 'briefing',
       message: `${dayNames[busiestDay]}요일이 보통 제일 바쁘시네요. 그 전날 미리 준비해두면 좋을 것 같아요.`,
-      basedOn: ['weekday_pattern'],
+      basedOn: ['busy_day'],
       priority: 'medium'
     });
 
@@ -66,7 +66,7 @@ export class DNAMessageGenerator {
       const peakStart = Math.min(...peakHours);
       const peakEnd = Math.max(...peakHours);
       suggestions.push({
-        type: 'insight',
+        type: 'briefing',
         message: `${peakStart}시-${peakEnd}시가 집중하기 좋은 시간인 것 같아요! 중요한 작업은 이때 추천드려요.`,
         basedOn: ['energy_pattern'],
         priority: 'high'
@@ -88,7 +88,7 @@ export class DNAMessageGenerator {
       const bestSlot = focusSlots.find(s => s.quality === 'excellent') || focusSlots[0];
       const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
       suggestions.push({
-        type: 'insight',
+        type: 'briefing',
         message: `${dayNames[bestSlot.dayOfWeek]}요일 ${bestSlot.startHour}시-${bestSlot.endHour}시가 딥워크하기 최고예요!`,
         basedOn: ['focus_time'],
         priority: 'high'
@@ -104,7 +104,7 @@ export class DNAMessageGenerator {
   generateStressMessages(): DNABasedSuggestion[] {
     const suggestions: DNABasedSuggestion[] = [];
     const stressLevel = this.profile.stressIndicators.level;
-    const signals = this.profile.stressIndicators.signals;
+    const weekendWorkDays = this.profile.stressIndicators.weekendWorkDays;
 
     if (stressLevel === 'burnout') {
       suggestions.push({
@@ -123,7 +123,7 @@ export class DNAMessageGenerator {
     }
 
     // 주말 근무 경고
-    if (signals.includes('weekend_work')) {
+    if (weekendWorkDays > 0) {
       suggestions.push({
         type: 'warning',
         message: '주말에도 일정이 있으셨네요. 충분한 휴식이 필요해요.',
@@ -155,7 +155,7 @@ export class DNAMessageGenerator {
       });
     } else if (workLifeBalance.status === 'good') {
       suggestions.push({
-        type: 'insight',
+        type: 'celebration',
         message: '일과 쉼의 균형이 좋은 편이에요! 잘하고 계세요 👏',
         basedOn: ['work_life_balance'],
         priority: 'low'
@@ -237,7 +237,7 @@ export class DNAMessageGenerator {
           mainMessage += `${nextMeeting.time} ${nextMeeting.title}부터 시작이에요.`;
         }
       } else {
-        mainMessage = `오늘 일정이 꽤 많아요(${todayEventCount}개). 체력 관리 잘 하셔야 해요!`;
+        mainMessage = `오늘 일정이 꼤 많아요(${todayEventCount}개). 체력 관리 잘 하셔야 해요!`;
       }
     }
 
@@ -278,7 +278,7 @@ export class DNAMessageGenerator {
     } else if (workLifeBalance === 'poor') {
       message = '하루 마무리 시간이에요. ';
       if (completedTasks > 0) {
-        message += `오늘 ${completedTasks}개 완료! `;
+        message += `오나 ${completedTasks}개 완료! `;
       }
       message += '일과 쉼의 균형도 중요해요. 오늘은 일찍 쉬어보는 건 어때요?';
     } else {
