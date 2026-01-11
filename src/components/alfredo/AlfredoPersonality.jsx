@@ -1,5 +1,29 @@
 import React, { useState, useMemo } from 'react';
 
+// 🐧 새 코멘트 시스템 import
+import {
+  TIME_GREETINGS,
+  DAY_COMMENTS,
+  CALENDAR_COMMENTS,
+  TASK_COMMENTS,
+  ENERGY_COMMENTS,
+  RECOVERY_COMMENTS,
+  NUDGE_COMMENTS,
+  ACHIEVEMENT_COMMENTS,
+  BRIEFING_COMMENTS,
+  HUMOR_COMMENTS,
+  getRandomMessage as getRandomMsg,
+  getTimeGreeting,
+  getDayComment,
+  getCalendarComment,
+  getEnergyComment,
+  getTaskCompleteComment,
+  getStreakComment,
+  maybeGetHumorComment,
+  generateContextualComment,
+  COMMENT_STATS,
+} from '../../data/AlfredoComments.js';
+
 // 🐧 알프레도 모드별 성격 정의
 export var ALFREDO_PERSONALITIES = {
   focus: {
@@ -10,8 +34,9 @@ export var ALFREDO_PERSONALITIES = {
     bgColor: 'bg-orange-500/10',
     traits: ['집중', '효율', '간결'],
     tone: 'professional',
+    // 레거시 메시지 (하위 호환용)
     greetings: [
-      '보스, 집중 모드 ON! 🔥',
+      '보스, 집중 모드 ON!',
       '방해 요소 차단 완료. 시작하죠!',
       '오늘 목표에 집중합시다, 보스.',
       '효율 200% 모드 가동 중!'
@@ -49,7 +74,7 @@ export var ALFREDO_PERSONALITIES = {
     traits: ['따뜻함', '이해', '격려'],
     tone: 'warm',
     greetings: [
-      '보스, 오늘 하루도 함께해요 💙',
+      '보스, 오늘 하루도 함께해요.',
       '천천히 가도 괜찮아요. 제가 옆에 있을게요.',
       '오늘은 부드럽게 시작해볼까요?',
       '보스의 페이스대로 가요. 응원할게요!'
@@ -61,7 +86,7 @@ export var ALFREDO_PERSONALITIES = {
       '보스가 자랑스러워요. 진심이에요.'
     ],
     taskComplete: [
-      '와, 해냈어요! 정말 대단해요 💙',
+      '와, 해냈어요! 정말 대단해요.',
       '보스, 하나 끝냈어요! 축하해요!',
       '훌륭해요. 스스로를 칭찬해주세요!',
       '멋져요! 이렇게 하나씩 해나가는 거예요.'
@@ -73,7 +98,7 @@ export var ALFREDO_PERSONALITIES = {
       '눈 감고 1분만 쉬어볼까요?'
     ],
     endOfDay: [
-      '오늘 하루도 수고했어요, 보스 💙',
+      '오늘 하루도 수고했어요, 보스.',
       '완벽하지 않아도 괜찮아요. 충분히 잘했어요.',
       '내일도 함께할게요. 푹 쉬세요.',
       '오늘의 보스, 정말 최고였어요!'
@@ -99,19 +124,19 @@ export var ALFREDO_PERSONALITIES = {
     traits: ['도전', '성취', '열정'],
     tone: 'energetic',
     greetings: [
-      '보스! 오늘도 도전하는 거죠? 🚀',
+      '보스! 오늘도 도전하는 거죠?',
       '새로운 기록 세워볼까요!',
       '레벨업 준비 완료! 시작하죠!',
       '오늘의 챌린지, 준비됐어요!'
     ],
     encouragements: [
-      '이 기세로 쭉 가요! 🔥',
+      '이 기세로 쭉 가요!',
       '보스 대단해요! 한계를 넘어서고 있어요!',
       '와! 이 속도면 신기록 가능해요!',
       '멈추지 마요! 거의 다 왔어요!'
     ],
     taskComplete: [
-      '하나 클리어! 다음 챌린지 가즈아! 🚀',
+      '하나 클리어! 다음 챌린지 가즈아!',
       '경험치 획득! 레벨업 가까워요!',
       '완료! 연속 콤보 유지 중!',
       '미션 컴플리트! 다음은?!'
@@ -122,25 +147,25 @@ export var ALFREDO_PERSONALITIES = {
       '휴식도 전략이에요. 충전하고 가요!'
     ],
     endOfDay: [
-      '오늘 대단했어요, 보스! 🏆',
+      '오늘 대단했어요, 보스!',
       '기록 갱신! 내일은 더 높이!',
       '오늘의 성과, 축하해요! 내일도 도전!',
       '보스 최고! 레전드가 되고 있어요!'
     ],
     streakMessages: [
-      '🔥 연속 3일! 불타오르고 있어요!',
-      '🔥 일주일 연속! 대단해요!',
-      '🔥 한 달 연속! 진정한 챌린저!'
+      '연속 3일! 불타오르고 있어요!',
+      '일주일 연속! 대단해요!',
+      '한 달 연속! 진정한 챌린저!'
     ],
     achievementUnlock: [
-      '🏆 새 업적 달성! 보스 대단해요!',
-      '⭐ 레벨업! 성장하고 있어요!',
-      '🎖️ 새 배지 획득! 컬렉션 확인해보세요!'
+      '새 업적 달성! 보스 대단해요!',
+      '레벨업! 성장하고 있어요!',
+      '새 배지 획득! 컬렉션 확인해보세요!'
     ]
   }
 };
 
-// 기본 모드 (모드 미선택 시)
+// 기본 모드 (모드 미선택 시) - 이대표 스타일 적용
 export var DEFAULT_PERSONALITY = {
   id: 'default',
   name: '기본',
@@ -150,60 +175,107 @@ export var DEFAULT_PERSONALITY = {
   traits: ['친절', '도움', '유머'],
   tone: 'friendly',
   greetings: [
-    '안녕하세요, 보스! 🐧',
-    '오늘도 함께해요!',
-    '무엇을 도와드릴까요?',
-    '보스, 반가워요!'
+    '보스, 오늘도 같이 해요.',
+    '무엇부터 시작해볼까요?',
+    '보스, 반가워요!',
+    '준비되면 말해요.'
   ],
   encouragements: [
-    '잘하고 있어요, 보스!',
-    '화이팅! 응원할게요!',
-    '보스라면 할 수 있어요!',
-    '좋아요, 이 조자예요!'
+    '잘하고 있어요, 보스.',
+    '이 페이스로 가요.',
+    '보스라면 할 수 있어요.',
+    '좋아요, 이 조자예요.'
   ],
   taskComplete: [
-    '완료! 잘했어요, 보스!',
-    '하나 끝! 멋져요!',
-    '체크! 대단해요!',
-    '해냈어요! 👏'
+    '완료! 잘했어요, 보스.',
+    '하나 끝! 역시.',
+    '체크! 다음은?',
+    '해냈네요.'
   ],
   breakSuggestions: [
-    '잠깐 쉬어가요!',
-    '휴식도 중요해요!',
+    '잠깐 쉬어가요.',
+    '휴식도 중요해요.',
     '스트레칭 한 번 어때요?'
   ],
   endOfDay: [
-    '오늘도 수고했어요, 보스!',
-    '좋은 하루였어요!',
-    '내일도 함께해요!'
+    '오늘도 수고했어요, 보스.',
+    '좋은 하루였어요.',
+    '내일도 함께해요.'
   ]
 };
 
-// 메시지 랜덤 선택
+// ═══════════════════════════════════════════════════════════════
+// 메시지 함수들 (새 시스템과 레거시 호환)
+// ═══════════════════════════════════════════════════════════════
+
+// 메시지 랜덤 선택 (레거시 호환)
 export function getRandomMessage(messages) {
   if (!messages || messages.length === 0) return '';
   return messages[Math.floor(Math.random() * messages.length)];
 }
 
-// 컨텍스트 기반 메시지 선택
+// 컨텍스트 기반 메시지 선택 (새 시스템 활용)
 export function getContextualMessage(personality, context) {
   var p = personality || DEFAULT_PERSONALITY;
   
-  // 컨텍스트별 메시지 선택
-  if (context.type === 'greeting') {
-    return getRandomMessage(p.greetings);
+  // 새 시스템 우선 사용
+  if (context.useNewSystem !== false) {
+    // 에너지 기반 메시지
+    if (context.energy && context.energy <= 2) {
+      return getEnergyComment(context.energy);
+    }
+    
+    // 복귀 메시지
+    if (context.isReturning) {
+      return getRandomMsg(RECOVERY_COMMENTS.returnAfterBreak);
+    }
+    
+    // 목표 미달성
+    if (context.goalMissed) {
+      return getRandomMsg(RECOVERY_COMMENTS.goalMissed);
+    }
+    
+    // 스트릭 축하
+    if (context.streak) {
+      var streakMsg = getStreakComment(context.streak);
+      if (streakMsg) return streakMsg;
+    }
   }
+  
+  // 컨텍스트별 메시지 선택 (레거시 + 새 시스템 혼합)
+  if (context.type === 'greeting') {
+    // 새 시스템의 시간대별 인사 사용
+    var hour = context.hour || new Date().getHours();
+    return getTimeGreeting(hour);
+  }
+  
   if (context.type === 'encouragement') {
     return getRandomMessage(p.encouragements);
   }
+  
   if (context.type === 'taskComplete') {
-    return getRandomMessage(p.taskComplete);
+    // 새 시스템 사용
+    return getTaskCompleteComment({
+      completedCount: context.completedCount || 1,
+      isFirstToday: context.isFirstToday,
+      isBigTask: context.isBigTask,
+      wasLongDeferred: context.wasLongDeferred,
+    });
   }
+  
   if (context.type === 'break') {
     return getRandomMessage(p.breakSuggestions);
   }
+  
   if (context.type === 'endOfDay') {
-    return getRandomMessage(p.endOfDay);
+    // 새 시스템의 저녁 브리핑 사용
+    if (context.wasGoodDay) {
+      return getRandomMsg(BRIEFING_COMMENTS.evening.good);
+    }
+    if (context.wasToughDay) {
+      return getRandomMsg(BRIEFING_COMMENTS.evening.tough);
+    }
+    return getRandomMsg(BRIEFING_COMMENTS.evening.normal);
   }
   
   // Care 모드 특별 메시지
@@ -228,38 +300,78 @@ export function getContextualMessage(personality, context) {
     }
   }
   
-  return getRandomMessage(p.greetings);
+  // 기본: 새 시스템의 종합 컨텍스트 메시지
+  return generateContextualComment(context);
 }
 
-// 시간대별 인사말 생성
+// 시간대별 인사말 생성 (새 시스템 활용)
 export function getTimeBasedGreeting(personality, hour) {
-  var p = personality || DEFAULT_PERSONALITY;
-  var timePrefix = '';
-  
-  if (hour >= 5 && hour < 12) {
-    timePrefix = '좋은 아침이에요, ';
-  } else if (hour >= 12 && hour < 18) {
-    timePrefix = '좋은 오후예요, ';
-  } else if (hour >= 18 && hour < 22) {
-    timePrefix = '좋은 저녁이에요, ';
-  } else {
-    timePrefix = '늦은 시간이네요, ';
-  }
-  
-  // 모드별 추가 메시지
-  var suffix = '';
-  if (p.id === 'focus') {
-    suffix = hour >= 22 ? ' 오늘은 여기까지 하고 쉬어요.' : ' 집중 준비됐나요?';
-  } else if (p.id === 'care') {
-    suffix = hour >= 22 ? ' 무리하지 말고 쉬어가요.' : ' 오늘도 함께해요 💙';
-  } else if (p.id === 'challenge') {
-    suffix = hour >= 22 ? ' 내일을 위해 충전하는 시간!' : ' 오늘도 도전해봐요! 🚀';
-  } else {
-    suffix = ' 보스!';
-  }
-  
-  return timePrefix + suffix;
+  // 새 시스템 우선 사용
+  return getTimeGreeting(hour);
 }
+
+// ═══════════════════════════════════════════════════════════════
+// 새로운 메시지 함수들 (AlfredoComments.js 래핑)
+// ═══════════════════════════════════════════════════════════════
+
+// 캘린더 상황별 메시지
+export function getCalendarBasedMessage(context) {
+  return getCalendarComment(context);
+}
+
+// 넛지 메시지
+export function getNudgeMessage(situation) {
+  if (NUDGE_COMMENTS[situation]) {
+    return getRandomMsg(NUDGE_COMMENTS[situation]);
+  }
+  return null;
+}
+
+// 아침 브리핑 메시지
+export function getMorningBriefing(context) {
+  var intro = getRandomMsg(BRIEFING_COMMENTS.morning.intro);
+  var situation = context.isBusy 
+    ? getRandomMsg(BRIEFING_COMMENTS.morning.busy)
+    : getRandomMsg(BRIEFING_COMMENTS.morning.light);
+  var suggestion = getRandomMsg(BRIEFING_COMMENTS.morning.suggestion);
+  
+  return { intro, situation, suggestion };
+}
+
+// 저녁 브리핑 메시지
+export function getEveningBriefing(context) {
+  var intro = getRandomMsg(BRIEFING_COMMENTS.evening.intro);
+  var dayReview;
+  
+  if (context.wasGoodDay) {
+    dayReview = getRandomMsg(BRIEFING_COMMENTS.evening.good);
+  } else if (context.wasToughDay) {
+    dayReview = getRandomMsg(BRIEFING_COMMENTS.evening.tough);
+  } else {
+    dayReview = getRandomMsg(BRIEFING_COMMENTS.evening.normal);
+  }
+  
+  var tomorrow = getRandomMsg(BRIEFING_COMMENTS.evening.tomorrow);
+  
+  return { intro, dayReview, tomorrow };
+}
+
+// 회복/케어 메시지
+export function getRecoveryMessage(situation) {
+  if (RECOVERY_COMMENTS[situation]) {
+    return getRandomMsg(RECOVERY_COMMENTS[situation]);
+  }
+  return null;
+}
+
+// 유머 메시지 (10% 확률)
+export function getHumorMessage() {
+  return maybeGetHumorComment();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 컴포넌트들
+// ═══════════════════════════════════════════════════════════════
 
 // 알프레도 메시지 컴포넌트
 export var AlfredoMessage = function(props) {
@@ -345,7 +457,34 @@ export function usePersonality(modeId) {
   }, [modeId]);
 }
 
+// ═══════════════════════════════════════════════════════════════
+// 새 코멘트 시스템 Re-export
+// ═══════════════════════════════════════════════════════════════
+
+export {
+  TIME_GREETINGS,
+  DAY_COMMENTS,
+  CALENDAR_COMMENTS,
+  TASK_COMMENTS,
+  ENERGY_COMMENTS,
+  RECOVERY_COMMENTS,
+  NUDGE_COMMENTS,
+  ACHIEVEMENT_COMMENTS,
+  BRIEFING_COMMENTS,
+  HUMOR_COMMENTS,
+  COMMENT_STATS,
+  getTimeGreeting,
+  getDayComment,
+  getCalendarComment,
+  getEnergyComment,
+  getTaskCompleteComment,
+  getStreakComment,
+  maybeGetHumorComment,
+  generateContextualComment,
+};
+
 export default {
+  // 레거시
   ALFREDO_PERSONALITIES: ALFREDO_PERSONALITIES,
   DEFAULT_PERSONALITY: DEFAULT_PERSONALITY,
   getRandomMessage: getRandomMessage,
@@ -353,5 +492,26 @@ export default {
   getTimeBasedGreeting: getTimeBasedGreeting,
   AlfredoMessage: AlfredoMessage,
   PersonalitySelector: PersonalitySelector,
-  usePersonality: usePersonality
+  usePersonality: usePersonality,
+  
+  // 새 시스템
+  getCalendarBasedMessage: getCalendarBasedMessage,
+  getNudgeMessage: getNudgeMessage,
+  getMorningBriefing: getMorningBriefing,
+  getEveningBriefing: getEveningBriefing,
+  getRecoveryMessage: getRecoveryMessage,
+  getHumorMessage: getHumorMessage,
+  
+  // 새 코멘트 데이터
+  TIME_GREETINGS: TIME_GREETINGS,
+  DAY_COMMENTS: DAY_COMMENTS,
+  CALENDAR_COMMENTS: CALENDAR_COMMENTS,
+  TASK_COMMENTS: TASK_COMMENTS,
+  ENERGY_COMMENTS: ENERGY_COMMENTS,
+  RECOVERY_COMMENTS: RECOVERY_COMMENTS,
+  NUDGE_COMMENTS: NUDGE_COMMENTS,
+  ACHIEVEMENT_COMMENTS: ACHIEVEMENT_COMMENTS,
+  BRIEFING_COMMENTS: BRIEFING_COMMENTS,
+  HUMOR_COMMENTS: HUMOR_COMMENTS,
+  COMMENT_STATS: COMMENT_STATS,
 };
