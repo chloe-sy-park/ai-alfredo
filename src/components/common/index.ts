@@ -8,3 +8,4 @@ export { default as Skeleton, TaskSkeleton, HabitSkeleton, CardSkeleton } from '
 export { default as EmptyState, TasksEmptyState, HabitsEmptyState, ConversationsEmptyState } from './EmptyState';
 export { default as Toast, ToastProvider, useToast } from './Toast';
 export type { ToastType } from './Toast';
+export { default as AlfredoAvatar } from './AlfredoAvatar';
