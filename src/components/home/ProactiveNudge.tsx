@@ -125,9 +125,10 @@ export function ProactiveNudge({
 
   // 적절한 대화 찾기
   const findAppropriateDialog = useCallback((): DialogType | null => {
-    const now = new Date();
-    const hour = now.getHours();
-    const day = now.getDay();
+    const _now = new Date();
+    // hour and day available for future time-based logic
+    const _hour = _now.getHours();
+    const _day = _now.getDay();
 
     // 우선순위별로 정렬된 대화 목록
     const eligibleDialogs: DialogType[] = [];
@@ -424,7 +425,7 @@ export function ToastNudge({
  * useProactiveDialog Hook
  * 컴포넌트에서 선제적 대화 상태를 관리하기 위한 훅
  */
-export function useProactiveDialog(context: NudgeContext) {
+export function useProactiveDialog(_context: NudgeContext) {
   const [activeDialog, setActiveDialog] = useState<DialogType | null>(null);
   const [history, setHistory] = useState<string[]>([]);
 

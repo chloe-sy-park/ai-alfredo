@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Mic } from 'lucide-react';
 import { useConversationStore } from '@/stores/conversationStore';
-import LoadingSpinner from '@/components/common/LoadingSpinner';
 import ErrorState from '@/components/common/ErrorState';
 import { ConversationsEmptyState } from '@/components/common/EmptyState';
 

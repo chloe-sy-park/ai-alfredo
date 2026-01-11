@@ -10,4 +10,4 @@ export { useConversations } from './useConversations';
 export { useDNAEngine, useDNARecommendations } from './useDNAEngine';
 
 // 모바일 최적화 훅
-export { useMobileOptimizations, usePullToRefresh, useKeyboardHeight, useHaptic } from './useMobileOptimizations';
+export { useMobileOptimizations, usePullToRefresh, useHapticFeedback } from './useMobileOptimizations';

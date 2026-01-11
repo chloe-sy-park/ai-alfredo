@@ -1,6 +1,5 @@
 import { ReactNode } from 'react';
 import { 
-  Inbox, 
   Calendar, 
   CheckSquare, 
   MessageCircle, 
@@ -22,6 +21,7 @@ export type EmptyStateVariant =
   | 'calendar'
   | 'habits'
   | 'chat'
+  | 'conversations'
   | 'search'
   | 'offline'
   | 'focus'
@@ -76,6 +76,12 @@ const presets: Record<EmptyStateVariant, PresetConfig> = {
     alfredoMessage: '습관은 작게 시작하는 게 비결이에요! 💪'
   },
   chat: {
+    icon: <MessageCircle className="w-12 h-12 text-lavender-300" />,
+    title: '아직 대화가 없어요',
+    description: '알프레도에게 뭐든 물어보세요!',
+    alfredoMessage: '안녕하세요! 무엇을 도와드릴까요? 🐧'
+  },
+  conversations: {
     icon: <MessageCircle className="w-12 h-12 text-lavender-300" />,
     title: '아직 대화가 없어요',
     description: '알프레도에게 뭐든 물어보세요!',
@@ -250,6 +256,17 @@ export function HabitsEmptyState({ onAddHabit }: { onAddHabit: () => void }) {
         onClick: onAddHabit
       }}
       alfredoMessage="물 마시기, 스트레칭... 작은 것부터 시작해요! 💪"
+    />
+  );
+}
+
+/**
+ * 대화 Empty State
+ */
+export function ConversationsEmptyState() {
+  return (
+    <EmptyState
+      variant="conversations"
     />
   );
 }

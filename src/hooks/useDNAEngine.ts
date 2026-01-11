@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { dnaEngine, DNAProfile, DNABasedSuggestion, CalendarEvent } from '@/services/dna';
 import { useAuthStore } from '@/stores/authStore';
 

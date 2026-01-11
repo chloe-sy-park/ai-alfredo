@@ -14,7 +14,7 @@ import { CalendarEvent } from '@/services/dna/types';
 export default function Home() {
   // Stores
   const { tasks, isLoading: tasksLoading, fetchTasks, completeTask, getTop3Tasks } = useTaskStore();
-  const { activeSession, isRunning, elapsedSeconds, startSession, pauseSession, resumeSession } = useFocusStore();
+  const { activeSession, isPaused, elapsedTime, startSession, pauseSession, resumeSession } = useFocusStore();
   const { energyLevel, setEnergyLevel } = useSettingsStore();
   const { profile, suggestions, isAnalyzing, analyzeCalendar, analysisPhase } = useDNAStore();
 
@@ -139,7 +139,7 @@ export default function Home() {
         break;
       case ACTION_TYPES.START_FOCUS:
         if (!activeSession) {
-          startSession('pomodoro');
+          startSession({ mode: 'pomodoro' });
         }
         break;
       case ACTION_TYPES.LOG_CONDITION:
@@ -183,9 +183,12 @@ export default function Home() {
     if (!activeSession) return '25:00';
     const targetSeconds = activeSession.mode === 'pomodoro' ? 25 * 60 : 
                           activeSession.mode === 'deep_work' ? 50 * 60 : 5 * 60;
-    const remaining = Math.max(0, targetSeconds - elapsedSeconds);
+    const remaining = Math.max(0, targetSeconds - elapsedTime);
     return formatTime(remaining);
   };
+
+  // isRunning derived from isPaused
+  const isRunning = activeSession && !isPaused;
 
   // DNA 기반 피크 시간 안내
   const getPeakTimeIndicator = () => {
@@ -341,7 +344,7 @@ export default function Home() {
           <button
             onClick={() => {
               if (!activeSession) {
-                startSession('pomodoro');
+                startSession({ mode: 'pomodoro' });
               } else if (isRunning) {
                 pauseSession();
               } else {

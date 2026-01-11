@@ -19,6 +19,9 @@ export type PrivacyLevel = 'open_book' | 'selective' | 'minimal';
 // 뷰 모드
 export type ViewMode = 'integrated' | 'work' | 'life';
 
+// 에너지 레벨
+export type EnergyLevel = 'high' | 'medium' | 'low';
+
 // 알림 설정
 export interface NotificationSettings {
   enabled: boolean;
@@ -52,6 +55,9 @@ interface SettingsState {
   // 뷰 모드
   defaultView: ViewMode;
   
+  // 에너지 레벨
+  energyLevel: EnergyLevel;
+  
   // 알림
   notifications: NotificationSettings;
   
@@ -70,6 +76,7 @@ interface SettingsState {
   setToneAxes: (axes: Partial<ToneAxes>) => void;
   setPrivacyLevel: (level: PrivacyLevel) => void;
   setDefaultView: (view: ViewMode) => void;
+  setEnergyLevel: (level: EnergyLevel) => void;
   setNotifications: (settings: Partial<NotificationSettings>) => void;
   setPriorityWeights: (weights: Partial<PriorityWeights>) => void;
   updateOnboarding: (data: Partial<SettingsState['onboardingData']>) => void;
@@ -93,6 +100,7 @@ export const useSettingsStore = create<SettingsState>()(
       
       privacyLevel: 'selective',
       defaultView: 'integrated',
+      energyLevel: 'medium',
       
       notifications: {
         enabled: true,
@@ -132,6 +140,8 @@ export const useSettingsStore = create<SettingsState>()(
       setPrivacyLevel: (level) => set({ privacyLevel: level }),
       
       setDefaultView: (view) => set({ defaultView: view }),
+      
+      setEnergyLevel: (level) => set({ energyLevel: level }),
       
       setNotifications: (settings) => set((state) => ({
         notifications: { ...state.notifications, ...settings }

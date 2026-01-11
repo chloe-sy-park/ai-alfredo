@@ -153,9 +153,8 @@ export function usePushNotifications() {
         icon,
         badge,
         tag,
-        data: { type, ...data },
+        data: { type, actions, ...data },
         requireInteraction,
-        actions,
         vibrate: [200, 100, 200],
         silent: false
       });

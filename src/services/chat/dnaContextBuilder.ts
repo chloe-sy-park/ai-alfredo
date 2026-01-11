@@ -53,7 +53,9 @@ export function buildDNAChatContext(profile: DNAProfile | null): DNAChatContext 
     currentInsights.push(`피크 시간: ${peakHoursStr}시`);
   }
 
-  if (profile.energyPattern.hasAfternoonSlump) {
+  // Check for afternoon slump based on lowHours (13-15시)
+  const hasAfternoonSlump = profile.energyPattern.lowHours.some(h => h >= 13 && h <= 15);
+  if (hasAfternoonSlump) {
     systemPromptParts.push(
       '이 사용자는 점심 후 에너지 저하(오후 슬럼프)가 있습니다. 오후 초반엔 가벼운 일을 추천해주세요.'
     );
@@ -92,7 +94,8 @@ export function buildDNAChatContext(profile: DNAProfile | null): DNAChatContext 
     systemPromptParts.push(
       '이 사용자의 워라밸이 좋지 않습니다. 개인 시간과 휴식의 중요성을 상기시켜주세요.'
     );
-    if (profile.workLifeBalance.hasAfterHoursWork) {
+    // Check for after hours work based on afterHoursWorkDays
+    if (profile.workLifeBalance.afterHoursWorkDays > 2) {
       currentInsights.push('퇴근 후에도 일하는 경향');
     }
   }
