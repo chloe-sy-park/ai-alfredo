@@ -92,7 +92,8 @@ function buildSystemPrompt(context) {
     hour: '2-digit', 
     minute: '2-digit' 
   });
-  const hour = now.getHours();
+  const hour = new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul', hour: 'numeric', hour12: false });
+  const hourNum = parseInt(hour, 10);
   
   let prompt = ALFREDO_SYSTEM_PROMPT;
   
@@ -130,9 +131,9 @@ function buildSystemPrompt(context) {
     }
     
     // 시간대별 가이드
-    if (hour >= 21) {
+    if (hourNum >= 21) {
       prompt += `\n\n⚠️ 밤 늦은 시간입니다. 새로운 일 시작을 권유하지 마세요.`;
-    } else if (hour < 6) {
+    } else if (hourNum < 6) {
       prompt += `\n\n⚠️ 새벽 시간입니다. 수면을 권유하세요.`;
     }
   }
@@ -157,7 +158,11 @@ export default async function handler(req, res) {
   try {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: 'Anthropic API key not configured' });
+      console.error('ANTHROPIC_API_KEY not found in environment');
+      return res.status(500).json({ 
+        error: 'API key not configured',
+        errorCode: 'NO_API_KEY'
+      });
     }
 
     const { messages, context } = req.body;
@@ -169,6 +174,7 @@ export default async function handler(req, res) {
     // 컨텍스트 기반 시스템 프롬프트 생성
     const systemPrompt = buildSystemPrompt(context);
 
+    // Claude API 호출 - 안정적인 모델 사용
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -177,7 +183,7 @@ export default async function handler(req, res) {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-3-5-sonnet-20241022',
         max_tokens: 500,
         system: systemPrompt,
         messages: messages.map(m => ({
@@ -188,9 +194,14 @@ export default async function handler(req, res) {
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      console.error('Anthropic API error:', error);
-      return res.status(500).json({ error: 'Chat failed', details: error });
+      const errorText = await response.text();
+      console.error('Anthropic API error:', response.status, errorText);
+      return res.status(500).json({ 
+        error: 'Chat API failed',
+        errorCode: 'ANTHROPIC_ERROR',
+        status: response.status,
+        details: errorText
+      });
     }
 
     const result = await response.json();
@@ -202,7 +213,11 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Chat error:', error);
-    return res.status(500).json({ error: 'Internal server error', message: error.message });
+    console.error('Chat handler error:', error);
+    return res.status(500).json({ 
+      error: 'Internal server error',
+      errorCode: 'INTERNAL_ERROR',
+      message: error.message 
+    });
   }
 }
