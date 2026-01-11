@@ -1,23 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Calendar, Mail, Sparkles, ChevronRight, 
-  Shield, Check, ArrowRight, Heart, Zap
+  Shield, Check, ArrowRight, Heart, Zap, Lock, Eye, Bell, Clock
 } from 'lucide-react';
 
 /**
- * 🐧 Onboarding V4 - 축소된 ADHD 친화적 온보딩
+ * 🐧 Onboarding V4 - Permission Priming 강화 버전
  * 
- * 원칙:
- * - 4단계 이하로 축소 (ADHD 집중력 고려)
- * - 첫 화면에서 즉시 가치 전달 (Calm 스타일)
- * - 권한 요청은 하나로 통합 (결정 피로 감소)
- * - 나머지는 설정에서 변경 가능
+ * 벤치마킹 적용:
+ * - Reclaim AI: 각 권한이 어떤 기능을 활성화하는지 구체적 설명
+ * - Motion: 가치 경험 후 권한 요청
+ * - Clockwise: 연동 후 보게 될 결과 프리뷰
+ * - Plaid: 데이터 투명성 강조
+ * - Pi: Agency 제공 ("지금 뭐가 필요해요?")
  * 
  * 단계:
- * 1. Welcome + 즉시 가치 (3초)
+ * 1. Welcome + 즉시 가치 (Calm 스타일 3초 가치 전달)
  * 2. 뭐가 필요해요? (Pi 스타일 Agency)
- * 3. 연동 (캘린더 + 이메일 통합)
- * 4. 완료!
+ * 3. 연동 (Permission Priming 강화)
+ * 4. 완료 + 즉시 가치 프리뷰
  */
 
 const STEPS = ['welcome', 'needs', 'connect', 'complete'];
@@ -30,6 +31,27 @@ const NEEDS = [
   { id: 'support', emoji: '🫂', label: '응원', desc: '옆에서 격려해주기' },
 ];
 
+// 🔑 Permission Priming 메시지
+const PERMISSION_BENEFITS = {
+  calendar: [
+    { icon: Bell, text: '미팅 30분 전 부드러운 알림' },
+    { icon: Clock, text: '하루 시작 시 오늘 일정 브리핑' },
+    { icon: Sparkles, text: '바쁜 날 vs 여유로운 날 파악' },
+  ],
+  email: [
+    { icon: Mail, text: '중요한 메일만 알려드려요' },
+    { icon: Check, text: '답장 필요한 메일 체크' },
+    { icon: Eye, text: 'VIP 발신자 우선 표시' },
+  ],
+};
+
+// 🔒 프라이버시 약속 (Plaid 스타일)
+const PRIVACY_PROMISES = [
+  '데이터는 기기에만 저장돼요',
+  '제3자와 절대 공유하지 않아요',
+  '언제든 연결 해제할 수 있어요',
+];
+
 const OnboardingV4 = ({ onComplete, onGoogleAuth }) => {
   const [step, setStep] = useState(0);
   const [selections, setSelections] = useState({
@@ -37,6 +59,7 @@ const OnboardingV4 = ({ onComplete, onGoogleAuth }) => {
     connected: false,
   });
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
 
   const goNext = () => {
     setIsTransitioning(true);
@@ -63,9 +86,9 @@ const OnboardingV4 = ({ onComplete, onGoogleAuth }) => {
   // ========== Step 0: Welcome ==========
   const WelcomeStep = () => (
     <div className="text-center">
-      {/* 펭귄 - 즉시 가치 전달 */}
+      {/* 펭귄 - 즉시 가치 전달 (Calm 스타일) */}
       <div className="relative mb-8">
-        <div className="text-[100px] leading-none">🐧</div>
+        <div className="text-[100px] leading-none animate-bounce">🐧</div>
         <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-20 h-4 bg-purple-200/50 rounded-full blur-md" />
       </div>
       
@@ -77,12 +100,12 @@ const OnboardingV4 = ({ onComplete, onGoogleAuth }) => {
         <br />Boss의 하루를 도와드릴게요.
       </p>
 
-      {/* 핵심 가치 3개 */}
+      {/* 핵심 가치 3개 - 즉시 가치 전달 */}
       <div className="flex justify-center gap-4 mb-10">
         {[
           { emoji: '☀️', text: '아침 브리핑' },
-          { emoji: '🔔', text: '리마인드' },
-          { emoji: '💜', text: '응원' },
+          { emoji: '🔔', text: '부드러운 알림' },
+          { emoji: '💜', text: '응원 & 격려' },
         ].map((item, i) => (
           <div key={i} className="flex flex-col items-center gap-1">
             <span className="text-2xl">{item.emoji}</span>
@@ -105,7 +128,7 @@ const OnboardingV4 = ({ onComplete, onGoogleAuth }) => {
     </div>
   );
 
-  // ========== Step 1: Needs (Pi 스타일) ==========
+  // ========== Step 1: Needs (Pi 스타일 Agency) ==========
   const NeedsStep = () => (
     <div>
       <div className="text-center mb-8">
@@ -114,7 +137,7 @@ const OnboardingV4 = ({ onComplete, onGoogleAuth }) => {
           지금 가장 필요한 건요?
         </h2>
         <p className="text-sm text-gray-500">
-          하나만 골라주세요
+          하나만 골라주세요 — 나중에 바꿀 수 있어요
         </p>
       </div>
 
@@ -148,7 +171,7 @@ const OnboardingV4 = ({ onComplete, onGoogleAuth }) => {
     </div>
   );
 
-  // ========== Step 2: Connect (통합) ==========
+  // ========== Step 2: Connect (Permission Priming 강화) ==========
   const ConnectStep = () => (
     <div>
       <div className="text-center mb-6">
@@ -156,40 +179,72 @@ const OnboardingV4 = ({ onComplete, onGoogleAuth }) => {
           <Zap className="w-8 h-8 text-purple-600" />
         </div>
         <h2 className="text-xl font-bold text-gray-800 mb-2">
-          Google 연동하기
+          알프레도가 더 잘 도와드릴게요
         </h2>
         <p className="text-sm text-gray-500">
-          캘린더와 이메일을 한 번에 연결해요
+          캘린더와 이메일을 연결하면
         </p>
       </div>
 
-      {/* 통합 혜택 */}
-      <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-2xl p-5 mb-4">
-        <div className="space-y-3">
-          <div className="flex items-start gap-3">
-            <Calendar className="w-5 h-5 text-purple-500 mt-0.5" />
-            <div>
-              <p className="font-medium text-gray-800 text-sm">캘린더</p>
-              <p className="text-xs text-gray-500">미팅 30분 전 알림, 내일 일정 브리핑</p>
-            </div>
+      {/* 🔑 Permission Priming: 구체적 혜택 (Reclaim 스타일) */}
+      <div className="space-y-3 mb-5">
+        {/* 캘린더 혜택 */}
+        <div className="bg-gradient-to-r from-purple-50 to-purple-100/50 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Calendar className="w-5 h-5 text-purple-600" />
+            <span className="font-semibold text-purple-700 text-sm">캘린더 연동하면</span>
           </div>
-          <div className="flex items-start gap-3">
-            <Mail className="w-5 h-5 text-blue-500 mt-0.5" />
-            <div>
-              <p className="font-medium text-gray-800 text-sm">이메일</p>
-              <p className="text-xs text-gray-500">중요 메일만 알림, 답장 필요한 것 체크</p>
-            </div>
+          <div className="space-y-2 pl-7">
+            {PERMISSION_BENEFITS.calendar.map((benefit, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <benefit.icon className="w-4 h-4 text-purple-400" />
+                <span className="text-sm text-gray-700">{benefit.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 이메일 혜택 */}
+        <div className="bg-gradient-to-r from-blue-50 to-blue-100/50 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Mail className="w-5 h-5 text-blue-600" />
+            <span className="font-semibold text-blue-700 text-sm">이메일 연동하면</span>
+          </div>
+          <div className="space-y-2 pl-7">
+            {PERMISSION_BENEFITS.email.map((benefit, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <benefit.icon className="w-4 h-4 text-blue-400" />
+                <span className="text-sm text-gray-700">{benefit.text}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* 프라이버시 */}
-      <div className="flex items-center gap-2 mb-6 px-1">
-        <Shield className="w-4 h-4 text-gray-400" />
-        <p className="text-xs text-gray-500">
-          데이터는 기기에만 저장돼요
-        </p>
-      </div>
+      {/* 🔒 프라이버시 약속 (Plaid 스타일) */}
+      <button
+        onClick={() => setShowPrivacy(!showPrivacy)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 rounded-xl mb-4 transition-all hover:bg-gray-100"
+      >
+        <div className="flex items-center gap-2">
+          <Lock className="w-4 h-4 text-gray-500" />
+          <span className="text-sm text-gray-600">데이터는 안전하게 보관돼요</span>
+        </div>
+        <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${showPrivacy ? 'rotate-90' : ''}`} />
+      </button>
+
+      {showPrivacy && (
+        <div className="bg-green-50 rounded-xl p-4 mb-4 animate-in fade-in duration-200">
+          <div className="space-y-2">
+            {PRIVACY_PROMISES.map((promise, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-green-500" />
+                <span className="text-sm text-green-700">{promise}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <button
         onClick={handleGoogleConnect}
@@ -208,12 +263,12 @@ const OnboardingV4 = ({ onComplete, onGoogleAuth }) => {
         onClick={goNext}
         className="w-full py-3 text-gray-400 hover:text-gray-600 text-sm mt-2"
       >
-        나중에 할게요
+        나중에 할게요 — 설정에서 언제든 가능해요
       </button>
     </div>
   );
 
-  // ========== Step 3: Complete ==========
+  // ========== Step 3: Complete (즉시 가치 프리뷰) ==========
   const CompleteStep = () => (
     <div className="text-center">
       <div className="text-[80px] leading-none mb-6">🎉</div>
@@ -221,20 +276,47 @@ const OnboardingV4 = ({ onComplete, onGoogleAuth }) => {
       <h1 className="text-2xl font-bold text-gray-800 mb-2">
         준비 완료!
       </h1>
-      <p className="text-gray-600 mb-8">
+      <p className="text-gray-600 mb-6">
         알프레도가 Boss의 하루를
         <br />도와드릴 준비가 됐어요
       </p>
 
-      {/* 연결 상태 */}
-      <div className="bg-gray-50 rounded-2xl p-4 mb-8">
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-gray-600">Google 연동</span>
-          <span className={`text-sm font-medium ${selections.connected ? 'text-green-600' : 'text-gray-400'}`}>
-            {selections.connected ? '✓ 연결됨' : '미연결'}
+      {/* 🎁 즉시 가치 프리뷰 (Clockwise 스타일) */}
+      {selections.connected ? (
+        <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-5 mb-6 text-left">
+          <div className="flex items-center gap-2 mb-3">
+            <Check className="w-5 h-5 text-green-600" />
+            <span className="font-semibold text-green-700">연동 완료! 바로 시작해요</span>
+          </div>
+          <div className="space-y-2 text-sm text-gray-600">
+            <p>✨ 내일 아침, 첫 브리핑을 보내드릴게요</p>
+            <p>📅 캘린더를 분석해서 오늘 하루를 파악할게요</p>
+            <p>💌 중요한 이메일이 오면 알려드릴게요</p>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-gray-50 rounded-2xl p-5 mb-6 text-left">
+          <div className="flex items-center gap-2 mb-3">
+            <Sparkles className="w-5 h-5 text-purple-500" />
+            <span className="font-semibold text-gray-700">연동 없이도 시작할 수 있어요</span>
+          </div>
+          <div className="space-y-2 text-sm text-gray-600">
+            <p>📝 할 일을 추가하고 관리해보세요</p>
+            <p>💬 알프레도와 대화해보세요</p>
+            <p>⚙️ 설정에서 언제든 Google 연동 가능해요</p>
+          </div>
+        </div>
+      )}
+
+      {/* 선택한 니즈 표시 */}
+      {selections.need && (
+        <div className="flex items-center justify-center gap-2 mb-6">
+          <span className="text-sm text-gray-500">선택한 목표:</span>
+          <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
+            {NEEDS.find(n => n.id === selections.need)?.emoji} {NEEDS.find(n => n.id === selections.need)?.label}
           </span>
         </div>
-      </div>
+      )}
 
       <button
         onClick={handleComplete}
@@ -243,12 +325,6 @@ const OnboardingV4 = ({ onComplete, onGoogleAuth }) => {
         <Heart className="w-5 h-5" />
         시작하기
       </button>
-
-      {!selections.connected && (
-        <p className="text-xs text-gray-400 mt-4">
-          연동은 설정에서 언제든 할 수 있어요
-        </p>
-      )}
     </div>
   );
 
