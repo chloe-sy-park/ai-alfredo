@@ -20,6 +20,18 @@ export interface NotificationSettings {
   encouragement: boolean;
 }
 
+// Service Worker Notification Options (확장된 타입)
+interface ServiceWorkerNotificationOptions {
+  body?: string;
+  icon?: string;
+  badge?: string;
+  tag?: string;
+  data?: unknown;
+  actions?: { action: string; title: string }[];
+  requireInteraction?: boolean;
+  vibrate?: number[];
+}
+
 const DEFAULT_SETTINGS: NotificationSettings = {
   enabled: true,
   morningBriefing: true,
@@ -39,7 +51,7 @@ const SW_PATH = '/sw.js';
 class NotificationService {
   private swRegistration: ServiceWorkerRegistration | null = null;
   private settings: NotificationSettings;
-  private scheduledNotifications: Map<string, NodeJS.Timeout> = new Map();
+  private scheduledNotifications: Map<string, ReturnType<typeof setTimeout>> = new Map();
 
   constructor() {
     this.settings = this.loadSettings();
@@ -108,23 +120,33 @@ class NotificationService {
 
     try {
       if (this.swRegistration) {
-        await this.swRegistration.showNotification(template.title, {
+        // Service Worker를 통한 알림 (확장 옵션 지원)
+        const options: ServiceWorkerNotificationOptions = {
           body: template.body,
           icon: template.icon || '/alfredo-icon.svg',
           badge: '/alfredo-badge.svg',
           tag: template.tag,
           data: template.data,
-          actions: template.actions,
-          requireInteraction: template.requireInteraction,
           vibrate: [100, 50, 100]
-        });
+        };
+        
+        if (template.actions) {
+          options.actions = template.actions;
+        }
+        if (template.requireInteraction) {
+          options.requireInteraction = template.requireInteraction;
+        }
+        
+        await this.swRegistration.showNotification(
+          template.title, 
+          options as NotificationOptions
+        );
       } else {
         // 폴백: 기본 Notification API 사용
         new Notification(template.title, {
           body: template.body,
           icon: template.icon || '/alfredo-icon.svg',
-          tag: template.tag,
-          data: template.data
+          tag: template.tag
         });
       }
       return true;
@@ -263,7 +285,7 @@ class NotificationService {
   /**
    * 서비스 워커에 메시지 전송
    */
-  async sendToServiceWorker(message: any): Promise<void> {
+  async sendToServiceWorker(message: unknown): Promise<void> {
     if (!this.swRegistration?.active) {
       console.warn('No active service worker');
       return;
