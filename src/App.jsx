@@ -12,6 +12,7 @@ import LifePage from './components/life/LifePage';
 import MorePage from './components/more/MorePage';
 import AlfredoChat from './components/chat/AlfredoChat';
 import FocusPage from './components/focus/FocusPage';
+import BodyDoublingMode from './components/focus/BodyDoublingMode';
 import SettingsPage from './components/settings/SettingsPage';
 import WeeklyReviewPage from './components/review/WeeklyReviewPage';
 import HabitHeatmapPage from './components/review/HabitHeatmapPage';
@@ -245,6 +246,11 @@ function App() {
   var focusTaskState = useState(null);
   var focusTask = focusTaskState[0];
   var setFocusTask = focusTaskState[1];
+  
+  // 바디더블링 태스크
+  var bodyDoublingTaskState = useState(null);
+  var bodyDoublingTask = bodyDoublingTaskState[0];
+  var setBodyDoublingTask = bodyDoublingTaskState[1];
   
   // 플로팅 챗 상태
   var showFloatingChatState = useState(false);
@@ -546,6 +552,18 @@ function App() {
     setCurrentPage(previousPage);
   }, [previousPage]);
   
+  // 바디더블링 모드
+  var handleStartBodyDoubling = useCallback(function(task) {
+    setBodyDoublingTask(task || null);
+    setPreviousPage(currentPage);
+    setCurrentPage('BODY_DOUBLING');
+  }, [currentPage]);
+  
+  var handleEndBodyDoubling = useCallback(function() {
+    setBodyDoublingTask(null);
+    setCurrentPage(previousPage);
+  }, [previousPage]);
+  
   // 퀵 캡처
   var handleQuickCapture = useCallback(function(text) {
     var newTask = {
@@ -578,6 +596,9 @@ function App() {
       case 'start_focus':
         handleStartFocus();
         break;
+      case 'start_body_doubling':
+        handleStartBodyDoubling();
+        break;
       case 'open_inbox':
         handleOpenInbox();
         break;
@@ -588,7 +609,7 @@ function App() {
         console.log('Unknown nudge action:', action);
     }
     handleDismissNudge();
-  }, [handleOpenChat, handleStartFocus, handleOpenInbox]);
+  }, [handleOpenChat, handleStartFocus, handleStartBodyDoubling, handleOpenInbox]);
   
   // Day End 모달
   var handleOpenDayEnd = useCallback(function() {
@@ -665,6 +686,7 @@ function App() {
           onOpenInbox: handleOpenInbox,
           onOpenSearch: handleOpenSearch,
           onStartFocus: handleStartFocus,
+          onStartBodyDoubling: handleStartBodyDoubling,
           onOpenReminder: handleOpenReminder,
           isGoogleConnected: isConnected,
           onConnectGoogle: function() { setShowGoogleAuth(true); },
@@ -692,6 +714,7 @@ function App() {
           onOpenEvent: handleOpenEvent,
           onOpenChat: handleOpenChat,
           onStartFocus: handleStartFocus,
+          onStartBodyDoubling: handleStartBodyDoubling,
           onOpenInbox: handleOpenInbox
         }));
         
@@ -739,6 +762,7 @@ function App() {
           onUpdateTask: handleUpdateTask,
           onToggleTask: handleToggleTask,
           onStartFocus: handleStartFocus,
+          onStartBodyDoubling: handleStartBodyDoubling,
           // 🧬 DNA 인사이트 전달
           dnaProfile: dnaProfile,
           getChronotype: getChronotype,
@@ -757,7 +781,28 @@ function App() {
             }
             handleEndFocus();
           },
-          onOpenChat: handleOpenChat
+          onOpenChat: handleOpenChat,
+          onSwitchToBodyDoubling: function() {
+            handleEndFocus();
+            handleStartBodyDoubling(focusTask);
+          }
+        }));
+        
+      case 'BODY_DOUBLING':
+        return React.createElement(BodyDoublingMode, Object.assign({}, commonProps, {
+          task: bodyDoublingTask,
+          onEnd: handleEndBodyDoubling,
+          onComplete: function() {
+            if (bodyDoublingTask) {
+              handleToggleTask(bodyDoublingTask.id);
+            }
+            handleEndBodyDoubling();
+          },
+          onOpenChat: handleOpenChat,
+          onSwitchToFocus: function() {
+            handleEndBodyDoubling();
+            handleStartFocus(bodyDoublingTask);
+          }
         }));
         
       case 'SETTINGS':
@@ -816,6 +861,7 @@ function App() {
           onOpenInbox: handleOpenInbox,
           onOpenSearch: handleOpenSearch,
           onStartFocus: handleStartFocus,
+          onStartBodyDoubling: handleStartBodyDoubling,
           onOpenReminder: handleOpenReminder,
           isGoogleConnected: isConnected,
           onConnectGoogle: function() { setShowGoogleAuth(true); }
