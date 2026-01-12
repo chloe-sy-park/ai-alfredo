@@ -7,7 +7,9 @@ import DNAInsightCard from './DNAInsightCard';
 import { NudgeStack, useNudges } from './FloatingNudge';
 import { useGamification, XpGainToast, LevelUpModal } from '../gamification/LevelSystem';
 import EveningBriefing from './EveningBriefing';
+import MorningBriefing from './MorningBriefing';
 import { ConditionQuickChange } from './ConditionQuickChange';
+import { useDailyConditions } from '../../hooks/useDailyConditions';
 
 // 요일 이름
 var DAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -94,29 +96,6 @@ var NightModeView = function(props) {
   );
 };
 
-// ⚡ 긴급 일정 알림 배너 (컴팩트)
-var UrgentEventBanner = function(props) {
-  var event = props.event;
-  var diffMin = props.diffMin;
-  
-  if (!event) return null;
-  
-  var title = event.title || event.summary || '일정';
-  var isVeryUrgent = diffMin <= 10;
-  
-  return React.createElement('div', {
-    className: 'mx-4 mt-2 rounded-xl p-3 flex items-center gap-3 min-h-[52px] ' +
-      (isVeryUrgent ? 'bg-red-500 animate-pulse' : 'bg-orange-500')
-  },
-    React.createElement('span', { className: 'text-xl' }, '⚡'),
-    React.createElement('div', { className: 'flex-1 min-w-0' },
-      React.createElement('p', {
-        className: 'text-white font-medium text-sm'
-      }, diffMin + '분 뒤: ' + title.slice(0, 15) + (title.length > 15 ? '...' : ''))
-    )
-  );
-};
-
 // 🐧 컨디션 체크 모달
 var ConditionCheckModal = function(props) {
   var isOpen = props.isOpen;
@@ -191,8 +170,14 @@ export var HomePage = function(props) {
   var getPeakHours = props.getPeakHours;
   var getChronotype = props.getChronotype;
   
+  // 📊 컨디션 히스토리 훅
+  var dailyConditions = useDailyConditions();
+  
   // 상태
-  var conditionState = useState(mood || 0);
+  var conditionState = useState(function() {
+    var today = dailyConditions.getTodayCondition();
+    return today ? today.level : (mood || 0);
+  });
   var condition = conditionState[0];
   var setCondition = conditionState[1];
   
@@ -213,6 +198,7 @@ export var HomePage = function(props) {
   var timePhase = getTimePhase();
   var isNightTime = hour >= 21 || hour < 5;
   var isNightMode = isNightTime && !forceNormalView;
+  var isMorningMode = timePhase === 'morning' && !forceNormalView;
   var isEveningMode = timePhase === 'evening' && !forceNormalView;
   
   // 에너지 레벨 계산 (컨디션 기반)
@@ -327,14 +313,15 @@ export var HomePage = function(props) {
   useEffect(function() {
     var todayCheck = new Date().toDateString();
     var lastCheck = localStorage.getItem('lastConditionCheck');
+    var todayCondition = dailyConditions.getTodayCondition();
     
-    if (lastCheck !== todayCheck && condition === 0 && !isNightMode) {
+    if (!todayCondition && lastCheck !== todayCheck && !isNightMode) {
       var timer = setTimeout(function() {
         setShowConditionModal(true);
       }, 1000);
       return function() { clearTimeout(timer); };
     }
-  }, [condition, isNightMode]);
+  }, [isNightMode]);
   
   // 스트릭 업데이트
   useEffect(function() {
@@ -371,11 +358,14 @@ export var HomePage = function(props) {
     return Object.assign({}, incompleteTasks[0], { recommended: true });
   }, [tasks]);
   
-  // 컨디션 변경
+  // 컨디션 변경 (히스토리 저장 포함)
   var handleConditionChange = function(newCondition) {
     setCondition(newCondition);
     if (setMood) setMood(newCondition);
     setShowConditionModal(false);
+    
+    // 히스토리에 기록
+    dailyConditions.recordCondition(newCondition);
     
     localStorage.setItem('lastConditionCheck', new Date().toDateString());
     
@@ -407,7 +397,9 @@ export var HomePage = function(props) {
     ? 'bg-gradient-to-b from-[#0f0f1a] to-[#1a1a2e]'
     : isEveningMode
       ? 'bg-gradient-to-b from-[#ffecd2] to-[#F5F5F7]'
-      : 'bg-[#F5F5F7]';
+      : isMorningMode
+        ? 'bg-gradient-to-b from-[#fef3c7] to-[#F5F5F7]'
+        : 'bg-[#F5F5F7]';
   
   return React.createElement('div', {
     className: 'min-h-screen flex flex-col ' + bgColor,
@@ -466,37 +458,7 @@ export var HomePage = function(props) {
             )
           )
         )
-      ),
-      
-      // 긴급 알림 (있을 때만)
-      !isNightMode && urgentEvent && React.createElement(UrgentEventBanner, {
-        event: urgentEvent.event,
-        diffMin: urgentEvent.diffMin
-      }),
-      
-      // 알프레도 아일랜드 (아침/오후에만)
-      !isNightMode && !isEveningMode && React.createElement(AlfredoIslandMinimal, {
-        tasks: tasks,
-        events: todayEvents,
-        condition: condition,
-        userName: userName,
-        urgentEvent: urgentEvent,
-        onOpenChat: onOpenChat,
-        dnaProfile: dnaProfile,
-        dnaSuggestions: dnaSuggestions,
-        dnaAnalysisPhase: dnaAnalysisPhase,
-        getMorningBriefing: getMorningBriefing,
-        getEveningMessage: getEveningMessage,
-        getStressLevel: getStressLevel,
-        getBestFocusTime: getBestFocusTime,
-        getPeakHours: getPeakHours,
-        getChronotype: getChronotype
-      }),
-      
-      // 하단 그라데이션 페이드
-      !isNightMode && !isEveningMode && React.createElement('div', {
-        className: 'h-4 bg-gradient-to-b from-[#F5F5F7]/95 to-transparent'
-      })
+      )
     ),
     
     // ====== 스크롤 콘텐츠 영역 ======
@@ -506,43 +468,60 @@ export var HomePage = function(props) {
           tasks: tasks,
           onViewDetails: function() { setForceNormalView(true); }
         })
-      : isEveningMode
-        ? // 저녁 브리핑 모드
-          React.createElement('div', { 
-            className: 'flex-1 overflow-y-auto px-4',
-            style: {
-              paddingBottom: 'calc(96px + env(safe-area-inset-bottom))',
-              WebkitOverflowScrolling: 'touch'
-            }
-          },
-            React.createElement(EveningBriefing, {
-              darkMode: false,
-              condition: condition,
+      : React.createElement('div', { 
+          className: 'flex-1 overflow-y-auto',
+          style: {
+            paddingBottom: 'calc(96px + env(safe-area-inset-bottom))',
+            WebkitOverflowScrolling: 'touch'
+          }
+        },
+          // 🌅 아침 모드: MorningBriefing
+          isMorningMode && React.createElement(MorningBriefing, {
+            condition: condition,
+            tasks: tasks,
+            events: todayEvents,
+            weather: weather,
+            userName: userName,
+            onTapAlfredo: onOpenChat,
+            dnaProfile: dnaProfile,
+            dnaSuggestions: dnaSuggestions,
+            getChronotype: getChronotype,
+            getPeakHours: getPeakHours,
+            getStressLevel: getStressLevel
+          }),
+          
+          // 🌆 저녁 모드: EveningBriefing
+          isEveningMode && React.createElement(EveningBriefing, {
+            darkMode: false,
+            condition: condition,
+            tasks: tasks,
+            events: events,
+            userName: userName,
+            onTapAlfredo: onOpenChat,
+            onViewTomorrow: function() { if (setView) setView('CALENDAR'); }
+          }),
+          
+          // ☀️ 오후 모드: 기존 레이아웃
+          !isMorningMode && !isEveningMode && React.createElement(React.Fragment, null,
+            // 알프레도 아일랜드
+            React.createElement(AlfredoIslandMinimal, {
               tasks: tasks,
-              events: events,
+              events: todayEvents,
+              condition: condition,
               userName: userName,
-              onTapAlfredo: onOpenChat,
-              onViewTomorrow: function() { if (setView) setView('CALENDAR'); }
+              urgentEvent: urgentEvent,
+              onOpenChat: onOpenChat,
+              dnaProfile: dnaProfile,
+              dnaSuggestions: dnaSuggestions,
+              dnaAnalysisPhase: dnaAnalysisPhase,
+              getMorningBriefing: getMorningBriefing,
+              getEveningMessage: getEveningMessage,
+              getStressLevel: getStressLevel,
+              getBestFocusTime: getBestFocusTime,
+              getPeakHours: getPeakHours,
+              getChronotype: getChronotype
             }),
             
-            // 오늘 타임라인 (간략)
-            React.createElement(TodayTimelineMinimal, {
-              events: todayEvents,
-              tasks: tasks,
-              onStartTask: handleStartTask,
-              onOpenEvent: onOpenEvent,
-              onAddTask: onOpenAddTask,
-              compact: true
-            })
-          )
-        : // 아침/오후 일반 모드
-          React.createElement('div', { 
-            className: 'flex-1 overflow-y-auto',
-            style: {
-              paddingBottom: 'calc(96px + env(safe-area-inset-bottom))',
-              WebkitOverflowScrolling: 'touch'
-            }
-          },
             // DNA 인사이트 카드
             React.createElement(DNAInsightCard, {
               dnaProfile: dnaProfile,
@@ -552,29 +531,31 @@ export var HomePage = function(props) {
               getChronotype: getChronotype,
               getStressLevel: getStressLevel,
               getPeakHours: getPeakHours
-            }),
-            
-            // 지금 이거부터
-            React.createElement('div', { className: 'mx-4 mt-2' },
-              React.createElement(FocusNowCard, {
-                task: focusTask,
-                darkMode: false,
-                onStart: handleStartTask,
-                onStartBodyDoubling: handleStartBodyDoubling,
-                onLater: function() {},
-                onAddTask: onOpenAddTask
-              })
-            ),
-            
-            // 오늘 타임라인
-            React.createElement(TodayTimelineMinimal, {
-              events: todayEvents,
-              tasks: tasks,
-              onStartTask: handleStartTask,
-              onOpenEvent: onOpenEvent,
+            })
+          ),
+          
+          // 지금 이거부터 (아침 제외)
+          !isMorningMode && React.createElement('div', { className: 'mx-4 mt-2' },
+            React.createElement(FocusNowCard, {
+              task: focusTask,
+              darkMode: false,
+              onStart: handleStartTask,
+              onStartBodyDoubling: handleStartBodyDoubling,
+              onLater: function() {},
               onAddTask: onOpenAddTask
             })
           ),
+          
+          // 오늘 타임라인
+          React.createElement(TodayTimelineMinimal, {
+            events: todayEvents,
+            tasks: tasks,
+            onStartTask: handleStartTask,
+            onOpenEvent: onOpenEvent,
+            onAddTask: onOpenAddTask,
+            compact: isEveningMode
+          })
+        ),
     
     // 🔔 플로팅 넛지 (선제적 대화)
     !isNightMode && nudgeData.nudges.length > 0 && React.createElement(NudgeStack, {
