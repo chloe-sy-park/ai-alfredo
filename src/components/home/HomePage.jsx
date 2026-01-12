@@ -4,6 +4,7 @@ import AlfredoIslandMinimal from './AlfredoIslandMinimal';
 import FocusNowCard from './FocusNowCard';
 import TodayTimelineMinimal from './TodayTimelineMinimal';
 import DNAInsightCard from './DNAInsightCard';
+import { NudgeStack, useNudges } from './FloatingNudge';
 import { useGamification, XpGainToast, LevelUpModal } from '../gamification/LevelSystem';
 
 // 요일 이름
@@ -151,7 +152,7 @@ var ConditionCheckModal = function(props) {
   );
 };
 
-// 🏠 홈페이지 (Sticky 알프레도 + 나이트모드)
+// 🏠 홈페이지 (Sticky 알프레도 + 나이트모드 + 플로팅 넛지)
 export var HomePage = function(props) {
   var darkMode = props.darkMode;
   var tasks = props.tasks || [];
@@ -205,32 +206,22 @@ export var HomePage = function(props) {
   var isNightTime = hour >= 21 || hour < 5;
   var isNightMode = isNightTime && !forceNormalView;
   
-  // 컨디션 체크 (처음 열 때 한 번)
-  useEffect(function() {
-    var today = new Date().toDateString();
-    var lastCheck = localStorage.getItem('lastConditionCheck');
-    
-    if (lastCheck !== today && condition === 0 && !isNightMode) {
-      var timer = setTimeout(function() {
-        setShowConditionModal(true);
-      }, 1000);
-      return function() { clearTimeout(timer); };
-    }
-  }, [condition, isNightMode]);
+  // 에너지 레벨 계산 (컨디션 기반)
+  var energyLevel = useMemo(function() {
+    if (condition === 0) return 50;
+    return condition * 20; // 1=20, 2=40, 3=60, 4=80, 5=100
+  }, [condition]);
   
-  // 스트릭 업데이트
-  useEffect(function() {
-    if (gamification && gamification.updateStreak) {
-      gamification.updateStreak();
-    }
-  }, []);
-  
-  // 오늘 날짜
-  var today = new Date();
-  var dayName = DAYS[today.getDay()];
-  var dateStr = (today.getMonth() + 1) + '월 ' + today.getDate() + '일 ' + dayName + '요일';
+  // 기분 매핑
+  var moodLevel = useMemo(function() {
+    if (condition <= 1) return 'down';
+    if (condition <= 2) return 'neutral';
+    if (condition <= 3) return 'good';
+    return 'great';
+  }, [condition]);
   
   // 오늘 일정 필터
+  var today = new Date();
   var todayEvents = useMemo(function() {
     var todayStr = today.toDateString();
     return events.filter(function(e) {
@@ -257,6 +248,97 @@ export var HomePage = function(props) {
     
     return found ? { event: found, diffMin: minDiff } : null;
   }, [todayEvents, now]);
+  
+  // 오늘 마감 태스크
+  var todayDeadlines = useMemo(function() {
+    var todayStr = today.toDateString();
+    return tasks.filter(function(t) {
+      if (t.completed) return false;
+      if (!t.deadline && !t.dueDate) return false;
+      var deadline = new Date(t.deadline || t.dueDate);
+      return deadline.toDateString() === todayStr;
+    });
+  }, [tasks, today]);
+  
+  // 완료된 태스크 수
+  var completedToday = useMemo(function() {
+    return tasks.filter(function(t) { return t.completed; }).length;
+  }, [tasks]);
+  
+  // 미완료 태스크
+  var pendingTasks = useMemo(function() {
+    return tasks.filter(function(t) { return !t.completed; });
+  }, [tasks]);
+  
+  // 🔔 넛지 훅 사용
+  var nudgeData = useNudges({
+    energy: energyLevel,
+    mood: moodLevel,
+    pendingTasks: pendingTasks,
+    completedToday: completedToday,
+    streak: gamification.currentStreak || 0,
+    hasUpcomingMeeting: urgentEvent ? { 
+      title: urgentEvent.event.title || urgentEvent.event.summary, 
+      minutesUntil: urgentEvent.diffMin 
+    } : null,
+    todayDeadlines: todayDeadlines,
+    minutesSinceBreak: 0, // TODO: 실제 휴식 트래킹 구현
+    weather: weather,
+    refreshInterval: 60000
+  });
+  
+  // 넛지 액션 핸들러
+  var handleNudgeAction = function(action) {
+    if (!action) return;
+    
+    switch (action.type) {
+      case 'focusTask':
+        if (action.payload && onStartFocus) {
+          onStartFocus(action.payload);
+        }
+        break;
+      case 'showMeeting':
+        if (action.payload && onOpenEvent) {
+          onOpenEvent(action.payload);
+        }
+        break;
+      case 'takeBreak':
+        // TODO: 휴식 모드 구현
+        break;
+      case 'rest':
+        // 휴식 안내
+        break;
+      case 'prioritize':
+        if (onOpenAddTask) {
+          onOpenAddTask();
+        }
+        break;
+    }
+  };
+  
+  // 컨디션 체크 (처음 열 때 한 번)
+  useEffect(function() {
+    var todayCheck = new Date().toDateString();
+    var lastCheck = localStorage.getItem('lastConditionCheck');
+    
+    if (lastCheck !== todayCheck && condition === 0 && !isNightMode) {
+      var timer = setTimeout(function() {
+        setShowConditionModal(true);
+      }, 1000);
+      return function() { clearTimeout(timer); };
+    }
+  }, [condition, isNightMode]);
+  
+  // 스트릭 업데이트
+  useEffect(function() {
+    if (gamification && gamification.updateStreak) {
+      gamification.updateStreak();
+    }
+  }, []);
+  
+  // 오늘 날짜
+  var dayName = DAYS[today.getDay()];
+  var dateStr = (today.getMonth() + 1) + '월 ' + today.getDate() + '일 ' + dayName + '요일';
   
   // 지금 집중할 태스크
   var focusTask = useMemo(function() {
@@ -478,6 +560,14 @@ export var HomePage = function(props) {
             onAddTask: onOpenAddTask
           })
         ),
+    
+    // 🔔 플로팅 넛지 (선제적 대화)
+    !isNightMode && nudgeData.nudges.length > 0 && React.createElement(NudgeStack, {
+      nudges: nudgeData.nudges,
+      onDismiss: function() {},
+      onAction: handleNudgeAction,
+      darkMode: isNightMode
+    }),
     
     // 🐧 컨디션 체크 모달
     React.createElement(ConditionCheckModal, {
