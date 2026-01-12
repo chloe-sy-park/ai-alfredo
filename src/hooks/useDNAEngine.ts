@@ -1,5 +1,14 @@
 import { useState, useCallback } from 'react';
-import { dnaEngine, DNAProfile, DNABasedSuggestion, CalendarEvent } from '../services/dna';
+import { 
+  dnaEngine, 
+  DNAProfile, 
+  DNABasedSuggestion, 
+  CalendarEvent,
+  TodayContext,
+  SpecialEventAlert,
+  BurnoutWarning,
+  AlfredoAction
+} from '../services/dna';
 import { useAuthStore } from '../stores/authStore';
 
 /**
@@ -12,6 +21,7 @@ export function useDNAEngine() {
   const [suggestions, setSuggestions] = useState<DNABasedSuggestion[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisPhase, setAnalysisPhase] = useState<'day1' | 'week1' | 'week2'>('day1');
+  const [todayContext, setTodayContext] = useState<TodayContext | null>(null);
 
   /**
    * 캘린더 데이터 분석 실행
@@ -23,6 +33,10 @@ export function useDNAEngine() {
     try {
       const result = dnaEngine.analyzeCalendar(user.id, events);
       setProfile(result);
+      
+      // 오늘 컨텍스트도 저장
+      const context = dnaEngine.getTodayContext();
+      setTodayContext(context);
       
       // 분석된 데이터 양에 따라 페이즈 결정
       const daysSinceFirstEvent = result.analyzedEventsCount > 0
@@ -89,25 +103,128 @@ export function useDNAEngine() {
     return dnaEngine.getChronotype();
   }, []);
 
+  // ========== 새로 추가된 메서드 ==========
+
+  /**
+   * 오늘 컨텍스트 가져오기
+   */
+  const getTodayContext = useCallback(() => {
+    return dnaEngine.getTodayContext();
+  }, []);
+
+  /**
+   * 오늘 컨텍스트 새로고침
+   */
+  const refreshTodayContext = useCallback(() => {
+    const context = dnaEngine.refreshTodayContext();
+    setTodayContext(context);
+    return context;
+  }, []);
+
+  /**
+   * 특별 이벤트 알림 가져오기
+   */
+  const getSpecialAlerts = useCallback((daysAhead: number = 3): SpecialEventAlert[] => {
+    return dnaEngine.getSpecialAlerts(daysAhead);
+  }, []);
+
+  /**
+   * 번아웃 경고 가져오기
+   */
+  const getBurnoutWarning = useCallback((): BurnoutWarning => {
+    return dnaEngine.getBurnoutWarning();
+  }, []);
+
+  /**
+   * 오늘 에너지 소모 예측
+   */
+  const getTodayEnergyDrain = useCallback((): number => {
+    return dnaEngine.getTodayEnergyDrain();
+  }, []);
+
+  /**
+   * 추천 액션 가져오기
+   */
+  const getRecommendedActions = useCallback((): AlfredoAction[] => {
+    return dnaEngine.getRecommendedActions();
+  }, []);
+
+  /**
+   * 브리핑 톤 가져오기
+   */
+  const getBriefingTone = useCallback(() => {
+    return dnaEngine.getBriefingTone();
+  }, []);
+
+  /**
+   * 컨텍스트 기반 인사말
+   */
+  const getContextGreeting = useCallback(() => {
+    return dnaEngine.getContextGreeting();
+  }, []);
+
+  /**
+   * 컨텍스트 기반 상황 메시지
+   */
+  const getContextMessage = useCallback(() => {
+    return dnaEngine.getContextMessage();
+  }, []);
+
+  /**
+   * 오늘 바쁜 정도
+   */
+  const getTodayBusyLevel = useCallback(() => {
+    return dnaEngine.getTodayBusyLevel();
+  }, []);
+
+  /**
+   * 워라밸 상태
+   */
+  const getWorkLifeBalance = useCallback(() => {
+    return dnaEngine.getWorkLifeBalance();
+  }, []);
+
+  /**
+   * 미팅 비율
+   */
+  const getMeetingRatio = useCallback(() => {
+    return dnaEngine.getMeetingRatio();
+  }, []);
+
   return {
     // 상태
     profile,
     suggestions,
     isAnalyzing,
     analysisPhase,
+    todayContext,
     
     // 액션
     analyzeCalendar,
+    refreshTodayContext,
     
     // 메시지 생성
     getMorningBriefing,
     getEveningMessage,
+    getContextGreeting,
+    getContextMessage,
     
     // 인사이트 접근
     getStressLevel,
     getBestFocusTime,
     getPeakHours,
     getChronotype,
+    getTodayContext,
+    getTodayBusyLevel,
+    getWorkLifeBalance,
+    getMeetingRatio,
+    
+    // 새로운 기능
+    getSpecialAlerts,
+    getBurnoutWarning,
+    getTodayEnergyDrain,
+    getRecommendedActions,
+    getBriefingTone,
   };
 }
 
@@ -115,7 +232,7 @@ export function useDNAEngine() {
  * DNA 기반 개인화된 추천 훅
  */
 export function useDNARecommendations() {
-  const { profile, getPeakHours, getStressLevel } = useDNAEngine();
+  const { profile, getPeakHours, getStressLevel, getTodayContext, getBriefingTone } = useDNAEngine();
   
   /**
    * 현재 시간이 피크 시간인지 확인
@@ -132,11 +249,17 @@ export function useDNARecommendations() {
   const getRecommendedTaskType = useCallback((): 'deep_work' | 'light_work' | 'break' => {
     const peakHours = getPeakHours();
     const stressLevel = getStressLevel();
+    const context = getTodayContext();
     const currentHour = new Date().getHours();
     
     // 스트레스 높으면 가벼운 작업 추천
     if (stressLevel === 'burnout' || stressLevel === 'high') {
       return 'light_work';
+    }
+    
+    // 오늘 바쁜 날이면
+    if (context?.busyLevel === 'extreme') {
+      return 'break';
     }
     
     // 피크 시간이면 딥워크
@@ -150,23 +273,19 @@ export function useDNARecommendations() {
     }
     
     return 'deep_work';
-  }, [getPeakHours, getStressLevel]);
+  }, [getPeakHours, getStressLevel, getTodayContext]);
 
   /**
    * 브리핑 톤 결정
    */
-  const getBriefingTone = useCallback((): 'energetic' | 'gentle' | 'supportive' => {
-    const stressLevel = getStressLevel();
-    
-    if (stressLevel === 'burnout') return 'supportive';
-    if (stressLevel === 'high') return 'gentle';
-    return 'energetic';
-  }, [getStressLevel]);
+  const determineBriefingTone = useCallback((): 'energetic' | 'gentle' | 'supportive' => {
+    return getBriefingTone();
+  }, [getBriefingTone]);
 
   return {
     profile,
     isCurrentlyPeakTime,
     getRecommendedTaskType,
-    getBriefingTone,
+    getBriefingTone: determineBriefingTone,
   };
 }
