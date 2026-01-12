@@ -1,95 +1,129 @@
 import React, { useState, useEffect } from 'react';
+import { 
+  getAreaStyle, 
+  saveAreaStyle, 
+  detectCurrentContext,
+  getContextMetadata,
+  getStylePreviewMessage,
+  getContextSettings,
+  saveContextSettings,
+  toggleAutoSwitch,
+  setManualMode
+} from '../../utils/alfredoContext';
 
 /**
- * 알프레도 스타일 설정 컴포넌트
- * - 4가지 육성 축 슬라이더
+ * 알프레도 스타일 설정 컴포넌트 (Phase 3)
+ * - 업무/라이프 모드 탭 분리
+ * - 영역별 4가지 육성 축 슬라이더
+ * - 자동 전환 설정
  * - 실시간 프리뷰
  */
 var AlfredoStyleSettings = function(props) {
   var darkMode = props.darkMode;
   var onStyleChange = props.onStyleChange;
+  var currentTab = props.currentTab; // 현재 앱 탭 (work/life 감지용)
   
-  // 4가지 육성 축 (0-100)
-  var _toneState = useState(function() {
-    var saved = localStorage.getItem('alfredo_tone_warmth');
-    return saved ? parseInt(saved) : 50;
+  // 현재 선택된 모드 탭
+  var _modeState = useState('work');
+  var selectedMode = _modeState[0];
+  var setSelectedMode = _modeState[1];
+  
+  // 컨텍스트 설정
+  var _contextState = useState(getContextSettings);
+  var contextSettings = _contextState[0];
+  var setContextSettings = _contextState[1];
+  
+  // 현재 자동 감지된 컨텍스트
+  var _detectedState = useState(function() {
+    return detectCurrentContext({ currentTab: currentTab });
   });
-  var toneWarmth = _toneState[0];
-  var setToneWarmth = _toneState[1];
+  var detectedContext = _detectedState[0];
+  var setDetectedContext = _detectedState[1];
   
-  var _notifState = useState(function() {
-    var saved = localStorage.getItem('alfredo_notification_freq');
-    return saved ? parseInt(saved) : 50;
+  // 업무 모드 스타일
+  var _workState = useState(function() {
+    return getAreaStyle('work');
   });
-  var notificationFreq = _notifState[0];
-  var setNotificationFreq = _notifState[1];
+  var workStyle = _workState[0];
+  var setWorkStyle = _workState[1];
   
-  var _dataState = useState(function() {
-    var saved = localStorage.getItem('alfredo_data_depth');
-    return saved ? parseInt(saved) : 50;
+  // 라이프 모드 스타일
+  var _lifeState = useState(function() {
+    return getAreaStyle('life');
   });
-  var dataDepth = _dataState[0];
-  var setDataDepth = _dataState[1];
+  var lifeStyle = _lifeState[0];
+  var setLifeStyle = _lifeState[1];
   
-  var _motivState = useState(function() {
-    var saved = localStorage.getItem('alfredo_motivation_style');
-    return saved ? parseInt(saved) : 50;
-  });
-  var motivationStyle = _motivState[0];
-  var setMotivationStyle = _motivState[1];
+  // 현재 탭에 따른 스타일 가져오기
+  var currentStyle = selectedMode === 'work' ? workStyle : lifeStyle;
+  var setCurrentStyle = selectedMode === 'work' ? setWorkStyle : setLifeStyle;
   
-  // localStorage 저장
+  // 주기적으로 컨텍스트 업데이트
   useEffect(function() {
-    localStorage.setItem('alfredo_tone_warmth', toneWarmth.toString());
-    localStorage.setItem('alfredo_notification_freq', notificationFreq.toString());
-    localStorage.setItem('alfredo_data_depth', dataDepth.toString());
-    localStorage.setItem('alfredo_motivation_style', motivationStyle.toString());
+    var interval = setInterval(function() {
+      var newContext = detectCurrentContext({ currentTab: currentTab });
+      setDetectedContext(newContext);
+    }, 60000); // 1분마다 체크
+    
+    return function() { clearInterval(interval); };
+  }, [currentTab]);
+  
+  // 스타일 변경 시 저장
+  useEffect(function() {
+    saveAreaStyle('work', workStyle);
+    saveAreaStyle('life', lifeStyle);
     
     if (onStyleChange) {
       onStyleChange({
-        toneWarmth: toneWarmth,
-        notificationFreq: notificationFreq,
-        dataDepth: dataDepth,
-        motivationStyle: motivationStyle
+        work: workStyle,
+        life: lifeStyle,
+        currentMode: selectedMode,
+        detectedContext: detectedContext
       });
     }
-  }, [toneWarmth, notificationFreq, dataDepth, motivationStyle]);
+  }, [workStyle, lifeStyle, selectedMode]);
+  
+  // 개별 스타일 값 업데이트
+  var updateStyle = function(key, value) {
+    if (selectedMode === 'work') {
+      setWorkStyle(function(prev) {
+        var updated = Object.assign({}, prev);
+        updated[key] = value;
+        return updated;
+      });
+    } else {
+      setLifeStyle(function(prev) {
+        var updated = Object.assign({}, prev);
+        updated[key] = value;
+        return updated;
+      });
+    }
+  };
+  
+  // 자동 전환 토글
+  var handleAutoSwitchToggle = function() {
+    var newSettings = toggleAutoSwitch(!contextSettings.autoSwitch);
+    setContextSettings(newSettings);
+  };
+  
+  // 수동 모드 설정
+  var handleManualMode = function(mode) {
+    var newSettings = setManualMode(mode);
+    setContextSettings(newSettings);
+    setSelectedMode(mode === 'auto' ? detectedContext : mode);
+  };
   
   // 다크모드 색상
   var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
   var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
   var bgCard = darkMode ? 'bg-gray-800' : 'bg-white/70';
   var sliderBg = darkMode ? 'bg-gray-700' : 'bg-gray-200';
+  var tabActive = 'bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] text-white';
+  var tabInactive = darkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-500';
   
-  // 프리뷰 메시지 생성
-  var getPreviewMessage = function() {
-    var messages = {
-      warm: [
-        "오늘 미팅 3개나 있네요. 힘들 수 있으니까 중간에 잠깐 쉬어가요, 괜찮죠? 💙",
-        "아침이에요! 오늘도 함께 힘내봐요. 뭐부터 시작해볼까요? 🌅",
-        "에너지가 조금 낮은 것 같아요. 무리하지 마시고 천천히 해요 🤗"
-      ],
-      direct: [
-        "오늘 미팅 3개. 체력 관리 필수입니다. 11시 미팅 후 반드시 10분 휴식 넣으세요.",
-        "아침 브리핑입니다. 오늘 우선순위: 1. 기획안 마감 2. 팀 미팅 3. 리포트 검토.",
-        "에너지 레벨 낮음 감지. 가벼운 태스크 먼저 처리 권장합니다."
-      ],
-      balanced: [
-        "오늘 미팅 3개 있어요. 11시 미팅 후에 휴식 시간 넣어두면 좋을 것 같아요.",
-        "좋은 아침이에요! 오늘 일정 확인해봤는데, 오전에 집중 작업하시면 좋겠어요.",
-        "오늘 에너지가 좀 낮아 보여요. 쉬운 것부터 해볼까요?"
-      ]
-    };
-    
-    var messageIdx = Math.floor(toneWarmth / 34); // 0, 1, 2
-    if (toneWarmth <= 30) {
-      return messages.direct[messageIdx % 3];
-    } else if (toneWarmth >= 70) {
-      return messages.warm[messageIdx % 3];
-    } else {
-      return messages.balanced[messageIdx % 3];
-    }
-  };
+  // 모드별 메타데이터
+  var workMeta = getContextMetadata('work');
+  var lifeMeta = getContextMetadata('life');
   
   // 슬라이더 컴포넌트
   var StyleSlider = function(sliderProps) {
@@ -100,16 +134,14 @@ var AlfredoStyleSettings = function(props) {
     var rightText = sliderProps.rightText;
     var value = sliderProps.value;
     var onChange = sliderProps.onChange;
-    var description = sliderProps.description;
     
-    return React.createElement('div', { className: 'mb-5' },
+    return React.createElement('div', { className: 'mb-4' },
       React.createElement('div', { className: 'flex justify-between items-center mb-2' },
-        React.createElement('span', { className: textPrimary + ' font-medium text-sm' }, label),
-        description && React.createElement('span', { className: textSecondary + ' text-xs' }, description)
+        React.createElement('span', { className: textPrimary + ' font-medium text-sm' }, label)
       ),
       React.createElement('div', { className: 'flex items-center gap-3' },
-        React.createElement('div', { className: 'flex items-center gap-1 min-w-[80px]' },
-          React.createElement('span', { className: 'text-lg' }, leftEmoji),
+        React.createElement('div', { className: 'flex items-center gap-1 min-w-[70px]' },
+          React.createElement('span', { className: 'text-base' }, leftEmoji),
           React.createElement('span', { className: textSecondary + ' text-xs' }, leftText)
         ),
         React.createElement('div', { className: 'flex-1 relative' },
@@ -130,19 +162,80 @@ var AlfredoStyleSettings = function(props) {
             className: 'absolute inset-0 w-full h-full opacity-0 cursor-pointer'
           })
         ),
-        React.createElement('div', { className: 'flex items-center gap-1 min-w-[80px] justify-end' },
+        React.createElement('div', { className: 'flex items-center gap-1 min-w-[70px] justify-end' },
           React.createElement('span', { className: textSecondary + ' text-xs' }, rightText),
-          React.createElement('span', { className: 'text-lg' }, rightEmoji)
+          React.createElement('span', { className: 'text-base' }, rightEmoji)
         )
       )
     );
   };
   
   return React.createElement('div', { className: bgCard + ' backdrop-blur-xl rounded-xl p-4' },
-    // 헤더
-    React.createElement('h3', { className: textPrimary + ' font-bold mb-4 flex items-center gap-2' },
-      React.createElement('span', { className: 'text-xl' }, '🐧'),
-      '내 알프레도 스타일'
+    // 헤더 + 현재 감지된 모드
+    React.createElement('div', { className: 'flex justify-between items-center mb-4' },
+      React.createElement('h3', { className: textPrimary + ' font-bold flex items-center gap-2' },
+        React.createElement('span', { className: 'text-xl' }, '🐧'),
+        '내 알프레도 스타일'
+      ),
+      // 현재 감지된 모드 표시
+      contextSettings.autoSwitch && React.createElement('div', { 
+        className: 'flex items-center gap-1 px-2 py-1 rounded-full text-xs ' + 
+          (detectedContext === 'work' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700')
+      },
+        React.createElement('span', null, detectedContext === 'work' ? workMeta.emoji : lifeMeta.emoji),
+        React.createElement('span', null, detectedContext === 'work' ? '업무 중' : '라이프')
+      )
+    ),
+    
+    // 자동 전환 토글
+    React.createElement('div', { 
+      className: (darkMode ? 'bg-gray-700/50' : 'bg-gray-50') + ' rounded-lg p-3 mb-4 flex items-center justify-between'
+    },
+      React.createElement('div', null,
+        React.createElement('p', { className: textPrimary + ' text-sm font-medium' }, '자동 모드 전환'),
+        React.createElement('p', { className: textSecondary + ' text-xs' }, 
+          '시간, 일정에 따라 알프레도 스타일 자동 변경'
+        )
+      ),
+      React.createElement('button', {
+        onClick: handleAutoSwitchToggle,
+        className: 'w-12 h-6 rounded-full transition-all ' + 
+          (contextSettings.autoSwitch 
+            ? 'bg-gradient-to-r from-[#A996FF] to-[#8B7CF7]' 
+            : (darkMode ? 'bg-gray-600' : 'bg-gray-300'))
+      },
+        React.createElement('div', {
+          className: 'w-5 h-5 bg-white rounded-full shadow transition-transform ' +
+            (contextSettings.autoSwitch ? 'translate-x-6' : 'translate-x-0.5')
+        })
+      )
+    ),
+    
+    // 모드 탭
+    React.createElement('div', { className: 'flex gap-2 mb-4' },
+      React.createElement('button', {
+        onClick: function() { setSelectedMode('work'); },
+        className: 'flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ' +
+          (selectedMode === 'work' ? tabActive : tabInactive)
+      },
+        React.createElement('span', null, workMeta.emoji),
+        React.createElement('span', null, '업무 모드')
+      ),
+      React.createElement('button', {
+        onClick: function() { setSelectedMode('life'); },
+        className: 'flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ' +
+          (selectedMode === 'life' ? tabActive : tabInactive)
+      },
+        React.createElement('span', null, lifeMeta.emoji),
+        React.createElement('span', null, '라이프 모드')
+      )
+    ),
+    
+    // 현재 모드 설명
+    React.createElement('p', { className: textSecondary + ' text-xs mb-4 text-center' },
+      selectedMode === 'work' 
+        ? '💼 업무 시간에 사용되는 스타일이에요' 
+        : '🌿 퇴근 후, 주말에 사용되는 스타일이에요'
     ),
     
     // 슬라이더들
@@ -152,8 +245,8 @@ var AlfredoStyleSettings = function(props) {
       leftText: '다정하게',
       rightEmoji: '🔥',
       rightText: '직설적으로',
-      value: toneWarmth,
-      onChange: setToneWarmth
+      value: currentStyle.toneWarmth,
+      onChange: function(v) { updateStyle('toneWarmth', v); }
     }),
     
     React.createElement(StyleSlider, {
@@ -162,8 +255,8 @@ var AlfredoStyleSettings = function(props) {
       leftText: '필요할 때만',
       rightEmoji: '💬',
       rightText: '자주자주',
-      value: notificationFreq,
-      onChange: setNotificationFreq
+      value: currentStyle.notificationFreq,
+      onChange: function(v) { updateStyle('notificationFreq', v); }
     }),
     
     React.createElement(StyleSlider, {
@@ -172,8 +265,8 @@ var AlfredoStyleSettings = function(props) {
       leftText: '핵심만',
       rightEmoji: '🔬',
       rightText: '다 보여줘',
-      value: dataDepth,
-      onChange: setDataDepth
+      value: currentStyle.dataDepth,
+      onChange: function(v) { updateStyle('dataDepth', v); }
     }),
     
     React.createElement(StyleSlider, {
@@ -182,15 +275,17 @@ var AlfredoStyleSettings = function(props) {
       leftText: '느긋하게',
       rightEmoji: '🏆',
       rightText: '도전적으로',
-      value: motivationStyle,
-      onChange: setMotivationStyle
+      value: currentStyle.motivationStyle,
+      onChange: function(v) { updateStyle('motivationStyle', v); }
     }),
     
     // 실시간 프리뷰
     React.createElement('div', { 
       className: (darkMode ? 'bg-gray-700/50' : 'bg-[#F5F3FF]') + ' rounded-xl p-4 mt-4'
     },
-      React.createElement('p', { className: textSecondary + ' text-xs mb-2' }, '💬 이런 느낌으로 말할게요'),
+      React.createElement('p', { className: textSecondary + ' text-xs mb-2' }, 
+        selectedMode === 'work' ? '💼 업무 모드에선 이렇게 말할게요' : '🌿 라이프 모드에선 이렇게 말할게요'
+      ),
       React.createElement('div', { className: 'flex items-start gap-3' },
         React.createElement('div', { 
           className: 'w-10 h-10 rounded-full bg-gradient-to-br from-[#A996FF] to-[#8B7CF7] flex items-center justify-center text-lg flex-shrink-0'
@@ -198,21 +293,37 @@ var AlfredoStyleSettings = function(props) {
         React.createElement('div', { 
           className: (darkMode ? 'bg-gray-600' : 'bg-white') + ' rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm'
         },
-          React.createElement('p', { className: textPrimary + ' text-sm leading-relaxed' }, getPreviewMessage())
+          React.createElement('p', { className: textPrimary + ' text-sm leading-relaxed' }, 
+            getStylePreviewMessage(selectedMode, currentStyle)
+          )
         )
       )
     ),
     
     // 초기화 버튼
-    React.createElement('button', {
-      onClick: function() {
-        setToneWarmth(50);
-        setNotificationFreq(50);
-        setDataDepth(50);
-        setMotivationStyle(50);
-      },
-      className: textSecondary + ' text-xs mt-3 hover:underline'
-    }, '기본값으로 초기화')
+    React.createElement('div', { className: 'flex justify-between items-center mt-3' },
+      React.createElement('button', {
+        onClick: function() {
+          if (selectedMode === 'work') {
+            setWorkStyle({ toneWarmth: 35, notificationFreq: 60, dataDepth: 70, motivationStyle: 65 });
+          } else {
+            setLifeStyle({ toneWarmth: 75, notificationFreq: 40, dataDepth: 30, motivationStyle: 35 });
+          }
+        },
+        className: textSecondary + ' text-xs hover:underline'
+      }, '기본값으로 초기화'),
+      React.createElement('button', {
+        onClick: function() {
+          // 업무/라이프 스타일 동기화
+          if (selectedMode === 'work') {
+            setLifeStyle(Object.assign({}, workStyle));
+          } else {
+            setWorkStyle(Object.assign({}, lifeStyle));
+          }
+        },
+        className: textSecondary + ' text-xs hover:underline'
+      }, '다른 모드에도 적용')
+    )
   );
 };
 
