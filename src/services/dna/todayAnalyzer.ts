@@ -5,12 +5,10 @@
 
 import {
   CalendarEvent,
-  ClassifiedEvent,
   TodayContext,
   SpecialEventAlert,
   BurnoutWarning,
-  DNAProfile,
-  StressLevel
+  DNAProfile
 } from './types';
 import {
   classifyEvents,
@@ -209,7 +207,6 @@ export function analyzeBurnoutRisk(
   }
   
   // 신호 2: 취소 빈도 증가
-  const cancellations = events.filter(e => e.status === 'cancelled').length;
   const recentCancellations = recentEvents.filter(e => e.status === 'cancelled').length;
   if (recentCancellations >= 5) {
     signals.push('최근 일정 취소가 많아졌어요');
