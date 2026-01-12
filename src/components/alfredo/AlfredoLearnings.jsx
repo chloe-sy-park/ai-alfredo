@@ -1,29 +1,23 @@
 import React, { useState, useEffect } from 'react';
+import { getLearnings, saveLearning, deleteLearning, getLearningStats } from '../../utils/alfredoLearning';
 
 /**
  * 알프레도가 배운 것 리스트 컴포넌트
- * - DNA 프로파일 기반 학습 내용 시각화
+ * - alfredoLearning.js 유틸리티 연동
+ * - 실시간 통계 표시
  * - 수정/삭제 기능
- * - 새로 가르치기 모달
  */
 var AlfredoLearnings = function(props) {
   var darkMode = props.darkMode;
   var onLearningChange = props.onLearningChange;
   
-  // 배운 것 리스트
-  var _learningsState = useState(function() {
-    var saved = localStorage.getItem('alfredo_learnings');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch(e) {
-        return getDefaultLearnings();
-      }
-    }
-    return getDefaultLearnings();
-  });
+  var _learningsState = useState(getLearnings);
   var learnings = _learningsState[0];
   var setLearnings = _learningsState[1];
+  
+  var _statsState = useState(getLearningStats);
+  var stats = _statsState[0];
+  var setStats = _statsState[1];
   
   var _showAddState = useState(false);
   var showAddModal = _showAddState[0];
@@ -33,42 +27,20 @@ var AlfredoLearnings = function(props) {
   var newLearning = _newLearningState[0];
   var setNewLearning = _newLearningState[1];
   
-  // 기본 학습 내용 (DNA 프로파일 기반)
-  function getDefaultLearnings() {
-    return [
-      {
-        id: 'chronotype',
-        userInput: '첫 일정이 보통 10시 이후',
-        summary: '아침 10시 전엔 알림 최소화',
-        type: 'time_preference',
-        confidence: 0.8,
-        icon: '🌅',
-        editable: false // 자동 학습
-      },
-      {
-        id: 'energy_pattern',
-        userInput: '수요일 오후에 집중 작업 많음',
-        summary: '수요일 오후 = 집중력 피크',
-        type: 'energy_pattern',
-        confidence: 0.7,
-        icon: '⚡',
-        editable: false
-      },
-      {
-        id: 'meeting_limit',
-        userInput: '미팅 3개 넘는 날은 완료율 낮음',
-        summary: '미팅 3개 넘으면 휴식 강조',
-        type: 'stress_signal',
-        confidence: 0.75,
-        icon: '😮‍💨',
-        editable: false
-      }
-    ];
-  }
+  // 데이터 새로고침
+  var refreshData = function() {
+    setLearnings(getLearnings());
+    setStats(getLearningStats());
+  };
   
-  // localStorage 저장
   useEffect(function() {
-    localStorage.setItem('alfredo_learnings', JSON.stringify(learnings));
+    refreshData();
+    // 1분마다 새로고침
+    var interval = setInterval(refreshData, 60000);
+    return function() { clearInterval(interval); };
+  }, []);
+  
+  useEffect(function() {
     if (onLearningChange) {
       onLearningChange(learnings);
     }
@@ -77,7 +49,8 @@ var AlfredoLearnings = function(props) {
   // 학습 삭제
   var handleDelete = function(id) {
     if (window.confirm('이 학습을 삭제하시겠어요?')) {
-      setLearnings(learnings.filter(function(l) { return l.id !== id; }));
+      deleteLearning(id);
+      refreshData();
     }
   };
   
@@ -85,19 +58,41 @@ var AlfredoLearnings = function(props) {
   var handleAddLearning = function() {
     if (!newLearning.trim()) return;
     
-    var newItem = {
-      id: 'user_' + Date.now(),
-      userInput: newLearning,
-      summary: newLearning,
-      type: 'user_defined',
-      confidence: 1.0,
-      icon: '📌',
-      editable: true
-    };
+    saveLearning({
+      category: 'user_defined',
+      content: newLearning,
+      source: 'direct',
+      confidence: 80
+    });
     
-    setLearnings([].concat(learnings, [newItem]));
     setNewLearning('');
     setShowAddModal(false);
+    refreshData();
+  };
+  
+  // 카테고리 아이콘
+  var getCategoryIcon = function(category) {
+    var icons = {
+      time: '🌅',
+      style: '💬',
+      energy: '⚡',
+      preference: '❤️',
+      dislike: '👎',
+      memory: '📌',
+      user_defined: '✏️'
+    };
+    return icons[category] || '📚';
+  };
+  
+  // 소스 라벨
+  var getSourceLabel = function(source) {
+    var labels = {
+      feedback: '피드백 분석',
+      direct: '직접 가르침',
+      calendar: '캘린더 분석',
+      chat: '대화 학습'
+    };
+    return labels[source] || '자동 학습';
   };
   
   // 다크모드 색상
@@ -110,10 +105,10 @@ var AlfredoLearnings = function(props) {
   // 신뢰도 바
   var ConfidenceBar = function(barProps) {
     var confidence = barProps.confidence;
-    var width = Math.round(confidence * 100) + '%';
+    var width = confidence + '%';
     return React.createElement('div', { 
       className: 'h-1 w-12 ' + (darkMode ? 'bg-gray-600' : 'bg-gray-200') + ' rounded-full overflow-hidden',
-      title: '확신도 ' + Math.round(confidence * 100) + '%'
+      title: '확신도 ' + confidence + '%'
     },
       React.createElement('div', {
         className: 'h-full bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] rounded-full',
@@ -125,33 +120,55 @@ var AlfredoLearnings = function(props) {
   // 학습 아이템
   var LearningItem = function(itemProps) {
     var item = itemProps.item;
+    var isDirectLearning = item.source === 'direct' || item.source === 'chat';
     
     return React.createElement('div', { 
       className: bgItem + ' rounded-xl p-3 shadow-sm border ' + borderColor
     },
       React.createElement('div', { className: 'flex items-start justify-between' },
         React.createElement('div', { className: 'flex items-start gap-3 flex-1' },
-          React.createElement('span', { className: 'text-xl' }, item.icon),
+          React.createElement('span', { className: 'text-xl' }, getCategoryIcon(item.category)),
           React.createElement('div', { className: 'flex-1' },
             React.createElement('p', { className: textPrimary + ' font-medium text-sm' }, 
-              '"' + item.userInput + '"'
-            ),
-            React.createElement('p', { className: textSecondary + ' text-xs mt-1' }, 
-              '→ ' + item.summary
+              '"' + item.content + '"'
             ),
             React.createElement('div', { className: 'flex items-center gap-2 mt-2' },
               React.createElement(ConfidenceBar, { confidence: item.confidence }),
               React.createElement('span', { className: textSecondary + ' text-[10px]' },
-                item.editable ? '직접 가르침' : '자동 학습'
+                getSourceLabel(item.source)
               )
             )
           )
         ),
-        item.editable && React.createElement('button', {
+        isDirectLearning && React.createElement('button', {
           onClick: function() { handleDelete(item.id); },
           className: 'text-red-400 hover:text-red-500 p-1',
           title: '삭제'
         }, '✕')
+      )
+    );
+  };
+  
+  // 통계 배지
+  var StatsBadge = function() {
+    if (stats.totalFeedbacks === 0) return null;
+    
+    return React.createElement('div', {
+      className: (darkMode ? 'bg-gray-700/50' : 'bg-[#F5F3FF]') + ' rounded-xl p-3 mb-4'
+    },
+      React.createElement('div', { className: 'flex items-center justify-between' },
+        React.createElement('div', { className: 'flex items-center gap-2' },
+          React.createElement('span', { className: 'text-lg' }, '📊'),
+          React.createElement('span', { className: textSecondary + ' text-xs' }, '학습 현황')
+        ),
+        React.createElement('div', { className: 'flex items-center gap-3 text-xs' },
+          React.createElement('span', { className: textSecondary },
+            '피드백 ' + stats.totalFeedbacks + '개'
+          ),
+          React.createElement('span', { className: 'text-emerald-500 font-medium' },
+            '👍 ' + stats.positiveRate + '%'
+          )
+        )
       )
     );
   };
@@ -173,7 +190,7 @@ var AlfredoLearnings = function(props) {
           '🐧 알프레도에게 가르치기'
         ),
         React.createElement('p', { className: textSecondary + ' text-sm mb-4' },
-          '예: "아침엔 말 걸지 마", "운동 약속은 절대 건드리지 마", "월요일은 항상 힘들어"'
+          '예: "아침엔 말 걸지 마", "운동 약속은 절대 건드리지 마"'
         ),
         React.createElement('input', {
           type: 'text',
@@ -209,11 +226,14 @@ var AlfredoLearnings = function(props) {
       )
     ),
     
+    // 통계 배지
+    React.createElement(StatsBadge),
+    
     // 학습 리스트
     React.createElement('div', { className: 'space-y-3' },
       learnings.length === 0 
         ? React.createElement('p', { className: textSecondary + ' text-center py-8 text-sm' },
-            '아직 배운 게 없어요.\n같이 시간을 보내면 알아갈게요! 🐧'
+            '아직 배운 게 없어요.\n채팅에서 피드백을 주시면 배워갈게요! 🐧'
           )
         : learnings.map(function(item) {
             return React.createElement(LearningItem, { key: item.id, item: item });

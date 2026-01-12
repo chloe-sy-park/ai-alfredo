@@ -1,8 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Send, Sparkles, Calendar, Target, Clock, Zap, CheckCircle2, RefreshCw, Plus } from 'lucide-react';
+import { ArrowLeft, Send, Sparkles, Calendar, Target, Clock, Zap, CheckCircle2, RefreshCw, Plus, ThumbsUp, ThumbsDown, X } from 'lucide-react';
 
 // Common Components
 import { AlfredoAvatar } from '../common';
+
+// Learning Utilities
+import { saveFeedback, detectTeachingIntent, saveLearning } from '../../utils/alfredoLearning';
 
 const AlfredoChat = ({ onBack, tasks, events, mood, energy, onAddTask, onToggleTask, onStartFocus, initialMessage, dnaProfile }) => {
   const [messages, setMessages] = useState([]);
@@ -10,6 +13,8 @@ const AlfredoChat = ({ onBack, tasks, events, mood, energy, onAddTask, onToggleT
   const [showQuickReplies, setShowQuickReplies] = useState(true);
   const [contextQuickReplies, setContextQuickReplies] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [feedbackGiven, setFeedbackGiven] = useState({}); // messageId -> 'positive' | 'negative'
+  const [showNegativeModal, setShowNegativeModal] = useState(null); // messageId
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   
@@ -17,15 +22,22 @@ const AlfredoChat = ({ onBack, tasks, events, mood, energy, onAddTask, onToggleT
   const completedCount = tasks.filter(t => t.status === 'done').length;
   const todoTasks = tasks.filter(t => t.status !== 'done');
   
-  // Claude API 호출 함수 (시스템 프롬프트는 서버에서 관리)
+  // 부정 피드백 이유 옵션
+  const negativeFeedbackReasons = [
+    { id: 'wrong_tone', label: '톤이 안 맞아요', icon: '😕' },
+    { id: 'not_helpful', label: '도움이 안 돼요', icon: '🤷' },
+    { id: 'too_long', label: '너무 길어요', icon: '📜' },
+    { id: 'bad_timing', label: '타이밍이 안 좋아요', icon: '⏰' },
+    { id: 'other', label: '기타', icon: '💭' }
+  ];
+  
+  // Claude API 호출 함수
   const callClaudeAPI = async (userMessage, conversationHistory) => {
-    // 컨텍스트 객체 구성 (서버로 전달)
     const context = {
       mood,
       energy,
       tasks: tasks.map(t => ({ title: t.title, status: t.status })),
       events: events.map(e => ({ title: e.title, start: e.start })),
-      // DNA 인사이트 추가
       dna: dnaProfile ? {
         chronotype: dnaProfile.chronotype,
         peakHours: dnaProfile.peakProductivityHours,
@@ -35,13 +47,11 @@ const AlfredoChat = ({ onBack, tasks, events, mood, energy, onAddTask, onToggleT
       } : null
     };
 
-    // 대화 히스토리 구성
     const apiMessages = conversationHistory.map(msg => ({
       role: msg.type === 'user' ? 'user' : 'assistant',
       content: msg.text
     }));
     
-    // 현재 메시지 추가
     apiMessages.push({ role: 'user', content: userMessage });
 
     try {
@@ -62,7 +72,6 @@ const AlfredoChat = ({ onBack, tasks, events, mood, energy, onAddTask, onToggleT
       
       const responseText = data.text || '죄송해요, 잠시 문제가 생겼어요 😅';
       
-      // 액션 파싱 시도
       try {
         if (responseText.includes('{') && responseText.includes('}')) {
           const jsonMatch = responseText.match(/\{[^}]+\}/);
@@ -76,9 +85,7 @@ const AlfredoChat = ({ onBack, tasks, events, mood, energy, onAddTask, onToggleT
             }
           }
         }
-      } catch (e) {
-        // JSON 파싱 실패 - 일반 텍스트로 처리
-      }
+      } catch (e) {}
       
       return { text: responseText };
     } catch (error) {
@@ -87,86 +94,100 @@ const AlfredoChat = ({ onBack, tasks, events, mood, energy, onAddTask, onToggleT
     }
   };
   
-  // 초기 인사 (initialMessage가 있으면 사용, 없으면 기본)
+  // 피드백 처리
+  const handleFeedback = (messageId, messageText, type) => {
+    if (feedbackGiven[messageId]) return;
+    
+    if (type === 'negative') {
+      setShowNegativeModal(messageId);
+    } else {
+      saveFeedback(messageId, messageText, 'positive', { energy, mood });
+      setFeedbackGiven(prev => ({ ...prev, [messageId]: 'positive' }));
+    }
+  };
+  
+  // 부정 피드백 상세 선택
+  const handleNegativeFeedbackReason = (messageId, messageText, reason) => {
+    saveFeedback(messageId, messageText, 'negative', { 
+      energy, 
+      mood, 
+      reason: reason.id,
+      reasonLabel: reason.label 
+    });
+    setFeedbackGiven(prev => ({ ...prev, [messageId]: 'negative' }));
+    setShowNegativeModal(null);
+  };
+  
+  // 대화로 가르치기 감지
+  const checkTeachingIntent = (userMessage) => {
+    const teaching = detectTeachingIntent(userMessage);
+    if (teaching.detected) {
+      saveLearning({
+        category: teaching.category,
+        content: teaching.content,
+        source: 'chat',
+        confidence: 50
+      });
+      return true;
+    }
+    return false;
+  };
+  
+  // 초기 인사
   useEffect(() => {
     if (initialMessage?.message) {
-      // 플로팅 버블에서 온 메시지
       const fullMessage = initialMessage.subMessage 
         ? `${initialMessage.message}\n\n${initialMessage.subMessage}`
         : initialMessage.message;
       
-      setMessages([{ id: 1, type: 'alfredo', text: fullMessage }]);
+      setMessages([{ id: 'init-1', type: 'alfredo', text: fullMessage }]);
       
-      // 버블에서 전달된 퀵리플라이가 있으면 사용
       if (initialMessage.quickReplies?.length > 0) {
         setContextQuickReplies(initialMessage.quickReplies);
       }
     } else {
-      // 기본 인사 (선제적, 쿨하게)
       const getInitialGreeting = () => {
-        // 에너지 낮을 때 - 쉬라고 권유
         if (energy < 30) {
-          if (hour < 12) {
-            return '아침인데 좀 피곤해 보여요. 오늘은 가볍게 가죠.';
-          } else if (hour >= 21) {
-            return '이 시간엔 새로운 일 시작 안 하는 게 좋아요. 내일 하죠.';
-          }
+          if (hour < 12) return '아침인데 좀 피곤해 보여요. 오늘은 가볍게 가죠.';
+          if (hour >= 21) return '이 시간엔 새로운 일 시작 안 하는 게 좋아요. 내일 하죠.';
           return '오늘 좀 지쳐 보여요. 딱 하나만 하고 쉬어요.';
         }
         
-        // 할 일 다 끝났을 때 - 쿨하게 인정
         if (completedCount === tasks.length && tasks.length > 0) {
           return '오, 오늘 할 거 다 했네요. 이제 편하게 쉬어요.';
         }
         
-        // 밤 늦은 시간
         if (hour >= 21) {
-          if (todoTasks.length > 0) {
-            return `${todoTasks.length}개 남았지만, 이 시간엔 내일로 미루는 게 나아요.`;
-          }
+          if (todoTasks.length > 0) return `${todoTasks.length}개 남았지만, 이 시간엔 내일로 미루는 게 나아요.`;
           return '하루 수고했어요. 이제 좀 쉬어요.';
         }
         
-        // 할 일 있을 때 - 선제적 제안
         if (todoTasks.length > 0) {
           const firstTask = todoTasks[0]?.title || '첫 번째 일';
-          
           if (hour < 12) {
-            if (energy >= 70) {
-              return `컨디션 좋아 보이네요. "${firstTask}" 지금 시작하면 딱이겠어요.`;
-            }
+            if (energy >= 70) return `컨디션 좋아 보이네요. "${firstTask}" 지금 시작하면 딱이겠어요.`;
             return `아침이네요. "${firstTask}"부터 가볍게 시작해볼까요.`;
           } else if (hour < 17) {
-            if (energy >= 70) {
-              return `오후인데 에너지 좋네요. "${firstTask}" 해치워요.`;
-            }
-            return `오후네요. 급한 것만 처리하고 나머지는 내일로 미뤄도 돼요.`;
-          } else {
-            return `저녁이에요. 오늘 ${todoTasks.length}개 남았는데, 무리하지 마세요.`;
+            if (energy >= 70) return `오후인데 에너지 좋네요. "${firstTask}" 해치워요.`;
+            return '급한 것만 처리하고 나머지는 내일로 미뤄도 돼요.';
           }
+          return `저녁이에요. 오늘 ${todoTasks.length}개 남았는데, 무리하지 마세요.`;
         }
         
-        // 할 일 없을 때
-        if (hour < 12) {
-          return '아침이에요. 오늘 뭐 할지 정해뒀어요?';
-        } else if (hour < 17) {
-          return '오후네요. 여유로운 하루 보내고 계시죠?';
-        }
+        if (hour < 12) return '아침이에요. 오늘 뭐 할지 정해뒀어요?';
+        if (hour < 17) return '오후네요. 여유로운 하루 보내고 계시죠?';
         return '저녁이에요. 오늘 하루 어땠어요?';
       };
       
-      setMessages([{ id: 1, type: 'alfredo', text: getInitialGreeting() }]);
+      setMessages([{ id: 'init-1', type: 'alfredo', text: getInitialGreeting() }]);
     }
   }, [initialMessage]);
   
-  // 스크롤 자동 이동
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
   
-  // 컨텍스트 기반 Quick Replies
   const getQuickReplies = () => {
-    // contextQuickReplies가 있고 아직 첫 메시지 상태면 사용
     if (contextQuickReplies.length > 0 && messages.length <= 1) {
       return contextQuickReplies;
     }
@@ -178,31 +199,22 @@ const AlfredoChat = ({ onBack, tasks, events, mood, energy, onAddTask, onToggleT
       replies.push({ label: `"${todoTasks[0]?.title?.slice(0, 8)}${todoTasks[0]?.title?.length > 8 ? '...' : ''}" 시작`, key: 'start_first' });
     }
     
-    if (events.length > 0) {
-      replies.push({ label: '다음 일정', key: 'schedule' });
-    }
-    
+    if (events.length > 0) replies.push({ label: '다음 일정', key: 'schedule' });
     replies.push({ label: '할 일 추가', key: 'add_task' });
-    
-    if (energy < 50) {
-      replies.push({ label: '쉬어도 될까?', key: 'rest' });
-    }
+    if (energy < 50) replies.push({ label: '쉬어도 될까?', key: 'rest' });
     
     return replies.slice(0, 4);
   };
   
-  // Quick Reply 처리 (Claude API 사용)
   const handleQuickReply = async (reply) => {
     if (isLoading) return;
     
-    const userId = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const loadingId = `loading-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const userId = `user-${Date.now()}`;
+    const loadingId = `loading-${Date.now()}`;
     
     setMessages(prev => [...prev, { id: userId, type: 'user', text: reply.label }]);
     setShowQuickReplies(false);
     setIsLoading(true);
-    
-    // 로딩 메시지 표시
     setMessages(prev => [...prev, { id: loadingId, type: 'alfredo', text: '...', isLoading: true }]);
     
     try {
@@ -220,9 +232,7 @@ const AlfredoChat = ({ onBack, tasks, events, mood, energy, onAddTask, onToggleT
       ));
     } catch (error) {
       setMessages(prev => prev.map(msg => 
-        msg.id === loadingId 
-          ? { ...msg, text: '죄송해요, 잠시 문제가 생겼어요 🐧', isLoading: false }
-          : msg
+        msg.id === loadingId ? { ...msg, text: '죄송해요, 잠시 문제가 생겼어요 🐧', isLoading: false } : msg
       ));
     }
     
@@ -230,33 +240,35 @@ const AlfredoChat = ({ onBack, tasks, events, mood, energy, onAddTask, onToggleT
     setShowQuickReplies(true);
   };
   
-  // 자유 입력 처리 (Claude API 사용)
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
     
     const userText = input.trim();
-    const userId = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const loadingId = `loading-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const userId = `user-${Date.now()}`;
+    const loadingId = `loading-${Date.now()}`;
+    
+    // 대화로 가르치기 감지
+    const isTeaching = checkTeachingIntent(userText);
     
     setMessages(prev => [...prev, { id: userId, type: 'user', text: userText }]);
     setInput('');
     setShowQuickReplies(false);
     setIsLoading(true);
-    
-    // 키보드 닫기
     inputRef.current?.blur();
-    
-    // 로딩 메시지 표시
     setMessages(prev => [...prev, { id: loadingId, type: 'alfredo', text: '...', isLoading: true }]);
     
     try {
-      // Claude API 호출
       const response = await callClaudeAPI(userText, messages.filter(m => !m.isLoading));
       
-      // 로딩 메시지를 실제 응답으로 교체
+      // 가르치기 감지됐으면 응답에 "기억해둘게요" 추가
+      let responseText = response.text;
+      if (isTeaching && !responseText.includes('기억')) {
+        responseText = '📝 기억해둘게요!\n\n' + responseText;
+      }
+      
       setMessages(prev => prev.map(msg => 
         msg.id === loadingId 
-          ? { ...msg, text: response.text, isLoading: false, action: response.action?.action ? {
+          ? { ...msg, text: responseText, isLoading: false, action: response.action?.action ? {
               type: response.action.action,
               title: response.action.title,
               task: response.action.taskIndex !== undefined ? todoTasks[response.action.taskIndex] : null,
@@ -265,11 +277,8 @@ const AlfredoChat = ({ onBack, tasks, events, mood, energy, onAddTask, onToggleT
           : msg
       ));
     } catch (error) {
-      // 에러 시 폴백
       setMessages(prev => prev.map(msg => 
-        msg.id === loadingId 
-          ? { ...msg, text: '죄송해요, 잠시 문제가 생겼어요. 다시 시도해주세요 🐧', isLoading: false }
-          : msg
+        msg.id === loadingId ? { ...msg, text: '죄송해요, 잠시 문제가 생겼어요. 다시 시도해주세요 🐧', isLoading: false } : msg
       ));
     }
     
@@ -277,18 +286,53 @@ const AlfredoChat = ({ onBack, tasks, events, mood, energy, onAddTask, onToggleT
     setShowQuickReplies(true);
   };
   
-  // 액션 버튼 처리
   const handleAction = (action) => {
     if (action.type === 'start_focus' && action.task && onStartFocus) {
       onStartFocus(action.task);
     } else if (action.type === 'add_task' && action.title && onAddTask) {
       onAddTask(action.title);
-      setMessages(prev => [...prev, { 
-        id: Date.now(), 
-        type: 'alfredo', 
-        text: `"${action.title}" 추가했어요.` 
-      }]);
+      setMessages(prev => [...prev, { id: `add-${Date.now()}`, type: 'alfredo', text: `"${action.title}" 추가했어요.` }]);
     }
+  };
+  
+  // 부정 피드백 모달
+  const NegativeFeedbackModal = () => {
+    if (!showNegativeModal) return null;
+    const msg = messages.find(m => m.id === showNegativeModal);
+    if (!msg) return null;
+    
+    return (
+      <div 
+        className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center"
+        onClick={() => setShowNegativeModal(null)}
+      >
+        <div 
+          className="bg-white rounded-t-2xl w-full max-w-md p-4 pb-8"
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-gray-800">무엇이 아쉬웠나요?</h3>
+            <button onClick={() => setShowNegativeModal(null)} className="p-1">
+              <X size={20} className="text-gray-400" />
+            </button>
+          </div>
+          <p className="text-sm text-gray-500 mb-4">알프레도가 더 잘할 수 있도록 알려주세요</p>
+          <div className="space-y-2">
+            {negativeFeedbackReasons.map(reason => (
+              <button
+                key={reason.id}
+                onClick={() => handleNegativeFeedbackReason(msg.id, msg.text, reason)}
+                className="w-full flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 text-left transition-colors"
+              >
+                <span className="text-xl">{reason.icon}</span>
+                <span className="text-gray-700">{reason.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   };
   
   return (
@@ -342,7 +386,45 @@ const AlfredoChat = ({ onBack, tasks, events, mood, energy, onAddTask, onToggleT
                       <span className="w-2 h-2 bg-[#A996FF] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
                     </div>
                   ) : (
-                    <p className="text-[15px] leading-relaxed text-gray-800 whitespace-pre-line">{msg.text}</p>
+                    <>
+                      <p className="text-[15px] leading-relaxed text-gray-800 whitespace-pre-line">{msg.text}</p>
+                      {/* 피드백 버튼 */}
+                      {!msg.id.startsWith('init-') && (
+                        <div className="flex items-center gap-1 mt-3 pt-2 border-t border-gray-100">
+                          <button
+                            onClick={() => handleFeedback(msg.id, msg.text, 'positive')}
+                            disabled={!!feedbackGiven[msg.id]}
+                            className={`p-1.5 rounded-full transition-all ${
+                              feedbackGiven[msg.id] === 'positive' 
+                                ? 'bg-emerald-100 text-emerald-600' 
+                                : feedbackGiven[msg.id] 
+                                  ? 'text-gray-300 cursor-not-allowed'
+                                  : 'text-gray-400 hover:bg-emerald-50 hover:text-emerald-500'
+                            }`}
+                          >
+                            <ThumbsUp size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleFeedback(msg.id, msg.text, 'negative')}
+                            disabled={!!feedbackGiven[msg.id]}
+                            className={`p-1.5 rounded-full transition-all ${
+                              feedbackGiven[msg.id] === 'negative' 
+                                ? 'bg-red-100 text-red-500' 
+                                : feedbackGiven[msg.id] 
+                                  ? 'text-gray-300 cursor-not-allowed'
+                                  : 'text-gray-400 hover:bg-red-50 hover:text-red-400'
+                            }`}
+                          >
+                            <ThumbsDown size={14} />
+                          </button>
+                          {feedbackGiven[msg.id] && (
+                            <span className="text-[11px] text-gray-400 ml-1">
+                              {feedbackGiven[msg.id] === 'positive' ? '고마워요!' : '알겠어요'}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
                 {msg.action && !msg.isLoading && (
@@ -414,6 +496,9 @@ const AlfredoChat = ({ onBack, tasks, events, mood, energy, onAddTask, onToggleT
           </button>
         </div>
       </div>
+      
+      {/* 부정 피드백 모달 */}
+      <NegativeFeedbackModal />
     </div>
   );
 };
