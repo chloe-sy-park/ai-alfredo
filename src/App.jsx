@@ -734,11 +734,16 @@ function App() {
         return React.createElement(AlfredoChat, Object.assign({}, commonProps, {
           tasks: tasks,
           events: events,
-          onClose: handleCloseChat,
+          onBack: handleCloseChat,
           onAddTask: handleAddTask,
           onUpdateTask: handleUpdateTask,
           onToggleTask: handleToggleTask,
-          onStartFocus: handleStartFocus
+          onStartFocus: handleStartFocus,
+          // 🧬 DNA 인사이트 전달
+          dnaProfile: dnaProfile,
+          getChronotype: getChronotype,
+          getStressLevel: getStressLevel,
+          getPeakHours: getPeakHours
         }));
         
       case 'FOCUS':
