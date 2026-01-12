@@ -3,9 +3,17 @@ export * from './types';
 export { CalendarAnalyzer } from './calendarAnalyzer';
 export { DNAMessageGenerator } from './messageGenerator';
 
+// 새로 추가된 모듈
+export * from './eventClassifier';
+export * from './todayAnalyzer';
+export * from './insightToAction';
+
 import { CalendarAnalyzer } from './calendarAnalyzer';
 import { DNAMessageGenerator } from './messageGenerator';
-import { CalendarEvent, DNAProfile, DNABasedSuggestion } from './types';
+import { CalendarEvent, DNAProfile, DNABasedSuggestion, TodayContext, SpecialEventAlert, BurnoutWarning, AlfredoAction } from './types';
+import { classifyEvents, predictDailyEnergyDrain } from './eventClassifier';
+import { analyzeTodayContext, detectSpecialEvents, analyzeBurnoutRisk, generateContextMessage } from './todayAnalyzer';
+import { getRecommendedActions, determineBriefingTone, getRandomGreeting, formatWithConfidence, insightToNaturalLanguage } from './insightToAction';
 
 /**
  * DNA 엔진 메인 클래스
@@ -14,14 +22,21 @@ import { CalendarEvent, DNAProfile, DNABasedSuggestion } from './types';
 export class DNAEngine {
   private profile: DNAProfile | null = null;
   private messageGenerator: DNAMessageGenerator | null = null;
+  private todayContext: TodayContext | null = null;
+  private events: CalendarEvent[] = [];
 
   /**
    * 캘린더 데이터로 DNA 프로필 생성
    */
   analyzeCalendar(userId: string, events: CalendarEvent[]): DNAProfile {
+    this.events = events;
     const analyzer = new CalendarAnalyzer(events);
     this.profile = analyzer.analyze(userId);
     this.messageGenerator = new DNAMessageGenerator(this.profile);
+    
+    // 오늘 컨텍스트도 함께 분석
+    this.todayContext = analyzeTodayContext(events, this.profile);
+    
     return this.profile;
   }
 
@@ -30,6 +45,26 @@ export class DNAEngine {
    */
   getProfile(): DNAProfile | null {
     return this.profile;
+  }
+
+  /**
+   * 오늘 컨텍스트 가져오기
+   */
+  getTodayContext(): TodayContext | null {
+    if (!this.todayContext && this.events.length > 0) {
+      this.todayContext = analyzeTodayContext(this.events, this.profile || undefined);
+    }
+    return this.todayContext;
+  }
+
+  /**
+   * 오늘 컨텍스트 새로고침
+   */
+  refreshTodayContext(): TodayContext | null {
+    if (this.events.length > 0) {
+      this.todayContext = analyzeTodayContext(this.events, this.profile || undefined);
+    }
+    return this.todayContext;
   }
 
   /**
@@ -111,6 +146,110 @@ export class DNAEngine {
    */
   getChronotype(): 'morning' | 'evening' | 'neutral' | null {
     return this.profile?.chronotype.type || null;
+  }
+
+  // ========== 새로 추가된 메서드 ==========
+
+  /**
+   * 특별 이벤트 알림 가져오기 (발표, 마감 등)
+   */
+  getSpecialAlerts(daysAhead: number = 3): SpecialEventAlert[] {
+    return detectSpecialEvents(this.events, daysAhead);
+  }
+
+  /**
+   * 번아웃 경고 분석
+   */
+  getBurnoutWarning(): BurnoutWarning {
+    return analyzeBurnoutRisk(this.events, this.profile || undefined);
+  }
+
+  /**
+   * 오늘 에너지 소모 예측 (0-100)
+   */
+  getTodayEnergyDrain(): number {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const todayEvents = this.events.filter(e => {
+      const eventDate = new Date(e.start);
+      return eventDate >= today && eventDate < tomorrow;
+    });
+    
+    return predictDailyEnergyDrain(classifyEvents(todayEvents));
+  }
+
+  /**
+   * 현재 상태 기반 추천 액션 가져오기
+   */
+  getRecommendedActions(): AlfredoAction[] {
+    const context = this.getTodayContext();
+    if (!context) return [];
+    return getRecommendedActions(this.profile, context);
+  }
+
+  /**
+   * 브리핑 톤 결정
+   */
+  getBriefingTone(): 'energetic' | 'gentle' | 'supportive' {
+    const context = this.getTodayContext();
+    if (!context) return 'gentle';
+    return determineBriefingTone(this.profile, context);
+  }
+
+  /**
+   * 컨텍스트 기반 인사말
+   */
+  getContextGreeting(): string {
+    const context = this.getTodayContext();
+    if (!context) return '안녕하세요!';
+    return getRandomGreeting(this.profile, context);
+  }
+
+  /**
+   * 컨텍스트 기반 상황 메시지
+   */
+  getContextMessage(): string {
+    const context = this.getTodayContext();
+    if (!context) return '';
+    return generateContextMessage(context);
+  }
+
+  /**
+   * 오늘 바쁜 정도 가져오기
+   */
+  getTodayBusyLevel(): 'light' | 'normal' | 'heavy' | 'extreme' | null {
+    return this.todayContext?.busyLevel || null;
+  }
+
+  /**
+   * 워라밸 상태 가져오기
+   */
+  getWorkLifeBalance(): 'good' | 'moderate' | 'poor' | null {
+    return this.profile?.workLifeBalance.status || null;
+  }
+
+  /**
+   * 미팅 비율 가져오기
+   */
+  getMeetingRatio(): number {
+    return this.profile?.workStyle.meetingRatio || 0;
+  }
+
+  /**
+   * 확신도 기반 문장 포맷
+   */
+  formatWithConfidence(statement: string, confidence: 1 | 2 | 3): string {
+    return formatWithConfidence(statement, confidence);
+  }
+
+  /**
+   * 인사이트를 자연어로 변환
+   */
+  insightToText(type: string, value: any, confidence: 1 | 2 | 3): string {
+    return insightToNaturalLanguage(type as any, value, confidence);
   }
 }
 
