@@ -2,3 +2,4 @@
 export { default as AlfredoStyleSettings } from './AlfredoStyleSettings';
 export { default as AlfredoLearnings } from './AlfredoLearnings';
 export { default as AlfredoUnderstanding } from './AlfredoUnderstanding';
+export { default as AlfredoWeeklyReport } from './AlfredoWeeklyReport';
