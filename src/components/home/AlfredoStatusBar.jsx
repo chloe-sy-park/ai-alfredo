@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { getContextualComment, getTimeBasedTone, getSpecialDayComment, getAlfredoComment } from './AlfredoComments';
 
 // ============================================
-// 🐧 알프레도 표정 시스템 (W1-2)
+// 🐧 W1 강화: 알프레도 표정 시스템
+// 이대표 스타일 + 선제적 반응
 // ============================================
 
 const ALFREDO_EXPRESSIONS = {
@@ -26,18 +28,29 @@ const ALFREDO_EXPRESSIONS = {
   encouraging: { emoji: '🐧💪', label: '응원' },
   comforting: { emoji: '🐧🫂', label: '위로' },
   
-  // 시간대
+  // 시간대 (톤 차별화)
+  dawn: { emoji: '🌅', label: '새벽' },
   morning: { emoji: '☀️', label: '좋은 아침' },
-  afternoon: { emoji: '🐧☕', label: '오후' },
-  evening: { emoji: '🌙', label: '저녁' },
+  activeMorning: { emoji: '⚡', label: '골든타임' },
+  lunch: { emoji: '🍚', label: '점심' },
+  afternoon: { emoji: '☕', label: '오후' },
+  evening: { emoji: '🌆', label: '저녁' },
+  night: { emoji: '🌙', label: '밤' },
+  lateNight: { emoji: '😴', label: '늦은 밤' },
   
   // 특별 상황
   allDone: { emoji: '🏆', label: '완료!' },
   streak: { emoji: '🔥', label: '연속 달성' },
   newDay: { emoji: '🌅', label: '새로운 시작' },
+  
+  // 선제적 상황 (W1 추가)
+  meetingSoon: { emoji: '📅', label: '미팅 임박' },
+  deadlineSoon: { emoji: '⚠️', label: '마감 임박' },
+  needBreak: { emoji: '🧘', label: '쉬어가요' },
+  burnout: { emoji: '💜', label: '무리하지 마세요' },
 };
 
-// 상황에 맞는 표정 결정 함수
+// 상황에 맞는 표정 결정 함수 (W1 강화)
 export const getAlfredoExpression = ({
   completedTasks = 0,
   totalTasks = 0,
@@ -47,7 +60,23 @@ export const getAlfredoExpression = ({
   isInFocus = false,
   streak = 0,
   yesterdayFailed = false,
+  hasUpcomingMeeting = false,
+  hasTodayDeadline = false,
+  minutesSinceBreak = 0,
 }) => {
+  // 선제적 알림 (가장 높은 우선순위)
+  if (hasUpcomingMeeting) {
+    return ALFREDO_EXPRESSIONS.meetingSoon;
+  }
+  
+  if (hasTodayDeadline && energy > 30) {
+    return ALFREDO_EXPRESSIONS.deadlineSoon;
+  }
+  
+  if (minutesSinceBreak >= 120) {
+    return ALFREDO_EXPRESSIONS.needBreak;
+  }
+  
   // 집중 모드
   if (isInFocus) {
     return ALFREDO_EXPRESSIONS.focused;
@@ -71,6 +100,11 @@ export const getAlfredoExpression = ({
   // 어제 실패 - 케어 모드
   if (yesterdayFailed && completedTasks === 0) {
     return ALFREDO_EXPRESSIONS.caring;
+  }
+  
+  // 에너지 매우 낮음 (번아웃 케어)
+  if (energy <= 20) {
+    return ALFREDO_EXPRESSIONS.burnout;
   }
   
   // 에너지 낮음
@@ -100,14 +134,17 @@ export const getAlfredoExpression = ({
     return ALFREDO_EXPRESSIONS.working;
   }
   
-  // 시간대 기반 기본값
-  if (hour < 12) return ALFREDO_EXPRESSIONS.morning;
-  if (hour < 18) return ALFREDO_EXPRESSIONS.afternoon;
-  return ALFREDO_EXPRESSIONS.evening;
+  // 시간대 기반 기본값 (W1 강화 - 세분화)
+  const timeTone = getTimeBasedTone(hour);
+  return ALFREDO_EXPRESSIONS[timeTone.period] || ALFREDO_EXPRESSIONS.default;
 };
 
 // ============================================
-// 🐧 알프레도 한마디 시스템
+// 🐧 W1 강화: 알프레도 한마디 시스템
+// 이대표 스타일 톤앤매너 적용
+// - 직접 질문 금지
+// - 과한 칭찬 금지
+// - 짧고 임팩트있게
 // ============================================
 
 const getStatusMessage = ({
@@ -119,84 +156,83 @@ const getStatusMessage = ({
   nextEventIn = null, // 분 단위
   streak = 0,
   yesterdayFailed = false,
+  isWorking = false,
+  workMinutes = 0,
+  hasUpcomingMeeting = false,
+  hasTodayDeadline = false,
+  minutesSinceBreak = 0,
+  lastBigTaskCompleted = false,
+  consecutiveCompletes = 0,
 }) => {
   const remaining = totalTasks - completedTasks;
   const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
   
-  // 모든 할 일 완료
+  // 컨텍스트 기반 코멘트 시스템 활용 (W1)
+  const contextualMessage = getContextualComment({
+    hour,
+    energy,
+    mood,
+    pendingTasks: remaining,
+    completedToday: completedTasks,
+    streak,
+    isWorking,
+    workMinutes,
+    hasUpcomingMeeting,
+    hasTodayDeadline,
+    minutesSinceBreak,
+    lastBigTaskCompleted,
+    consecutiveCompletes,
+  });
+  
+  // 특별한 날 체크
+  const specialDayMessage = getSpecialDayComment();
+  if (specialDayMessage && Math.random() < 0.3) { // 30% 확률로 특별한 날 메시지
+    return specialDayMessage;
+  }
+  
+  // 선제적 알림이 필요한 상황은 contextualComment가 처리
+  // 그 외 진행 상황 기반 메시지
+  
+  // 모든 할 일 완료 (담백하게)
   if (totalTasks > 0 && completedTasks >= totalTasks) {
-    const messages = [
-      "오늘 할 일 끝! 정말 잘했어요, Boss! 🎉",
-      "완벽해요! 남은 시간은 자유롭게 보내세요 ✨",
-      "대단해요! 오늘 목표 달성! 🏆",
-    ];
-    return messages[Math.floor(Math.random() * messages.length)];
+    return getAlfredoComment('tasks', 'allDone');
   }
   
-  // 어제 실패 케어
-  if (yesterdayFailed && completedTasks === 0) {
-    const messages = [
-      "괜찮아요, 오늘 다시 시작하면 돼요 💜",
-      "어제는 쉬어가는 날이었어요. 오늘 천천히 해봐요.",
-      "새로운 날이에요. 가벼운 것 하나부터 시작해볼까요?",
-    ];
-    return messages[Math.floor(Math.random() * messages.length)];
-  }
-  
-  // 다음 일정 임박
+  // 다음 일정 임박 (선제적)
   if (nextEventIn && nextEventIn <= 30) {
-    return `${nextEventIn}분 후 일정이 있어요. 준비할 시간! ⏰`;
+    return `${nextEventIn}분 후 일정이에요. 준비해요`;
   }
   
-  // 에너지 낮음
-  if (energy <= 30) {
-    const messages = [
-      "에너지가 낮아요. 무리하지 마세요 💜",
-      "쉬어가면서 해요. 급한 건 없어요.",
-      "물 한 잔 마시고 천천히 해봐요 ☕",
-    ];
-    return messages[Math.floor(Math.random() * messages.length)];
+  // 어제 실패 케어 (부드럽게)
+  if (yesterdayFailed && completedTasks === 0) {
+    return getAlfredoComment('encourage', 'afterFailure');
   }
   
-  // 에너지 높음
-  if (energy >= 80 && remaining > 0) {
-    const messages = [
-      "컨디션 좋을 때 어려운 것 먼저! 💪",
-      "에너지 충전 완료! 해치워봐요 🔥",
-      "지금이 골든타임이에요! ✨",
-    ];
-    return messages[Math.floor(Math.random() * messages.length)];
-  }
-  
-  // 진행 중
+  // 진행 중 (과한 칭찬 금지)
   if (completedTasks > 0 && remaining > 0) {
     if (progress >= 70) {
-      return `거의 다 왔어요! ${remaining}개만 더! 💪`;
+      return `거의 다 왔어요. ${remaining}개 남았어요`;
     }
     if (progress >= 50) {
-      return `절반 넘었어요! ${remaining}개 남았어요 👍`;
+      return `절반 넘었어요. ${remaining}개 남았어요`;
     }
-    return `${completedTasks}개 완료! 잘하고 있어요 ✨`;
+    return `${completedTasks}개 완료. 잘 가고 있어요`;
   }
   
-  // 아직 시작 안 함
+  // 아직 시작 안 함 (강요 없이)
   if (completedTasks === 0 && totalTasks > 0) {
-    const messages = [
-      "가벼운 것 하나부터 시작해볼까요?",
-      "오늘 할 일 정리해뒀어요. 시작해봐요! 📋",
-      "작은 것부터 하나씩. 같이 해봐요!",
-    ];
-    return messages[Math.floor(Math.random() * messages.length)];
+    if (energy < 30) {
+      return getAlfredoComment('energy', 'low');
+    }
+    return "가벼운 것 하나부터 시작해봐요";
   }
   
-  // 기본 시간대별 인사
-  if (hour < 12) return "좋은 아침이에요, Boss! ☀️";
-  if (hour < 18) return "오후도 파이팅이에요! ☕";
-  return "하루 마무리 시간이에요 🌙";
+  // 기본: 컨텍스트 기반 코멘트
+  return contextualMessage;
 };
 
 // ============================================
-// 🐧 알프레도 상태바 컴포넌트 (W1-1)
+// 🐧 알프레도 상태바 컴포넌트 (W1 강화)
 // ============================================
 
 const AlfredoStatusBar = ({
@@ -208,6 +244,13 @@ const AlfredoStatusBar = ({
   yesterdayFailed = false,
   nextEventIn = null,
   isInFocus = false,
+  isWorking = false,
+  workMinutes = 0,
+  hasUpcomingMeeting = false,
+  hasTodayDeadline = false,
+  minutesSinceBreak = 0,
+  lastBigTaskCompleted = false,
+  consecutiveCompletes = 0,
   darkMode = false,
   onTap,
   expanded = false,
@@ -216,7 +259,7 @@ const AlfredoStatusBar = ({
   const hour = new Date().getHours();
   const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
   
-  // 표정 결정
+  // 표정 결정 (W1 강화)
   const expression = getAlfredoExpression({
     completedTasks,
     totalTasks,
@@ -226,9 +269,12 @@ const AlfredoStatusBar = ({
     isInFocus,
     streak,
     yesterdayFailed,
+    hasUpcomingMeeting,
+    hasTodayDeadline,
+    minutesSinceBreak,
   });
   
-  // 한마디 결정
+  // 한마디 결정 (W1 강화)
   const message = getStatusMessage({
     completedTasks,
     totalTasks,
@@ -238,14 +284,28 @@ const AlfredoStatusBar = ({
     nextEventIn,
     streak,
     yesterdayFailed,
+    isWorking,
+    workMinutes,
+    hasUpcomingMeeting,
+    hasTodayDeadline,
+    minutesSinceBreak,
+    lastBigTaskCompleted,
+    consecutiveCompletes,
   });
   
-  // 스타일
+  // 시간대 톤 (W1 추가)
+  const timeTone = getTimeBasedTone(hour);
+  
+  // 스타일 (시간대 톤에 따라 미세 조정 가능)
   const bgColor = darkMode 
     ? 'bg-gray-800/95 border-gray-700' 
     : 'bg-white/95 border-[#A996FF]/20';
   const textPrimary = darkMode ? 'text-gray-100' : 'text-gray-800';
   const textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  
+  // 긴급 상태 표시 (선제적 알림)
+  const isUrgent = hasUpcomingMeeting || (hasTodayDeadline && energy > 30);
+  const needsRest = minutesSinceBreak >= 120 || energy <= 20;
   
   return (
     <div className={`sticky top-0 z-40 ${bgColor} backdrop-blur-xl border-b shadow-sm transition-all duration-300`}>
@@ -256,7 +316,11 @@ const AlfredoStatusBar = ({
       >
         {/* 알프레도 아바타 + 표정 */}
         <div className="relative shrink-0">
-          <div className="w-10 h-10 bg-gradient-to-br from-[#A996FF] to-[#8B7CF7] rounded-xl flex items-center justify-center shadow-md">
+          <div className={`w-10 h-10 bg-gradient-to-br from-[#A996FF] to-[#8B7CF7] rounded-xl flex items-center justify-center shadow-md ${
+            isUrgent ? 'ring-2 ring-amber-400 ring-offset-2' : ''
+          } ${
+            needsRest ? 'ring-2 ring-purple-400 ring-offset-2' : ''
+          }`}>
             <span className="text-lg">{expression.emoji.includes('🐧') ? '🐧' : expression.emoji}</span>
           </div>
           {/* 상태 뱃지 */}
@@ -329,6 +393,17 @@ const AlfredoStatusBar = ({
               <p className={`text-[11px] ${textSecondary}`}>연속</p>
             </div>
           </div>
+          
+          {/* 시간대 톤 표시 (W1 추가) */}
+          <div className={`mt-3 text-center text-xs ${textSecondary}`}>
+            {timeTone.tone === 'focused' && '⚡ 지금이 골든타임이에요'}
+            {timeTone.tone === 'quiet' && '🌅 조용한 새벽이에요'}
+            {timeTone.tone === 'relaxed' && '☕ 잠깐 쉬어가도 돼요'}
+            {timeTone.tone === 'practical' && '📋 하나씩 처리해요'}
+            {timeTone.tone === 'warm' && '🌆 하루 마무리 시간이에요'}
+            {timeTone.tone === 'soft' && '🌙 무리하지 마세요'}
+            {timeTone.tone === 'concerned' && '😴 이제 쉬어야 해요'}
+          </div>
         </div>
       )}
     </div>
@@ -336,4 +411,4 @@ const AlfredoStatusBar = ({
 };
 
 export default AlfredoStatusBar;
-export { getStatusMessage };
+export { getStatusMessage, getAlfredoExpression, ALFREDO_EXPRESSIONS };
