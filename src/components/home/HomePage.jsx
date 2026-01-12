@@ -165,6 +165,7 @@ export var HomePage = function(props) {
   var onOpenEvent = props.onOpenEvent;
   var onOpenChat = props.onOpenChat;
   var onStartFocus = props.onStartFocus;
+  var onStartBodyDoubling = props.onStartBodyDoubling;
   var userName = props.userName || 'Boss';
   
   // 🧬 DNA 인사이트 props
@@ -295,13 +296,21 @@ export var HomePage = function(props) {
     }
   };
   
-  // 태스크 시작
+  // 태스크 시작 (집중 모드)
   var handleStartTask = function(task) {
     if (!task) return;
     if (onStartFocus) {
       onStartFocus(task);
     } else if (onOpenTask) {
       onOpenTask(task);
+    }
+  };
+  
+  // 태스크 시작 (바디더블링)
+  var handleStartBodyDoubling = function(task) {
+    if (!task) return;
+    if (onStartBodyDoubling) {
+      onStartBodyDoubling(task);
     }
   };
   
@@ -454,6 +463,7 @@ export var HomePage = function(props) {
               task: focusTask,
               darkMode: false,
               onStart: handleStartTask,
+              onStartBodyDoubling: handleStartBodyDoubling,
               onLater: function() {},
               onAddTask: onOpenAddTask
             })
