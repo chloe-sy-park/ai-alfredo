@@ -6,6 +6,7 @@ import {
 
 // 페이지 컴포넌트
 import HomePage from './components/home/HomePage';
+import Onboarding from './components/home/Onboarding';
 import WorkPage from './components/work/WorkPage';
 import CalendarPage from './components/calendar/CalendarPage';
 import LifePage from './components/life/LifePage';
@@ -55,7 +56,8 @@ var STORAGE_KEYS = {
   RELATIONSHIPS: 'lifebutler_relationships',
   USER_SETTINGS: 'lifebutler_user_settings',
   MOOD_ENERGY: 'lifebutler_mood_energy',
-  STREAK_DATA: 'lifebutler_streak_data'
+  STREAK_DATA: 'lifebutler_streak_data',
+  ONBOARDING_COMPLETE: 'lifebutler_onboarding_complete'
 };
 
 // localStorage에서 데이터 로드
@@ -111,6 +113,13 @@ function formatTime(dateString) {
 // ============================================================
 
 function App() {
+  // 🐧 온보딩 상태 (W2)
+  var onboardingState = useState(function() {
+    return !localStorage.getItem(STORAGE_KEYS.ONBOARDING_COMPLETE);
+  });
+  var showOnboarding = onboardingState[0];
+  var setShowOnboarding = onboardingState[1];
+  
   // 현재 페이지 상태
   var pageState = useState('HOME');
   var currentPage = pageState[0];
@@ -372,6 +381,37 @@ function App() {
   // 핸들러 함수들
   // ============================================================
   
+  // 컨디션 업데이트 (1-5)
+  var handleUpdateCondition = useCallback(function(newCondition) {
+    setMoodEnergy(function(prev) {
+      return Object.assign({}, prev, {
+        condition: newCondition,
+        lastUpdated: new Date().toISOString()
+      });
+    });
+  }, []);
+  
+  // 🐧 온보딩 완료 핸들러 (W2)
+  var handleOnboardingComplete = useCallback(function(data) {
+    // 완료 상태 저장
+    localStorage.setItem(STORAGE_KEYS.ONBOARDING_COMPLETE, 'true');
+    
+    // 컨디션 저장
+    if (data && data.condition) {
+      handleUpdateCondition(data.condition);
+    }
+    
+    // 온보딩 닫기
+    setShowOnboarding(false);
+  }, [handleUpdateCondition]);
+  
+  // 🐧 온보딩 중 캘린더 연결 (W2)
+  var handleOnboardingCalendarConnect = useCallback(function() {
+    if (connect) {
+      connect();
+    }
+  }, [connect]);
+  
   // 네비게이션
   var handleNavigate = useCallback(function(page) {
     setCurrentPage(page);
@@ -474,16 +514,6 @@ function App() {
   var handleUpdateMoodEnergy = useCallback(function(updates) {
     setMoodEnergy(function(prev) {
       return Object.assign({}, prev, updates, {
-        lastUpdated: new Date().toISOString()
-      });
-    });
-  }, []);
-  
-  // 컨디션 업데이트 (1-5)
-  var handleUpdateCondition = useCallback(function(newCondition) {
-    setMoodEnergy(function(prev) {
-      return Object.assign({}, prev, {
-        condition: newCondition,
         lastUpdated: new Date().toISOString()
       });
     });
@@ -670,6 +700,17 @@ function App() {
   // ============================================================
   // 렌더링
   // ============================================================
+  
+  // 🐧 온보딩 표시 (W2 - 첫 방문 시)
+  if (showOnboarding) {
+    return React.createElement(Onboarding, {
+      onComplete: handleOnboardingComplete,
+      onCalendarConnect: handleOnboardingCalendarConnect,
+      isCalendarConnected: isConnected,
+      calendarEvents: events,
+      weather: weather
+    });
+  }
   
   // 메인 콘텐츠 렌더링
   var renderContent = function() {
