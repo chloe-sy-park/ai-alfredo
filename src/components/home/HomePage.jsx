@@ -6,6 +6,8 @@ import TodayTimelineMinimal from './TodayTimelineMinimal';
 import DNAInsightCard from './DNAInsightCard';
 import { NudgeStack, useNudges } from './FloatingNudge';
 import { useGamification, XpGainToast, LevelUpModal } from '../gamification/LevelSystem';
+import EveningBriefing from './EveningBriefing';
+import { ConditionQuickChange } from './ConditionQuickChange';
 
 // 요일 이름
 var DAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -22,6 +24,15 @@ var getWeatherIcon = function(weather, isNight) {
     return React.createElement(Cloud, { size: 18, className: 'text-gray-400' });
   }
   return React.createElement(Sun, { size: 18, className: 'text-yellow-500' });
+};
+
+// 시간대 구분 (브리핑 분기용)
+var getTimePhase = function() {
+  var hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return 'morning';     // 아침 브리핑
+  if (hour >= 12 && hour < 17) return 'afternoon';  // 오후
+  if (hour >= 17 && hour < 21) return 'evening';    // 저녁 브리핑
+  return 'night';                                    // 나이트 모드
 };
 
 // 컨디션 이모지
@@ -152,7 +163,7 @@ var ConditionCheckModal = function(props) {
   );
 };
 
-// 🏠 홈페이지 (Sticky 알프레도 + 나이트모드 + 플로팅 넛지)
+// 🏠 홈페이지 (시간대별 브리핑 자동 전환)
 export var HomePage = function(props) {
   var darkMode = props.darkMode;
   var tasks = props.tasks || [];
@@ -185,10 +196,6 @@ export var HomePage = function(props) {
   var condition = conditionState[0];
   var setCondition = conditionState[1];
   
-  var showConditionPickerState = useState(false);
-  var showConditionPicker = showConditionPickerState[0];
-  var setShowConditionPicker = showConditionPickerState[1];
-  
   var showConditionModalState = useState(false);
   var showConditionModal = showConditionModalState[0];
   var setShowConditionModal = showConditionModalState[1];
@@ -203,8 +210,10 @@ export var HomePage = function(props) {
   // 시간 체크
   var now = new Date();
   var hour = now.getHours();
+  var timePhase = getTimePhase();
   var isNightTime = hour >= 21 || hour < 5;
   var isNightMode = isNightTime && !forceNormalView;
+  var isEveningMode = timePhase === 'evening' && !forceNormalView;
   
   // 에너지 레벨 계산 (컨디션 기반)
   var energyLevel = useMemo(function() {
@@ -282,7 +291,7 @@ export var HomePage = function(props) {
       minutesUntil: urgentEvent.diffMin 
     } : null,
     todayDeadlines: todayDeadlines,
-    minutesSinceBreak: 0, // TODO: 실제 휴식 트래킹 구현
+    minutesSinceBreak: 0,
     weather: weather,
     refreshInterval: 60000
   });
@@ -303,10 +312,8 @@ export var HomePage = function(props) {
         }
         break;
       case 'takeBreak':
-        // TODO: 휴식 모드 구현
         break;
       case 'rest':
-        // 휴식 안내
         break;
       case 'prioritize':
         if (onOpenAddTask) {
@@ -368,7 +375,6 @@ export var HomePage = function(props) {
   var handleConditionChange = function(newCondition) {
     setCondition(newCondition);
     if (setMood) setMood(newCondition);
-    setShowConditionPicker(false);
     setShowConditionModal(false);
     
     localStorage.setItem('lastConditionCheck', new Date().toDateString());
@@ -399,17 +405,18 @@ export var HomePage = function(props) {
   // 배경색
   var bgColor = isNightMode 
     ? 'bg-gradient-to-b from-[#0f0f1a] to-[#1a1a2e]'
-    : 'bg-[#F5F5F7]';
+    : isEveningMode
+      ? 'bg-gradient-to-b from-[#ffecd2] to-[#F5F5F7]'
+      : 'bg-[#F5F5F7]';
   
   return React.createElement('div', {
     className: 'min-h-screen flex flex-col ' + bgColor,
     style: {
-      // iOS safe area 대응
       paddingTop: 'env(safe-area-inset-top)',
       paddingBottom: 'env(safe-area-inset-bottom)'
     }
   },
-    // ====== STICKY 영역: 헤더 + 알프레도 ======
+    // ====== STICKY 영역: 헤더 ======
     React.createElement('div', {
       className: 'sticky top-0 z-40 ' + (isNightMode ? 'bg-[#0f0f1a]/95' : 'bg-[#F5F5F7]/95') + ' backdrop-blur-md',
       style: {
@@ -436,32 +443,17 @@ export var HomePage = function(props) {
             )
           ),
           
-          // 오른쪽: 컨디션 + 설정
+          // 오른쪽: 컨디션 퀵체인지 + 설정
           React.createElement('div', { className: 'flex items-center gap-1' },
-            // 컨디션 - 터치 타겟 확대
-            React.createElement('div', { className: 'relative' },
-              React.createElement('button', {
-                className: 'text-xl min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-colors ' +
-                  (isNightMode ? 'hover:bg-white/10 active:bg-white/20' : 'hover:bg-gray-200 active:bg-gray-300'),
-                onClick: function() { setShowConditionPicker(!showConditionPicker); }
-              }, condition > 0 ? CONDITION_EMOJI[condition - 1] : '❓'),
-              
-              // 컨디션 피커
-              showConditionPicker && React.createElement('div', {
-                className: 'absolute right-0 top-full mt-2 bg-white rounded-xl shadow-lg border p-2 flex gap-1 z-50'
-              },
-                CONDITION_EMOJI.map(function(emoji, index) {
-                  return React.createElement('button', {
-                    key: index,
-                    className: 'text-xl min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-gray-100 active:bg-purple-100 rounded-lg transition-colors ' +
-                      (condition === index + 1 ? 'bg-purple-100' : ''),
-                    onClick: function() { handleConditionChange(index + 1); }
-                  }, emoji);
-                })
-              )
-            ),
+            // 컨디션 퀵체인지 (새 컴포넌트)
+            React.createElement(ConditionQuickChange, {
+              condition: condition,
+              onConditionChange: handleConditionChange,
+              darkMode: isNightMode,
+              variant: 'mini'
+            }),
             
-            // 설정 - 터치 타겟 확대
+            // 설정
             React.createElement('button', {
               className: 'min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-colors ' +
                 (isNightMode ? 'hover:bg-white/10 active:bg-white/20' : 'hover:bg-gray-200 active:bg-gray-300'),
@@ -482,15 +474,14 @@ export var HomePage = function(props) {
         diffMin: urgentEvent.diffMin
       }),
       
-      // 알프레도 아일랜드 (항상 보임)
-      !isNightMode && React.createElement(AlfredoIslandMinimal, {
+      // 알프레도 아일랜드 (아침/오후에만)
+      !isNightMode && !isEveningMode && React.createElement(AlfredoIslandMinimal, {
         tasks: tasks,
         events: todayEvents,
         condition: condition,
         userName: userName,
         urgentEvent: urgentEvent,
         onOpenChat: onOpenChat,
-        // 🧬 DNA 인사이트
         dnaProfile: dnaProfile,
         dnaSuggestions: dnaSuggestions,
         dnaAnalysisPhase: dnaAnalysisPhase,
@@ -503,16 +494,10 @@ export var HomePage = function(props) {
       }),
       
       // 하단 그라데이션 페이드
-      !isNightMode && React.createElement('div', {
+      !isNightMode && !isEveningMode && React.createElement('div', {
         className: 'h-4 bg-gradient-to-b from-[#F5F5F7]/95 to-transparent'
       })
     ),
-    
-    // 배경 클릭으로 피커 닫기
-    showConditionPicker && React.createElement('div', {
-      className: 'fixed inset-0 z-30',
-      onClick: function() { setShowConditionPicker(false); }
-    }),
     
     // ====== 스크롤 콘텐츠 영역 ======
     isNightMode
@@ -521,45 +506,75 @@ export var HomePage = function(props) {
           tasks: tasks,
           onViewDetails: function() { setForceNormalView(true); }
         })
-      : React.createElement('div', { 
-          className: 'flex-1 overflow-y-auto',
-          style: {
-            paddingBottom: 'calc(96px + env(safe-area-inset-bottom))',
-            WebkitOverflowScrolling: 'touch'
-          }
-        },
-          // 🧬 DNA 인사이트 카드
-          React.createElement(DNAInsightCard, {
-            dnaProfile: dnaProfile,
-            dnaAnalysisPhase: dnaAnalysisPhase,
-            dnaSuggestions: dnaSuggestions,
-            getBestFocusTime: getBestFocusTime,
-            getChronotype: getChronotype,
-            getStressLevel: getStressLevel,
-            getPeakHours: getPeakHours
-          }),
-          
-          // 지금 이거부터
-          React.createElement('div', { className: 'mx-4 mt-2' },
-            React.createElement(FocusNowCard, {
-              task: focusTask,
+      : isEveningMode
+        ? // 저녁 브리핑 모드
+          React.createElement('div', { 
+            className: 'flex-1 overflow-y-auto px-4',
+            style: {
+              paddingBottom: 'calc(96px + env(safe-area-inset-bottom))',
+              WebkitOverflowScrolling: 'touch'
+            }
+          },
+            React.createElement(EveningBriefing, {
               darkMode: false,
-              onStart: handleStartTask,
-              onStartBodyDoubling: handleStartBodyDoubling,
-              onLater: function() {},
+              condition: condition,
+              tasks: tasks,
+              events: events,
+              userName: userName,
+              onTapAlfredo: onOpenChat,
+              onViewTomorrow: function() { if (setView) setView('CALENDAR'); }
+            }),
+            
+            // 오늘 타임라인 (간략)
+            React.createElement(TodayTimelineMinimal, {
+              events: todayEvents,
+              tasks: tasks,
+              onStartTask: handleStartTask,
+              onOpenEvent: onOpenEvent,
+              onAddTask: onOpenAddTask,
+              compact: true
+            })
+          )
+        : // 아침/오후 일반 모드
+          React.createElement('div', { 
+            className: 'flex-1 overflow-y-auto',
+            style: {
+              paddingBottom: 'calc(96px + env(safe-area-inset-bottom))',
+              WebkitOverflowScrolling: 'touch'
+            }
+          },
+            // DNA 인사이트 카드
+            React.createElement(DNAInsightCard, {
+              dnaProfile: dnaProfile,
+              dnaAnalysisPhase: dnaAnalysisPhase,
+              dnaSuggestions: dnaSuggestions,
+              getBestFocusTime: getBestFocusTime,
+              getChronotype: getChronotype,
+              getStressLevel: getStressLevel,
+              getPeakHours: getPeakHours
+            }),
+            
+            // 지금 이거부터
+            React.createElement('div', { className: 'mx-4 mt-2' },
+              React.createElement(FocusNowCard, {
+                task: focusTask,
+                darkMode: false,
+                onStart: handleStartTask,
+                onStartBodyDoubling: handleStartBodyDoubling,
+                onLater: function() {},
+                onAddTask: onOpenAddTask
+              })
+            ),
+            
+            // 오늘 타임라인
+            React.createElement(TodayTimelineMinimal, {
+              events: todayEvents,
+              tasks: tasks,
+              onStartTask: handleStartTask,
+              onOpenEvent: onOpenEvent,
               onAddTask: onOpenAddTask
             })
           ),
-          
-          // 오늘 타임라인
-          React.createElement(TodayTimelineMinimal, {
-            events: todayEvents,
-            tasks: tasks,
-            onStartTask: handleStartTask,
-            onOpenEvent: onOpenEvent,
-            onAddTask: onOpenAddTask
-          })
-        ),
     
     // 🔔 플로팅 넛지 (선제적 대화)
     !isNightMode && nudgeData.nudges.length > 0 && React.createElement(NudgeStack, {
