@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Briefcase, Heart, Clock } from 'lucide-react';
+import { Play, Briefcase, Heart, Clock, Users } from 'lucide-react';
 
 // 카테고리 판단
 var getCategory = function(title) {
@@ -65,6 +65,7 @@ var getRecommendReason = function(task) {
 export var FocusNowCard = function(props) {
   var task = props.task;
   var onStart = props.onStart;
+  var onStartBodyDoubling = props.onStartBodyDoubling;
   var onLater = props.onLater;
   var onAddTask = props.onAddTask;
   
@@ -142,7 +143,7 @@ export var FocusNowCard = function(props) {
         )
       ),
       
-      // 버튼들
+      // 버튼들 - 3개 버튼
       React.createElement('div', { className: 'flex items-center gap-2' },
         // 나중에
         React.createElement('button', {
@@ -151,14 +152,24 @@ export var FocusNowCard = function(props) {
             'bg-gray-100 text-gray-600 hover:bg-gray-200 active:bg-gray-300'
         }, '나중에'),
         
+        // 같이 하기 (바디더블링)
+        onStartBodyDoubling && React.createElement('button', {
+          onClick: function() { onStartBodyDoubling(task); },
+          className: 'flex-1 min-h-[48px] py-3 rounded-xl text-sm font-medium transition-all active:scale-95 ' +
+            'bg-indigo-100 text-indigo-600 hover:bg-indigo-200 active:bg-indigo-300 flex items-center justify-center gap-1.5'
+        },
+          React.createElement(Users, { size: 16 }),
+          '같이'
+        ),
+        
         // 시작하기
         React.createElement('button', {
           onClick: function() { if (onStart) onStart(task); },
-          className: 'flex-[2] min-h-[48px] py-3 rounded-xl text-sm font-bold transition-all active:scale-95 ' +
+          className: 'flex-[1.5] min-h-[48px] py-3 rounded-xl text-sm font-bold transition-all active:scale-95 ' +
             'bg-[#A996FF] text-white hover:bg-[#8B7CF7] active:bg-[#7B6AE0] flex items-center justify-center gap-2'
         },
           React.createElement(Play, { size: 18, className: 'fill-current' }),
-          '시작하기'
+          '시작'
         )
       )
     )
