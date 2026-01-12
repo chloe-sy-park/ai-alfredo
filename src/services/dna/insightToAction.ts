@@ -13,8 +13,8 @@ import {
   CONFIDENCE_EXPRESSIONS
 } from './types';
 
-// 인사이트별 액션 매핑 테이블
-const INSIGHT_ACTION_MAP: InsightAction[] = [
+// 인사이트별 액션 매핑 테이블 (참조용 문서화)
+export const INSIGHT_ACTION_MAP: InsightAction[] = [
   // 크로노타입
   {
     insight: 'chronotype',
