@@ -8,6 +8,11 @@ import {
 // Other Components
 import GoogleAuthModal from '../modals/GoogleAuthModal';
 
+// 알프레도 육성 시스템 컴포넌트
+import AlfredoStyleSettings from '../alfredo/AlfredoStyleSettings';
+import AlfredoLearnings from '../alfredo/AlfredoLearnings';
+import AlfredoUnderstanding from '../alfredo/AlfredoUnderstanding';
+
 // 훅
 import { usePushNotifications } from '../../hooks/usePushNotifications';
 import { useGoogleDrive } from '../../hooks/useGoogleDrive';
@@ -34,6 +39,9 @@ const SettingsPage = ({
   });
   
   const [showTimePicker, setShowTimePicker] = useState(null);
+  
+  // 알프레도 육성 관련 state
+  const [alfredoLearnings, setAlfredoLearnings] = useState([]);
   
   // Google Auth Modal state
   const [authModal, setAuthModal] = useState({ isOpen: false, service: null });
@@ -325,7 +333,33 @@ const SettingsPage = ({
           </div>
         </div>
         
-        {/* ☁️ 클라우드 동기화 섹션 (새로 추가) */}
+        {/* 🐧 알프레도 육성 시스템 - NEW! */}
+        <div className="space-y-4">
+          {/* 알프레도 이해도 게이지 */}
+          <AlfredoUnderstanding 
+            darkMode={darkMode} 
+            learnings={alfredoLearnings}
+          />
+          
+          {/* 알프레도 스타일 설정 */}
+          <AlfredoStyleSettings 
+            darkMode={darkMode}
+            onStyleChange={(style) => {
+              // 스타일 변경 시 처리 (추후 채팅 시스템에 연동)
+              console.log('Alfredo style changed:', style);
+            }}
+          />
+          
+          {/* 알프레도가 배운 것 */}
+          <AlfredoLearnings 
+            darkMode={darkMode}
+            onLearningChange={(learnings) => {
+              setAlfredoLearnings(learnings);
+            }}
+          />
+        </div>
+        
+        {/* ☁️ 클라우드 동기화 섹션 */}
         <div className={`${cardBg} backdrop-blur-xl rounded-xl p-4`}>
           <h3 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2`}>
             <Cloud size={18} className="text-[#A996FF]" />
@@ -625,11 +659,11 @@ const SettingsPage = ({
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
               <span className={textSecondary}>버전</span>
-              <span className={`${textPrimary} font-medium`}>1.2.0</span>
+              <span className={`${textPrimary} font-medium`}>1.3.0</span>
             </div>
             <div className="flex justify-between">
               <span className={textSecondary}>빌드</span>
-              <span className={`${textPrimary} font-medium`}>2024.12</span>
+              <span className={`${textPrimary} font-medium`}>2025.01</span>
             </div>
             <div className="flex justify-between">
               <span className={textSecondary}>플랫폼</span>
@@ -715,7 +749,9 @@ const SettingsPage = ({
                   'lifebutler_view', 'lifebutler_gameState', 'lifebutler_projects',
                   'lifebutler_medications', 'lifebutler_routines', 'lifebutler_lifeTop3',
                   'lifebutler_upcomingItems', 'lifebutler_dontForgetItems',
-                  'lifebutler_relationshipItems', 'lifebutler_healthCheck'
+                  'lifebutler_relationshipItems', 'lifebutler_healthCheck',
+                  'alfredo_tone_warmth', 'alfredo_notification_freq',
+                  'alfredo_data_depth', 'alfredo_motivation_style', 'alfredo_learnings'
                 ];
                 keysToDelete.forEach(key => localStorage.removeItem(key));
                 window.location.reload();
