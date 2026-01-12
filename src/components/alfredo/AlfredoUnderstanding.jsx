@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { getLearnings, getLearningStats, calculateUnderstandingScore } from '../../utils/alfredoLearning';
+import AlfredoWeeklyReport from './AlfredoWeeklyReport';
 
 /**
- * 알프레도 이해도 게이지 컴포넌트
+ * 알프레도 이해도 게이지 컴포넌트 (Phase 3)
  * - calculateUnderstandingScore 연동
  * - 피드백 통계 표시
  * - 레벨/칭호 시스템
+ * - 주간 성장 리포트 버튼
  */
 var AlfredoUnderstanding = function(props) {
   var darkMode = props.darkMode;
@@ -21,6 +23,11 @@ var AlfredoUnderstanding = function(props) {
   var _learningsState = useState(function() { return getLearnings(); });
   var learnings = _learningsState[0];
   var setLearnings = _learningsState[1];
+  
+  // 주간 리포트 모달
+  var _reportState = useState(false);
+  var showReport = _reportState[0];
+  var setShowReport = _reportState[1];
   
   // 데이터 새로고침
   var refreshData = function() {
@@ -46,7 +53,22 @@ var AlfredoUnderstanding = function(props) {
     return { level: 20, title: '당신의 모든 것을 아는 펭귄', emoji: '✨' };
   };
   
+  // 다음 레벨까지 필요한 점수
+  var getNextLevelProgress = function(score) {
+    var thresholds = [20, 35, 50, 65, 80, 95, 100];
+    for (var i = 0; i < thresholds.length; i++) {
+      if (score < thresholds[i]) {
+        var prevThreshold = i === 0 ? 0 : thresholds[i - 1];
+        var progress = ((score - prevThreshold) / (thresholds[i] - prevThreshold)) * 100;
+        var remaining = thresholds[i] - score;
+        return { progress: progress, remaining: remaining, nextThreshold: thresholds[i] };
+      }
+    }
+    return { progress: 100, remaining: 0, nextThreshold: 100 };
+  };
+  
   var levelInfo = getLevelAndTitle(understandingScore);
+  var nextLevel = getNextLevelProgress(understandingScore);
   
   // 최근 학습 (최신 3개)
   var recentLearnings = learnings.slice(-3).reverse();
@@ -79,8 +101,6 @@ var AlfredoUnderstanding = function(props) {
   // 프로그레스 바 컴포넌트
   var ProgressBar = function(barProps) {
     var value = barProps.value;
-    var prevValue = barProps.prevValue || 0;
-    var change = value - prevValue;
     
     return React.createElement('div', { className: 'relative' },
       React.createElement('div', { 
@@ -90,30 +110,39 @@ var AlfredoUnderstanding = function(props) {
           className: 'h-full bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] rounded-full transition-all duration-500',
           style: { width: value + '%' }
         })
-      ),
-      change > 0 && React.createElement('span', { 
-        className: 'absolute -top-1 right-0 text-xs text-emerald-500 font-medium'
-      }, '+' + change + '%')
+      )
     );
   };
   
   return React.createElement('div', { className: bgCard + ' backdrop-blur-xl rounded-xl p-4' },
-    // 헤더
+    // 헤더 + 주간 리포트 버튼
     React.createElement('div', { className: 'flex items-center justify-between mb-4' },
       React.createElement('h3', { className: textPrimary + ' font-bold flex items-center gap-2' },
         React.createElement('span', { className: 'text-xl' }, '🧠'),
         '알프레도가 당신을 이해하는 정도'
+      ),
+      React.createElement('button', {
+        onClick: function() { setShowReport(true); },
+        className: 'text-xs px-2 py-1 rounded-full bg-gradient-to-r from-[#A996FF] to-[#8B7CF7] text-white hover:opacity-90 transition-opacity flex items-center gap-1'
+      },
+        React.createElement('span', null, '📊'),
+        '주간 리포트'
       )
     ),
     
-    // 메인 스코어
+    // 메인 스코어 + 레벨 표시
     React.createElement('div', { className: 'text-center mb-4' },
-      React.createElement('div', { className: 'text-4xl font-bold text-[#A996FF] mb-1' },
+      React.createElement('div', { className: 'inline-flex items-center gap-2 bg-gradient-to-r from-[#A996FF]/20 to-[#8B7CF7]/20 px-4 py-2 rounded-full mb-3' },
+        React.createElement('span', { className: 'text-2xl' }, levelInfo.emoji),
+        React.createElement('span', { className: textPrimary + ' font-medium' }, 
+          'Lv.' + levelInfo.level + ' ' + levelInfo.title
+        )
+      ),
+      React.createElement('div', { className: 'text-5xl font-bold text-[#A996FF] mb-2' },
         understandingScore + '%'
       ),
-      React.createElement('p', { className: textSecondary + ' text-sm flex items-center justify-center gap-1' },
-        React.createElement('span', null, levelInfo.emoji),
-        'Lv.' + levelInfo.level + ' "' + levelInfo.title + '"'
+      nextLevel.remaining > 0 && React.createElement('p', { className: textSecondary + ' text-xs' },
+        '다음 레벨까지 ' + nextLevel.remaining + '% 남음'
       )
     ),
     
@@ -122,22 +151,30 @@ var AlfredoUnderstanding = function(props) {
       React.createElement(ProgressBar, { value: understandingScore })
     ),
     
-    // 피드백 통계
-    stats.totalFeedbacks > 0 && React.createElement('div', {
-      className: (darkMode ? 'bg-gray-700/50' : 'bg-[#F5F3FF]') + ' rounded-xl p-3 mb-4'
-    },
-      React.createElement('div', { className: 'flex items-center justify-between text-xs' },
-        React.createElement('div', { className: 'flex items-center gap-4' },
-          React.createElement('span', { className: textSecondary },
-            '학습 ' + stats.totalLearnings + '개'
-          ),
-          React.createElement('span', { className: textSecondary },
-            '피드백 ' + stats.totalFeedbacks + '개'
-          )
+    // 피드백 통계 카드
+    React.createElement('div', { className: 'grid grid-cols-3 gap-2 mb-4' },
+      // 총 학습
+      React.createElement('div', { 
+        className: (darkMode ? 'bg-gray-700/50' : 'bg-[#F5F3FF]') + ' rounded-lg p-2 text-center'
+      },
+        React.createElement('p', { className: 'text-lg font-bold text-[#A996FF]' }, stats.totalLearnings || 0),
+        React.createElement('p', { className: textSecondary + ' text-xs' }, '학습')
+      ),
+      // 피드백
+      React.createElement('div', { 
+        className: (darkMode ? 'bg-gray-700/50' : 'bg-[#F5F3FF]') + ' rounded-lg p-2 text-center'
+      },
+        React.createElement('p', { className: 'text-lg font-bold text-[#A996FF]' }, stats.totalFeedbacks || 0),
+        React.createElement('p', { className: textSecondary + ' text-xs' }, '피드백')
+      ),
+      // 긍정률
+      React.createElement('div', { 
+        className: (darkMode ? 'bg-gray-700/50' : 'bg-[#F5F3FF]') + ' rounded-lg p-2 text-center'
+      },
+        React.createElement('p', { className: 'text-lg font-bold text-emerald-500' }, 
+          (stats.positiveRate || 0) + '%'
         ),
-        React.createElement('span', { className: 'text-emerald-500 font-medium' },
-          '👍 ' + stats.positiveRate + '%'
-        )
+        React.createElement('p', { className: textSecondary + ' text-xs' }, '👍 비율')
       )
     ),
     
@@ -150,8 +187,8 @@ var AlfredoUnderstanding = function(props) {
             key: idx,
             className: 'flex items-center gap-2 text-sm ' + textPrimary
           },
-            React.createElement('span', { className: 'text-emerald-500' }, '•'),
-            React.createElement('span', null, '"' + item.content + '"')
+            React.createElement('span', { className: 'text-emerald-500' }, '✓'),
+            React.createElement('span', null, item.content)
           );
         })
       )
@@ -173,18 +210,31 @@ var AlfredoUnderstanding = function(props) {
       )
     ),
     
-    // 메시지
+    // 격려 메시지
     React.createElement('div', { 
-      className: (darkMode ? 'bg-gray-700/50' : 'bg-[#F5F3FF]') + ' rounded-xl p-3 mt-4 text-center'
+      className: (darkMode ? 'bg-gray-700/50' : 'bg-[#F5F3FF]') + ' rounded-xl p-3 mt-4'
     },
-      React.createElement('p', { className: textSecondary + ' text-xs' },
-        understandingScore < 50 
-          ? '💬 "채팅에서 피드백을 주시면 더 빨리 배울 수 있어요"'
-          : understandingScore < 80
-            ? '💬 "점점 더 잘 알아가고 있어요!"'
-            : '💬 "이제 꽤 잘 알게 된 것 같아요!"'
+      React.createElement('div', { className: 'flex items-center gap-3' },
+        React.createElement('span', { className: 'text-2xl' }, '🐧'),
+        React.createElement('p', { className: textSecondary + ' text-sm' },
+          understandingScore < 30 
+            ? '"아직 서로 알아가는 중이에요. 천천히 함께해요!"'
+            : understandingScore < 50 
+              ? '"조금씩 알아가고 있어요! 더 많이 대화해요!"'
+              : understandingScore < 70
+                ? '"점점 더 잘 맞아가는 것 같아요!"'
+                : understandingScore < 90
+                  ? '"이제 꽤 잘 알게 된 것 같아요!"'
+                  : '"이제 당신을 정말 잘 이해해요! ✨"'
+        )
       )
-    )
+    ),
+    
+    // 주간 리포트 모달
+    showReport && React.createElement(AlfredoWeeklyReport, {
+      darkMode: darkMode,
+      onClose: function() { setShowReport(false); }
+    })
   );
 };
 
