@@ -140,6 +140,11 @@ function App() {
   var currentNudge = nudgeState[0];
   var setCurrentNudge = nudgeState[1];
   
+  // 🆕 토스트 상태
+  var toastState = useState(null);
+  var toast = toastState[0];
+  var setToast = toastState[1];
+  
   // 데이터 상태
   var tasksState = useState(function() {
     return loadFromStorage(STORAGE_KEYS.TASKS, mockTasks);
@@ -479,6 +484,14 @@ function App() {
   // 핸들러 함수들
   // ============================================================
   
+  // 🆕 토스트 표시 함수
+  var showToast = useCallback(function(message) {
+    setToast(message);
+    setTimeout(function() {
+      setToast(null);
+    }, 2000);
+  }, []);
+  
   // 컨디션 업데이트 (1-5)
   var handleUpdateCondition = useCallback(function(newCondition) {
     setMoodEnergy(function(prev) {
@@ -656,10 +669,10 @@ function App() {
     setCurrentPage('PROJECTS');
   }, [currentPage]);
   
-  // 리마인더 열기 (임시)
+  // 🔧 FIX: 리마인더 열기 → 토스트로 안내
   var handleOpenReminder = useCallback(function() {
-    console.log('Open reminder');
-  }, []);
+    showToast('리마인더 기능 준비 중이에요 🐧');
+  }, [showToast]);
   
   // 🆕 일기 열기
   var handleOpenJournal = useCallback(function() {
@@ -1134,6 +1147,29 @@ function App() {
       onDismiss: handleDismissNudge,
       onAction: handleNudgeAction
     }),
+    
+    // 🆕 전역 토스트 알림
+    toast && React.createElement('div', {
+      style: {
+        position: 'fixed',
+        bottom: showNavBar ? '96px' : '24px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 9999,
+        animation: 'fadeIn 0.2s ease'
+      }
+    },
+      React.createElement('div', {
+        style: {
+          backgroundColor: '#1F2937',
+          color: 'white',
+          padding: '10px 20px',
+          borderRadius: '9999px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          fontSize: '14px'
+        }
+      }, toast)
+    ),
     
     // 모달들
     React.createElement(AddTaskModal, {
