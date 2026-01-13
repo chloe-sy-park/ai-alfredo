@@ -46,6 +46,7 @@ import { DayEndModal } from './components/common/FailureCareSystem';
 
 // 훅
 import { useGoogleCalendar } from './hooks/useGoogleCalendar';
+import { useGmail } from './hooks/useGmail';
 import { useTimeTracking } from './hooks/useTimeTracking';
 import { useDNAEngine } from './hooks/useDNAEngine';
 
@@ -714,6 +715,30 @@ function App() {
   var refreshEvents = googleCalendar.refreshEvents;
   var googleUserEmail = googleCalendar.userEmail;
   
+  // ============================================================
+  // 📧 Gmail 연동
+  // ============================================================
+  
+  var gmail = useGmail();
+  var gmailEmails = gmail.emails;
+  var gmailActions = gmail.actions;
+  var gmailReplyActions = gmail.replyActions;
+  var gmailUrgentReplyActions = gmail.urgentReplyActions;
+  var gmailStats = gmail.stats;
+  var isGmailEnabled = gmail.isGmailEnabled;
+  var isGmailLoading = gmail.isLoading;
+  var isGmailAnalyzing = gmail.isAnalyzing;
+  var gmailError = gmail.error;
+  var gmailNeedsReauth = gmail.needsReauth;
+  var fetchAndAnalyzeGmail = gmail.fetchAndAnalyze;
+  var toggleGmail = gmail.toggleGmail;
+  var connectGmail = gmail.connectGmail;
+  var forceReconnectGmail = gmail.forceReconnect;
+  var completeGmailAction = gmail.completeAction;
+  var convertGmailToTask = gmail.convertToTask;
+  var getGmailBriefingMessage = gmail.getBriefingMessage;
+  var getGmailLastSyncText = gmail.getLastSyncText;
+  
   // 시간 추적 (향후 사용 예정)
   useTimeTracking();
   
@@ -1183,6 +1208,18 @@ function App() {
     refreshEvents();
   }, [refreshEvents]);
   
+  // 📧 Gmail 액션을 태스크로 변환
+  var handleConvertGmailToTask = useCallback(function(action) {
+    if (convertGmailToTask) {
+      var newTask = convertGmailToTask(action);
+      setTasks(function(prev) { return [newTask].concat(prev); });
+      if (completeGmailAction) {
+        completeGmailAction(action.emailId);
+      }
+      showToast('태스크로 변환되었어요 📝');
+    }
+  }, [convertGmailToTask, completeGmailAction, showToast]);
+  
   // 관계 업데이트
   var handleUpdateRelationship = useCallback(function(updatedRelationship) {
     setRelationships(function(prev) {
@@ -1318,7 +1355,10 @@ function App() {
           getRecommendedActions: getRecommendedActions,
           getBriefingTone: getBriefingTone,
           // 🐧 펭귄 상태바
-          PenguinStatusBar: PenguinStatusBar
+          PenguinStatusBar: PenguinStatusBar,
+          // 📧 Gmail 브리핑
+          gmailBriefing: getGmailBriefingMessage ? getGmailBriefingMessage() : null,
+          gmailStats: gmailStats
         }));
         
       case 'WORK':
@@ -1473,7 +1513,23 @@ function App() {
           onBack: function() { setCurrentPage(previousPage); },
           onOpenChat: handleOpenChat,
           isGoogleConnected: isConnected,
-          onConnectGoogle: function() { setShowGoogleAuth(true); }
+          onConnectGoogle: function() { setShowGoogleAuth(true); },
+          // 📧 Gmail 데이터 연결
+          gmailActions: gmailActions,
+          gmailEmails: gmailEmails,
+          gmailStats: gmailStats,
+          isGmailEnabled: isGmailEnabled,
+          isGmailLoading: isGmailLoading,
+          isGmailAnalyzing: isGmailAnalyzing,
+          gmailError: gmailError,
+          gmailNeedsReauth: gmailNeedsReauth,
+          onFetchGmail: fetchAndAnalyzeGmail,
+          onToggleGmail: toggleGmail,
+          onConnectGmail: connectGmail,
+          onForceReconnectGmail: forceReconnectGmail,
+          onConvertToTask: handleConvertGmailToTask,
+          onCompleteAction: completeGmailAction,
+          getLastSyncText: getGmailLastSyncText
         }));
         
       case 'TOMORROW_PREP':
