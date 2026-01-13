@@ -1,82 +1,57 @@
-import { useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useTaskStore } from '../stores/taskStore';
-// @ts-ignore - NewHomePage는 JSX 파일
-import NewHomePage from '../components/modes/NewHomePage';
+import { useAuthStore } from '../stores/authStore';
 
-/**
- * Home Page - Option A 적용
- * NewHomePage (ModeSwitch + ALL/WORK/LIFE 모드) 사용
- */
 export default function Home() {
-  const navigate = useNavigate();
-  
-  // Stores
-  const { tasks, fetchTasks } = useTaskStore();
-
-  // 초기 데이터 로드
-  useEffect(() => {
-    fetchTasks();
-  }, [fetchTasks]);
-
-  // 하드코딩된 이벤트 (캘린더 연동 전)
-  const events = [
-    { id: '1', title: '팀 스탠드업', startTime: '10:00', duration: '30분', type: 'meeting', importance: 'mid' },
-    { id: '2', title: '디자인 리뷰', startTime: '11:00', duration: '1시간', type: 'meeting', importance: 'high' },
-    { id: '3', title: '집중 작업 시간', startTime: '14:00', duration: '2시간', type: 'focus', importance: 'high' },
-    { id: '4', title: '1:1 미팅', startTime: '16:00', duration: '30분', type: 'meeting', importance: 'mid' }
-  ];
-
-  // 프로젝트 샘플 데이터
-  const projects = [
-    { id: 'proj-1', name: '알프레도 MVP' },
-    { id: 'proj-2', name: '디자인 시스템' },
-    { id: 'proj-3', name: '마케팅 준비' }
-  ];
-
-  // 태스크를 NewHomePage 형식으로 변환
-  const formattedTasks = tasks.map(task => ({
-    id: task.id,
-    title: task.title,
-    completed: task.status === 'done',
-    priority: task.priority || 'medium',
-    project: task.category === 'personal' ? 'personal' : 'work',
-    dueDate: task.due_date
-  }));
-
-  // 네비게이션 핸들러
-  const handleNavigate = useCallback((page: string) => {
-    switch(page) {
-      case 'chat':
-        navigate('/chat');
-        break;
-      case 'settings':
-        navigate('/settings');
-        break;
-      case 'work':
-        navigate('/work');
-        break;
-      case 'life':
-        navigate('/life');
-        break;
-      default:
-        console.log('Navigate to:', page);
-    }
-  }, [navigate]);
-
-  // 태스크 클릭 핸들러
-  const handleTaskClick = useCallback((taskId: string) => {
-    console.log('Task clicked:', taskId);
-    // TODO: 태스크 상세 모달 또는 수정 기능
-  }, []);
+  const { user } = useAuthStore();
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const date = now.getDate();
+  const dayNames = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+  const day = dayNames[now.getDay()];
 
   return (
-    <NewHomePage
-      tasks={formattedTasks}
-      projects={projects}
-      events={events}
-      onNavigate={handleNavigate}
-      onTaskClick={handleTaskClick}
-    />
+    <div className="p-4 space-y-4 max-w-lg mx-auto">
+      {/* 헤더 */}
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">{month}월 {date}일</h1>
+          <p className="text-gray-500">{day}</p>
+        </div>
+      </div>
+
+      {/* 브리핑 카드 */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <div className="flex items-center gap-3 mb-2">
+          <span className="text-2xl">🐧</span>
+          <span className="font-medium">좋은 아침이에요, {user?.name || 'Boss'}</span>
+        </div>
+        <p className="text-sm text-lavender-600">더 들어볼래 &gt;</p>
+      </div>
+
+      {/* 오늘의 우선순위 */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <p className="text-sm text-gray-500 mb-3">오늘의 우선순위</p>
+        <div className="space-y-3">
+          {[
+            { num: 1, title: '알프레도 시작하기', tag: 'LIFE' },
+            { num: 2, title: '오늘의 Top 3 설정하기', tag: 'WORK' },
+            { num: 3, title: '운동 30분', tag: 'LIFE' }
+          ].map((task) => (
+            <div key={task.num} className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                task.num === 1 ? 'bg-lavender-100 text-lavender-600' : 'bg-gray-100 text-gray-500'
+              }`}>
+                {task.num}
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-gray-800">{task.title}</p>
+                <span className={`text-xs px-2 py-0.5 rounded ${
+                  task.tag === 'WORK' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'
+                }`}>{task.tag}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

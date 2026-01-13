@@ -1,51 +1,36 @@
-import { NavLink } from 'react-router-dom';
-import { Home, Briefcase, Heart, MessageCircle, Settings } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Home, Calendar, Briefcase, Heart, MessageCircle } from 'lucide-react';
 
 const navItems = [
-  { to: '/', icon: Home, label: '홈' },
-  { to: '/work', icon: Briefcase, label: '워크' },
-  { to: '/life', icon: Heart, label: '라이프' },
-  { to: '/chat', icon: MessageCircle, label: '채팅' },
-  { to: '/settings', icon: Settings, label: '설정' }
+  { path: '/', icon: Home, label: '홈' },
+  { path: '/calendar', icon: Calendar, label: '캘린더' },
+  { path: '/work', icon: Briefcase, label: '업무' },
+  { path: '/life', icon: Heart, label: '라이프' },
+  { path: '/chat', icon: MessageCircle, label: '알프레도' }
 ];
 
 export default function BottomNav() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
   return (
-    <nav 
-      className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-100 z-50"
-      style={{
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)'
-      }}
-    >
-      <div className="flex justify-around items-center h-16 max-w-lg mx-auto px-2">
-        {navItems.map(({ to, icon: Icon, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) =>
-              `flex flex-col items-center justify-center min-w-[56px] min-h-[56px] transition-all duration-200 ${
-                isActive
-                  ? 'text-lavender-500 scale-105'
-                  : 'text-gray-400 active:text-gray-600 active:scale-95'
-              }`
-            }
-          >
-            {({ isActive }: { isActive: boolean }) => (
-              <>
-                <div className={`p-2 rounded-xl transition-colors ${
-                  isActive ? 'bg-lavender-100' : ''
-                }`}>
-                  <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
-                </div>
-                <span className={`text-xs mt-0.5 font-medium transition-all ${
-                  isActive ? 'opacity-100' : 'opacity-70'
-                }`}>
-                  {label}
-                </span>
-              </>
-            )}
-          </NavLink>
-        ))}
+    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-50">
+      <div className="flex justify-around items-center h-16 max-w-lg mx-auto">
+        {navItems.map((item) => {
+          const isActive = location.pathname === item.path;
+          return (
+            <button
+              key={item.path}
+              onClick={() => navigate(item.path)}
+              className={`flex flex-col items-center justify-center w-16 h-full transition-colors ${
+                isActive ? 'text-lavender-500' : 'text-gray-400'
+              }`}
+            >
+              <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+              <span className="text-xs mt-1">{item.label}</span>
+            </button>
+          );
+        })}
       </div>
     </nav>
   );

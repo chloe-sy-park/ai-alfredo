@@ -1,42 +1,19 @@
-interface LoadingSpinnerProps {
+interface Props {
   size?: 'sm' | 'md' | 'lg';
   message?: string;
-  fullScreen?: boolean;
 }
 
-export default function LoadingSpinner({ 
-  size = 'md', 
-  message,
-  fullScreen = false 
-}: LoadingSpinnerProps) {
-  const sizeClasses = {
-    sm: 'text-2xl',
-    md: 'text-4xl',
-    lg: 'text-6xl'
-  };
-
-  const content = (
-    <div className="flex flex-col items-center justify-center gap-3">
-      <div className={`${sizeClasses[size]} animate-bounce`}>
-        🐧
-      </div>
-      {message && (
-        <p className="text-gray-500 text-sm animate-pulse">{message}</p>
-      )}
-    </div>
-  );
-
-  if (fullScreen) {
-    return (
-      <div className="fixed inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-50">
-        {content}
-      </div>
-    );
-  }
+export default function LoadingSpinner({ size = 'md', message }: Props) {
+  const sizeClass = {
+    sm: 'w-6 h-6',
+    md: 'w-10 h-10',
+    lg: 'w-14 h-14'
+  }[size];
 
   return (
-    <div className="flex items-center justify-center py-8">
-      {content}
+    <div className="flex flex-col items-center justify-center gap-3">
+      <div className={`${sizeClass} border-4 border-lavender-200 border-t-lavender-500 rounded-full animate-spin`} />
+      {message && <p className="text-gray-500 text-sm">{message}</p>}
     </div>
   );
 }

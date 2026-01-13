@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Send, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -32,7 +32,6 @@ export default function Chat() {
     setInput('');
     setIsLoading(true);
 
-    // 임시 응답
     setTimeout(() => {
       const botMsg: Message = {
         id: `bot-${Date.now()}`,
@@ -45,13 +44,10 @@ export default function Chat() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-lavender-50">
+    <div className="flex flex-col h-full">
       {/* 헤더 */}
       <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-100">
-        <button
-          onClick={() => navigate('/')}
-          className="p-2 rounded-full hover:bg-gray-100"
-        >
+        <button onClick={() => navigate('/')} className="p-2 rounded-full hover:bg-gray-100">
           <ArrowLeft size={20} className="text-gray-600" />
         </button>
         <span className="text-2xl">🐧</span>
@@ -68,23 +64,17 @@ export default function Chat() {
           </div>
         ) : (
           messages.map(msg => (
-            <div
-              key={msg.id}
-              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-[80%] px-4 py-2 rounded-2xl ${
-                  msg.role === 'user'
-                    ? 'bg-lavender-500 text-white rounded-br-sm'
-                    : 'bg-white text-gray-800 rounded-bl-sm shadow-sm'
-                }`}
-              >
+            <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[80%] px-4 py-2 rounded-2xl ${
+                msg.role === 'user'
+                  ? 'bg-lavender-500 text-white rounded-br-sm'
+                  : 'bg-white text-gray-800 rounded-bl-sm shadow-sm'
+              }`}>
                 {msg.content}
               </div>
             </div>
           ))
         )}
-
         {isLoading && (
           <div className="flex justify-start">
             <div className="bg-white px-4 py-2 rounded-2xl rounded-bl-sm shadow-sm">
@@ -92,7 +82,6 @@ export default function Chat() {
             </div>
           </div>
         )}
-
         <div ref={messagesEndRef} />
       </div>
 
@@ -110,11 +99,7 @@ export default function Chat() {
           <button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
-            className={`p-3 rounded-full ${
-              input.trim() && !isLoading
-                ? 'bg-lavender-500 text-white'
-                : 'bg-gray-200 text-gray-400'
-            }`}
+            className={`p-3 rounded-full ${input.trim() && !isLoading ? 'bg-lavender-500 text-white' : 'bg-gray-200 text-gray-400'}`}
           >
             <Send size={20} />
           </button>
