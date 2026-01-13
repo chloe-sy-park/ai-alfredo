@@ -9,21 +9,50 @@
 | 단계 | 목표 | 상태 |
 |------|------|------|
 | W1-W4 | UI/기능 로드맵 | ✅ 100% 완료 |
-| W2+ | DB 연동 (Supabase) | 🔄 진행 중 |
+| W2+ | DB 연동 (Supabase) | ✅ 설정 완료 |
 
 ---
 
 ## 🚀 배포 정보
 
 | 항목 | 값 |
-|------|----|
+|------|-----|
 | **프로덕션 URL** | https://ai-alfredo.vercel.app |
 | **GitHub** | https://github.com/chloe-sy-park/ai-alfredo |
 | **Vercel 프로젝트** | prj_FdguUPkNQzcTtXzxELljXiDL0JCT |
+| **Supabase** | https://nuazfhjmnarngdreqcyk.supabase.co |
 
 ---
 
 ## 📝 최근 작업 내역
+
+### 2025-01-13: Supabase 프로젝트 설정 완료
+
+#### ✅ 새 Supabase 프로젝트 생성
+- **URL**: `https://nuazfhjmnarngdreqcyk.supabase.co`
+- **Vercel 환경 변수**: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY 설정 완료
+
+#### ✅ DB 마이그레이션 실행
+`supabase/migrations/20250111_initial_schema.sql` 실행 완료
+
+**생성된 테이블 (18개):**
+- `users`, `user_settings`, `user_subscriptions`
+- `tasks`, `task_history`
+- `habits`, `habit_logs`
+- `focus_sessions`
+- `daily_conditions` ⭐
+- `penguin_status`, `penguin_items`, `xp_history`
+- `conversations`, `messages`, `conversation_summaries`
+- `calendar_events`, `calendar_insights`
+- `briefings`, `daily_summaries`, `weekly_insights`
+
+**추가 기능:**
+- ENUM 타입 (22개)
+- RLS 정책 (사용자별 데이터 격리)
+- 트리거 (updated_at 자동 업데이트, 습관 스트릭 자동 계산)
+- 펭귄 아이템 초기 데이터 (14개)
+
+---
 
 ### 2025-01-13: W2 daily_conditions 완전 구현
 
@@ -179,13 +208,15 @@ src/
 
 ---
 
-## 🗄️ DB 연동 로드맵
+## 🗄️ DB 연동 현황
 
-| 주차 | 테이블 | 상태 |
-|------|--------|------|
-| W2 | daily_conditions | ✅ Edge Function + Hook 완료 |
-| W3 | penguin_status, habits, tasks, focus_sessions | 📅 예정 |
-| W4 | daily_summaries, weekly_insights | 📅 예정 |
+| 항목 | 상태 |
+|------|------|
+| Supabase 프로젝트 | ✅ 생성 완료 |
+| 환경 변수 (Vercel) | ✅ 설정 완료 |
+| DB 마이그레이션 | ✅ 실행 완료 |
+| daily_conditions API | ✅ 코드 완료 |
+| daily_conditions 훅 | ✅ 하이브리드 모드 |
 
 상세 스키마: `docs/06-database-schema.md`
 
@@ -195,10 +226,8 @@ src/
 
 ### 즉시
 
-- [ ] Supabase 프로젝트 연결 확인
-- [ ] 환경 변수 설정 (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)
-- [ ] daily_conditions 테이블 마이그레이션 실행
-- [ ] 홈페이지 컨디션 퀵 체인지 → useDailyConditions 연동
+- [ ] 앱에서 컨디션 기록 테스트
+- [ ] DB 저장 확인
 
 ### 단기 (W3)
 
