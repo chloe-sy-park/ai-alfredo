@@ -4,10 +4,10 @@
  * 문서 기준 플로우:
  * - Phase 0: 펭귄 인사 (0-3초)
  * - Phase 1: 샘플 브리핑 체험 (10-30초)
- * - Phase 2: 질문 1개 (30-45초)
+ * - Phase 2: 질문 1개 - "어떤 도움을 원하세요?" (30-45초)
  * - Phase 3: 캘린더 연동 요청 (1분)
  * - Phase 4: 즉시 인사이트 (1분 30초)
- * - Phase 5: 완료! (2분)
+ * - Phase 5: 완료 + 육성 시작 알림 (2분)
  * 
  * 총: 2-3분 / 설문: 1개 / 연동: 1개
  */
@@ -154,6 +154,17 @@ function AlfredoOnboardingFlow(props) {
     optionEmoji: {
       fontSize: '24px'
     },
+    optionContent: {
+      flex: 1
+    },
+    optionLabel: {
+      fontWeight: '600',
+      marginBottom: '4px'
+    },
+    optionDesc: {
+      fontSize: '13px',
+      opacity: 0.7
+    },
     
     // Phase 3: 캘린더 연동
     connectScreen: {
@@ -299,8 +310,49 @@ function AlfredoOnboardingFlow(props) {
       fontSize: '16px',
       opacity: 0.8,
       lineHeight: '1.6',
-      marginBottom: '32px',
+      marginBottom: '24px',
       maxWidth: '300px'
+    },
+    // 육성 알림 박스
+    nurturingBox: {
+      backgroundColor: isDarkMode ? '#1a1a2e' : '#f0f0ff',
+      borderRadius: '16px',
+      padding: '20px',
+      marginBottom: '24px',
+      maxWidth: '300px',
+      width: '100%'
+    },
+    nurturingHeader: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      marginBottom: '12px',
+      fontSize: '14px',
+      fontWeight: '600'
+    },
+    progressBarContainer: {
+      backgroundColor: isDarkMode ? '#333' : '#e0e0e0',
+      borderRadius: '8px',
+      height: '8px',
+      overflow: 'hidden',
+      marginBottom: '8px'
+    },
+    progressBarFill: {
+      height: '100%',
+      background: 'linear-gradient(90deg, #6366f1, #8b5cf6)',
+      borderRadius: '8px',
+      transition: 'width 1s ease'
+    },
+    nurturingPercent: {
+      fontSize: '12px',
+      opacity: 0.7,
+      textAlign: 'right'
+    },
+    nurturingNote: {
+      fontSize: '13px',
+      opacity: 0.8,
+      marginTop: '12px',
+      lineHeight: '1.5'
     },
     startButton: {
       padding: '18px 48px',
@@ -338,24 +390,45 @@ function AlfredoOnboardingFlow(props) {
     return function() { document.head.removeChild(styleEl); };
   }, []);
   
-  // 질문 옵션들
+  // 📋 문서 기준 질문 옵션들 (도움 유형)
   var questionOptions = [
-    { id: 'gentle', emoji: '🌸', label: '부드럽게 다가와줘' },
-    { id: 'balanced', emoji: '⚖️', label: '적당히 균형있게' },
-    { id: 'direct', emoji: '🔥', label: '직설적으로 말해줘' },
-    { id: 'custom', emoji: '🎨', label: '내가 직접 설정할게' }
+    { 
+      id: 'organize', 
+      emoji: '📋', 
+      label: '할 일 정리',
+      desc: '뭐부터 해야 할지 모르겠어요'
+    },
+    { 
+      id: 'balance', 
+      emoji: '⚖️', 
+      label: '워라밸',
+      desc: '일과 삶의 균형을 잡고 싶어요'
+    },
+    { 
+      id: 'condition', 
+      emoji: '🧠', 
+      label: '컨디션 관리',
+      desc: '번아웃 없이 꾸준히 하고 싶어요'
+    },
+    { 
+      id: 'explore', 
+      emoji: '🤔', 
+      label: '아직 잘 모르겠어요',
+      desc: '일단 써보면서 알아갈래요'
+    }
   ];
   
   // 질문 답변 처리
   function handleAnswer(optionId) {
     setAnswer(optionId);
     
-    // 프리셋 적용 (커스텀 제외)
-    if (Personalization && optionId !== 'custom') {
+    // 선택에 따른 초기 설정 적용
+    if (Personalization) {
       var presetMap = {
-        gentle: 'selfCare',
-        balanced: 'balanced',
-        direct: 'achiever'
+        organize: 'achiever',      // 할 일 정리 → 목표지향적
+        balance: 'balanced',       // 워라밸 → 균형
+        condition: 'selfCare',     // 컨디션 관리 → 자기돌봄
+        explore: 'balanced'        // 잘 모르겠어요 → 기본값
       };
       var preset = Personalization.PRESETS[presetMap[optionId]];
       if (preset) {
@@ -396,11 +469,11 @@ function AlfredoOnboardingFlow(props) {
   
   // 온보딩 완료
   function handleComplete() {
-    // 커스텀 선택했으면 설정 페이지로
-    if (answer === 'custom' && onComplete) {
-      onComplete({ openSettings: true });
-    } else if (onComplete) {
-      onComplete({ openSettings: false });
+    if (onComplete) {
+      onComplete({ 
+        helpType: answer,
+        calendarConnected: isConnected
+      });
     }
   }
   
@@ -436,7 +509,7 @@ function AlfredoOnboardingFlow(props) {
     );
   }
   
-  // Phase 2: 질문 1개
+  // Phase 2: 질문 1개 (문서 기준 - 도움 유형)
   if (phase === 2) {
     return React.createElement('div', { style: styles.container },
       React.createElement('div', { style: styles.progressBar },
@@ -446,9 +519,9 @@ function AlfredoOnboardingFlow(props) {
         React.createElement('div', { style: styles.questionCard },
           React.createElement('div', { style: styles.questionEmoji }, '🐧'),
           React.createElement('div', { style: styles.questionText },
-            '알프레도가 어떤 스타일로',
+            '저한테 어떤 도움을',
             React.createElement('br', null),
-            '다가가면 좋을까요?'
+            '원하세요?'
           ),
           questionOptions.map(function(option) {
             var isSelected = answer === option.id;
@@ -458,7 +531,10 @@ function AlfredoOnboardingFlow(props) {
               onClick: function() { handleAnswer(option.id); }
             },
               React.createElement('span', { style: styles.optionEmoji }, option.emoji),
-              React.createElement('span', null, option.label)
+              React.createElement('div', { style: styles.optionContent },
+                React.createElement('div', { style: styles.optionLabel }, option.label),
+                React.createElement('div', { style: styles.optionDesc }, option.desc)
+              )
             );
           })
         )
@@ -559,7 +635,7 @@ function AlfredoOnboardingFlow(props) {
     );
   }
   
-  // Phase 5: 완료
+  // Phase 5: 완료 + 육성 시작 알림
   if (phase === 5) {
     return React.createElement('div', { style: styles.container },
       React.createElement('div', { style: styles.progressBar },
@@ -571,14 +647,30 @@ function AlfredoOnboardingFlow(props) {
           '준비 완료!'
         ),
         React.createElement('div', { style: styles.completeDesc },
-          answer === 'custom' 
-            ? '이제 직접 스타일을 설정해보세요. 시간이 지나면 알프레도도 배워갈 거예요!'
-            : '알프레도가 조금씩 당신을 알아갈 거예요. 함께 성장해요!'
+          '알프레도가 조금씩 당신을 알아갈 거예요.'
         ),
+        
+        // 🐧 육성 시작 알림 박스
+        React.createElement('div', { style: styles.nurturingBox },
+          React.createElement('div', { style: styles.nurturingHeader },
+            React.createElement('span', null, '🐧'),
+            React.createElement('span', null, '알프레도가 당신을 이해하는 중...')
+          ),
+          React.createElement('div', { style: styles.progressBarContainer },
+            React.createElement('div', { style: Object.assign({}, styles.progressBarFill, { width: '8%' }) })
+          ),
+          React.createElement('div', { style: styles.nurturingPercent },
+            '현재 이해도: 8%'
+          ),
+          React.createElement('div', { style: styles.nurturingNote },
+            '함께 시간을 보낼수록 더 잘 알게 될 거예요!'
+          )
+        ),
+        
         React.createElement('button', {
           style: styles.startButton,
           onClick: handleComplete
-        }, answer === 'custom' ? '스타일 설정하기' : '시작하기')
+        }, '시작하기')
       )
     );
   }
