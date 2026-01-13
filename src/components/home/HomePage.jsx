@@ -138,7 +138,6 @@ var ConditionCheckModal = function(props) {
 
 // 🏠 홈페이지
 export var HomePage = function(props) {
-  var darkMode = props.darkMode;
   var tasks = props.tasks || [];
   var events = props.events || [];
   var weather = props.weather;
@@ -333,7 +332,6 @@ export var HomePage = function(props) {
   }, []);
   
   // 오늘 날짜
-  var DAYS = ['일', '월', '화', '수', '목', '금', '토'];
   var dayName = DAYS[today.getDay()];
   var dateStr = (today.getMonth() + 1) + '월 ' + today.getDate() + '일 ' + dayName + '요일';
   
