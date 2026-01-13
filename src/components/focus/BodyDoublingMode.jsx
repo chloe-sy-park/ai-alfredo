@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ArrowLeft, Play, Pause, CheckCircle2, Clock, Coffee, Sparkles, Volume2, VolumeX } from 'lucide-react';
+import { ArrowLeft, Play, Pause, CheckCircle2, Coffee, Sparkles } from 'lucide-react';
 
 /**
  * 바디더블링 모드 v2
