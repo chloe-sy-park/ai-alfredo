@@ -10,18 +10,21 @@ export default function Chat() {
   const inputRef = useRef<HTMLInputElement>(null);
   
   const { 
-    messages, 
-    isStreaming, 
-    streamingMessage, 
+    messages = [], // 기본값 추가
+    isStreaming = false,
+    streamingMessage = '',
     error, 
     sendMessage, 
     createConversation 
   } = useConversationStore();
 
+  // 안전한 messages 배열
+  const safeMessages = messages || [];
+
   // 스크롤 to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, streamingMessage]);
+  }, [safeMessages, streamingMessage]);
 
   // 메시지 전송
   const handleSend = async () => {
@@ -73,7 +76,7 @@ export default function Chat() {
               다시 시도
             </button>
           </div>
-        ) : messages.length === 0 && !isStreaming ? (
+        ) : safeMessages.length === 0 && !isStreaming ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <span className="text-5xl mb-4">🐧</span>
             <h3 className="text-lg font-medium text-neutral-700 mb-2">
@@ -85,7 +88,7 @@ export default function Chat() {
           </div>
         ) : (
           <>
-            {messages.map((msg) => (
+            {safeMessages.map((msg) => (
               <div
                 key={msg.id}
                 className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
