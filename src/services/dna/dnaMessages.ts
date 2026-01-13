@@ -462,7 +462,6 @@ export function detectSpecialDay(): string | null {
   const now = new Date();
   const day = now.getDate();
   const month = now.getMonth() + 1;
-  const dayOfWeek = now.getDay();
   
   // 새해
   if (month === 1 && day <= 3) return 'newYear';

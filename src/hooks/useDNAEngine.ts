@@ -17,10 +17,10 @@ import { useAuthStore } from '../stores/authStore';
 export type AnalysisPhase = 'day1' | 'week1' | 'week2';
 
 /** 스트레스 레벨 */
-export type StressLevel = 'low' | 'moderate' | 'high' | 'burnout';
+export type StressLevel = 'low' | 'medium' | 'high' | 'burnout';
 
 /** 크로노타입 */
-export type Chronotype = 'early_bird' | 'night_owl' | 'balanced';
+export type Chronotype = 'morning' | 'evening' | 'neutral';
 
 /** 추천 태스크 유형 */
 export type RecommendedTaskType = 'deep_work' | 'light_work' | 'break';
@@ -29,10 +29,10 @@ export type RecommendedTaskType = 'deep_work' | 'light_work' | 'break';
 export type BriefingTone = 'energetic' | 'gentle' | 'supportive';
 
 /** 바쁜 정도 */
-export type BusyLevel = 'free' | 'light' | 'moderate' | 'busy' | 'extreme';
+export type BusyLevel = 'light' | 'normal' | 'heavy' | 'extreme';
 
 /** 워라밸 상태 */
-export type WorkLifeBalanceStatus = 'balanced' | 'work_heavy' | 'life_heavy';
+export type WorkLifeBalanceStatus = 'good' | 'moderate' | 'poor';
 
 /** 아침 브리핑 결과 */
 export interface MorningBriefingResult {
@@ -47,17 +47,10 @@ export interface EveningMessageResult {
   encouragement: string;
 }
 
-/** 집중 시간 추천 결과 */
+/** 집중 시간 추천 결과 - 실제 dnaEngine 반환 타입과 일치 */
 export interface BestFocusTimeResult {
-  startHour: number;
-  endHour: number;
-  reason: string;
-}
-
-/** 미팅 비율 결과 */
-export interface MeetingRatioResult {
-  percentage: number;
-  status: 'healthy' | 'warning' | 'overload';
+  day: string;
+  time: string;
 }
 
 /** DNA 엔진 훅 반환 타입 */
@@ -71,7 +64,7 @@ export interface UseDNAEngineReturn {
   
   // 액션
   analyzeCalendar: (events: CalendarEvent[]) => Promise<DNAProfile | undefined>;
-  refreshTodayContext: () => TodayContext;
+  refreshTodayContext: () => TodayContext | null;
   
   // 메시지 생성
   getMorningBriefing: (todayEvents: number, nextMeeting?: { title: string; time: string }) => string;
@@ -80,14 +73,14 @@ export interface UseDNAEngineReturn {
   getContextMessage: () => string;
   
   // 인사이트 접근
-  getStressLevel: () => StressLevel;
-  getBestFocusTime: () => BestFocusTimeResult;
+  getStressLevel: () => StressLevel | null;
+  getBestFocusTime: () => BestFocusTimeResult | null;
   getPeakHours: () => number[];
-  getChronotype: () => Chronotype;
+  getChronotype: () => Chronotype | null;
   getTodayContext: () => TodayContext | null;
-  getTodayBusyLevel: () => BusyLevel;
-  getWorkLifeBalance: () => WorkLifeBalanceStatus;
-  getMeetingRatio: () => MeetingRatioResult;
+  getTodayBusyLevel: () => BusyLevel | null;
+  getWorkLifeBalance: () => WorkLifeBalanceStatus | null;
+  getMeetingRatio: () => number;
   
   // 새로운 기능
   getSpecialAlerts: (daysAhead?: number) => SpecialEventAlert[];
@@ -177,15 +170,15 @@ export function useDNAEngine(): UseDNAEngineReturn {
   /**
    * 스트레스 레벨 가져오기
    */
-  const getStressLevel = useCallback((): StressLevel => {
-    return dnaEngine.getStressLevel() as StressLevel;
+  const getStressLevel = useCallback((): StressLevel | null => {
+    return dnaEngine.getStressLevel() as StressLevel | null;
   }, []);
 
   /**
    * 집중 시간 추천 가져오기
    */
-  const getBestFocusTime = useCallback((): BestFocusTimeResult => {
-    return dnaEngine.getBestFocusTime() as BestFocusTimeResult;
+  const getBestFocusTime = useCallback((): BestFocusTimeResult | null => {
+    return dnaEngine.getBestFocusTime();
   }, []);
 
   /**
@@ -198,8 +191,8 @@ export function useDNAEngine(): UseDNAEngineReturn {
   /**
    * 크로노타입 가져오기
    */
-  const getChronotype = useCallback((): Chronotype => {
-    return dnaEngine.getChronotype() as Chronotype;
+  const getChronotype = useCallback((): Chronotype | null => {
+    return dnaEngine.getChronotype() as Chronotype | null;
   }, []);
 
   // ========== 새로 추가된 메서드 ==========
@@ -214,7 +207,7 @@ export function useDNAEngine(): UseDNAEngineReturn {
   /**
    * 오늘 컨텍스트 새로고침
    */
-  const refreshTodayContext = useCallback((): TodayContext => {
+  const refreshTodayContext = useCallback((): TodayContext | null => {
     const context = dnaEngine.refreshTodayContext();
     setTodayContext(context);
     return context;
@@ -272,22 +265,22 @@ export function useDNAEngine(): UseDNAEngineReturn {
   /**
    * 오늘 바쁜 정도
    */
-  const getTodayBusyLevel = useCallback((): BusyLevel => {
-    return dnaEngine.getTodayBusyLevel() as BusyLevel;
+  const getTodayBusyLevel = useCallback((): BusyLevel | null => {
+    return dnaEngine.getTodayBusyLevel() as BusyLevel | null;
   }, []);
 
   /**
    * 워라밸 상태
    */
-  const getWorkLifeBalance = useCallback((): WorkLifeBalanceStatus => {
-    return dnaEngine.getWorkLifeBalance() as WorkLifeBalanceStatus;
+  const getWorkLifeBalance = useCallback((): WorkLifeBalanceStatus | null => {
+    return dnaEngine.getWorkLifeBalance() as WorkLifeBalanceStatus | null;
   }, []);
 
   /**
    * 미팅 비율
    */
-  const getMeetingRatio = useCallback((): MeetingRatioResult => {
-    return dnaEngine.getMeetingRatio() as MeetingRatioResult;
+  const getMeetingRatio = useCallback((): number => {
+    return dnaEngine.getMeetingRatio();
   }, []);
 
   return {
