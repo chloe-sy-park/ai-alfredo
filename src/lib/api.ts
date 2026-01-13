@@ -241,6 +241,66 @@ export const habitsApi = {
     api.post<any>(`/habits/${id}/log`, data),
 };
 
+// ========== Daily Conditions API (W2) ==========
+export interface DailyCondition {
+  id: string;
+  user_id: string;
+  date: string;
+  energy_level: number; // 1-5
+  mood: 'great' | 'good' | 'neutral' | 'low' | 'bad';
+  physical_state?: 'excellent' | 'good' | 'normal' | 'tired' | 'sick';
+  notes?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export const dailyConditionsApi = {
+  // 컨디션 목록 조회 (날짜 범위)
+  list: (params?: { 
+    start_date?: string; 
+    end_date?: string; 
+    page?: string; 
+    limit?: string;
+  }) => api.get<DailyCondition[]>('/daily-conditions', params),
+
+  // 오늘 컨디션 조회
+  getToday: () => api.get<DailyCondition | null>('/daily-conditions/today'),
+
+  // 특정 날짜 컨디션 조회
+  getByDate: (date: string) => api.get<DailyCondition | null>(`/daily-conditions/date/${date}`),
+
+  // 컨디션 기록 (생성 또는 업데이트)
+  record: (data: {
+    date?: string; // 기본값: 오늘
+    energy_level: number;
+    mood: DailyCondition['mood'];
+    physical_state?: DailyCondition['physical_state'];
+    notes?: string;
+  }) => api.post<DailyCondition>('/daily-conditions', data),
+
+  // 컨디션 수정
+  update: (id: string, data: Partial<Omit<DailyCondition, 'id' | 'user_id' | 'created_at'>>) =>
+    api.patch<DailyCondition>(`/daily-conditions/${id}`, data),
+
+  // 컨디션 삭제
+  delete: (id: string) => api.delete(`/daily-conditions/${id}`),
+
+  // 주간 요약 조회
+  getWeeklySummary: () => api.get<{
+    average_energy: number;
+    mood_distribution: Record<DailyCondition['mood'], number>;
+    days_logged: number;
+    trend: 'improving' | 'stable' | 'declining';
+  }>('/daily-conditions/weekly-summary'),
+
+  // 월간 히트맵 데이터
+  getMonthlyHeatmap: (year: number, month: number) => 
+    api.get<Array<{ date: string; energy_level: number; mood: string }>>('/daily-conditions/heatmap', {
+      year: String(year),
+      month: String(month),
+    }),
+};
+
 // ========== Focus Sessions API ==========
 export const focusApi = {
   list: (params?: { mode?: string; page?: string; limit?: string }) =>
