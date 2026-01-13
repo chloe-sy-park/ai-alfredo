@@ -47,40 +47,50 @@ var InboxPage = function(props) {
     switch (priority) {
       case 'urgent':
         return { bg: 'bg-red-50', text: 'text-red-600', border: 'border-red-200', dot: 'bg-red-500' };
-      case 'important':
+      case 'high':
         return { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-200', dot: 'bg-amber-500' };
-      case 'normal':
+      case 'medium':
         return { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-200', dot: 'bg-blue-500' };
       default:
         return { bg: 'bg-gray-50', text: 'text-gray-600', border: 'border-gray-200', dot: 'bg-gray-400' };
     }
   };
   
-  // 액션 타입 아이콘
-  var getActionIcon = function(actionType) {
+  // 우선순위 라벨
+  var getPriorityLabel = function(priority) {
+    switch (priority) {
+      case 'urgent': return '긴급';
+      case 'high': return '중요';
+      case 'medium': return '보통';
+      default: return '참고';
+    }
+  };
+  
+  // 액션 타입 아이콘 + 라벨
+  var getActionInfo = function(actionType) {
     switch (actionType) {
       case 'reply':
-        return '💬';
+        return { icon: '💬', label: '답장 필요' };
       case 'schedule':
-        return '📅';
+        return { icon: '📅', label: '일정 조율' };
       case 'task':
-        return '✅';
+        return { icon: '✅', label: '할 일' };
       case 'review':
-        return '👀';
-      case 'payment':
-        return '💳';
+        return { icon: '👀', label: '검토' };
+      case 'archive':
+        return { icon: '📁', label: '보관' };
       default:
-        return '📧';
+        return { icon: '📧', label: '확인' };
     }
   };
   
   // 필터링된 액션
   var filteredActions = filter === 'urgent' 
-    ? gmailActions.filter(function(a) { return a.priority === 'urgent' || a.priority === 'important'; })
+    ? gmailActions.filter(function(a) { return a.priority === 'urgent' || a.priority === 'high'; })
     : gmailActions;
   
   var urgentCount = gmailActions.filter(function(a) { return a.priority === 'urgent'; }).length;
-  var importantCount = gmailActions.filter(function(a) { return a.priority === 'important'; }).length;
+  var highCount = gmailActions.filter(function(a) { return a.priority === 'high'; }).length;
   
   // Gmail 미연결 상태
   if (!isGoogleConnected) {
@@ -101,7 +111,7 @@ var InboxPage = function(props) {
           ),
           React.createElement('h1', {
             className: 'text-2xl font-bold ' + textPrimary
-          }, '인박스 📥')
+          }, '인박스 🐧')
         )
       ),
       
@@ -152,7 +162,7 @@ var InboxPage = function(props) {
           ),
           React.createElement('h1', {
             className: 'text-2xl font-bold ' + textPrimary
-          }, '인박스 📥')
+          }, '인박스 🐧')
         )
       ),
       
@@ -202,7 +212,7 @@ var InboxPage = function(props) {
           ),
           React.createElement('h1', {
             className: 'text-2xl font-bold ' + textPrimary
-          }, '인박스 📥')
+          }, '인박스 🐧')
         ),
         React.createElement('button', {
           onClick: onFetchGmail,
@@ -258,10 +268,10 @@ var InboxPage = function(props) {
           React.createElement('p', { className: 'text-2xl font-bold text-red-600' }, urgentCount),
           React.createElement('p', { className: 'text-xs text-red-500' }, '긴급')
         ),
-        importantCount > 0 && React.createElement('div', {
+        highCount > 0 && React.createElement('div', {
           className: 'flex-1 bg-amber-50 border border-amber-100 rounded-xl p-3 text-center'
         },
-          React.createElement('p', { className: 'text-2xl font-bold text-amber-600' }, importantCount),
+          React.createElement('p', { className: 'text-2xl font-bold text-amber-600' }, highCount),
           React.createElement('p', { className: 'text-xs text-amber-500' }, '중요')
         ),
         React.createElement('div', {
@@ -287,9 +297,9 @@ var InboxPage = function(props) {
           className: 'flex-1 py-2 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1 ' + (filter === 'urgent' ? (darkMode ? 'bg-gray-700 text-white shadow-sm' : 'bg-white shadow-sm text-gray-800') : textSecondary)
         },
           '긴급/중요',
-          (urgentCount + importantCount) > 0 && React.createElement('span', {
+          (urgentCount + highCount) > 0 && React.createElement('span', {
             className: 'bg-red-500 text-white text-[11px] px-1.5 py-0.5 rounded-full'
-          }, urgentCount + importantCount)
+          }, urgentCount + highCount)
         )
       )
     ),
@@ -339,7 +349,14 @@ var InboxPage = function(props) {
       // 액션 카드들
       filteredActions.map(function(action) {
         var style = getPriorityStyle(action.priority);
+        var actionInfo = getActionInfo(action.actionType);
         var isExpanded = expandedId === action.emailId;
+        
+        // 🔧 FIX: 올바른 필드 매핑
+        var emailSubject = action.email && action.email.subject ? action.email.subject : '(제목 없음)';
+        var emailFrom = action.email && action.email.from ? (action.email.from.name || action.email.from.email || '(발신자 없음)') : '(발신자 없음)';
+        var suggestedAction = action.suggestedAction || '';
+        var dueDate = action.dueDate || null;
         
         return React.createElement('div', {
           key: action.emailId,
@@ -357,30 +374,30 @@ var InboxPage = function(props) {
               }),
               React.createElement('span', {
                 className: 'text-xs font-medium px-2 py-0.5 rounded ' + style.bg + ' ' + style.text
-              }, action.priority === 'urgent' ? '긴급' : action.priority === 'important' ? '중요' : action.priority === 'normal' ? '보통' : '참고'),
+              }, getPriorityLabel(action.priority)),
               React.createElement('span', {
                 className: 'text-xs ' + textSecondary
-              }, getActionIcon(action.type) + ' ' + (action.type === 'reply' ? '답장 필요' : action.type === 'schedule' ? '일정 조율' : action.type === 'task' ? '할 일' : action.type === 'payment' ? '결제/확인' : '검토'))
+              }, actionInfo.icon + ' ' + actionInfo.label)
             ),
             
-            // 제목
+            // 제목 (이메일 제목)
             React.createElement('h4', {
               className: 'font-semibold ' + textPrimary + ' mb-1 line-clamp-1'
-            }, action.subject || action.action),
+            }, emailSubject),
             
             // AI 분석 요약
             React.createElement('p', {
               className: 'text-sm ' + textSecondary + ' line-clamp-2'
-            }, action.action),
+            }, suggestedAction),
             
-            // 발신자 + 시간
+            // 발신자 + 마감일
             React.createElement('div', {
               className: 'flex items-center justify-between mt-2 text-xs ' + textSecondary
             },
-              React.createElement('span', null, action.from),
-              action.deadline && React.createElement('span', {
+              React.createElement('span', null, emailFrom),
+              dueDate && React.createElement('span', {
                 className: 'text-red-500 font-medium'
-              }, '⏰ ' + action.deadline)
+              }, '⏰ ' + dueDate)
             )
           ),
           
