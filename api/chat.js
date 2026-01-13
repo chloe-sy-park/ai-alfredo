@@ -264,7 +264,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 500,
+        max_tokens: 2000,  // 🔧 FIX: 500 → 2000 for Gmail analysis
         system: systemPrompt,
         messages: messages.map(m => ({
           role: m.role,
