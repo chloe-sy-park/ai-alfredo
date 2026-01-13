@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-import { getTodayEvents, CalendarEvent } from '../services/calendar';
+import { useState, useEffect, useCallback } from 'react';
+import { ChevronLeft, ChevronRight, Plus, RefreshCw } from 'lucide-react';
+import { getTodayEvents, getSelectedCalendars, CalendarEvent } from '../services/calendar';
 import { isGoogleConnected, startGoogleAuth } from '../services/auth';
 
 export default function CalendarPage() {
@@ -8,14 +8,16 @@ export default function CalendarPage() {
   var [events, setEvents] = useState<CalendarEvent[]>([]);
   var [isLoading, setIsLoading] = useState(false);
   var [googleConnected, setGoogleConnected] = useState(false);
+  var [selectedCount, setSelectedCount] = useState(0);
 
   var year = currentDate.getFullYear();
   var month = currentDate.getMonth();
 
-  // Check connection and fetch events
-  useEffect(function() {
+  // Fetch events function
+  var fetchEvents = useCallback(function() {
     var connected = isGoogleConnected();
     setGoogleConnected(connected);
+    setSelectedCount(getSelectedCalendars().length);
     
     if (connected) {
       setIsLoading(true);
@@ -31,6 +33,24 @@ export default function CalendarPage() {
         });
     }
   }, []);
+
+  // Initial load and refresh on visibility change
+  useEffect(function() {
+    fetchEvents();
+
+    // Refresh when page becomes visible (tab switch)
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        fetchEvents();
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return function() {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchEvents]);
 
   // Get days in month
   function getDaysInMonth(y: number, m: number) {
@@ -80,6 +100,10 @@ export default function CalendarPage() {
       console.error('Failed to connect Google:', err);
       alert('Google 연결에 실패했습니다.');
     });
+  }
+
+  function handleRefresh() {
+    fetchEvents();
   }
 
   return (
@@ -136,10 +160,26 @@ export default function CalendarPage() {
         {/* Today's Events */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold">오늘 일정</h2>
-            <button className="p-1 hover:bg-gray-100 rounded-full">
-              <Plus size={20} className="text-lavender-400" />
-            </button>
+            <div>
+              <h2 className="font-semibold">오늘 일정</h2>
+              {googleConnected && selectedCount > 0 && (
+                <p className="text-xs text-gray-400">{selectedCount}개 캘린더에서</p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {googleConnected && (
+                <button 
+                  onClick={handleRefresh}
+                  disabled={isLoading}
+                  className="p-1 hover:bg-gray-100 rounded-full disabled:opacity-50"
+                >
+                  <RefreshCw size={18} className={'text-gray-400 ' + (isLoading ? 'animate-spin' : '')} />
+                </button>
+              )}
+              <button className="p-1 hover:bg-gray-100 rounded-full">
+                <Plus size={20} className="text-lavender-400" />
+              </button>
+            </div>
           </div>
 
           {!googleConnected ? (
