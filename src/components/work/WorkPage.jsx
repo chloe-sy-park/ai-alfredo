@@ -235,10 +235,10 @@ var WorkPage = function(props) {
     return result;
   }, [tasks, activeTab, searchQuery]);
 
-  var handleToggleTask = function(taskId) {
+  var handleToggleTask = function(task) {
     if (setTasks) {
       setTasks(tasks.map(function(t) {
-        if (t.id === taskId) {
+        if (t.id === task.id) {
           var newCompleted = !(t.completed || t.status === 'done');
           return Object.assign({}, t, { 
             completed: newCompleted,
@@ -250,9 +250,15 @@ var WorkPage = function(props) {
     }
   };
 
-  var handleDeleteTask = function(taskId) {
+  var handleDeleteTask = function(task) {
     if (setTasks) {
-      setTasks(tasks.filter(function(t) { return t.id !== taskId; }));
+      setTasks(tasks.filter(function(t) { return t.id !== task.id; }));
+    }
+  };
+
+  var handlePressTask = function(task) {
+    if (onOpenTask) {
+      onOpenTask(task);
     }
   };
 
@@ -354,9 +360,10 @@ var WorkPage = function(props) {
                 key: task.id,
                 task: task,
                 darkMode: darkMode,
-                onToggle: function() { handleToggleTask(task.id); },
-                onDelete: function() { handleDeleteTask(task.id); },
-                onClick: function() { if (onOpenTask) onOpenTask(task); }
+                // 🔧 FIX: SwipeableTaskItem이 기대하는 prop 이름 사용
+                onComplete: function() { handleToggleTask(task); },
+                onDelete: function() { handleDeleteTask(task); },
+                onPress: function() { handlePressTask(task); }
               });
             })
       )
