@@ -1,4 +1,3 @@
-import Card from '@/components/common/Card';
 import { useSettingsStore, TonePreset } from '@/stores/settingsStore';
 import { useAuthStore } from '@/stores/authStore';
 import {
@@ -11,6 +10,14 @@ import {
   LogOut,
   ChevronRight
 } from 'lucide-react';
+
+function Card({ children, padding = 'normal' }: { children: React.ReactNode; padding?: 'normal' | 'none' }) {
+  return (
+    <div className={`bg-white rounded-2xl shadow-sm ${padding === 'none' ? '' : 'p-4'}`}>
+      {children}
+    </div>
+  );
+}
 
 export default function Settings() {
   const { user, logout } = useAuthStore();
