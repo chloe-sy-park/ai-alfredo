@@ -712,6 +712,7 @@ function App() {
   var updateEvent = googleCalendar.updateEvent;
   var deleteEvent = googleCalendar.deleteEvent;
   var refreshEvents = googleCalendar.refreshEvents;
+  var googleUserEmail = googleCalendar.userEmail;
   
   // 시간 추적 (향후 사용 예정)
   useTimeTracking();
@@ -965,21 +966,37 @@ function App() {
     setShowEventModal(true);
   }, []);
   
+  // 📅 이벤트 저장 - Google Calendar 양방향 동기화 지원
   var handleSaveEvent = useCallback(function(eventData) {
-    if (selectedEvent) {
-      updateEvent(selectedEvent.id, eventData);
+    // syncToGoogle이 true이고 Google 연결된 경우에만 Google Calendar에 저장
+    var shouldSyncToGoogle = eventData.syncToGoogle !== false && isConnected;
+    
+    if (shouldSyncToGoogle) {
+      if (selectedEvent && selectedEvent.id) {
+        // 기존 이벤트 수정
+        updateEvent(selectedEvent.id, eventData);
+      } else {
+        // 새 이벤트 추가
+        addEvent(eventData);
+      }
     } else {
-      addEvent(eventData);
+      // 로컬 전용 이벤트 (향후 구현 가능)
+      console.log('Local-only event (not synced to Google):', eventData);
+    }
+    
+    setShowEventModal(false);
+    setSelectedEvent(null);
+  }, [selectedEvent, updateEvent, addEvent, isConnected]);
+  
+  // 📅 이벤트 삭제 - Google Calendar에서도 삭제
+  var handleDeleteEvent = useCallback(function(eventId, googleEventId) {
+    // googleEventId가 있으면 Google Calendar에서도 삭제
+    if (googleEventId || (selectedEvent && selectedEvent.fromGoogle)) {
+      deleteEvent(googleEventId || eventId);
     }
     setShowEventModal(false);
     setSelectedEvent(null);
-  }, [selectedEvent, updateEvent, addEvent]);
-  
-  var handleDeleteEvent = useCallback(function(eventId) {
-    deleteEvent(eventId);
-    setShowEventModal(false);
-    setSelectedEvent(null);
-  }, [deleteEvent]);
+  }, [deleteEvent, selectedEvent]);
   
   // 기분/에너지 업데이트
   var handleUpdateMoodEnergy = useCallback(function(updates) {
@@ -1612,14 +1629,21 @@ function App() {
       }
     }),
     
+    // 📅 EventModal - Google Calendar 연동 prop 추가
     React.createElement(EventModal, {
       isOpen: showEventModal,
       event: selectedEvent,
       onSave: handleSaveEvent,
-      onDelete: selectedEvent ? function() { handleDeleteEvent(selectedEvent.id); } : null,
+      onDelete: selectedEvent ? function() { handleDeleteEvent(selectedEvent.id, selectedEvent.googleEventId || selectedEvent.id); } : null,
       onClose: function() {
         setShowEventModal(false);
         setSelectedEvent(null);
+      },
+      googleCalendar: {
+        isSignedIn: isConnected,
+        isLoading: isLoading,
+        signIn: connect,
+        userInfo: googleUserEmail ? { email: googleUserEmail } : null
       }
     }),
     
