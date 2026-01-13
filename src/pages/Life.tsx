@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import Card from '@/components/common/Card';
+import { Card } from '@/components/common';
 import { Heart, Droplets, Moon, Footprints, Apple, Smile, CheckCircle2 } from 'lucide-react';
 import { useHabitStore } from '@/stores/habitStore';
 
