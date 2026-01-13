@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Card, Button } from '@/components/common';
+import Card from '../components/common/Card';
+import Button from '../components/common/Button';
 import { Plus, Star, Clock, Filter, CheckCircle2, Trash2, X } from 'lucide-react';
-import { useTaskStore } from '@/stores/taskStore';
-import type { Task, TaskStatus } from '@/types/database';
+import { useTaskStore } from '../stores/taskStore';
+import type { Task, TaskStatus } from '../types/database';
 
 export default function Work() {
   const { 
