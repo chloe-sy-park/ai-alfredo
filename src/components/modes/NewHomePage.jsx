@@ -17,33 +17,23 @@ import LifeHome from './LifeHome';
  * - ChatLauncher (floating)
  */
 
-function NewHomePage(props) {
-  var tasks = props.tasks || [];
-  var projects = props.projects || [];
-  var events = props.events || [];
-  var onNavigate = props.onNavigate;
-  var onTaskClick = props.onTaskClick;
-  
+function NewHomePage({ tasks = [], projects = [], events = [], onNavigate, onTaskClick }) {
   // 모드 상태
-  var modeState = useState('all');
-  var mode = modeState[0];
-  var setMode = modeState[1];
+  const [mode, setMode] = useState('all');
   
   // MoreSheet 상태
-  var sheetState = useState({ isOpen: false, data: null });
-  var moreSheet = sheetState[0];
-  var setMoreSheet = sheetState[1];
+  const [moreSheet, setMoreSheet] = useState({ isOpen: false, data: null });
   
   // 현재 날짜/시간 정보
-  var now = new Date();
-  var hour = now.getHours();
-  var dateStr = (now.getMonth() + 1) + '월 ' + now.getDate() + '일';
-  var dayNames = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
-  var dayStr = dayNames[now.getDay()];
+  const now = new Date();
+  const hour = now.getHours();
+  const dateStr = `${now.getMonth() + 1}월 ${now.getDate()}일`;
+  const dayNames = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+  const dayStr = dayNames[now.getDay()];
   
   // 모드별 브리핑 생성
-  var getBriefing = function(currentMode) {
-    var greetings = {
+  const getBriefing = (currentMode) => {
+    const greetings = {
       all: {
         morning: '좋은 아침이에요, Boss',
         afternoon: '오늘 오후도 잘 보내고 계시네요',
@@ -61,7 +51,7 @@ function NewHomePage(props) {
       }
     };
     
-    var period = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
+    const period = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
     return {
       headline: greetings[currentMode][period],
       subline: null,
@@ -70,55 +60,51 @@ function NewHomePage(props) {
   };
   
   // 태스크를 우선순위 아이템으로 변환
-  var priorityItems = useMemo(function() {
+  const priorityItems = useMemo(() => {
     return tasks
-      .filter(function(t) { return !t.completed; })
-      .sort(function(a, b) {
-        var priorityOrder = { high: 0, medium: 1, low: 2 };
+      .filter(t => !t.completed)
+      .sort((a, b) => {
+        const priorityOrder = { high: 0, medium: 1, low: 2 };
         return (priorityOrder[a.priority] || 1) - (priorityOrder[b.priority] || 1);
       })
       .slice(0, 5)
-      .map(function(task) {
-        return {
-          id: task.id,
-          title: task.title,
-          sourceTag: task.project === 'personal' || task.project === 'inbox' ? 'LIFE' : 'WORK',
-          meta: task.dueDate ? '오늘' : null,
-          status: task.priority === 'high' ? 'atRisk' : 'normal'
-        };
-      });
+      .map(task => ({
+        id: task.id,
+        title: task.title,
+        sourceTag: task.project === 'personal' || task.project === 'inbox' ? 'LIFE' : 'WORK',
+        meta: task.dueDate ? '오늘' : null,
+        status: task.priority === 'high' ? 'atRisk' : 'normal'
+      }));
   }, [tasks]);
   
   // WORK 전용 우선순위
-  var workPriorities = useMemo(function() {
-    return priorityItems.filter(function(p) { return p.sourceTag === 'WORK'; });
+  const workPriorities = useMemo(() => {
+    return priorityItems.filter(p => p.sourceTag === 'WORK');
   }, [priorityItems]);
   
   // LIFE 전용 우선순위
-  var lifePriorities = useMemo(function() {
-    return priorityItems.filter(function(p) { return p.sourceTag === 'LIFE'; });
+  const lifePriorities = useMemo(() => {
+    return priorityItems.filter(p => p.sourceTag === 'LIFE');
   }, [priorityItems]);
   
   // 타임라인 아이템 생성
-  var timelineItems = useMemo(function() {
-    return events.map(function(event) {
-      return {
-        id: event.id,
-        timeRange: event.startTime || '09:00',
-        title: event.title,
-        subtitle: event.location || null,
-        importance: event.importance || 'mid'
-      };
-    });
+  const timelineItems = useMemo(() => {
+    return events.map(event => ({
+      id: event.id,
+      timeRange: event.startTime || '09:00',
+      title: event.title,
+      subtitle: event.location || null,
+      importance: event.importance || 'mid'
+    }));
   }, [events]);
   
   // 프로젝트 펄스 데이터
-  var projectPulse = useMemo(function() {
-    return projects.slice(0, 3).map(function(project) {
-      var projectTasks = tasks.filter(function(t) { return t.project === project.id; });
-      var completed = projectTasks.filter(function(t) { return t.completed; }).length;
-      var total = projectTasks.length;
-      var ratio = total > 0 ? completed / total : 0;
+  const projectPulse = useMemo(() => {
+    return projects.slice(0, 3).map(project => {
+      const projectTasks = tasks.filter(t => t.project === project.id);
+      const completed = projectTasks.filter(t => t.completed).length;
+      const total = projectTasks.length;
+      const ratio = total > 0 ? completed / total : 0;
       
       return {
         id: project.id,
@@ -129,10 +115,10 @@ function NewHomePage(props) {
   }, [projects, tasks]);
   
   // Work/Life 비율 계산
-  var balanceRatio = useMemo(function() {
-    var work = priorityItems.filter(function(p) { return p.sourceTag === 'WORK'; }).length;
-    var life = priorityItems.filter(function(p) { return p.sourceTag === 'LIFE'; }).length;
-    var total = work + life || 1;
+  const balanceRatio = useMemo(() => {
+    const work = priorityItems.filter(p => p.sourceTag === 'WORK').length;
+    const life = priorityItems.filter(p => p.sourceTag === 'LIFE').length;
+    const total = work + life || 1;
     return {
       work: Math.round((work / total) * 100),
       life: Math.round((life / total) * 100)
@@ -140,7 +126,7 @@ function NewHomePage(props) {
   }, [priorityItems]);
   
   // Life Factors 샘플 데이터
-  var lifeFactors = [
+  const lifeFactors = [
     { id: 'sleep', label: '수면', statusText: '어젯밤 7시간', signal: 'up' },
     { id: 'exercise', label: '운동', statusText: '이번 주 2회', signal: 'steady' },
     { id: 'hobby', label: '취미', statusText: '최근 활동 없음', signal: 'down' },
@@ -148,13 +134,13 @@ function NewHomePage(props) {
   ];
   
   // Relationship 샘플 데이터
-  var relationships = [
+  const relationships = [
     { name: '엄마', reason: '마지막 통화 5일 전' },
     { name: '민지', reason: '생일 D-3' }
   ];
   
   // 더보기 시트 열기
-  var openMoreSheet = function() {
+  const openMoreSheet = () => {
     setMoreSheet({
       isOpen: true,
       data: {
@@ -187,114 +173,100 @@ function NewHomePage(props) {
     });
   };
   
-  var closeMoreSheet = function() {
+  const closeMoreSheet = () => {
     setMoreSheet({ isOpen: false, data: null });
   };
   
   // 채팅 열기
-  var openChat = function() {
+  const openChat = () => {
     onNavigate && onNavigate('chat');
   };
   
   // 설정 열기
-  var openSettings = function() {
+  const openSettings = () => {
     onNavigate && onNavigate('settings');
   };
   
-  return React.createElement('div', {
-    className: 'min-h-screen bg-background'
-  },
-    // 페이지 헤더
-    React.createElement('header', {
-      className: 'sticky top-0 z-30 bg-background/80 backdrop-blur-sm px-4 pt-4 pb-2'
-    },
-      React.createElement('div', {
-        className: 'flex items-center justify-between mb-4'
-      },
-        // 날짜
-        React.createElement('div', null,
-          React.createElement('p', {
-            className: 'text-lg font-semibold text-neutral-800'
-          }, dateStr),
-          React.createElement('p', {
-            className: 'text-sm text-neutral-500'
-          }, dayStr)
-        ),
+  return (
+    <div className="min-h-screen bg-background">
+      {/* 페이지 헤더 */}
+      <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-sm px-4 pt-4 pb-2">
+        <div className="flex items-center justify-between mb-4">
+          {/* 날짜 */}
+          <div>
+            <p className="text-lg font-semibold text-neutral-800">{dateStr}</p>
+            <p className="text-sm text-neutral-500">{dayStr}</p>
+          </div>
+          
+          {/* 설정 버튼 */}
+          <button
+            onClick={openSettings}
+            className="w-10 h-10 rounded-full flex items-center justify-center text-neutral-400 hover:text-neutral-600 hover:bg-white transition-colors duration-200"
+          >
+            <Settings size={20} />
+          </button>
+        </div>
         
-        // 설정 버튼
-        React.createElement('button', {
-          onClick: openSettings,
-          className: [
-            'w-10 h-10 rounded-full',
-            'flex items-center justify-center',
-            'text-neutral-400 hover:text-neutral-600',
-            'hover:bg-white',
-            'transition-colors duration-normal'
-          ].join(' ')
-        },
-          React.createElement(Settings, { size: 20 })
-        )
-      ),
+        {/* Mode Switch */}
+        <ModeSwitch mode={mode} onChange={setMode} />
+      </header>
       
-      // Mode Switch
-      React.createElement(ModeSwitch, {
-        mode: mode,
-        onChange: setMode
-      })
-    ),
-    
-    // 메인 콘텐츠
-    React.createElement('main', {
-      className: 'px-4 pb-24 pt-4'
-    },
-      // ALL Mode
-      mode === 'all' && React.createElement(AllHome, {
-        briefing: getBriefing('all'),
-        priorities: priorityItems,
-        timelineItems: timelineItems,
-        workRatio: balanceRatio.work,
-        lifeRatio: balanceRatio.life,
-        onMoreBriefing: openMoreSheet,
-        onPriorityClick: onTaskClick,
-        onTimelineClick: function(id) { console.log('timeline click:', id); }
-      }),
+      {/* 메인 콘텐츠 */}
+      <main className="px-4 pb-24 pt-4">
+        {/* ALL Mode */}
+        {mode === 'all' && (
+          <AllHome
+            briefing={getBriefing('all')}
+            priorities={priorityItems}
+            timelineItems={timelineItems}
+            workRatio={balanceRatio.work}
+            lifeRatio={balanceRatio.life}
+            onMoreBriefing={openMoreSheet}
+            onPriorityClick={onTaskClick}
+            onTimelineClick={(id) => console.log('timeline click:', id)}
+          />
+        )}
+        
+        {/* WORK Mode */}
+        {mode === 'work' && (
+          <WorkHome
+            briefing={getBriefing('work')}
+            priorities={workPriorities}
+            projects={projectPulse}
+            timelineItems={timelineItems}
+            actionCards={[]}
+            onMoreBriefing={openMoreSheet}
+            onPriorityClick={onTaskClick}
+          />
+        )}
+        
+        {/* LIFE Mode */}
+        {mode === 'life' && (
+          <LifeHome
+            briefing={getBriefing('life')}
+            priorities={lifePriorities}
+            lifeFactors={lifeFactors}
+            relationships={relationships}
+            timelineItems={timelineItems}
+            onMoreBriefing={openMoreSheet}
+            onPriorityClick={onTaskClick}
+          />
+        )}
+      </main>
       
-      // WORK Mode
-      mode === 'work' && React.createElement(WorkHome, {
-        briefing: getBriefing('work'),
-        priorities: workPriorities,
-        projects: projectPulse,
-        timelineItems: timelineItems,
-        actionCards: [],
-        onMoreBriefing: openMoreSheet,
-        onPriorityClick: onTaskClick
-      }),
+      {/* Floating Chat Launcher */}
+      <ChatLauncher variant="floating" onOpen={openChat} />
       
-      // LIFE Mode
-      mode === 'life' && React.createElement(LifeHome, {
-        briefing: getBriefing('life'),
-        priorities: lifePriorities,
-        lifeFactors: lifeFactors,
-        relationships: relationships,
-        timelineItems: timelineItems,
-        onMoreBriefing: openMoreSheet,
-        onPriorityClick: onTaskClick
-      })
-    ),
-    
-    // Floating Chat Launcher
-    React.createElement(ChatLauncher, {
-      variant: 'floating',
-      onOpen: openChat
-    }),
-    
-    // More Sheet
-    moreSheet.data && React.createElement(MoreSheet, {
-      isOpen: moreSheet.isOpen,
-      title: moreSheet.data.title,
-      sections: moreSheet.data.sections,
-      onClose: closeMoreSheet
-    })
+      {/* More Sheet */}
+      {moreSheet.data && (
+        <MoreSheet
+          isOpen={moreSheet.isOpen}
+          title={moreSheet.data.title}
+          sections={moreSheet.data.sections}
+          onClose={closeMoreSheet}
+        />
+      )}
+    </div>
   );
 }
 
