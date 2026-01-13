@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { 
-  ArrowLeft, User, Bell, Moon, Sun, Palette, Shield, ChevronRight,
-  LogOut, Trash2, Database, Cloud, RefreshCw, Settings, Zap, Plus,
-  BellRing, BellOff, Check, Download, Upload, CloudOff, Loader2
+  ArrowLeft, Bell, Moon, Sun, ChevronRight,
+  Database, Cloud, Settings, Zap, Plus,
+  BellRing, BellOff, Check, Download, Upload, Loader2
 } from 'lucide-react';
 
 // Other Components
@@ -19,7 +19,6 @@ import { useGoogleDrive } from '../../hooks/useGoogleDrive';
 
 const SettingsPage = ({ 
   userName, 
-  setUserName,
   onBack, 
   darkMode, 
   setDarkMode, 
@@ -37,8 +36,6 @@ const SettingsPage = ({
     focusMode: true,
     soundEnabled: true,
   });
-  
-  const [showTimePicker, setShowTimePicker] = useState(null);
   
   // 알프레도 육성 관련 state
   const [alfredoLearnings, setAlfredoLearnings] = useState([]);
@@ -71,9 +68,7 @@ const SettingsPage = ({
   // 알림 권한 요청 핸들러
   const handleRequestNotificationPermission = async () => {
     const result = await requestPermission();
-    if (result === 'granted') {
-      // 테스트 알림은 훅 내부에서 발송됨
-    } else if (result === 'denied') {
+    if (result === 'denied') {
       alert('알림이 차단되었어요. 브라우저 설정에서 알림을 허용해주세요.');
     }
   };
@@ -344,10 +339,6 @@ const SettingsPage = ({
           {/* 알프레도 스타일 설정 */}
           <AlfredoStyleSettings 
             darkMode={darkMode}
-            onStyleChange={(style) => {
-              // 스타일 변경 시 처리 (추후 채팅 시스템에 연동)
-              console.log('Alfredo style changed:', style);
-            }}
           />
           
           {/* 알프레도가 배운 것 */}
