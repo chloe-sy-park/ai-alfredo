@@ -2,21 +2,17 @@ import { useState, useRef, useEffect } from 'react';
 import { Send, Mic, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-// 임시로 store 없이 테스트
 export default function Chat() {
   const navigate = useNavigate();
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Array<{id: string, role: string, content: string}>>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  // 스크롤 to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // 메시지 전송 (임시 로컬 버전)
   const handleSend = async () => {
     if (!input.trim() || isStreaming) return;
     
@@ -30,7 +26,6 @@ export default function Chat() {
     setInput('');
     setIsStreaming(true);
     
-    // 임시 응답 (1초 후)
     setTimeout(() => {
       const assistantMessage = {
         id: `assistant-${Date.now()}`,
@@ -43,25 +38,21 @@ export default function Chat() {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="p-4 space-y-4 max-w-lg mx-auto animate-fade-in">
       {/* 헤더 */}
-      <header className="flex-shrink-0 bg-white/80 backdrop-blur-sm px-4 py-3 border-b border-neutral-100">
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => navigate('/')}
-            className="w-10 h-10 rounded-full flex items-center justify-center text-neutral-500 hover:bg-neutral-100 transition-colors"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🐧</span>
-            <h1 className="text-lg font-semibold text-neutral-800">알프레도</h1>
-          </div>
-        </div>
-      </header>
+      <div className="flex items-center gap-3 -mx-4 px-4 py-2 bg-white/80 backdrop-blur-sm border-b border-neutral-100">
+        <button 
+          onClick={() => navigate('/')}
+          className="w-10 h-10 rounded-full flex items-center justify-center text-neutral-500 hover:bg-neutral-100"
+        >
+          <ArrowLeft size={20} />
+        </button>
+        <span className="text-2xl">🐧</span>
+        <h1 className="text-lg font-semibold text-neutral-800">알프레도</h1>
+      </div>
 
       {/* 메시지 영역 */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="space-y-4 min-h-[50vh]">
         {messages.length === 0 && !isStreaming ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <span className="text-5xl mb-4">🐧</span>
@@ -86,15 +77,12 @@ export default function Chat() {
                       : 'bg-white text-neutral-800 rounded-bl-md shadow-card'
                   }`}
                 >
-                  {msg.role === 'assistant' && (
-                    <span className="text-lg mr-2">🐧</span>
-                  )}
+                  {msg.role === 'assistant' && <span className="text-lg mr-2">🐧</span>}
                   <span className="whitespace-pre-wrap">{msg.content}</span>
                 </div>
               </div>
             ))}
             
-            {/* 스트리밍 메시지 */}
             {isStreaming && (
               <div className="flex justify-start">
                 <div className="max-w-[80%] rounded-2xl px-4 py-3 bg-white text-neutral-800 rounded-bl-md shadow-card">
@@ -113,11 +101,10 @@ export default function Chat() {
       </div>
 
       {/* 입력 영역 */}
-      <div className="flex-shrink-0 p-4 bg-white border-t border-neutral-100">
+      <div className="fixed bottom-20 left-0 right-0 p-4 bg-white border-t border-neutral-100">
         <div className="flex items-center gap-2 max-w-lg mx-auto">
           <div className="flex-1 flex items-center bg-neutral-100 rounded-full px-4 py-2">
             <input
-              ref={inputRef}
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
