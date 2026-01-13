@@ -47,63 +47,99 @@ import GoogleAuthModal from './components/modals/GoogleAuthModal';
 import MoodLogModal from './components/modals/MoodLogModal';
 import JournalModal from './components/modals/JournalModal';
 import HealthEditModal from './components/modals/HealthEditModal';
+import DayEndModal from './components/modals/DayEndModal';
 
-// 알림 - AlfredoNudge로 통합
-import AlfredoNudge from './components/common/AlfredoNudge';
+// Common 컴포넌트
+import { FloatingCaptureButton, NotificationToast } from './components/common';
 
-// 🤗 실패 케어 시스템
-import { DayEndModal } from './components/common/FailureCareSystem';
+// ADHD 훅
+import { useDayEndCare } from './components/adhd/useDayEndCare';
+import { useTimeEstimator } from './components/adhd/useTimeEstimator';
 
-// 훅
-import { useGoogleCalendar } from './hooks/useGoogleCalendar';
-import { useGmail } from './hooks/useGmail';
-import { useTimeTracking } from './hooks/useTimeTracking';
-import { useDNAEngine } from './hooks/useDNAEngine';
-import { useDayEndCare } from './hooks/useDayEndCare';
-import { useTimeEstimator } from './hooks/useTimeEstimator';
+// Data
+import { mockTasks, mockEvents, mockRoutines, mockProjects } from './data/mockData';
 
-// 데이터
-import { mockTasks, mockProjects, mockRoutines, mockWeather, mockRelationships } from './data/mockData';
+// Google Calendar API
+import { fetchGoogleCalendarEvents, fetchPrimaryCalendarId, syncEventsToGoogleCalendar } from './utils/googleCalendarApi';
+import { fetchEmails, fetchUnreadEmailCount } from './utils/gmailApi';
 
-// 상수
-import { COLORS } from './constants/colors';
+// 환경 확인
+var isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
 function App() {
-  // 🔐 인증 상태
+  // 🔐 Zustand 인증 상태 (Supabase)
   var authStore = useAuthStore();
-  var isAuthenticated = authStore.isAuthenticated;
-  var isAuthLoading = authStore.isLoading;
-  var authUser = authStore.user;
-  var initializeAuth = authStore.initialize;
+  var user = authStore.user;
+  var session = authStore.session;
+  var isLoading = authStore.isLoading;
+  var signOut = authStore.signOut;
+  var googleAccessToken = authStore.googleAccessToken;
+  var hasGoogleConnection = authStore.hasGoogleConnection;
   
-  // 🐧 온보딩 상태 (W2)
-  var onboardingState = useState(function() {
-    return !localStorage.getItem(STORAGE_KEYS.ONBOARDING_COMPLETE);
-  });
-  var showOnboarding = onboardingState[0];
-  var setShowOnboarding = onboardingState[1];
+  // 🐧 Zustand 펭귄 상태
+  var penguinStore = usePenguinStore();
+  var penguinState = penguinStore.state;
+  var penguinMood = penguinStore.mood;
+  var penguinEnergy = penguinStore.energy;
+  var penguinLevel = penguinStore.level;
+  var penguinName = penguinStore.name;
+  var addExperience = penguinStore.addExperience;
+  var updateMood = penguinStore.updateMood;
+  var updateEnergy = penguinStore.updateEnergy;
   
-  // 현재 페이지 상태
-  var pageState = useState(function() {
-    if (window.location.pathname === '/auth/callback' || window.location.search.includes('code=')) {
-      return 'AUTH_CALLBACK';
+  // 🌙 저녁 케어 훅
+  var dayEndCare = useDayEndCare();
+  var showDayEndModal = dayEndCare.showModal;
+  var setShowDayEndModal = dayEndCare.setShowModal;
+  var dayEndCareType = dayEndCare.careType;
+  var markDayEndAsShown = dayEndCare.markAsShown;
+  var triggerDayEndManually = dayEndCare.triggerManually;
+  
+  // ⏱️ 시간 추정 코치 훅
+  var timeEstimator = useTimeEstimator();
+  var startTimeTimer = timeEstimator.startTimer;
+  var stopTimeTimer = timeEstimator.stopTimer;
+  var getSuggestedTime = timeEstimator.getSuggestedTime;
+  var getTimeInsight = timeEstimator.getInsight;
+  var timeEstimatorData = timeEstimator.data;
+  
+  // 시간 인사이트 (오후 모드용)
+  var timeInsight = useMemo(function() {
+    var hour = new Date().getHours();
+    if (hour >= 12 && hour < 21) {
+      return getTimeInsight();
     }
-    return 'HOME';
-  });
+    return null;
+  }, [getTimeInsight]);
+  
+  // URL 기반 라우팅
+  var pathname = typeof window !== 'undefined' ? window.location.pathname : '/';
+  
+  // OAuth 콜백 처리
+  if (pathname === '/auth/callback') {
+    return React.createElement(AuthCallbackPage, null);
+  }
+  
+  // 로딩 상태
+  if (isLoading) {
+    return React.createElement('div', { className: 'min-h-screen flex items-center justify-center bg-[#F0EBFF]' },
+      React.createElement('div', { className: 'text-center' },
+        React.createElement('div', { className: 'text-4xl mb-4 animate-bounce' }, '🐧'),
+        React.createElement('p', { className: 'text-gray-600' }, '알프레도가 준비 중이에요...')
+      )
+    );
+  }
+  
+  // 미인증 사용자 -> 로그인 페이지
+  if (!user) {
+    return React.createElement(LoginPage, null);
+  }
+  
+  // 상태 관리
+  var pageState = useState('home');
   var currentPage = pageState[0];
   var setCurrentPage = pageState[1];
   
-  // 이전 페이지 (채팅 후 복귀용)
-  var previousPageState = useState('HOME');
-  var previousPage = previousPageState[0];
-  var setPreviousPage = previousPageState[1];
-  
-  // 넛지 표시 상태
-  var nudgeState = useState(null);
-  var currentNudge = nudgeState[0];
-  var setCurrentNudge = nudgeState[1];
-  
-  // 앱 상태
   var tasksState = useState(function() {
     var saved = loadFromStorage(STORAGE_KEYS.TASKS);
     return saved || mockTasks;
@@ -111,13 +147,12 @@ function App() {
   var tasks = tasksState[0];
   var setTasks = tasksState[1];
   
-  var eventsState = useState([]);
+  var eventsState = useState(function() {
+    var saved = loadFromStorage(STORAGE_KEYS.EVENTS);
+    return saved || mockEvents;
+  });
   var events = eventsState[0];
   var setEvents = eventsState[1];
-  
-  var projectsState = useState(mockProjects);
-  var projects = projectsState[0];
-  var setProjects = projectsState[1];
   
   var routinesState = useState(function() {
     var saved = loadFromStorage(STORAGE_KEYS.ROUTINES);
@@ -126,49 +161,22 @@ function App() {
   var routines = routinesState[0];
   var setRoutines = routinesState[1];
   
-  var relationshipsState = useState(function() {
-    var saved = loadFromStorage(STORAGE_KEYS.RELATIONSHIPS);
-    return saved || mockRelationships;
+  var projectsState = useState(function() {
+    var saved = loadFromStorage(STORAGE_KEYS.PROJECTS);
+    return saved || mockProjects;
   });
-  var relationships = relationshipsState[0];
-  var setRelationships = relationshipsState[1];
+  var projects = projectsState[0];
+  var setProjects = projectsState[1];
   
-  var healthDataState = useState(function() {
-    var saved = loadFromStorage(STORAGE_KEYS.HEALTH);
-    return saved || { steps: 6234, water: 5, sleep: 7.5, heartRate: 72 };
+  // 온보딩 상태
+  var hasCompletedOnboardingState = useState(function() {
+    var saved = loadFromStorage(STORAGE_KEYS.HAS_COMPLETED_ONBOARDING);
+    return saved || false;
   });
-  var healthData = healthDataState[0];
-  var setHealthData = healthDataState[1];
+  var hasCompletedOnboarding = hasCompletedOnboardingState[0];
+  var setHasCompletedOnboarding = hasCompletedOnboardingState[1];
   
-  // 컨디션 상태 (DNA 연동)
-  var moodState = useState(function() {
-    var saved = loadFromStorage(STORAGE_KEYS.MOOD);
-    return saved || 3;
-  });
-  var mood = moodState[0];
-  var setMood = moodState[1];
-  
-  var energyState = useState(function() {
-    var saved = loadFromStorage(STORAGE_KEYS.ENERGY);
-    return saved || 3;
-  });
-  var energy = energyState[0];
-  var setEnergy = energyState[1];
-  
-  // 다크 모드 (localStorage에서 로드)
-  var darkModeState = useState(function() {
-    var saved = loadFromStorage(STORAGE_KEYS.DARK_MODE);
-    return saved !== null ? saved : false;
-  });
-  var darkMode = darkModeState[0];
-  var setDarkMode = darkModeState[1];
-  
-  // 날씨 상태
-  var weatherState = useState(mockWeather);
-  var weather = weatherState[0];
-  var setWeather = weatherState[1];
-  
-  // 모달 상태들
+  // 모달 상태
   var showEventModalState = useState(false);
   var showEventModal = showEventModalState[0];
   var setShowEventModal = showEventModalState[1];
@@ -197,10 +205,6 @@ function App() {
   var showGoogleAuth = showGoogleAuthState[0];
   var setShowGoogleAuth = showGoogleAuthState[1];
   
-  var showDayEndModalState = useState(false);
-  var showDayEndModal = showDayEndModalState[0];
-  var setShowDayEndModal = showDayEndModalState[1];
-  
   var showMoodLogModalState = useState(false);
   var showMoodLogModal = showMoodLogModalState[0];
   var setShowMoodLogModal = showMoodLogModalState[1];
@@ -213,7 +217,7 @@ function App() {
   var showHealthEditModal = showHealthEditModalState[0];
   var setShowHealthEditModal = showHealthEditModalState[1];
   
-  // 선택된 항목
+  // 선택된 아이템
   var selectedEventState = useState(null);
   var selectedEvent = selectedEventState[0];
   var setSelectedEvent = selectedEventState[1];
@@ -222,552 +226,588 @@ function App() {
   var selectedTask = selectedTaskState[0];
   var setSelectedTask = selectedTaskState[1];
   
-  // 🔐 인증 초기화
+  // Focus 모드 상태
+  var focusTaskState = useState(null);
+  var focusTask = focusTaskState[0];
+  var setFocusTask = focusTaskState[1];
+  
+  var focusModeState = useState(false);
+  var isFocusMode = focusModeState[0];
+  var setIsFocusMode = focusModeState[1];
+  
+  // 바디더블링 모드
+  var bodyDoublingState = useState(false);
+  var isBodyDoubling = bodyDoublingState[0];
+  var setIsBodyDoubling = bodyDoublingState[1];
+  
+  // 알림 상태
+  var notificationState = useState(null);
+  var notification = notificationState[0];
+  var setNotification = notificationState[1];
+  
+  // 사용자 상태 (컨디션)
+  var moodState = useState(function() {
+    var saved = loadFromStorage(STORAGE_KEYS.MOOD);
+    return saved || 'good';
+  });
+  var mood = moodState[0];
+  var setMood = moodState[1];
+  
+  var energyState = useState(function() {
+    var saved = loadFromStorage(STORAGE_KEYS.ENERGY);
+    return saved || 70;
+  });
+  var energy = energyState[0];
+  var setEnergy = energyState[1];
+  
+  // 건강 데이터
+  var healthDataState = useState(function() {
+    var saved = loadFromStorage(STORAGE_KEYS.HEALTH_DATA);
+    return saved || { steps: 0, sleep: 7, water: 0 };
+  });
+  var healthData = healthDataState[0];
+  var setHealthData = healthDataState[1];
+  
+  // 날씨 데이터
+  var weatherState = useState({ temp: 15, condition: 'sunny', icon: '☀️' });
+  var weather = weatherState[0];
+  var setWeather = weatherState[1];
+  
+  // 이메일 데이터
+  var emailsState = useState([]);
+  var emails = emailsState[0];
+  var setEmails = emailsState[1];
+  
+  var unreadCountState = useState(0);
+  var unreadCount = unreadCountState[0];
+  var setUnreadCount = unreadCountState[1];
+  
+  // Google Calendar 동기화
+  var syncGoogleCalendar = useCallback(function() {
+    if (!googleAccessToken) return;
+    
+    fetchGoogleCalendarEvents(googleAccessToken)
+      .then(function(googleEvents) {
+        if (googleEvents && googleEvents.length > 0) {
+          setEvents(function(prev) {
+            var existingIds = new Set(prev.map(function(e) { return e.googleEventId; }).filter(Boolean));
+            var newEvents = googleEvents.filter(function(e) { return !existingIds.has(e.googleEventId); });
+            var merged = prev.concat(newEvents);
+            saveToStorage(STORAGE_KEYS.EVENTS, merged);
+            return merged;
+          });
+          showNotification('캘린더 동기화 완료', 'success');
+        }
+      })
+      .catch(function(err) {
+        console.error('Calendar sync error:', err);
+      });
+  }, [googleAccessToken]);
+  
+  // Gmail 동기화
+  var syncGmail = useCallback(function() {
+    if (!googleAccessToken) return;
+    
+    fetchUnreadEmailCount(googleAccessToken)
+      .then(function(count) {
+        setUnreadCount(count);
+      })
+      .catch(function(err) {
+        console.error('Gmail count error:', err);
+      });
+    
+    fetchEmails(googleAccessToken, 10)
+      .then(function(emailList) {
+        setEmails(emailList);
+      })
+      .catch(function(err) {
+        console.error('Gmail fetch error:', err);
+      });
+  }, [googleAccessToken]);
+  
+  // 초기 동기화
   useEffect(function() {
-    initializeAuth();
-  }, [initializeAuth]);
+    if (googleAccessToken) {
+      syncGoogleCalendar();
+      syncGmail();
+    }
+  }, [googleAccessToken, syncGoogleCalendar, syncGmail]);
   
-  // 🌐 Google Calendar 연동
-  var googleCalendar = useGoogleCalendar();
-  var isConnected = googleCalendar.isConnected;
-  var isLoading = googleCalendar.isLoading;
-  var calendarEvents = googleCalendar.events;
-  var fetchEvents = googleCalendar.fetchEvents;
-  var createEvent = googleCalendar.createEvent;
-  var updateEvent = googleCalendar.updateEvent;
-  var deleteEvent = googleCalendar.deleteEvent;
-  var disconnect = googleCalendar.disconnect;
+  // 저장 효과
+  useEffect(function() {
+    saveToStorage(STORAGE_KEYS.TASKS, tasks);
+  }, [tasks]);
   
-  // 📧 Gmail 연동
-  var gmail = useGmail();
-  var gmailStats = gmail.stats;
-  var getGmailBriefingMessage = gmail.getBriefingMessage;
+  useEffect(function() {
+    saveToStorage(STORAGE_KEYS.EVENTS, events);
+  }, [events]);
   
-  // 🧬 DNA 엔진
-  var dnaEngine = useDNAEngine();
-  var dnaProfile = dnaEngine.dnaProfile;
-  var isAnalyzingDNA = dnaEngine.isAnalyzing;
-  var analyzeCalendar = dnaEngine.analyzeCalendar;
-  var getMorningBriefing = dnaEngine.getMorningBriefing;
-  var getEveningMessage = dnaEngine.getEveningMessage;
-  var dnaSuggestions = dnaEngine.suggestions;
-  var dnaAnalysisPhase = dnaEngine.analysisPhase;
-  var getStressLevel = dnaEngine.getStressLevel;
-  var getBestFocusTime = dnaEngine.getBestFocusTime;
-  var getPeakHours = dnaEngine.getPeakHours;
-  var getChronotype = dnaEngine.getChronotype;
-  var todayContext = dnaEngine.todayContext;
-  var getSpecialAlerts = dnaEngine.getSpecialAlerts;
-  var getBurnoutWarning = dnaEngine.getBurnoutWarning;
-  var getTodayEnergyDrain = dnaEngine.getTodayEnergyDrain;
-  var getRecommendedActions = dnaEngine.getRecommendedActions;
-  var getBriefingTone = dnaEngine.getBriefingTone;
+  useEffect(function() {
+    saveToStorage(STORAGE_KEYS.ROUTINES, routines);
+  }, [routines]);
   
+  useEffect(function() {
+    saveToStorage(STORAGE_KEYS.MOOD, mood);
+    updateMood(mood);
+  }, [mood, updateMood]);
+  
+  useEffect(function() {
+    saveToStorage(STORAGE_KEYS.ENERGY, energy);
+    updateEnergy(energy);
+  }, [energy, updateEnergy]);
+  
+  useEffect(function() {
+    saveToStorage(STORAGE_KEYS.HEALTH_DATA, healthData);
+  }, [healthData]);
+  
+  // 오늘 완료한 태스크 수
   var todayCompletedCount = useMemo(function() {
     var today = new Date().toDateString();
     return tasks.filter(function(t) {
-      return t.completed && t.completedAt && new Date(t.completedAt).toDateString() === today;
+      return (t.completed || t.status === 'done') && 
+             t.completedAt && 
+             new Date(t.completedAt).toDateString() === today;
     }).length;
   }, [tasks]);
   
-  // 🤗 실패 케어 훅 (저녁 자동 트리거)
-  var dayEndCare = useDayEndCare(todayCompletedCount, tasks.length);
-  var dayEndShouldShow = dayEndCare.shouldShow;
-  var dayEndCareType = dayEndCare.careType;
-  var markDayEndAsShown = dayEndCare.markAsShown;
-  var triggerDayEndManually = dayEndCare.triggerManually;
-  
-  // ⏱️ 시간 추정 코치 훅
-  var timeEstimator = useTimeEstimator();
-  var startTimeTimer = timeEstimator.startTimer;
-  var stopTimeTimer = timeEstimator.stopTimer;
-  var getTimeInsight = timeEstimator.getInsightMessage;
-  var getSuggestedTime = timeEstimator.getSuggestedTime;
-  var timeEstimatorData = timeEstimator.data;
-  
-  // 저녁 실패케어 자동 표시
+  // 저녁 케어 훅에 완료율 전달
   useEffect(function() {
-    if (dayEndShouldShow && !showDayEndModal) {
-      setShowDayEndModal(true);
-    }
-  }, [dayEndShouldShow]);
+    var totalToday = tasks.filter(function(t) {
+      return t.deadline && (t.deadline.includes('오늘') || t.deadline.includes('전'));
+    }).length;
+    var completionRate = totalToday > 0 ? (todayCompletedCount / totalToday) * 100 : 0;
+    dayEndCare.setCompletionRate(completionRate);
+  }, [todayCompletedCount, tasks, dayEndCare]);
   
-  // DNA 자동 분석
-  useEffect(function() {
-    if (events && events.length > 0 && analyzeCalendar && !isAnalyzingDNA) {
-      var calendarEvents = events.map(function(e) {
-        return {
-          id: e.id || String(Date.now()),
-          title: e.title || e.summary || '',
-          start: new Date(e.start || e.startTime),
-          end: new Date(e.end || e.endTime),
-          isAllDay: e.isAllDay || false,
-          location: e.location || '',
-          description: e.description || ''
-        };
-      });
-      analyzeCalendar(calendarEvents);
-    }
-  }, [events, analyzeCalendar, isAnalyzingDNA]);
-  
-  // Google Calendar 이벤트 동기화
-  useEffect(function() {
-    if (calendarEvents && calendarEvents.length > 0) {
-      var formattedEvents = calendarEvents.map(function(event) {
-        return {
-          id: event.id,
-          title: event.summary || event.title || '(제목 없음)',
-          start: event.start ? (event.start.dateTime || event.start.date) : null,
-          end: event.end ? (event.end.dateTime || event.end.date) : null,
-          location: event.location || '',
-          description: event.description || '',
-          isAllDay: !event.start?.dateTime,
-          color: event.colorId ? COLORS.calendar[event.colorId] : '#A996FF',
-          source: 'google'
-        };
-      });
-      setEvents(formattedEvents);
-    }
-  }, [calendarEvents]);
-  
-  // 데이터 저장 효과
-  useEffect(function() { saveToStorage(STORAGE_KEYS.TASKS, tasks); }, [tasks]);
-  useEffect(function() { saveToStorage(STORAGE_KEYS.ROUTINES, routines); }, [routines]);
-  useEffect(function() { saveToStorage(STORAGE_KEYS.RELATIONSHIPS, relationships); }, [relationships]);
-  useEffect(function() { saveToStorage(STORAGE_KEYS.HEALTH, healthData); }, [healthData]);
-  useEffect(function() { saveToStorage(STORAGE_KEYS.DARK_MODE, darkMode); }, [darkMode]);
-  useEffect(function() { saveToStorage(STORAGE_KEYS.MOOD, mood); }, [mood]);
-  useEffect(function() { saveToStorage(STORAGE_KEYS.ENERGY, energy); }, [energy]);
+  // 알림 표시
+  var showNotification = useCallback(function(message, type) {
+    setNotification({ message: message, type: type || 'info' });
+    setTimeout(function() { setNotification(null); }, 3000);
+  }, []);
   
   // 핸들러들
-  var handlePageChange = useCallback(function(page) {
-    if (page === 'CHAT') {
-      setPreviousPage(currentPage);
-    }
-    setCurrentPage(page);
-  }, [currentPage]);
-  
-  var handleGoogleAuthSuccess = useCallback(function() {
-    setShowGoogleAuth(false);
-    fetchEvents();
-  }, [fetchEvents]);
-  
-  var handleOpenChat = useCallback(function() {
-    setPreviousPage(currentPage);
-    setCurrentPage('CHAT');
-  }, [currentPage]);
-  
-  var handleBackFromChat = useCallback(function() {
-    setCurrentPage(previousPage);
-  }, [previousPage]);
-  
-  var handleOpenEvent = useCallback(function(event) {
+  var handleOpenEvent = function(event) {
     setSelectedEvent(event);
     setShowEventModal(true);
-  }, []);
+  };
   
-  var handleOpenTask = useCallback(function(task) {
+  var handleOpenTask = function(task) {
     setSelectedTask(task);
     setShowTaskModal(true);
-  }, []);
+  };
   
-  var handleOpenAddTask = useCallback(function(defaultDate) {
-    setSelectedTask(defaultDate ? { dueDate: defaultDate } : null);
+  var handleOpenAddTask = function() {
+    setSelectedTask(null);
     setShowAddTaskModal(true);
-  }, []);
+  };
   
-  var handleToggleTask = useCallback(function(taskId) {
-    setTasks(function(prev) {
-      return prev.map(function(t) {
-        if (t.id === taskId) {
-          return Object.assign({}, t, { 
-            completed: !t.completed,
-            completedAt: !t.completed ? new Date().toISOString() : null
-          });
-        }
-        return t;
-      });
-    });
-  }, []);
-  
-  var handleSaveTask = useCallback(function(taskData) {
-    if (selectedTask && selectedTask.id) {
-      setTasks(function(prev) {
-        return prev.map(function(t) {
-          return t.id === selectedTask.id ? Object.assign({}, t, taskData) : t;
-        });
-      });
+  var handleSaveEvent = function(eventData) {
+    if (eventData.id) {
+      setEvents(events.map(function(e) { return e.id === eventData.id ? eventData : e; }));
     } else {
-      var newTask = Object.assign({
-        id: 'task_' + Date.now(),
-        completed: false,
-        createdAt: new Date().toISOString()
-      }, taskData);
-      setTasks(function(prev) { return prev.concat([newTask]); });
+      var newEvent = Object.assign({}, eventData, { id: 'event-' + Date.now() });
+      setEvents(events.concat([newEvent]));
+    }
+    setShowEventModal(false);
+    setSelectedEvent(null);
+    showNotification('일정이 저장되었습니다', 'success');
+  };
+  
+  var handleDeleteEvent = function(eventId) {
+    setEvents(events.filter(function(e) { return e.id !== eventId; }));
+    setShowEventModal(false);
+    setSelectedEvent(null);
+    showNotification('일정이 삭제되었습니다', 'info');
+  };
+  
+  var handleSaveTask = function(taskData) {
+    if (taskData.id) {
+      setTasks(tasks.map(function(t) { return t.id === taskData.id ? taskData : t; }));
+    } else {
+      var newTask = Object.assign({}, taskData, { id: 'task-' + Date.now() });
+      setTasks(tasks.concat([newTask]));
     }
     setShowTaskModal(false);
     setShowAddTaskModal(false);
     setSelectedTask(null);
-  }, [selectedTask]);
-  
-  var handleDeleteTask = useCallback(function(taskId) {
-    setTasks(function(prev) { return prev.filter(function(t) { return t.id !== taskId; }); });
-    setShowTaskModal(false);
-    setSelectedTask(null);
-  }, []);
-  
-  var handleSaveEvent = useCallback(function(eventData) {
-    if (selectedEvent && selectedEvent.id) {
-      if (selectedEvent.source === 'google') {
-        updateEvent(selectedEvent.id, {
-          summary: eventData.title,
-          start: { dateTime: eventData.start },
-          end: { dateTime: eventData.end },
-          location: eventData.location,
-          description: eventData.description
-        });
-      }
-      setEvents(function(prev) {
-        return prev.map(function(e) {
-          return e.id === selectedEvent.id ? Object.assign({}, e, eventData) : e;
-        });
-      });
-    } else {
-      if (isConnected) {
-        createEvent({
-          summary: eventData.title,
-          start: { dateTime: eventData.start },
-          end: { dateTime: eventData.end },
-          location: eventData.location,
-          description: eventData.description
-        });
-      }
-      var newEvent = Object.assign({
-        id: 'event_' + Date.now()
-      }, eventData);
-      setEvents(function(prev) { return prev.concat([newEvent]); });
-    }
-    setShowEventModal(false);
-    setSelectedEvent(null);
-  }, [selectedEvent, isConnected, createEvent, updateEvent]);
-  
-  var handleDeleteEvent = useCallback(function(eventId) {
-    var event = events.find(function(e) { return e.id === eventId; });
-    if (event && event.source === 'google') {
-      deleteEvent(eventId);
-    }
-    setEvents(function(prev) { return prev.filter(function(e) { return e.id !== eventId; }); });
-    setShowEventModal(false);
-    setSelectedEvent(null);
-  }, [events, deleteEvent]);
-  
-  var handleSaveRoutine = useCallback(function(routineData) {
-    if (routineData.id) {
-      setRoutines(function(prev) {
-        return prev.map(function(r) {
-          return r.id === routineData.id ? routineData : r;
-        });
-      });
-    } else {
-      var newRoutine = Object.assign({ id: 'routine_' + Date.now() }, routineData);
-      setRoutines(function(prev) { return prev.concat([newRoutine]); });
-    }
-  }, []);
-  
-  var handleDeleteRoutine = useCallback(function(routineId) {
-    setRoutines(function(prev) { return prev.filter(function(r) { return r.id !== routineId; }); });
-  }, []);
-  
-  var handleUpdateRelationship = useCallback(function(id, updates) {
-    setRelationships(function(prev) {
-      return prev.map(function(r) {
-        return r.id === id ? Object.assign({}, r, updates) : r;
-      });
-    });
-  }, []);
-  
-  var handleAddRelationship = useCallback(function(relationship) {
-    var newRelationship = Object.assign({ id: 'rel_' + Date.now() }, relationship);
-    setRelationships(function(prev) { return prev.concat([newRelationship]); });
-  }, []);
-  
-  var handleDeleteRelationship = useCallback(function(id) {
-    setRelationships(function(prev) { return prev.filter(function(r) { return r.id !== id; }); });
-  }, []);
-  
-  var handleQuickCapture = useCallback(function(data) {
-    if (data.type === 'task') {
-      var newTask = {
-        id: 'task_' + Date.now(),
-        title: data.title,
-        completed: false,
-        priority: 'medium',
-        domain: 'work',
-        createdAt: new Date().toISOString()
-      };
-      setTasks(function(prev) { return prev.concat([newTask]); });
-    } else if (data.type === 'event') {
-      var newEvent = {
-        id: 'event_' + Date.now(),
-        title: data.title,
-        start: data.start || new Date().toISOString(),
-        end: data.end || new Date(Date.now() + 3600000).toISOString()
-      };
-      setEvents(function(prev) { return prev.concat([newEvent]); });
-    }
-    setShowQuickCapture(false);
-  }, []);
-  
-  var handleOpenRoutineManager = useCallback(function() {
-    setShowRoutineModal(true);
-  }, []);
-  
-  var handleStartFocus = useCallback(function(task) {
-    setSelectedTask(task);
-    setCurrentPage('FOCUS');
-  }, []);
-  
-  var handleStartBodyDoubling = useCallback(function(task) {
-    setSelectedTask(task);
-    setCurrentPage('BODY_DOUBLING');
-  }, []);
-  
-  var handleOpenReminder = useCallback(function() {
-    setCurrentNudge({ type: 'reminder', message: '알림 설정' });
-  }, []);
-  
-  var handleOpenSearch = useCallback(function() {
-    setShowSearchModal(true);
-  }, []);
-  
-  var handleOpenInbox = useCallback(function() {
-    setCurrentPage('INBOX');
-  }, []);
-  
-  var handleOpenProject = useCallback(function(projectId) {
-    setCurrentPage('PROJECT_DASHBOARD');
-  }, []);
-  
-  var handleOpenTomorrowPrep = useCallback(function() {
-    setCurrentPage('TOMORROW_PREP');
-  }, []);
-  
-  var handleSaveMoodLog = useCallback(function(data) {
-    setMood(data.mood);
-    setEnergy(data.energy);
-    setShowMoodLogModal(false);
-  }, []);
-  
-  var handleOpenMoodLog = useCallback(function() {
-    setShowMoodLogModal(true);
-  }, []);
-  
-  var handleOpenJournal = useCallback(function() {
-    setShowJournalModal(true);
-  }, []);
-  
-  var handleSaveJournal = useCallback(function(journalData) {
-    console.log('Journal saved:', journalData);
-    setShowJournalModal(false);
-  }, []);
-  
-  var handleEditHealth = useCallback(function() {
-    setShowHealthEditModal(true);
-  }, []);
-  
-  var handleSaveHealth = useCallback(function(data) {
-    setHealthData(data);
-    setShowHealthEditModal(false);
-  }, []);
-  
-  var handleCompleteOnboarding = useCallback(function() {
-    localStorage.setItem(STORAGE_KEYS.ONBOARDING_COMPLETE, 'true');
-    setShowOnboarding(false);
-  }, []);
-  
-  // 공통 props
-  var commonProps = {
-    darkMode: darkMode,
-    setDarkMode: setDarkMode,
-    weather: weather,
-    mood: mood,
-    energy: energy,
-    setMood: setMood,
-    setEnergy: setEnergy
+    showNotification('태스크가 저장되었습니다', 'success');
   };
   
-  // 온보딩
-  if (showOnboarding) {
-    return React.createElement(Onboarding, { onComplete: handleCompleteOnboarding, darkMode: darkMode });
+  var handleDeleteTask = function(taskId) {
+    setTasks(tasks.filter(function(t) { return t.id !== taskId; }));
+    setShowTaskModal(false);
+    setSelectedTask(null);
+    showNotification('태스크가 삭제되었습니다', 'info');
+  };
+  
+  var handleToggleTask = function(taskId) {
+    setTasks(tasks.map(function(t) {
+      if (t.id === taskId) {
+        var newCompleted = !(t.completed || t.status === 'done');
+        if (newCompleted) {
+          addExperience(10);
+          showNotification('+10 XP 획득! 🎉', 'success');
+        }
+        return Object.assign({}, t, {
+          completed: newCompleted,
+          status: newCompleted ? 'done' : 'todo',
+          completedAt: newCompleted ? new Date().toISOString() : null
+        });
+      }
+      return t;
+    }));
+  };
+  
+  var handleSaveRoutine = function(routineData) {
+    if (routineData.id) {
+      setRoutines(routines.map(function(r) { return r.id === routineData.id ? routineData : r; }));
+    } else {
+      var newRoutine = Object.assign({}, routineData, { id: 'routine-' + Date.now() });
+      setRoutines(routines.concat([newRoutine]));
+    }
+    showNotification('루틴이 저장되었습니다', 'success');
+  };
+  
+  var handleDeleteRoutine = function(routineId) {
+    setRoutines(routines.filter(function(r) { return r.id !== routineId; }));
+    showNotification('루틴이 삭제되었습니다', 'info');
+  };
+  
+  var handleStartFocus = function(task) {
+    setFocusTask(task);
+    setIsFocusMode(true);
+    setCurrentPage('focus');
+  };
+  
+  var handleExitFocus = function() {
+    setIsFocusMode(false);
+    setFocusTask(null);
+    setCurrentPage('work');
+  };
+  
+  var handleCompleteFocus = function() {
+    if (focusTask) {
+      handleToggleTask(focusTask.id);
+    }
+    handleExitFocus();
+  };
+  
+  var handleQuickCapture = function(text) {
+    var newTask = {
+      id: 'task-' + Date.now(),
+      title: text,
+      project: '인박스',
+      status: 'todo',
+      importance: 'medium',
+      priorityScore: 50,
+      priorityChange: 'new'
+    };
+    setTasks(tasks.concat([newTask]));
+    setShowQuickCapture(false);
+    showNotification('인박스에 추가됨', 'success');
+  };
+  
+  var handleGoogleAuthSuccess = function() {
+    setShowGoogleAuth(false);
+    syncGoogleCalendar();
+    syncGmail();
+    showNotification('Google 연결 완료!', 'success');
+  };
+  
+  var handleSaveMoodLog = function(moodData) {
+    setMood(moodData.mood);
+    setEnergy(moodData.energy);
+    setShowMoodLogModal(false);
+    showNotification('컨디션이 기록되었습니다', 'success');
+  };
+  
+  var handleSaveJournal = function(journalData) {
+    setShowJournalModal(false);
+    addExperience(15);
+    showNotification('저널이 저장되었습니다 (+15 XP)', 'success');
+  };
+  
+  var handleSaveHealth = function(data) {
+    setHealthData(data);
+    setShowHealthEditModal(false);
+    showNotification('건강 데이터가 업데이트되었습니다', 'success');
+  };
+  
+  var handleCompleteOnboarding = function() {
+    setHasCompletedOnboarding(true);
+    saveToStorage(STORAGE_KEYS.HAS_COMPLETED_ONBOARDING, true);
+  };
+  
+  var handleLogout = function() {
+    signOut();
+  };
+  
+  // 온보딩 표시
+  if (!hasCompletedOnboarding) {
+    return React.createElement(Onboarding, {
+      onComplete: handleCompleteOnboarding,
+      userName: user.user_metadata && user.user_metadata.name || user.email
+    });
   }
   
-  // 인증 콜백 처리
-  if (currentPage === 'AUTH_CALLBACK') {
-    return React.createElement(AuthCallbackPage);
+  // 집중 모드
+  if (isFocusMode && currentPage === 'focus') {
+    return React.createElement(FocusPage, {
+      task: focusTask,
+      onComplete: handleCompleteFocus,
+      onExit: handleExitFocus,
+      onStartBodyDoubling: function() { setIsBodyDoubling(true); }
+    });
   }
   
-  // 콘텐츠 렌더링
-  var renderContent = function() {
-    switch(currentPage) {
-      case 'LOGIN': return React.createElement(LoginPage);
-      case 'HOME':
-        return React.createElement(HomePage, Object.assign({}, commonProps, {
-          tasks: tasks, events: events, relationships: relationships,
-          onOpenAddTask: handleOpenAddTask, onOpenTask: handleOpenTask, onOpenEvent: handleOpenEvent,
-          onOpenChat: handleOpenChat, onOpenInbox: handleOpenInbox, onOpenSearch: handleOpenSearch,
-          onStartFocus: handleStartFocus, onStartBodyDoubling: handleStartBodyDoubling,
-          onOpenReminder: handleOpenReminder, onOpenTomorrowPrep: handleOpenTomorrowPrep,
-          isGoogleConnected: isConnected, onConnectGoogle: function() { setShowGoogleAuth(true); },
-          dnaProfile: dnaProfile, dnaSuggestions: dnaSuggestions, dnaAnalysisPhase: dnaAnalysisPhase,
-          getMorningBriefing: getMorningBriefing, getEveningMessage: getEveningMessage,
-          getStressLevel: getStressLevel, getBestFocusTime: getBestFocusTime,
-          getPeakHours: getPeakHours, getChronotype: getChronotype,
-          todayContext: todayContext, getSpecialAlerts: getSpecialAlerts, getBurnoutWarning: getBurnoutWarning,
-          getTodayEnergyDrain: getTodayEnergyDrain, getRecommendedActions: getRecommendedActions, getBriefingTone: getBriefingTone,
-          PenguinStatusBar: PenguinStatusBar,
-          gmailBriefing: getGmailBriefingMessage ? getGmailBriefingMessage() : null, gmailStats: gmailStats,
-          // ⏱️ 시간 추정 코치
-          timeInsight: getTimeInsight ? getTimeInsight() : null,
+  // 바디더블링 모드
+  if (isBodyDoubling) {
+    return React.createElement(BodyDoublingMode, {
+      task: focusTask,
+      onExit: function() { setIsBodyDoubling(false); },
+      onComplete: handleCompleteFocus
+    });
+  }
+  
+  // 채팅 페이지
+  if (currentPage === 'chat') {
+    return React.createElement(AlfredoChat, {
+      onBack: function() { setCurrentPage('home'); },
+      tasks: tasks,
+      events: events,
+      mood: mood,
+      energy: energy,
+      weather: weather,
+      userName: user.user_metadata && user.user_metadata.name || user.email
+    });
+  }
+  
+  // 설정 페이지
+  if (currentPage === 'settings') {
+    return React.createElement(SettingsPage, {
+      onBack: function() { setCurrentPage('more'); },
+      onLogout: handleLogout,
+      user: user,
+      hasGoogleConnection: hasGoogleConnection,
+      onConnectGoogle: function() { setShowGoogleAuth(true); }
+    });
+  }
+  
+  // 주간 리뷰
+  if (currentPage === 'weeklyReview') {
+    return React.createElement(WeeklyReviewPage, {
+      onBack: function() { setCurrentPage('more'); },
+      tasks: tasks,
+      events: events,
+      routines: routines
+    });
+  }
+  
+  // 습관 히트맵
+  if (currentPage === 'habitHeatmap') {
+    return React.createElement(HabitHeatmapPage, {
+      onBack: function() { setCurrentPage('more'); },
+      routines: routines
+    });
+  }
+  
+  // 에너지 리듬
+  if (currentPage === 'energyRhythm') {
+    return React.createElement(EnergyRhythmPage, {
+      onBack: function() { setCurrentPage('more'); }
+    });
+  }
+  
+  // 프로젝트 대시보드
+  if (currentPage === 'projects') {
+    return React.createElement(ProjectDashboardPage, {
+      onBack: function() { setCurrentPage('work'); },
+      projects: projects,
+      tasks: tasks
+    });
+  }
+  
+  // 인박스
+  if (currentPage === 'inbox') {
+    return React.createElement(InboxPage, {
+      onBack: function() { setCurrentPage('work'); },
+      tasks: tasks.filter(function(t) { return t.project === '인박스'; }),
+      onMoveTask: function(taskId, project) {
+        setTasks(tasks.map(function(t) {
+          return t.id === taskId ? Object.assign({}, t, { project: project }) : t;
+        }));
+      },
+      onDeleteTask: handleDeleteTask
+    });
+  }
+  
+  // 내일 준비
+  if (currentPage === 'tomorrowPrep') {
+    return React.createElement(TomorrowPrep, {
+      onBack: function() { setCurrentPage('home'); },
+      tasks: tasks,
+      events: events,
+      onUpdateTasks: setTasks
+    });
+  }
+  
+  // 페이지 렌더링
+  var renderPage = function() {
+    switch (currentPage) {
+      case 'home':
+        return React.createElement(HomePage, {
+          tasks: tasks,
+          setTasks: setTasks,
+          events: events,
+          routines: routines,
+          weather: weather,
+          mood: mood,
+          energy: energy,
+          onOpenChat: function() { setCurrentPage('chat'); },
+          onOpenTask: handleOpenTask,
+          onOpenEvent: handleOpenEvent,
+          onOpenAddTask: handleOpenAddTask,
+          onOpenMoodLog: function() { setShowMoodLogModal(true); },
+          onStartFocus: handleStartFocus,
+          onOpenTomorrowPrep: function() { setCurrentPage('tomorrowPrep'); },
+          onToggleTask: handleToggleTask,
+          userName: user.user_metadata && user.user_metadata.name || user.email,
+          unreadCount: unreadCount,
+          emails: emails,
+          hasGoogleConnection: hasGoogleConnection,
+          onConnectGoogle: function() { setShowGoogleAuth(true); },
+          penguinState: penguinState,
+          penguinMood: penguinMood,
+          penguinEnergy: penguinEnergy,
+          penguinLevel: penguinLevel,
+          penguinName: penguinName,
+          timeInsight: timeInsight,
           timeEstimatorData: timeEstimatorData,
-          // 🤗 저녁 리뷰 수동 트리거
           onOpenEveningReview: triggerDayEndManually,
           todayCompletedCount: todayCompletedCount
-        }));
-      case 'WORK':
-        return React.createElement(WorkPage, Object.assign({}, commonProps, {
-          tasks: tasks, setTasks: setTasks, events: events, projects: projects,
-          onOpenAddTask: handleOpenAddTask, onOpenTask: handleOpenTask, onToggleTask: handleToggleTask,
-          onOpenEvent: handleOpenEvent, onOpenChat: handleOpenChat,
-          onStartFocus: handleStartFocus, onStartBodyDoubling: handleStartBodyDoubling,
-          onOpenInbox: handleOpenInbox, onOpenProject: handleOpenProject,
-          // ⏱️ 시간 추정 코치
+        });
+      case 'calendar':
+        return React.createElement(CalendarPage, {
+          events: events,
+          tasks: tasks,
+          onOpenEvent: handleOpenEvent,
+          onOpenTask: handleOpenTask,
+          onAddEvent: function() { setSelectedEvent(null); setShowEventModal(true); },
+          hasGoogleConnection: hasGoogleConnection,
+          onSyncGoogle: syncGoogleCalendar
+        });
+      case 'work':
+        return React.createElement(WorkPage, {
+          darkMode: false,
+          tasks: tasks,
+          setTasks: setTasks,
+          events: events,
+          weather: weather,
+          userName: user.user_metadata && user.user_metadata.name || user.email,
+          onOpenTask: handleOpenTask,
+          onOpenAddTask: handleOpenAddTask,
+          onOpenProject: function() { setCurrentPage('projects'); },
+          onOpenInbox: function() { setCurrentPage('inbox'); },
+          onOpenChat: function() { setCurrentPage('chat'); },
+          onStartFocus: handleStartFocus,
           startTimeTimer: startTimeTimer,
           stopTimeTimer: stopTimeTimer,
           getSuggestedTime: getSuggestedTime
-        }));
-      case 'CALENDAR':
-        return React.createElement(CalendarPage, Object.assign({}, commonProps, {
-          events: events, tasks: tasks, isConnected: isConnected, isLoading: isLoading,
-          onOpenEvent: handleOpenEvent, onOpenTask: handleOpenTask,
-          onAddEvent: function() { setSelectedEvent(null); setShowEventModal(true); },
-          onConnectGoogle: function() { setShowGoogleAuth(true); }
-        }));
-      case 'LIFE':
-        return React.createElement(LifePage, Object.assign({}, commonProps, {
-          routines: routines, setRoutines: setRoutines, relationships: relationships,
-          healthData: healthData, setHealthData: setHealthData,
-          onOpenRoutines: handleOpenRoutineManager, onOpenRoutineManager: handleOpenRoutineManager,
-          onUpdateRelationship: handleUpdateRelationship, onAddRelationship: handleAddRelationship,
-          onDeleteRelationship: handleDeleteRelationship, onOpenChat: handleOpenChat,
-          onOpenJournal: handleOpenJournal, onOpenMoodLog: handleOpenMoodLog, onEditHealth: handleEditHealth
-        }));
-      case 'MORE':
-        return React.createElement(MorePage, Object.assign({}, commonProps, {
-          onNavigate: handlePageChange, onOpenSettings: function() { setCurrentPage('SETTINGS'); },
-          onOpenTomorrowPrep: handleOpenTomorrowPrep, isGoogleConnected: isConnected,
-          onConnectGoogle: function() { setShowGoogleAuth(true); }, onDisconnectGoogle: disconnect
-        }));
-      case 'CHAT':
-        return React.createElement(AlfredoChat, Object.assign({}, commonProps, {
-          onBack: handleBackFromChat, tasks: tasks, events: events,
-          getMorningBriefing: getMorningBriefing, getEveningMessage: getEveningMessage,
-          dnaProfile: dnaProfile, dnaSuggestions: dnaSuggestions
-        }));
-      case 'FOCUS':
-        return React.createElement(FocusPage, Object.assign({}, commonProps, {
-          task: selectedTask, onBack: function() { setCurrentPage('HOME'); },
-          onComplete: function() { if (selectedTask) handleToggleTask(selectedTask.id); setCurrentPage('HOME'); }
-        }));
-      case 'BODY_DOUBLING':
-        return React.createElement(BodyDoublingMode, Object.assign({}, commonProps, {
-          task: selectedTask, onBack: function() { setCurrentPage('HOME'); },
-          onComplete: function() { if (selectedTask) handleToggleTask(selectedTask.id); setCurrentPage('HOME'); }
-        }));
-      case 'SETTINGS':
-        return React.createElement(SettingsPage, Object.assign({}, commonProps, {
-          onBack: function() { setCurrentPage('MORE'); },
-          isGoogleConnected: isConnected, onConnectGoogle: function() { setShowGoogleAuth(true); },
-          onDisconnectGoogle: disconnect
-        }));
-      case 'WEEKLY_REVIEW':
-        return React.createElement(WeeklyReviewPage, Object.assign({}, commonProps, { tasks: tasks, events: events, onBack: function() { setCurrentPage('MORE'); } }));
-      case 'HABIT_HEATMAP':
-        return React.createElement(HabitHeatmapPage, Object.assign({}, commonProps, { onBack: function() { setCurrentPage('MORE'); } }));
-      case 'ENERGY_RHYTHM':
-        return React.createElement(EnergyRhythmPage, Object.assign({}, commonProps, { onBack: function() { setCurrentPage('MORE'); } }));
-      case 'PROJECT_DASHBOARD':
-        return React.createElement(ProjectDashboardPage, Object.assign({}, commonProps, { projects: projects, tasks: tasks, onBack: function() { setCurrentPage('WORK'); } }));
-      case 'INBOX':
-        return React.createElement(InboxPage, Object.assign({}, commonProps, { onBack: function() { setCurrentPage('WORK'); }, onOpenChat: handleOpenChat }));
-      case 'TOMORROW_PREP':
-        return React.createElement(TomorrowPrep, Object.assign({}, commonProps, { tasks: tasks, events: events, onBack: function() { setCurrentPage('HOME'); } }));
+        });
+      case 'life':
+        return React.createElement(LifePage, {
+          darkMode: false,
+          routines: routines,
+          healthData: healthData,
+          mood: mood,
+          energy: energy,
+          onOpenRoutineManage: function() { setShowRoutineModal(true); },
+          onOpenMoodLog: function() { setShowMoodLogModal(true); },
+          onOpenJournal: function() { setShowJournalModal(true); },
+          onOpenHealthEdit: function() { setShowHealthEditModal(true); },
+          onToggleRoutine: function(routineId) {
+            setRoutines(routines.map(function(r) {
+              if (r.id === routineId) {
+                var newCompleted = !r.completedToday;
+                if (newCompleted) addExperience(5);
+                return Object.assign({}, r, { completedToday: newCompleted });
+              }
+              return r;
+            }));
+          }
+        });
+      case 'more':
+        return React.createElement(MorePage, {
+          onNavigate: setCurrentPage,
+          onLogout: handleLogout,
+          user: user,
+          penguinLevel: penguinLevel,
+          penguinName: penguinName
+        });
       default:
-        return React.createElement(HomePage, Object.assign({}, commonProps, {
-          tasks: tasks, events: events, relationships: relationships,
-          onOpenAddTask: handleOpenAddTask, onOpenTask: handleOpenTask, onOpenEvent: handleOpenEvent,
-          onOpenChat: handleOpenChat, onOpenInbox: handleOpenInbox, onOpenSearch: handleOpenSearch,
-          onStartFocus: handleStartFocus, onStartBodyDoubling: handleStartBodyDoubling,
-          onOpenReminder: handleOpenReminder, isGoogleConnected: isConnected,
-          onConnectGoogle: function() { setShowGoogleAuth(true); },
-          // ⏱️ 시간 추정 코치
-          timeInsight: getTimeInsight ? getTimeInsight() : null,
-          timeEstimatorData: timeEstimatorData,
-          // 🤗 저녁 리뷰 수동 트리거
-          onOpenEveningReview: triggerDayEndManually,
-          todayCompletedCount: todayCompletedCount
-        }));
+        return null;
     }
   };
   
+  // 네비게이션 아이템
   var navItems = [
-    { id: 'HOME', icon: Home, label: '홈' },
-    { id: 'CALENDAR', icon: Calendar, label: '캘린더' },
-    { id: 'WORK', icon: Briefcase, label: '워크' },
-    { id: 'LIFE', icon: Heart, label: '라이프' },
-    { id: 'MORE', icon: MoreHorizontal, label: '더보기' }
+    { id: 'home', icon: Home, label: '홈' },
+    { id: 'calendar', icon: Calendar, label: '캘린더' },
+    { id: 'work', icon: Briefcase, label: '업무' },
+    { id: 'life', icon: Heart, label: '라이프' },
+    { id: 'more', icon: MoreHorizontal, label: '더보기' }
   ];
   
-  var showNavBar = ['HOME', 'CALENDAR', 'WORK', 'LIFE', 'MORE'].includes(currentPage);
+  var bgColor = 'bg-[#F0EBFF]';
   
-  return React.createElement('div', { style: { minHeight: '100vh', backgroundColor: '#FAFAFA', display: 'flex', flexDirection: 'column' } },
-    React.createElement('main', { style: { flex: 1, paddingBottom: showNavBar ? '80px' : '0' } }, renderContent()),
+  return React.createElement('div', { className: bgColor + ' min-h-screen' },
+    // 펭귄 상태바
+    React.createElement(PenguinStatusBar, {
+      state: penguinState,
+      mood: penguinMood,
+      energy: penguinEnergy,
+      level: penguinLevel,
+      name: penguinName,
+      onClick: function() { setCurrentPage('chat'); }
+    }),
     
-    showNavBar && React.createElement('nav', {
-      style: {
-        position: 'fixed', bottom: 0, left: 0, right: 0,
-        height: '80px', backgroundColor: 'white',
-        borderTop: '1px solid #E5E7EB',
-        display: 'flex', justifyContent: 'space-around', alignItems: 'center',
-        paddingBottom: 'env(safe-area-inset-bottom)'
-      }
-    },
-      navItems.map(function(item) {
-        var isActive = currentPage === item.id;
-        return React.createElement('button', {
-          key: item.id,
-          onClick: function() { handlePageChange(item.id); },
-          style: {
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
-            padding: '8px 16px', background: 'none', border: 'none', cursor: 'pointer'
-          }
-        },
-          React.createElement(item.icon, {
-            size: 24,
-            style: { color: isActive ? '#A996FF' : '#9CA3AF' }
-          }),
-          React.createElement('span', {
-            style: {
-              fontSize: '10px', marginTop: '4px',
-              color: isActive ? '#A996FF' : '#9CA3AF'
-            }
-          }, item.label)
-        );
-      })
+    // 메인 콘텐츠
+    React.createElement('main', { className: 'pb-20' },
+      renderPage()
+    ),
+    
+    // 플로팅 캡처 버튼
+    currentPage !== 'chat' && React.createElement(FloatingCaptureButton, {
+      onClick: function() { setShowQuickCapture(true); }
+    }),
+    
+    // 알림 토스트
+    notification && React.createElement(NotificationToast, {
+      message: notification.message,
+      type: notification.type,
+      onClose: function() { setNotification(null); }
+    }),
+    
+    // 하단 네비게이션
+    React.createElement('nav', { className: 'fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 pb-safe z-40' },
+      React.createElement('div', { className: 'flex justify-around items-center h-16 max-w-lg mx-auto' },
+        navItems.map(function(item) {
+          var isActive = currentPage === item.id;
+          return React.createElement('button', {
+            key: item.id,
+            onClick: function() { setCurrentPage(item.id); },
+            className: 'flex flex-col items-center justify-center w-16 h-full transition-colors ' + (isActive ? 'text-[#A996FF]' : 'text-gray-400')
+          },
+            React.createElement(item.icon, { size: 22, strokeWidth: isActive ? 2.5 : 2 }),
+            React.createElement('span', { className: 'text-[10px] mt-1 font-medium' + (isActive ? ' text-[#A996FF]' : '') }, item.label)
+          );
+        })
+      )
     ),
     
     showEventModal && React.createElement(EventModal, { event: selectedEvent, onSave: handleSaveEvent, onDelete: handleDeleteEvent, onClose: function() { setShowEventModal(false); setSelectedEvent(null); } }),
-    showTaskModal && React.createElement(TaskModal, { task: selectedTask, onSave: handleSaveTask, onDelete: handleDeleteTask, onClose: function() { setShowTaskModal(false); setSelectedTask(null); }, onStartFocus: handleStartFocus }),
-    showAddTaskModal && React.createElement(AddTaskModal, { initialData: selectedTask, onSave: handleSaveTask, onClose: function() { setShowAddTaskModal(false); setSelectedTask(null); } }),
+    showTaskModal && React.createElement(TaskModal, { task: selectedTask, onSave: handleSaveTask, onDelete: handleDeleteTask, onClose: function() { setShowTaskModal(false); setSelectedTask(null); }, onStartFocus: handleStartFocus, getSuggestedTime: getSuggestedTime }),
+    showAddTaskModal && React.createElement(AddTaskModal, { isOpen: showAddTaskModal, onClose: function() { setShowAddTaskModal(false); setSelectedTask(null); }, onAdd: handleSaveTask, projects: projects, getSuggestedTime: getSuggestedTime }),
     React.createElement(RoutineManageModal, { isOpen: showRoutineModal, routines: routines, onSave: handleSaveRoutine, onDelete: handleDeleteRoutine, onClose: function() { setShowRoutineModal(false); } }),
     showSearchModal && React.createElement(SearchModal, { tasks: tasks, events: events, onSelectTask: handleOpenTask, onSelectEvent: handleOpenEvent, onClose: function() { setShowSearchModal(false); } }),
     showQuickCapture && React.createElement(QuickCaptureModal, { onCapture: handleQuickCapture, onClose: function() { setShowQuickCapture(false); } }),
