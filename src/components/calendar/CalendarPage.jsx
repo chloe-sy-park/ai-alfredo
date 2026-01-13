@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { 
   ArrowLeft, ChevronLeft, ChevronRight, Plus, Calendar, Clock, MapPin,
-  CheckCircle2, Circle, MoreHorizontal, RefreshCw, Loader2, Briefcase, Heart
+  CheckCircle2, RefreshCw, Briefcase, Heart
 } from 'lucide-react';
 
 // Common Components
@@ -9,7 +9,7 @@ import { DomainBadge } from '../common';
 
 // Other Components
 import EventModal from '../modals/EventModal';
-import { CalendarAgendaView, MiniWeekTimeline } from './AgendaComponents';
+import { CalendarAgendaView } from './AgendaComponents';
 
 // Hooks
 import { useGoogleCalendar } from '../../hooks/useGoogleCalendar';
@@ -24,9 +24,7 @@ var CalendarPage = function(props) {
   var onUpdateEvent = props.onUpdateEvent;
   var onDeleteEvent = props.onDeleteEvent;
   var onUpdateTask = props.onUpdateTask;
-  var onSyncGoogleEvents = props.onSyncGoogleEvents;
   // App.jsx에서 전달되는 props
-  var isConnectedProp = props.isConnected;
   var onConnectProp = props.onConnect;
 
   // Google Calendar 훅
@@ -97,7 +95,7 @@ var CalendarPage = function(props) {
       syncEvents().then(function() {
         setLastSyncTime(new Date());
       }).catch(function(err) {
-        console.error('Google Calendar 동기화 실패:', err);
+        // 동기화 실패 - 조용히 처리
       }).finally(function() {
         setIsSyncing(false);
       });
@@ -205,9 +203,8 @@ var CalendarPage = function(props) {
       var taskDate = t.deadline.split('T')[0];
       return taskDate === dateStr;
     });
-    var anytimeTasks = (allTasks || tasks || []).filter(function(t) { return !t.deadline; });
     
-    return { events: dayEvents, tasks: dayTasks, anytimeTasks: anytimeTasks };
+    return { events: dayEvents, tasks: dayTasks };
   };
 
   // 날짜에 아이템이 있는지 확인
