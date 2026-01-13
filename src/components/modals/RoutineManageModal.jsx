@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Check, Clock, Calendar, Trash2, Edit3, ChevronRight, Sparkles, Sun, Moon, Coffee, Heart, Dumbbell, Book, Pill, Droplets } from 'lucide-react';
+import { X, Plus, Clock, Calendar, Trash2, Edit3, ChevronRight, Sparkles, Heart, Book } from 'lucide-react';
 
 // 루틴 프리셋 템플릿
 var ROUTINE_PRESETS = {
