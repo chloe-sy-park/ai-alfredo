@@ -1,5 +1,5 @@
 import { useAuthStore } from '../stores/authStore';
-import { User, Bell, LogOut, ChevronRight } from 'lucide-react';
+import { User, Bell, LogOut } from 'lucide-react';
 
 export default function Settings() {
   const { user, logout } = useAuthStore();
