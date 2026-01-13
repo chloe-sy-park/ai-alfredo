@@ -1,7 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTaskStore } from '../stores/taskStore';
-import { useFocusStore } from '../stores/focusStore';
+// @ts-ignore - NewHomePage는 JSX 파일
 import NewHomePage from '../components/modes/NewHomePage';
 
 /**
@@ -13,7 +13,6 @@ export default function Home() {
   
   // Stores
   const { tasks, fetchTasks } = useTaskStore();
-  const { activeSession } = useFocusStore();
 
   // 초기 데이터 로드
   useEffect(() => {
