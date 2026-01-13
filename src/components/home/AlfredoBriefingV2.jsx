@@ -1,6 +1,17 @@
 import React, { useState, useMemo } from 'react';
 import { ChevronDown, ChevronUp, Target, Heart, Flame, MessageCircle, Plus, Sparkles } from 'lucide-react';
 
+// 메시지 데이터 임포트
+import { 
+  GREETINGS, 
+  CONDITION_CARE, 
+  TIPS,
+  getRandomMessage, 
+  replaceVariables,
+  getGreeting,
+  getConditionCare
+} from '../../data/alfredoMessages';
+
 // 모드 설정
 var MODES = {
   focus: { id: 'focus', emoji: '🎯', label: '집중' },
@@ -30,131 +41,7 @@ var getAlfredoMood = function(timeOfDay, condition, urgentCount, hasNoTasks) {
   return { emoji: '🐧', mood: 'normal' };
 };
 
-// 🐧 시간대별 인사 (더 자연스럽고 다양하게)
-var getGreeting = function(timeOfDay, condition, userName, completedCount, totalTasks, hasNoTasks, hasNoEvents) {
-  var name = userName || 'Boss';
-  var isEmpty = hasNoTasks && hasNoEvents;
-  
-  // 밤 시간
-  if (timeOfDay === 'night') {
-    var nightMessages = [
-      {
-        title: name + '님,\n이 시간엔 쉬셔야죠 🌙',
-        subtitle: '오늘 하루 수고 많으셨어요.\n내일은 제가 더 잘 챙겨드릴게요.',
-        emoji: '💜'
-      },
-      {
-        title: '밤이 깊었어요, ' + name + '님',
-        subtitle: '오늘 못 한 건 내일의 ' + name + '님이\n해낼 거예요. 일단 푹 쉬세요.',
-        emoji: '🌙'
-      }
-    ];
-    return nightMessages[Math.floor(Math.random() * nightMessages.length)];
-  }
-  
-  // 컨디션 안 좋을 때 (최우선)
-  if (condition && condition <= 2) {
-    var careMessages = [
-      {
-        title: name + '님,\n오늘 좀 힘드시구나...',
-        subtitle: '무리하지 말아요. 꼭 해야 할 것만요.\n나머지는 제가 내일로 옮겨둘게요.',
-        emoji: '💜'
-      },
-      {
-        title: '괜찮으세요, ' + name + '님?',
-        subtitle: '컨디션이 안 좋을 땐 쉬는 것도 일이에요.\n급한 거 아니면 미뤄도 괜찮아요.',
-        emoji: '🤗'
-      },
-      {
-        title: name + '님, 오늘은\n살살 가요 우리',
-        subtitle: '몸이 먼저예요. 하나만 해도 충분해요.\n아니, 안 해도 괜찮아요.',
-        emoji: '💜'
-      }
-    ];
-    return careMessages[Math.floor(Math.random() * careMessages.length)];
-  }
-  
-  // 데이터가 없을 때 (처음 사용자 또는 빈 상태)
-  if (isEmpty) {
-    var emptyMessages = {
-      earlyMorning: {
-        title: '좋은 아침이에요, ' + name + '님!',
-        subtitle: '오늘 하루 뭘 하고 싶으세요?\n같이 계획 세워볼까요?',
-        emoji: '☀️'
-      },
-      morning: {
-        title: name + '님, 오전 잘 보내고 계세요?',
-        subtitle: '오늘 할 일 있으면 알려주세요.\n제가 챙겨드릴게요!',
-        emoji: '✨'
-      },
-      lunch: {
-        title: name + '님, 점심 맛있게 드셨어요?',
-        subtitle: '오후에 뭐 하실 건지 알려주시면\n제가 리마인드 해드릴게요.',
-        emoji: '🍚'
-      },
-      afternoon: {
-        title: name + '님, 오후 잘 보내고 계세요?',
-        subtitle: '기억해야 할 거 있으면 말해주세요.\n제가 까먹지 않게 해드릴게요.',
-        emoji: '☕'
-      },
-      evening: {
-        title: '오늘 하루 어떠셨어요, ' + name + '님?',
-        subtitle: '내일 할 일 미리 정해두면\n아침이 훨씬 편해요.',
-        emoji: '🌙'
-      }
-    };
-    return emptyMessages[timeOfDay] || emptyMessages.morning;
-  }
-  
-  // 시간대별 + 완료 상황별
-  var greetings = {
-    earlyMorning: {
-      title: '좋은 아침이에요, ' + name + '님!',
-      subtitle: '오늘 하루도 제가 함께할게요.\n일단 물 한 잔 먼저 마셔요 💧',
-      emoji: '☀️'
-    },
-    morning: totalTasks > 0 ? {
-      title: name + '님,\n오전 잘 보내고 계세요?',
-      subtitle: '오늘 할 것들 정리해뒀어요.\n하나씩 차근차근 해봐요.',
-      emoji: '✨'
-    } : {
-      title: name + '님, 좋은 오전이에요!',
-      subtitle: '오늘은 어떤 하루가 될까요?\n뭐든 도와드릴 준비 됐어요.',
-      emoji: '✨'
-    },
-    lunch: completedCount > 0 ? {
-      title: name + '님, 점심은 드셨어요?',
-      subtitle: '오전에 ' + completedCount + '개나 해치웠어요! 👏\n밥 먹고 오후도 화이팅!',
-      emoji: '🍚'
-    } : {
-      title: name + '님, 점심 시간이에요!',
-      subtitle: '밥이 보약이래요.\n든든히 먹고 오후 시작해요.',
-      emoji: '🍚'
-    },
-    afternoon: completedCount > 0 ? {
-      title: name + '님, 오후도 힘내고 있죠?',
-      subtitle: '벌써 ' + completedCount + '개 완료! 잘하고 있어요.\n조금만 더 하면 퇴근이에요.',
-      emoji: '💪'
-    } : {
-      title: name + '님, 오후 어떠세요?',
-      subtitle: '지금부터 시작해도 충분해요.\n하나만 먼저 끝내볼까요?',
-      emoji: '☕'
-    },
-    evening: completedCount > 0 ? {
-      title: name + '님,\n오늘 하루 수고했어요!',
-      subtitle: '오늘 ' + completedCount + '개나 해냈어요! 🎉\n이제 좀 쉬어도 돼요.',
-      emoji: '🌙'
-    } : {
-      title: name + '님, 하루 마무리 어때요?',
-      subtitle: '괜찮아요. 쉬는 날도 필요한 거예요.\n내일 다시 시작하면 돼요 💜',
-      emoji: '🌙'
-    }
-  };
-  
-  return greetings[timeOfDay] || greetings.morning;
-};
-
-// 🐧 알프레도 한마디 (상황별 추가 메시지)
+// 🐧 알프레도 한마디 (상황별 추가 메시지) - alfredoMessages.js 활용
 var getAlfredoTip = function(props) {
   var timeOfDay = props.timeOfDay;
   var condition = props.condition;
@@ -166,24 +53,32 @@ var getAlfredoTip = function(props) {
   
   var tips = [];
   
-  // 날씨 팁 (아침에만, 더 자연스럽게)
+  // 날씨 팁 (아침에만)
   if (timeOfDay === 'earlyMorning' && weather) {
     var temp = weather.temp || weather.temperature;
     if (temp !== undefined) {
-      if (temp <= 0) tips.push('🧣 오늘 ' + Math.round(temp) + '°C래요. 따뜻하게 입고 나가세요!');
-      else if (temp <= 5) tips.push('🧥 오늘 쌀쌀해요 (' + Math.round(temp) + '°C). 겉옷 잊지 마세요.');
-      else if (temp <= 15) tips.push('🍂 오늘 ' + Math.round(temp) + '°C예요. 가벼운 겉옷 추천!');
-      else if (temp >= 28) tips.push('☀️ 오늘 덥대요 (' + Math.round(temp) + '°C). 물 많이 드세요!');
+      if (temp <= 0) {
+        var coldTips = TIPS.weather.cold;
+        tips.push(replaceVariables(getRandomMessage(coldTips), { temp: Math.round(temp) }));
+      } else if (temp <= 15) {
+        var coolTips = TIPS.weather.cool;
+        tips.push(replaceVariables(getRandomMessage(coolTips), { temp: Math.round(temp) }));
+      } else if (temp >= 28) {
+        var hotTips = TIPS.weather.hot;
+        tips.push(replaceVariables(getRandomMessage(hotTips), { temp: Math.round(temp) }));
+      }
     }
     
     // 비 예보
     if (weather.rain || weather.rainChance > 50 || weather.rainProbability > 50) {
-      tips.push('🌧️ 비 올 수 있어요. 우산 챙기세요!');
+      var rainTips = TIPS.weather.rain;
+      tips.push(getRandomMessage(rainTips));
     }
     
     // 미세먼지
     if (weather.dust === 'bad' || weather.dust === 'veryBad') {
-      tips.push('😷 미세먼지 ' + (weather.dustText || '나쁨') + '이에요. 마스크 추천!');
+      var dustTips = TIPS.weather.dust;
+      tips.push(getRandomMessage(dustTips));
     }
   }
   
@@ -214,37 +109,31 @@ var getAlfredoTip = function(props) {
     }
   }
   
-  // 컨디션 케어 메시지
+  // 컨디션 케어 메시지 (alfredoMessages 활용)
   if (condition <= 2 && timeOfDay !== 'night') {
-    var careTips = [
-      '💜 힘들면 5분만 눈 감아도 괜찮아요.',
-      '💜 깊은 숨 한번 쉬고 가요.',
-      '💜 따뜻한 거 한 잔 어때요?'
-    ];
-    tips.push(careTips[Math.floor(Math.random() * careTips.length)]);
+    var careTips = TIPS.care;
+    tips.push(getRandomMessage(careTips));
   }
   
-  // 오후 슬럼프 케어 (모드가 care가 아닐 때만)
+  // 오후 슬럼프 케어 (alfredoMessages 활용)
   if (timeOfDay === 'afternoon' && condition >= 3 && mode !== 'care') {
-    var afternoonTips = [
-      '🧘 잠깐 스트레칭 하고 가는 건 어때요?',
-      '☕ 커피인보다 물 한 잔 추천!',
-      '💨 창문 열고 환기 한번 해요.'
-    ];
-    tips.push(afternoonTips[Math.floor(Math.random() * afternoonTips.length)]);
+    var afternoonTips = TIPS.afternoon;
+    tips.push(getRandomMessage(afternoonTips));
   }
   
-  // 데이터 없을 때 가이드
+  // 데이터 없을 때 가이드 (alfredoMessages 활용)
   if (hasNoTasks && timeOfDay !== 'night') {
-    tips.push('💡 "+" 버튼으로 할 일을 추가해보세요!');
+    var emptyTips = TIPS.empty;
+    tips.push(getRandomMessage(emptyTips));
   }
   
-  // 저녁 리마인드
+  // 저녁 리마인드 (alfredoMessages 활용)
   if (timeOfDay === 'evening' && condition >= 3) {
-    tips.push('🌙 내일 할 일 미리 정해두면 아침이 편해요.');
+    var eveningTips = TIPS.evening;
+    tips.push(getRandomMessage(eveningTips));
   }
   
-  return tips;
+  return tips.filter(Boolean); // null/undefined 제거
 };
 
 // 인라인 모드 토글
@@ -323,16 +212,39 @@ export var AlfredoBriefingV2 = function(props) {
     };
   }, [tasks, events]);
   
-  // 인사말
-  var greeting = getGreeting(
-    timeOfDay, 
-    condition, 
-    userName, 
-    todayStats.completed, 
-    tasks.length,
-    todayStats.hasNoTasks,
-    todayStats.hasNoEvents
-  );
+  // 인사말 (alfredoMessages 활용)
+  var greeting = useMemo(function() {
+    // 밤 시간
+    if (timeOfDay === 'night') {
+      return getGreeting('night', userName);
+    }
+    
+    // 컨디션 안 좋을 때 (최우선)
+    if (condition && condition <= 2) {
+      return getConditionCare(condition, userName);
+    }
+    
+    // 데이터가 없을 때
+    var isEmpty = todayStats.hasNoTasks && todayStats.hasNoEvents;
+    if (isEmpty) {
+      return getGreeting(timeOfDay, userName);
+    }
+    
+    // 완료 상황 반영한 인사
+    var baseGreeting = getGreeting(timeOfDay, userName);
+    
+    // 완료 개수에 따라 subtitle 수정
+    if (todayStats.completed > 0 && (timeOfDay === 'lunch' || timeOfDay === 'afternoon' || timeOfDay === 'evening')) {
+      var celebrationSuffixes = [
+        '벌써 ' + todayStats.completed + '개 완료! 👏',
+        todayStats.completed + '개나 해냈어요! 💪',
+        '오늘 ' + todayStats.completed + '개 해치웠어요! 🔥'
+      ];
+      baseGreeting.subtitle = getRandomMessage(celebrationSuffixes) + '\n' + baseGreeting.subtitle.split('\n')[1];
+    }
+    
+    return baseGreeting;
+  }, [timeOfDay, condition, userName, todayStats]);
   
   // 알프레도 표정
   var alfredoMood = getAlfredoMood(timeOfDay, condition, todayStats.urgent.length, todayStats.hasNoTasks);
@@ -390,19 +302,19 @@ export var AlfredoBriefingV2 = function(props) {
             }),
             
             // 인사 타이틀
-            React.createElement('h1', { 
+            greeting && React.createElement('h1', { 
               className: (darkMode ? 'text-white' : 'text-gray-900') + 
                 ' text-lg font-bold leading-tight whitespace-pre-line'
             }, greeting.title),
             
             // 서브 메시지
-            React.createElement('p', { 
+            greeting && React.createElement('p', { 
               className: (darkMode ? 'text-gray-300' : 'text-gray-600') + 
                 ' text-sm mt-2 leading-relaxed whitespace-pre-line'
             }, greeting.subtitle),
             
             // 이모지
-            greeting.emoji && React.createElement('span', { 
+            greeting && greeting.emoji && React.createElement('span', { 
               className: 'inline-block mt-2 text-lg'
             }, greeting.emoji)
           )
