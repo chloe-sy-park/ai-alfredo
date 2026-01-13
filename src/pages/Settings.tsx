@@ -5,7 +5,8 @@ import {
   isGoogleConnected, 
   getGoogleUser, 
   startGoogleAuth, 
-  disconnectGoogle 
+  disconnectGoogle,
+  GoogleUser
 } from '../services/auth';
 
 export default function Settings() {
@@ -14,7 +15,7 @@ export default function Settings() {
   var logout = authStore.logout;
   
   var [googleConnected, setGoogleConnected] = useState(false);
-  var [googleUser, setGoogleUser] = useState(null);
+  var [googleUser, setGoogleUser] = useState<GoogleUser | null>(null);
   var [connecting, setConnecting] = useState(false);
 
   useEffect(function checkGoogleConnection() {
