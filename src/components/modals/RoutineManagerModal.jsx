@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, CheckCircle2, Trash2, ChevronRight, Clock, Calendar, Flame, Settings, Minus } from 'lucide-react';
+import { X, Plus, Settings, Minus } from 'lucide-react';
 
 // 루틴 템플릿 상수
 const ROUTINE_TEMPLATES = {
@@ -508,11 +508,6 @@ const RoutineManagerModal = ({
       </div>
     </div>
   );
-};
-
-// 루틴 위젯 (홈페이지용)
-const RoutineWidget = ({ routines = [], onToggle, onOpenManager, darkMode = false }) => {
-  return null; // TODO: implement later
 };
 
 export { ROUTINE_TEMPLATES, ROUTINE_ICONS };
