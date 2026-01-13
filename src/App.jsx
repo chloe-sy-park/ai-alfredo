@@ -25,7 +25,7 @@ import InboxPage from './components/work/InboxPage';
 import EventModal from './components/modals/EventModal';
 import TaskModal from './components/modals/TaskModal';
 import AddTaskModal from './components/modals/AddTaskModal';
-import RoutineManagerModal from './components/modals/RoutineManagerModal';
+import RoutineManageModal from './components/modals/RoutineManageModal';
 import SearchModal from './components/modals/SearchModal';
 import QuickCaptureModal from './components/modals/QuickCaptureModal';
 import GoogleAuthModal from './components/modals/GoogleAuthModal';
@@ -277,6 +277,11 @@ function App() {
   var showJournalModalState = useState(false);
   var showJournalModal = showJournalModalState[0];
   var setShowJournalModal = showJournalModalState[1];
+  
+  // 🆕 건강 편집 모달 상태
+  var showHealthEditModalState = useState(false);
+  var showHealthEditModal = showHealthEditModalState[0];
+  var setShowHealthEditModal = showHealthEditModalState[1];
   
   // 선택된 항목
   var selectedEventState = useState(null);
@@ -583,18 +588,18 @@ function App() {
     setShowRoutineModal(true);
   }, []);
   
-  var handleSaveRoutine = useCallback(function(routine) {
-    if (routine.id) {
+  // 🆕 루틴 저장 (isEditing 파라미터 추가)
+  var handleSaveRoutine = useCallback(function(routine, isEditing) {
+    if (isEditing) {
+      // 기존 루틴 업데이트
       setRoutines(function(prev) {
         return prev.map(function(r) {
           return r.id === routine.id ? routine : r;
         });
       });
     } else {
-      var newRoutine = Object.assign({}, routine, {
-        id: Date.now()
-      });
-      setRoutines(function(prev) { return prev.concat([newRoutine]); });
+      // 새 루틴 추가
+      setRoutines(function(prev) { return prev.concat([routine]); });
     }
   }, []);
   
@@ -657,9 +662,15 @@ function App() {
     setShowMoodLogModal(false);
   }, [handleUpdateMoodEnergy]);
   
-  // 건강 편집 열기 (임시 - 추후 구현)
+  // 🆕 건강 편집 열기
   var handleEditHealth = useCallback(function() {
-    console.log('Edit health - 추후 구현 예정');
+    setShowHealthEditModal(true);
+  }, []);
+  
+  // 🆕 건강 데이터 저장
+  var handleSaveHealth = useCallback(function(newHealthData) {
+    setHealthData(newHealthData);
+    setShowHealthEditModal(false);
   }, []);
   
   // 포커스 모드
@@ -1132,7 +1143,9 @@ function App() {
       }
     }),
     
-    showRoutineModal && React.createElement(RoutineManagerModal, {
+    // 🆕 루틴 관리 모달 (새 버전)
+    React.createElement(RoutineManageModal, {
+      isOpen: showRoutineModal,
       routines: routines,
       onSave: handleSaveRoutine,
       onDelete: handleDeleteRoutine,
