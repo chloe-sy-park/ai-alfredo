@@ -315,13 +315,13 @@ const SettingsPage = ({
     return `${days}일 전`;
   };
   
-  // 📧 Gmail 기간 옵션
+  // 📧 Gmail 기간 옵션 (숫자 = 일수)
   const FETCH_PERIOD_OPTIONS = [
-    { value: '1d', label: '오늘' },
-    { value: '3d', label: '3일' },
-    { value: '7d', label: '1주일' },
-    { value: '14d', label: '2주일' },
-    { value: '30d', label: '1개월' },
+    { value: 1, label: '오늘' },
+    { value: 3, label: '3일' },
+    { value: 7, label: '1주일' },
+    { value: 14, label: '2주일' },
+    { value: 30, label: '1개월' },
   ];
   
   return (
@@ -461,8 +461,8 @@ const SettingsPage = ({
                       <p className={`text-xs ${textSecondary}`}>긴급</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-lg font-bold text-amber-500">{gmailStats.important || 0}</p>
-                      <p className={`text-xs ${textSecondary}`}>중요</p>
+                      <p className="text-lg font-bold text-amber-500">{gmailStats.needsAction || 0}</p>
+                      <p className={`text-xs ${textSecondary}`}>액션</p>
                     </div>
                   </div>
                 )}
@@ -485,7 +485,7 @@ const SettingsPage = ({
                       key={option.value}
                       onClick={() => updateGmailSettings && updateGmailSettings({ fetchPeriod: option.value })}
                       className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                        (gmailSettings?.fetchPeriod || '7d') === option.value
+                        (gmailSettings?.fetchPeriod || 3) === option.value
                           ? 'bg-[#A996FF] text-white'
                           : (darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600')
                       }`}
