@@ -448,7 +448,7 @@ function App() {
   
   var handleAddTask = useCallback(function(newTask) {
     var taskWithId = Object.assign({}, newTask, {
-      id: Date.now(),
+      id: newTask.id || Date.now(),
       createdAt: new Date().toISOString()
     });
     setTasks(function(prev) { return [taskWithId].concat(prev); });
@@ -997,8 +997,30 @@ function App() {
       onAction: handleNudgeAction
     }),
     
-    // 모달들
-    showEventModal && React.createElement(EventModal, {
+    // ============================================================
+    // 모달들 (수정됨 - isOpen prop 추가)
+    // ============================================================
+    
+    React.createElement(AddTaskModal, {
+      isOpen: showAddTaskModal,
+      onAdd: handleAddTask,
+      onClose: function() { setShowAddTaskModal(false); },
+      projects: projects
+    }),
+    
+    React.createElement(TaskModal, {
+      isOpen: showTaskModal,
+      task: selectedTask,
+      onSave: handleUpdateTask,
+      onDelete: selectedTask ? function() { handleDeleteTask(selectedTask.id); } : null,
+      onClose: function() {
+        setShowTaskModal(false);
+        setSelectedTask(null);
+      }
+    }),
+    
+    React.createElement(EventModal, {
+      isOpen: showEventModal,
       event: selectedEvent,
       onSave: handleSaveEvent,
       onDelete: selectedEvent ? function() { handleDeleteEvent(selectedEvent.id); } : null,
@@ -1006,21 +1028,6 @@ function App() {
         setShowEventModal(false);
         setSelectedEvent(null);
       }
-    }),
-    
-    showTaskModal && selectedTask && React.createElement(TaskModal, {
-      task: selectedTask,
-      onSave: handleUpdateTask,
-      onDelete: function() { handleDeleteTask(selectedTask.id); },
-      onClose: function() {
-        setShowTaskModal(false);
-        setSelectedTask(null);
-      }
-    }),
-    
-    showAddTaskModal && React.createElement(AddTaskModal, {
-      onSave: handleAddTask,
-      onClose: function() { setShowAddTaskModal(false); }
     }),
     
     showRoutineModal && React.createElement(RoutineManagerModal, {
