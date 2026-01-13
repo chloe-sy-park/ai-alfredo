@@ -12,24 +12,8 @@
  * 총: 2-3분 / 설문: 1개 / 연동: 1개
  */
 
-var React = require('react');
-var useState = React.useState;
-var useEffect = React.useEffect;
-
-// 샘플 브리핑 컴포넌트
-var SampleBriefingExperience = typeof window !== 'undefined' && window.SampleBriefingExperience
-  ? window.SampleBriefingExperience
-  : require('./SampleBriefingExperience');
-
-// 개인화 시스템
-var Personalization = typeof window !== 'undefined' && window.AlfredoPersonalization
-  ? window.AlfredoPersonalization
-  : null;
-
-// 자동 학습
-var AutoLearning = typeof window !== 'undefined' && window.AlfredoAutoLearning
-  ? window.AlfredoAutoLearning
-  : null;
+import React, { useState, useEffect } from 'react';
+import SampleBriefingExperience from './SampleBriefingExperience';
 
 function AlfredoOnboardingFlow(props) {
   var isDarkMode = props.isDarkMode !== false;
@@ -422,20 +406,6 @@ function AlfredoOnboardingFlow(props) {
   function handleAnswer(optionId) {
     setAnswer(optionId);
     
-    // 선택에 따른 초기 설정 적용
-    if (Personalization) {
-      var presetMap = {
-        organize: 'achiever',      // 할 일 정리 → 목표지향적
-        balance: 'balanced',       // 워라밸 → 균형
-        condition: 'selfCare',     // 컨디션 관리 → 자기돌봄
-        explore: 'balanced'        // 잘 모르겠어요 → 기본값
-      };
-      var preset = Personalization.PRESETS[presetMap[optionId]];
-      if (preset) {
-        Personalization.applyPreset(presetMap[optionId]);
-      }
-    }
-    
     // 0.5초 후 다음 단계
     setTimeout(function() {
       setPhase(3);
@@ -444,13 +414,7 @@ function AlfredoOnboardingFlow(props) {
   
   // 캘린더 연동 (시뮬레이션)
   function handleConnect() {
-    // 실제로는 Google OAuth 플로우
     setIsConnected(true);
-    
-    // 학습 시작
-    if (AutoLearning) {
-      AutoLearning.startLearning();
-    }
     
     setTimeout(function() {
       setPhase(4);
@@ -678,11 +642,4 @@ function AlfredoOnboardingFlow(props) {
   return null;
 }
 
-// Export
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = AlfredoOnboardingFlow;
-}
-
-if (typeof window !== 'undefined') {
-  window.AlfredoOnboardingFlow = AlfredoOnboardingFlow;
-}
+export default AlfredoOnboardingFlow;
