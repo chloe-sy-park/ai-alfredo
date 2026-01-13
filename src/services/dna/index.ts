@@ -8,6 +8,9 @@ export * from './eventClassifier';
 export * from './todayAnalyzer';
 export * from './insightToAction';
 
+// 🆕 DNA 인사이트 메시지
+export * from './dnaMessages';
+
 import { CalendarAnalyzer } from './calendarAnalyzer';
 import { DNAMessageGenerator } from './messageGenerator';
 import { CalendarEvent, DNAProfile, DNABasedSuggestion, TodayContext, SpecialEventAlert, BurnoutWarning, AlfredoAction } from './types';
