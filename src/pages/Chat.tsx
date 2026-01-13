@@ -43,7 +43,7 @@ export default function Chat() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col min-h-screen bg-background">
       {/* 헤더 */}
       <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm px-4 py-3 border-b border-neutral-100">
         <div className="flex items-center gap-3">
