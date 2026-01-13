@@ -153,6 +153,9 @@ export var HomePage = function(props) {
   var onStartBodyDoubling = props.onStartBodyDoubling;
   var userName = props.userName || props.userSettings?.name || 'Boss';
   
+  // 🐧 펭귄 상태바 컴포넌트 (App.jsx에서 전달)
+  var PenguinStatusBar = props.PenguinStatusBar;
+  
   // 🧬 DNA 인사이트 props
   var dnaProfile = props.dnaProfile;
   var dnaSuggestions = props.dnaSuggestions;
@@ -422,8 +425,9 @@ export var HomePage = function(props) {
       React.createElement('div', {
         className: 'px-4 pb-2'
       },
+        // 🐧 첫 번째 줄: 날짜 + 펭귄 상태바
         React.createElement('div', {
-          className: 'flex items-center justify-between min-h-[44px]'
+          className: 'flex items-center justify-between min-h-[44px] mb-1'
         },
           React.createElement('div', { className: 'flex items-center gap-2' },
             React.createElement('span', {
@@ -437,25 +441,31 @@ export var HomePage = function(props) {
             )
           ),
           
-          React.createElement('div', { className: 'flex items-center gap-1' },
-            React.createElement(ConditionQuickChange, {
-              condition: condition,
-              onConditionChange: handleConditionChange,
-              darkMode: isNightMode,
-              variant: 'mini'
-            }),
-            
-            // 🔧 FIX: 설정 버튼 연결
-            React.createElement('button', {
-              className: 'min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-colors ' +
-                (isNightMode ? 'hover:bg-white/10 active:bg-white/20' : 'hover:bg-gray-200 active:bg-gray-300'),
-              onClick: function() { handleNavigate('SETTINGS'); }
-            },
-              React.createElement(Settings, { 
-                size: 22, 
-                className: isNightMode ? 'text-gray-400' : 'text-gray-500'
-              })
-            )
+          // 🐧 펭귄 상태바 (레벨, XP, 코인)
+          PenguinStatusBar && React.createElement(PenguinStatusBar)
+        ),
+        
+        // 두 번째 줄: 컨디션 + 설정
+        React.createElement('div', {
+          className: 'flex items-center justify-between'
+        },
+          React.createElement(ConditionQuickChange, {
+            condition: condition,
+            onConditionChange: handleConditionChange,
+            darkMode: isNightMode,
+            variant: 'mini'
+          }),
+          
+          // 🔧 FIX: 설정 버튼 연결
+          React.createElement('button', {
+            className: 'min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-colors ' +
+              (isNightMode ? 'hover:bg-white/10 active:bg-white/20' : 'hover:bg-gray-200 active:bg-gray-300'),
+            onClick: function() { handleNavigate('SETTINGS'); }
+          },
+            React.createElement(Settings, { 
+              size: 22, 
+              className: isNightMode ? 'text-gray-400' : 'text-gray-500'
+            })
           )
         )
       )
