@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
-import { Card } from '@/components/common';
+import Card from '../components/common/Card';
 import { Heart, Droplets, Moon, Footprints, Apple, Smile, CheckCircle2 } from 'lucide-react';
-import { useHabitStore } from '@/stores/habitStore';
+import { useHabitStore } from '../stores/habitStore';
 
 export default function Life() {
   const { habits, isLoading, fetchHabits, logHabit, getTodayHabits, getCompletedToday } = useHabitStore();
