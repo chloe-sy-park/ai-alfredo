@@ -164,6 +164,13 @@ export var HomePage = function(props) {
   var getBestFocusTime = props.getBestFocusTime;
   var getPeakHours = props.getPeakHours;
   var getChronotype = props.getChronotype;
+  // 🆕 DNA 확장 props
+  var todayContext = props.todayContext;
+  var getSpecialAlerts = props.getSpecialAlerts;
+  var getBurnoutWarning = props.getBurnoutWarning;
+  var getTodayEnergyDrain = props.getTodayEnergyDrain;
+  var getRecommendedActions = props.getRecommendedActions;
+  var getBriefingTone = props.getBriefingTone;
   
   // 📊 컨디션 히스토리 훅
   var dailyConditions = useDailyConditions();
@@ -482,7 +489,12 @@ export var HomePage = function(props) {
             dnaSuggestions: dnaSuggestions,
             getChronotype: getChronotype,
             getPeakHours: getPeakHours,
-            getStressLevel: getStressLevel
+            getStressLevel: getStressLevel,
+            // 🆕 DNA 확장 props
+            todayContext: todayContext,
+            getSpecialAlerts: getSpecialAlerts,
+            getBurnoutWarning: getBurnoutWarning,
+            getBriefingTone: getBriefingTone
           }),
           
           // 저녁 모드
@@ -494,7 +506,11 @@ export var HomePage = function(props) {
             userName: userName,
             onTapAlfredo: onOpenChat,
             // 🔧 FIX: 캘린더 이동 연결
-            onViewTomorrow: function() { handleNavigate('CALENDAR'); }
+            onViewTomorrow: function() { handleNavigate('CALENDAR'); },
+            // 🆕 DNA 확장 props
+            todayContext: todayContext,
+            getEveningMessage: getEveningMessage,
+            getBurnoutWarning: getBurnoutWarning
           }),
           
           // 오후 모드
@@ -514,7 +530,14 @@ export var HomePage = function(props) {
               getStressLevel: getStressLevel,
               getBestFocusTime: getBestFocusTime,
               getPeakHours: getPeakHours,
-              getChronotype: getChronotype
+              getChronotype: getChronotype,
+              // 🆕 DNA 확장 props
+              todayContext: todayContext,
+              getSpecialAlerts: getSpecialAlerts,
+              getBurnoutWarning: getBurnoutWarning,
+              getTodayEnergyDrain: getTodayEnergyDrain,
+              getRecommendedActions: getRecommendedActions,
+              getBriefingTone: getBriefingTone
             }),
             
             React.createElement(DNAInsightCard, {
@@ -524,7 +547,12 @@ export var HomePage = function(props) {
               getBestFocusTime: getBestFocusTime,
               getChronotype: getChronotype,
               getStressLevel: getStressLevel,
-              getPeakHours: getPeakHours
+              getPeakHours: getPeakHours,
+              // 🆕 DNA 확장 props
+              todayContext: todayContext,
+              getSpecialAlerts: getSpecialAlerts,
+              getBurnoutWarning: getBurnoutWarning,
+              getTodayEnergyDrain: getTodayEnergyDrain
             })
           ),
           
