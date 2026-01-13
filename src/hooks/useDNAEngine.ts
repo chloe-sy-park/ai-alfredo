@@ -11,23 +11,119 @@ import {
 } from '../services/dna';
 import { useAuthStore } from '../stores/authStore';
 
+// ========== 타입 정의 ==========
+
+/** 분석 페이즈 */
+export type AnalysisPhase = 'day1' | 'week1' | 'week2';
+
+/** 스트레스 레벨 */
+export type StressLevel = 'low' | 'moderate' | 'high' | 'burnout';
+
+/** 크로노타입 */
+export type Chronotype = 'early_bird' | 'night_owl' | 'balanced';
+
+/** 추천 태스크 유형 */
+export type RecommendedTaskType = 'deep_work' | 'light_work' | 'break';
+
+/** 브리핑 톤 */
+export type BriefingTone = 'energetic' | 'gentle' | 'supportive';
+
+/** 바쁜 정도 */
+export type BusyLevel = 'free' | 'light' | 'moderate' | 'busy' | 'extreme';
+
+/** 워라밸 상태 */
+export type WorkLifeBalanceStatus = 'balanced' | 'work_heavy' | 'life_heavy';
+
+/** 아침 브리핑 결과 */
+export interface MorningBriefingResult {
+  greeting: string;
+  message: string;
+  tone: BriefingTone;
+}
+
+/** 저녁 메시지 결과 */
+export interface EveningMessageResult {
+  message: string;
+  encouragement: string;
+}
+
+/** 집중 시간 추천 결과 */
+export interface BestFocusTimeResult {
+  startHour: number;
+  endHour: number;
+  reason: string;
+}
+
+/** 미팅 비율 결과 */
+export interface MeetingRatioResult {
+  percentage: number;
+  status: 'healthy' | 'warning' | 'overload';
+}
+
+/** DNA 엔진 훅 반환 타입 */
+export interface UseDNAEngineReturn {
+  // 상태
+  profile: DNAProfile | null;
+  suggestions: DNABasedSuggestion[];
+  isAnalyzing: boolean;
+  analysisPhase: AnalysisPhase;
+  todayContext: TodayContext | null;
+  
+  // 액션
+  analyzeCalendar: (events: CalendarEvent[]) => Promise<DNAProfile | undefined>;
+  refreshTodayContext: () => TodayContext;
+  
+  // 메시지 생성
+  getMorningBriefing: (todayEvents: number, nextMeeting?: { title: string; time: string }) => string;
+  getEveningMessage: (completedTasks: number, totalTasks: number) => string;
+  getContextGreeting: () => string;
+  getContextMessage: () => string;
+  
+  // 인사이트 접근
+  getStressLevel: () => StressLevel;
+  getBestFocusTime: () => BestFocusTimeResult;
+  getPeakHours: () => number[];
+  getChronotype: () => Chronotype;
+  getTodayContext: () => TodayContext | null;
+  getTodayBusyLevel: () => BusyLevel;
+  getWorkLifeBalance: () => WorkLifeBalanceStatus;
+  getMeetingRatio: () => MeetingRatioResult;
+  
+  // 새로운 기능
+  getSpecialAlerts: (daysAhead?: number) => SpecialEventAlert[];
+  getBurnoutWarning: () => BurnoutWarning;
+  getTodayEnergyDrain: () => number;
+  getRecommendedActions: () => AlfredoAction[];
+  getBriefingTone: () => BriefingTone;
+}
+
+/** DNA 추천 훅 반환 타입 */
+export interface UseDNARecommendationsReturn {
+  profile: DNAProfile | null;
+  isCurrentlyPeakTime: () => boolean;
+  getRecommendedTaskType: () => RecommendedTaskType;
+  getBriefingTone: () => BriefingTone;
+}
+
+// ========== 훅 구현 ==========
+
 /**
  * DNA 엔진 훅
  * 캘린더 데이터를 분석하고 인사이트를 제공
  */
-export function useDNAEngine() {
+export function useDNAEngine(): UseDNAEngineReturn {
   const { user } = useAuthStore();
   const [profile, setProfile] = useState<DNAProfile | null>(null);
   const [suggestions, setSuggestions] = useState<DNABasedSuggestion[]>([]);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisPhase, setAnalysisPhase] = useState<'day1' | 'week1' | 'week2'>('day1');
+  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  const [analysisPhase, setAnalysisPhase] = useState<AnalysisPhase>('day1');
   const [todayContext, setTodayContext] = useState<TodayContext | null>(null);
 
   /**
    * 캘린더 데이터 분석 실행
    */
-  const analyzeCalendar = useCallback(async (events: CalendarEvent[]) => {
-    if (!user?.id) return;
+  const analyzeCalendar = useCallback(async (events: CalendarEvent[]): Promise<DNAProfile | undefined> => {
+    if (!user?.id) return undefined;
     
     setIsAnalyzing(true);
     try {
@@ -43,7 +139,7 @@ export function useDNAEngine() {
         ? Math.floor((Date.now() - result.dataRangeStart.getTime()) / (1000 * 60 * 60 * 24))
         : 0;
       
-      let phase: 'day1' | 'week1' | 'week2' = 'day1';
+      let phase: AnalysisPhase = 'day1';
       if (daysSinceFirstEvent >= 14) {
         phase = 'week2';
       } else if (daysSinceFirstEvent >= 7) {
@@ -64,43 +160,46 @@ export function useDNAEngine() {
   /**
    * 아침 브리핑 메시지 가져오기
    */
-  const getMorningBriefing = useCallback((todayEvents: number, nextMeeting?: { title: string; time: string }) => {
+  const getMorningBriefing = useCallback((
+    todayEvents: number, 
+    nextMeeting?: { title: string; time: string }
+  ): string => {
     return dnaEngine.getMorningBriefing(todayEvents, nextMeeting);
   }, []);
 
   /**
    * 저녁 메시지 가져오기
    */
-  const getEveningMessage = useCallback((completedTasks: number, totalTasks: number) => {
+  const getEveningMessage = useCallback((completedTasks: number, totalTasks: number): string => {
     return dnaEngine.getEveningMessage(completedTasks, totalTasks);
   }, []);
 
   /**
    * 스트레스 레벨 가져오기
    */
-  const getStressLevel = useCallback(() => {
-    return dnaEngine.getStressLevel();
+  const getStressLevel = useCallback((): StressLevel => {
+    return dnaEngine.getStressLevel() as StressLevel;
   }, []);
 
   /**
    * 집중 시간 추천 가져오기
    */
-  const getBestFocusTime = useCallback(() => {
-    return dnaEngine.getBestFocusTime();
+  const getBestFocusTime = useCallback((): BestFocusTimeResult => {
+    return dnaEngine.getBestFocusTime() as BestFocusTimeResult;
   }, []);
 
   /**
    * 피크 시간대 가져오기
    */
-  const getPeakHours = useCallback(() => {
+  const getPeakHours = useCallback((): number[] => {
     return dnaEngine.getPeakHours();
   }, []);
 
   /**
    * 크로노타입 가져오기
    */
-  const getChronotype = useCallback(() => {
-    return dnaEngine.getChronotype();
+  const getChronotype = useCallback((): Chronotype => {
+    return dnaEngine.getChronotype() as Chronotype;
   }, []);
 
   // ========== 새로 추가된 메서드 ==========
@@ -108,14 +207,14 @@ export function useDNAEngine() {
   /**
    * 오늘 컨텍스트 가져오기
    */
-  const getTodayContext = useCallback(() => {
+  const getTodayContext = useCallback((): TodayContext | null => {
     return dnaEngine.getTodayContext();
   }, []);
 
   /**
    * 오늘 컨텍스트 새로고침
    */
-  const refreshTodayContext = useCallback(() => {
+  const refreshTodayContext = useCallback((): TodayContext => {
     const context = dnaEngine.refreshTodayContext();
     setTodayContext(context);
     return context;
@@ -152,43 +251,43 @@ export function useDNAEngine() {
   /**
    * 브리핑 톤 가져오기
    */
-  const getBriefingTone = useCallback(() => {
-    return dnaEngine.getBriefingTone();
+  const getBriefingTone = useCallback((): BriefingTone => {
+    return dnaEngine.getBriefingTone() as BriefingTone;
   }, []);
 
   /**
    * 컨텍스트 기반 인사말
    */
-  const getContextGreeting = useCallback(() => {
+  const getContextGreeting = useCallback((): string => {
     return dnaEngine.getContextGreeting();
   }, []);
 
   /**
    * 컨텍스트 기반 상황 메시지
    */
-  const getContextMessage = useCallback(() => {
+  const getContextMessage = useCallback((): string => {
     return dnaEngine.getContextMessage();
   }, []);
 
   /**
    * 오늘 바쁜 정도
    */
-  const getTodayBusyLevel = useCallback(() => {
-    return dnaEngine.getTodayBusyLevel();
+  const getTodayBusyLevel = useCallback((): BusyLevel => {
+    return dnaEngine.getTodayBusyLevel() as BusyLevel;
   }, []);
 
   /**
    * 워라밸 상태
    */
-  const getWorkLifeBalance = useCallback(() => {
-    return dnaEngine.getWorkLifeBalance();
+  const getWorkLifeBalance = useCallback((): WorkLifeBalanceStatus => {
+    return dnaEngine.getWorkLifeBalance() as WorkLifeBalanceStatus;
   }, []);
 
   /**
    * 미팅 비율
    */
-  const getMeetingRatio = useCallback(() => {
-    return dnaEngine.getMeetingRatio();
+  const getMeetingRatio = useCallback((): MeetingRatioResult => {
+    return dnaEngine.getMeetingRatio() as MeetingRatioResult;
   }, []);
 
   return {
@@ -231,13 +330,13 @@ export function useDNAEngine() {
 /**
  * DNA 기반 개인화된 추천 훅
  */
-export function useDNARecommendations() {
+export function useDNARecommendations(): UseDNARecommendationsReturn {
   const { profile, getPeakHours, getStressLevel, getTodayContext, getBriefingTone } = useDNAEngine();
   
   /**
    * 현재 시간이 피크 시간인지 확인
    */
-  const isCurrentlyPeakTime = useCallback(() => {
+  const isCurrentlyPeakTime = useCallback((): boolean => {
     const peakHours = getPeakHours();
     const currentHour = new Date().getHours();
     return peakHours.includes(currentHour);
@@ -246,7 +345,7 @@ export function useDNARecommendations() {
   /**
    * 현재 상태에 맞는 태스크 유형 추천
    */
-  const getRecommendedTaskType = useCallback((): 'deep_work' | 'light_work' | 'break' => {
+  const getRecommendedTaskType = useCallback((): RecommendedTaskType => {
     const peakHours = getPeakHours();
     const stressLevel = getStressLevel();
     const context = getTodayContext();
@@ -278,7 +377,7 @@ export function useDNARecommendations() {
   /**
    * 브리핑 톤 결정
    */
-  const determineBriefingTone = useCallback((): 'energetic' | 'gentle' | 'supportive' => {
+  const determineBriefingTone = useCallback((): BriefingTone => {
     return getBriefingTone();
   }, [getBriefingTone]);
 
