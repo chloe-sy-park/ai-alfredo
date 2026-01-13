@@ -14,7 +14,6 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // VITE_ prefix 환경변수도 체크 (Vercel에서 둘 다 설정 가능)
   const clientId = process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID;
   
   if (!clientId) {
@@ -22,12 +21,11 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Google Client ID not configured' });
   }
 
-  // 프로덕션 도메인 우선, 없으면 VERCEL_URL 사용
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL 
-    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
-    || 'http://localhost:5173';
-  
+  // 메인 도메인 고정 (환경변수 우선, 없으면 하드코딩)
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.my-alfredo.com';
   const redirectUri = `${baseUrl}/auth/callback`;
+
+  console.log('OAuth redirect_uri:', redirectUri);
 
   const scopes = [
     'openid',
@@ -37,7 +35,6 @@ export default async function handler(req, res) {
     'https://www.googleapis.com/auth/calendar.events.readonly'
   ].join(' ');
 
-  // crypto.randomUUID() 대신 간단한 랜덤 생성
   const state = Math.random().toString(36).substring(2) + Date.now().toString(36);
 
   const params = new URLSearchParams({
