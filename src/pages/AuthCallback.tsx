@@ -1,20 +1,90 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../stores/authStore';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { handleGoogleCallback } from '../services/auth';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
-  const { login } = useAuthStore();
+  const [searchParams] = useSearchParams();
+  const [error, setError] = useState('');
+  const [status, setStatus] = useState('processing');
 
-  useEffect(() => {
-    login();
-    navigate('/');
-  }, [login, navigate]);
+  useEffect(function handleCallback() {
+    var code = searchParams.get('code');
+    var errorParam = searchParams.get('error');
+
+    // Handle error from Google
+    if (errorParam) {
+      setError('Google 로그인이 취소되었습니다.');
+      setStatus('error');
+      setTimeout(function() { navigate('/settings'); }, 2000);
+      return;
+    }
+
+    // No code - invalid callback
+    if (!code) {
+      setError('인증 코드가 없습니다.');
+      setStatus('error');
+      setTimeout(function() { navigate('/settings'); }, 2000);
+      return;
+    }
+
+    // Exchange code for tokens
+    setStatus('exchanging');
+    
+    handleGoogleCallback(code)
+      .then(function(result) {
+        console.log('Google auth success:', result.user.email);
+        setStatus('success');
+        
+        // Redirect to home after success
+        setTimeout(function() { navigate('/'); }, 1500);
+      })
+      .catch(function(err) {
+        console.error('Google auth failed:', err);
+        setError(err.message || '인증에 실패했습니다.');
+        setStatus('error');
+        
+        setTimeout(function() { navigate('/settings'); }, 3000);
+      });
+  }, [searchParams, navigate]);
+
+  function getStatusMessage() {
+    switch (status) {
+      case 'processing':
+        return '인증 처리 중...';
+      case 'exchanging':
+        return 'Google 캘린더 연결 중...';
+      case 'success':
+        return '연결 완료! 🎉';
+      case 'error':
+        return error || '오류가 발생했습니다';
+      default:
+        return '처리 중...';
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-lavender-50 flex items-center justify-center">
-      <LoadingSpinner size="lg" message="로그인 중..." />
+    <div className="min-h-screen bg-lavender-50 flex flex-col items-center justify-center p-4">
+      {status === 'error' ? (
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
+            <span className="text-2xl">😢</span>
+          </div>
+          <p className="text-red-600 font-medium">{getStatusMessage()}</p>
+          <p className="text-sm text-gray-500 mt-2">설정으로 돌아갑니다...</p>
+        </div>
+      ) : status === 'success' ? (
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
+            <span className="text-2xl">🐧</span>
+          </div>
+          <p className="text-green-600 font-medium">{getStatusMessage()}</p>
+          <p className="text-sm text-gray-500 mt-2">홈으로 이동합니다...</p>
+        </div>
+      ) : (
+        <LoadingSpinner size="lg" message={getStatusMessage()} />
+      )}
     </div>
   );
 }
