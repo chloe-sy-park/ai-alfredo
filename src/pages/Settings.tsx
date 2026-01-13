@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
-import { User, Bell, LogOut, Calendar, CheckCircle, XCircle } from 'lucide-react';
+import { User, Bell, LogOut, Calendar, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { 
   isGoogleConnected, 
   getGoogleUser, 
@@ -8,6 +8,12 @@ import {
   disconnectGoogle,
   GoogleUser
 } from '../services/auth';
+import {
+  getCalendarList,
+  getSelectedCalendars,
+  setSelectedCalendars,
+  CalendarInfo
+} from '../services/calendar';
 
 export default function Settings() {
   var authStore = useAuthStore();
@@ -17,11 +23,66 @@ export default function Settings() {
   var [googleConnected, setGoogleConnected] = useState(false);
   var [googleUser, setGoogleUser] = useState<GoogleUser | null>(null);
   var [connecting, setConnecting] = useState(false);
+  
+  // 캘린더 선택 관련
+  var [calendars, setCalendars] = useState<CalendarInfo[]>([]);
+  var [selectedIds, setSelectedIds] = useState<string[]>([]);
+  var [showCalendars, setShowCalendars] = useState(false);
+  var [loadingCalendars, setLoadingCalendars] = useState(false);
 
   useEffect(function checkGoogleConnection() {
-    setGoogleConnected(isGoogleConnected());
+    var connected = isGoogleConnected();
+    setGoogleConnected(connected);
     setGoogleUser(getGoogleUser());
+    
+    if (connected) {
+      // 저장된 선택 불러오기
+      setSelectedIds(getSelectedCalendars());
+    }
   }, []);
+
+  // 캘린더 목록 불러오기
+  function handleLoadCalendars() {
+    if (calendars.length > 0) {
+      setShowCalendars(!showCalendars);
+      return;
+    }
+    
+    setLoadingCalendars(true);
+    getCalendarList()
+      .then(function(list) {
+        setCalendars(list);
+        setShowCalendars(true);
+        
+        // 선택된 게 없으면 primary 캘린더 기본 선택
+        if (selectedIds.length === 0) {
+          var primaryCal = list.find(function(c) { return c.primary; });
+          if (primaryCal) {
+            setSelectedIds([primaryCal.id]);
+            setSelectedCalendars([primaryCal.id]);
+          }
+        }
+      })
+      .catch(function(err) {
+        console.error('Failed to load calendars:', err);
+        alert('캘린더 목록을 불러오는데 실패했습니다.');
+      })
+      .finally(function() {
+        setLoadingCalendars(false);
+      });
+  }
+
+  // 캘린더 선택 토글
+  function handleToggleCalendar(calendarId: string) {
+    var newSelected: string[];
+    if (selectedIds.includes(calendarId)) {
+      newSelected = selectedIds.filter(function(id) { return id !== calendarId; });
+    } else {
+      newSelected = [...selectedIds, calendarId];
+    }
+    setSelectedIds(newSelected);
+    setSelectedCalendars(newSelected);
+  }
 
   function handleConnectGoogle() {
     setConnecting(true);
@@ -37,6 +98,9 @@ export default function Settings() {
       disconnectGoogle();
       setGoogleConnected(false);
       setGoogleUser(null);
+      setCalendars([]);
+      setSelectedIds([]);
+      setShowCalendars(false);
     }
   }
 
@@ -73,6 +137,58 @@ export default function Settings() {
                 {googleUser.email}
               </p>
             )}
+            
+            {/* 캘린더 선택 */}
+            <div className="border-t pt-3 mt-3">
+              <button
+                onClick={handleLoadCalendars}
+                disabled={loadingCalendars}
+                className="w-full flex items-center justify-between py-2 text-sm text-gray-700 hover:text-lavender-500"
+              >
+                <span>표시할 캘린더 선택 ({selectedIds.length}개 선택됨)</span>
+                {loadingCalendars ? (
+                  <span className="w-4 h-4 border-2 border-lavender-400 border-t-transparent rounded-full animate-spin"></span>
+                ) : showCalendars ? (
+                  <ChevronUp size={18} />
+                ) : (
+                  <ChevronDown size={18} />
+                )}
+              </button>
+              
+              {showCalendars && calendars.length > 0 && (
+                <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
+                  {calendars.map(function(cal) {
+                    var isSelected = selectedIds.includes(cal.id);
+                    return (
+                      <button
+                        key={cal.id}
+                        onClick={function() { handleToggleCalendar(cal.id); }}
+                        className="w-full flex items-center gap-3 py-2 px-2 rounded-lg hover:bg-gray-50 text-left"
+                      >
+                        <div
+                          className="w-4 h-4 rounded border-2 flex items-center justify-center"
+                          style={{
+                            borderColor: cal.backgroundColor || '#A996FF',
+                            backgroundColor: isSelected ? (cal.backgroundColor || '#A996FF') : 'transparent'
+                          }}
+                        >
+                          {isSelected && (
+                            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </div>
+                        <span className="text-sm flex-1 truncate">{cal.summary}</span>
+                        {cal.primary && (
+                          <span className="text-xs text-gray-400">기본</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            
             <button
               onClick={handleDisconnectGoogle}
               className="w-full py-2 px-4 text-sm text-red-500 border border-red-200 rounded-xl hover:bg-red-50 transition-colors"
