@@ -337,16 +337,26 @@ ${JSON.stringify(emailSummaries, null, 2)}
       }
 
       const data = await response.json();
+      console.log('📧 AI 응답 데이터:', data);
+      
       let analysisResult = [];
 
       try {
-        const content = data.reply || data.content || '';
+        // 🐛 FIX: data.text를 먼저 확인 (API 응답 형식에 맞게)
+        const content = data.text || data.reply || data.content || '';
+        console.log('📧 AI 응답 content:', content.substring(0, 200) + '...');
+        
+        // JSON 배열 추출 (마크다운 코드블록 내부도 처리)
         const jsonMatch = content.match(/\[[\s\S]*\]/);
         if (jsonMatch) {
+          console.log('📧 JSON 매치 성공');
           analysisResult = JSON.parse(jsonMatch[0]);
+          console.log('📧 파싱된 결과:', analysisResult.length, '개 액션');
+        } else {
+          console.warn('📧 JSON 매치 실패 - content:', content);
         }
       } catch (parseError) {
-        console.error('Failed to parse AI response:', parseError);
+        console.error('📧 Failed to parse AI response:', parseError);
       }
 
       const enrichedActions = analysisResult.map(action => {
