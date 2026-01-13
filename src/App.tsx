@@ -60,16 +60,13 @@ function App() {
   return (
     <ToastProvider>
       <Routes>
-        {/* Chat은 AppShell 밖에서 독립적으로 렌더링 */}
-        <Route path="/chat" element={<Chat />} />
-        <Route path="/report" element={<Report />} />
-        
-        {/* 나머지는 AppShell 내부 */}
         <Route element={<AppShell />}>
           <Route path="/" element={<Home />} />
           <Route path="/work" element={<Work />} />
           <Route path="/life" element={<Life />} />
+          <Route path="/chat" element={<Chat />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/report" element={<Report />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
