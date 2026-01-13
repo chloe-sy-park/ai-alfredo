@@ -46,8 +46,7 @@ export function useTasks(options) {
   var autoFetch = opts.autoFetch !== false;
   var statusFilter = opts.status;
   var categoryFilter = opts.category;
-  var priorityFilter = opts.priority;
-  var isTop3Filter = opts.isTop3;
+  var isTopThreeFilter = opts.isTopThree;
   
   var tasksState = useState(function() {
     return loadTasksData();
@@ -91,11 +90,8 @@ export function useTasks(options) {
       if (categoryFilter) {
         query = query.eq('category', categoryFilter);
       }
-      if (priorityFilter) {
-        query = query.eq('priority', priorityFilter);
-      }
-      if (isTop3Filter !== undefined) {
-        query = query.eq('is_top3', isTop3Filter);
+      if (isTopThreeFilter !== undefined) {
+        query = query.eq('is_top_three', isTopThreeFilter);
       }
 
       var { data, error: dbError, count } = await query.limit(50);
@@ -120,16 +116,16 @@ export function useTasks(options) {
     } finally {
       setIsLoading(false);
     }
-  }, [statusFilter, categoryFilter, priorityFilter, isTop3Filter]);
+  }, [statusFilter, categoryFilter, isTopThreeFilter]);
 
   // 태스크 생성
   var createTask = useCallback(async function(data) {
     try {
       var taskData = Object.assign({
         user_id: TEST_USER_ID,
-        status: 'pending',
-        priority: 'medium',
-        is_top3: false,
+        status: 'todo',
+        is_top_three: false,
+        is_starred: false,
         defer_count: 0
       }, data);
 
@@ -232,7 +228,7 @@ export function useTasks(options) {
       var { data: completedTask, error: dbError } = await supabase
         .from('tasks')
         .update({
-          status: 'completed',
+          status: 'done',
           completed_at: now,
           updated_at: now
         })
@@ -247,11 +243,10 @@ export function useTasks(options) {
         return null;
       }
 
-      // XP 보상 (펭귄 상태 업데이트)
+      // XP 보상 (is_starred와 is_top_three 기반)
       var xpReward = 10;
-      if (completedTask.priority === 'high') xpReward = 20;
-      if (completedTask.priority === 'urgent') xpReward = 30;
-      if (completedTask.is_top3) xpReward += 5;
+      if (completedTask.is_starred) xpReward = 20;
+      if (completedTask.is_top_three) xpReward += 5;
 
       // 펭귄 XP 업데이트
       var { data: penguin } = await supabase
@@ -317,6 +312,7 @@ export function useTasks(options) {
       var { data: deferredTask, error: dbError } = await supabase
         .from('tasks')
         .update({
+          status: 'deferred',
           defer_count: newDeferCount,
           due_date: newDueDate,
           updated_at: new Date().toISOString()
@@ -353,20 +349,20 @@ export function useTasks(options) {
   var getTodayTasks = useCallback(function() {
     var today = getDateKey();
     return tasks.filter(function(t) {
-      return t.due_date === today && t.status !== 'completed';
+      return t.due_date === today && t.status !== 'done';
     });
   }, [tasks]);
 
   // Top3 태스크 가져오기
-  var getTop3Tasks = useCallback(function() {
+  var getTopThreeTasks = useCallback(function() {
     return tasks.filter(function(t) {
-      return t.is_top3 && t.status !== 'completed';
+      return t.is_top_three && t.status !== 'done';
     }).slice(0, 3);
   }, [tasks]);
 
   // Top3 설정/해제
-  var setTop3 = useCallback(async function(id, isTop3) {
-    return updateTask(id, { is_top3: isTop3 });
+  var setTopThree = useCallback(async function(id, isTopThree) {
+    return updateTask(id, { is_top_three: isTopThree });
   }, [updateTask]);
 
   // 자동 fetch
@@ -386,7 +382,7 @@ export function useTasks(options) {
     // 조회
     fetchTasks: fetchTasks,
     getTodayTasks: getTodayTasks,
-    getTop3Tasks: getTop3Tasks,
+    getTopThreeTasks: getTopThreeTasks,
     
     // CRUD
     createTask: createTask,
@@ -396,7 +392,7 @@ export function useTasks(options) {
     // 액션
     completeTask: completeTask,
     deferTask: deferTask,
-    setTop3: setTop3
+    setTopThree: setTopThree
   };
 }
 
