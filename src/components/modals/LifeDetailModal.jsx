@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Trash2, CheckCircle2, Clock, Calendar, Plus } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Trash2, Plus } from 'lucide-react';
 
 const LifeDetailModal = ({ item, type, onClose, onSave, onDelete, medications, onTakeMed }) => {
   const isNew = !item;
@@ -35,6 +35,14 @@ const LifeDetailModal = ({ item, type, onClose, onSave, onDelete, medications, o
     return 'night';
   };
   const currentTimeSlot = getCurrentTimeSlot();
+  
+  // 시간대별 슬롯 정의
+  const timeSlots = [
+    { key: 'morning', label: '아침', icon: '🌅', timeRange: '07:00-09:00' },
+    { key: 'afternoon', label: '점심', icon: '☀️', timeRange: '12:00-14:00' },
+    { key: 'evening', label: '저녁', icon: '🌆', timeRange: '18:00-20:00' },
+    { key: 'night', label: '취침 전', icon: '🌙', timeRange: '21:00-23:00' },
+  ];
   
   // 아이콘 옵션들
   const iconOptions = {
@@ -80,13 +88,6 @@ const LifeDetailModal = ({ item, type, onClose, onSave, onDelete, medications, o
     medication: [
       { value: 'prescription', label: '처방약' },
       { value: 'supplement', label: '영양제' },
-    ],
-    reminder: [
-      { value: 'money', label: '💰 돈' },
-      { value: 'family', label: '👨‍👩‍👧 가족' },
-      { value: 'home', label: '🏠 가정' },
-      { value: 'admin', label: '📋 행정' },
-      { value: 'personal', label: '🎯 개인' },
     ],
   };
   
@@ -644,7 +645,5 @@ const LifeDetailModal = ({ item, type, onClose, onSave, onDelete, medications, o
     </div>
   );
 };
-
-// === Life Page ===
 
 export default LifeDetailModal;
