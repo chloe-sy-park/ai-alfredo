@@ -1,14 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
-  Plus, CheckCircle2, Circle, Clock, AlertCircle, ChevronRight, ChevronLeft,
-  Star, Flag, Calendar, FolderKanban, Inbox, Filter, Search,
-  Sparkles, TrendingUp, TrendingDown, Minus, MoreHorizontal,
-  Sun, Cloud, CloudRain, Zap, Coffee, Moon, Target, MessageSquare,
-  Umbrella, Users, FileText, Bell, Play
+  Plus, CheckCircle2, Clock, AlertCircle, ChevronRight,
+  Calendar, FolderKanban, Inbox, Search,
+  Sun, Cloud, CloudRain, Target
 } from 'lucide-react';
 import SwipeableTaskItem from './SwipeableTaskItem';
-import { Sparkline, PriorityIndicator } from './TaskWidgets';
-import { useGoogleCalendar } from '../../hooks/useGoogleCalendar';
 import { AlfredoEmptyState } from '../common/AlfredoEmptyState';
 import { mockTasks as fallbackTasks } from '../../data/mockData';
 
@@ -18,7 +14,6 @@ var AlfredoBriefing = function(props) {
   var tasks = props.tasks || [];
   var events = props.events || [];
   var weather = props.weather;
-  var userName = props.userName || 'Boss';
   var onOpenChat = props.onOpenChat;
   
   var hour = new Date().getHours();
@@ -174,14 +169,12 @@ var WorkPage = function(props) {
   var tasks = (props.tasks && props.tasks.length > 0) ? props.tasks : fallbackTasks;
   var setTasks = props.setTasks;
   var events = props.events || [];
-  var projects = props.projects || [];
   var onOpenAddTask = props.onOpenAddTask;
   var onOpenTask = props.onOpenTask;
   var onOpenProject = props.onOpenProject;
   var onOpenInbox = props.onOpenInbox;
   var onOpenChat = props.onOpenChat;
   var onStartFocus = props.onStartFocus;
-  var setView = props.setView;
   var weather = props.weather;
   var userName = props.userName;
   
