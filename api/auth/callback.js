@@ -20,7 +20,6 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Authorization code is required' });
   }
 
-  // 환경변수 (VITE_ prefix도 체크)
   const clientId = process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
@@ -29,11 +28,11 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Google OAuth credentials not configured' });
   }
 
-  // redirect_uri는 토큰 교환 시에도 동일해야 함
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL 
-    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
-    || 'http://localhost:5173';
+  // 메인 도메인 고정 (google.js와 동일해야 함)
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.my-alfredo.com';
   const redirectUri = `${baseUrl}/auth/callback`;
+
+  console.log('Token exchange redirect_uri:', redirectUri);
 
   try {
     // Authorization code를 access token으로 교환
