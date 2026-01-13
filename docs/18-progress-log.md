@@ -1,17 +1,15 @@
 # 18. 개발 진행 로그
 
-> 최종 업데이트: 2025-01-12
+> 최종 업데이트: 2025-01-13
 
 ---
 
-## 📊 전체 진행률: W1-W4 로드맵 100% 완료
+## 📊 전체 진행률
 
-| 주차 | 목표 | 상태 |
+| 단계 | 목표 | 상태 |
 |------|------|------|
-| W1 | 핸들링 기반 + 알프레도 코어 | ✅ 완료 |
-| W2 | 즉각적 가치 전달 | ✅ 완료 |
-| W3 | DNA 확장 + 딥 개인화 | ✅ 완료 |
-| W4 | 폴리싱 + 런칭 | ✅ 완료 |
+| W1-W4 | UI/기능 로드맵 | ✅ 100% 완료 |
+| W2+ | DB 연동 (Supabase) | 🔄 진행 중 |
 
 ---
 
@@ -21,8 +19,109 @@
 |------|----|
 | **프로덕션 URL** | https://ai-alfredo.vercel.app |
 | **GitHub** | https://github.com/chloe-sy-park/ai-alfredo |
-| **노션** | https://www.notion.so/2c8b1c6d40e2819ab8aec73e6e4830d1 |
 | **Vercel 프로젝트** | prj_FdguUPkNQzcTtXzxELljXiDL0JCT |
+
+---
+
+## 📝 최근 작업 내역
+
+### 2025-01-13: W2 DB 연동 시작
+
+#### ✅ mockData.js 정리
+**커밋**: `5c758ecb92a1976ca28dfdb84527596021fa5211`
+
+- 모든 샘플 데이터 제거 (tasks, projects, events, big3, relationships, inbox, habits, routines, medications, conditionHistory 등)
+- 날씨 데이터만 기본값 유지
+- 파일 크기: 16KB → 2KB
+
+#### ✅ daily_conditions API 추가
+**커밋**: `3de223463f98467635dac1dfbceeb24f6c6b41e5`
+
+`src/lib/api.ts`에 dailyConditionsApi 추가:
+
+```typescript
+// 인터페이스
+interface DailyCondition {
+  id?: string;
+  user_id?: string;
+  date: string;
+  energy_level: 1 | 2 | 3 | 4 | 5;
+  mood: 'great' | 'good' | 'neutral' | 'low' | 'bad';
+  physical_state?: 'excellent' | 'good' | 'normal' | 'tired' | 'sick';
+  notes?: string;
+}
+
+// 엔드포인트
+dailyConditionsApi = {
+  list(params),      // GET /daily-conditions
+  getToday(),        // GET /daily-conditions/today
+  getByDate(date),   // GET /daily-conditions/{date}
+  record(data),      // POST /daily-conditions
+  update(id, data),  // PATCH /daily-conditions/{id}
+  delete(id),        // DELETE /daily-conditions/{id}
+  getWeeklySummary(), // GET /daily-conditions/summary/weekly
+  getMonthlyHeatmap() // GET /daily-conditions/heatmap/monthly
+}
+```
+
+#### ✅ useDailyConditions 하이브리드 모드
+**커밋**: `011b1ecc62699707a8c4270d7c530721c64172f0`
+
+`src/hooks/useDailyConditions.js` 업그레이드:
+
+- **API 우선 + localStorage 백업** (오프라인 지원)
+- **동기화 큐**: 오프라인 기록 → 온라인 복구 시 자동 동기화
+- **isLoading, error 상태** 추가
+- **mood ↔ level 매핑**
+
+```javascript
+// 사용법
+const {
+  conditions,
+  isLoading,
+  error,
+  recordCondition,     // 컨디션 기록 (API + localStorage)
+  getTodayCondition,   // 오늘 컨디션
+  getRecentConditions, // 최근 N일
+  getMonthConditions,  // Year in Pixels용
+  weekdayAverages,     // 요일별 평균
+  overallStats,        // 전체 통계
+  insights,            // AI 인사이트
+  processSyncQueue     // 동기화 큐 처리
+} = useDailyConditions();
+```
+
+---
+
+### 2025-01-12: W1-W4 로드맵 완료 + AlfredoBriefingV2 개선
+
+**커밋**: `24ddd626128a9d72d3a7e1db829d611d501e11e0`
+
+**개선 사항**:
+
+1. **빈 데이터 상태 처리**
+   - hasNoTasks, hasNoEvents 체크
+   - 처음 사용자를 위한 친근한 메시지
+   - "+" 버튼으로 할 일 추가 가이드
+
+2. **자연스러운 말투**
+   - 메시지 배리에이션 (랜덤 선택)
+   - "Boss님," 쉼표 추가
+   - 밤 시간 메시지 2가지 중 랜덤
+
+3. **컨디션 케어 강화**
+   - 컨디션 ≤2: 3가지 케어 메시지
+   - 오후 슬럼프: 스트레칭/물/환기 추천
+
+4. **날씨 팁 세분화**
+   - 온도별: ≤0°C, ≤5°C, ≤15°C, ≥28°C
+   - 비 예보 (rainChance > 50)
+   - 미세먼지 (dust: bad/veryBad)
+
+5. **일정 알림 세분화**
+   - 15분 이내: ⚡ 준비하세요!
+   - 30분 이내: 📅 있어요.
+   - 60분 이내: 🕐 1시간 내에
 
 ---
 
@@ -91,87 +190,54 @@ src/components/
 └── common/         # 공통 컴포넌트
 ```
 
-### 상태 관리 (src/stores/)
+### API & Hooks (src/lib/, src/hooks/)
 
 ```
-src/stores/
-├── taskStore.ts    # 태스크 상태
-├── authStore.ts    # 인증 상태
-└── habitStore.ts   # 습관 상태
-```
+src/lib/
+├── api.ts          # API 클라이언트 (dailyConditionsApi 추가)
+└── supabase.ts     # Supabase 클라이언트
 
-### 데이터 (src/data/)
-
-```
-src/data/
-└── mockData.js     # 샘플 데이터
+src/hooks/
+├── useDailyConditions.js  # 하이브리드 모드 (API + localStorage)
+├── useGoogleCalendar.js
+├── useGmail.js
+└── ...
 ```
 
 ---
 
-## 📝 최근 작업 내역
+## 🗄️ DB 연동 로드맵
 
-### 2025-01-12: AlfredoBriefingV2 개선
+| 주차 | 테이블 | 상태 |
+|------|--------|------|
+| W2 | daily_conditions | 🔄 API 추가 완료, Edge Function 필요 |
+| W3 | penguin_status, habits, tasks, focus_sessions | 📅 예정 |
+| W4 | daily_summaries, weekly_insights | 📅 예정 |
 
-**커밋**: `24ddd626128a9d72d3a7e1db829d611d501e11e0`
-
-**개선 사항**:
-
-1. **빈 데이터 상태 처리**
-   - hasNoTasks, hasNoEvents 체크
-   - 처음 사용자를 위한 친근한 메시지
-   - "+" 버튼으로 할 일 추가 가이드
-
-2. **자연스러운 말투**
-   - 메시지 배리에이션 (랜덤 선택)
-   - "Boss님," 쉼표 추가
-   - 밤 시간 메시지 2가지 중 랜덤
-
-3. **컨디션 케어 강화**
-   - 컨디션 ≤2: 3가지 케어 메시지
-   - 오후 슬럼프: 스트레칭/물/환기 추천
-
-4. **날씨 팁 세분화**
-   - 온도별: ≤0°C, ≤5°C, ≤15°C, ≥28°C
-   - 비 예보 (rainChance > 50)
-   - 미세먼지 (dust: bad/veryBad)
-
-5. **일정 알림 세분화**
-   - 15분 이내: ⚡ 준비하세요!
-   - 30분 이내: 📅 있어요.
-   - 60분 이내: 🕐 1시간 내에
-
-6. **접근성 개선**
-   - 터치 타겟 44px 최소
-   - 패딩 조정
+상세 스키마: `docs/06-database-schema.md`
 
 ---
 
-## 🗄️ 데이터베이스
+## 🔜 다음 작업
 
-### Supabase 스키마
+### 즉시 (W2 진행 중)
 
-- **16개 ENUM 타입**
-- **18개 테이블**
-- **RLS 정책 적용**
+- [ ] Supabase Edge Function: `/daily-conditions` 구현
+- [ ] 환경 변수 설정 확인 (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)
+- [ ] 홈페이지 컨디션 퀵 체인지 → API 연동
 
-상세: `docs/06-database-schema.md`
+### 단기 (W3)
 
-### SQL 마이그레이션
+- [ ] penguin_status API
+- [ ] habits API
+- [ ] tasks API
+- [ ] focus_sessions API
 
-`supabase/migrations/20250111_initial_schema.sql`
+### 중기 (W4)
 
----
-
-## 🔌 API
-
-### 엔드포인트 그룹 (15개)
-
-상세: `docs/17-api-specification.md`
-
-### Edge Functions (8개)
-
-`supabase/functions/` 참조
+- [ ] daily_summaries API
+- [ ] weekly_insights API
+- [ ] 주간 리뷰 기능
 
 ---
 
@@ -196,30 +262,6 @@ src/data/
 | 16 | prompt-engineering.md | 프롬프트 엔지니어링 |
 | 17 | api-specification.md | API 명세 |
 | 18 | progress-log.md | 진행 로그 (현재 문서) |
-
----
-
-## 🔜 다음 작업
-
-### 즉시 할 것
-
-- [ ] mockData.js → 빈 배열로 변경
-- [ ] localStorage 초기값 → 빈 배열로
-- [ ] 실제 Supabase 연동 테스트
-
-### 단기 (1-2주)
-
-- [ ] 바디 더블링 모드
-- [ ] 집중 타이머
-- [ ] 코멘트 50개 확장
-- [ ] 실패 케어 시스템
-
-### 중기 (3-4주)
-
-- [ ] Gmail 연동 강화
-- [ ] 주간 리뷰
-- [ ] 에너지 리듬 추천
-- [ ] 퀘스트 기반 태스크
 
 ---
 
