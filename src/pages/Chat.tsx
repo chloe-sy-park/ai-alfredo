@@ -1,53 +1,49 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Mic, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useConversationStore } from '../stores/conversationStore';
 
+// 임시로 store 없이 테스트
 export default function Chat() {
   const navigate = useNavigate();
   const [input, setInput] = useState('');
+  const [messages, setMessages] = useState<Array<{id: string, role: string, content: string}>>([]);
+  const [isStreaming, setIsStreaming] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  
-  const { 
-    messages = [], // 기본값 추가
-    isStreaming = false,
-    streamingMessage = '',
-    error, 
-    sendMessage, 
-    createConversation 
-  } = useConversationStore();
-
-  // 안전한 messages 배열
-  const safeMessages = messages || [];
 
   // 스크롤 to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [safeMessages, streamingMessage]);
+  }, [messages]);
 
-  // 메시지 전송
+  // 메시지 전송 (임시 로컬 버전)
   const handleSend = async () => {
     if (!input.trim() || isStreaming) return;
     
-    const message = input;
-    setInput('');
+    const userMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: input
+    };
     
-    try {
-      await sendMessage(message);
-    } catch (err) {
-      console.error('Failed to send message:', err);
-    }
-  };
-
-  // 새 대화 시작
-  const handleNewChat = async () => {
-    await createConversation();
-    inputRef.current?.focus();
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsStreaming(true);
+    
+    // 임시 응답 (1초 후)
+    setTimeout(() => {
+      const assistantMessage = {
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: '안녕하세요! 알프레도예요. 무엇을 도와드릴까요? 🐧'
+      };
+      setMessages(prev => [...prev, assistantMessage]);
+      setIsStreaming(false);
+    }, 1000);
   };
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-8rem)] bg-background">
+    <div className="flex flex-col h-full bg-background">
       {/* 헤더 */}
       <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm px-4 py-3 border-b border-neutral-100">
         <div className="flex items-center gap-3">
@@ -66,17 +62,7 @@ export default function Chat() {
 
       {/* 메시지 영역 */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {error ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <p className="text-neutral-500 mb-4">{error}</p>
-            <button
-              onClick={handleNewChat}
-              className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-medium"
-            >
-              다시 시도
-            </button>
-          </div>
-        ) : safeMessages.length === 0 && !isStreaming ? (
+        {messages.length === 0 && !isStreaming ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <span className="text-5xl mb-4">🐧</span>
             <h3 className="text-lg font-medium text-neutral-700 mb-2">
@@ -88,7 +74,7 @@ export default function Chat() {
           </div>
         ) : (
           <>
-            {safeMessages.map((msg) => (
+            {messages.map((msg) => (
               <div
                 key={msg.id}
                 className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -113,14 +99,10 @@ export default function Chat() {
               <div className="flex justify-start">
                 <div className="max-w-[80%] rounded-2xl px-4 py-3 bg-white text-neutral-800 rounded-bl-md shadow-card">
                   <span className="text-lg mr-2">🐧</span>
-                  <span className="whitespace-pre-wrap">
-                    {streamingMessage || (
-                      <span className="inline-flex items-center gap-1">
-                        <span className="w-2 h-2 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <span className="w-2 h-2 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <span className="w-2 h-2 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                      </span>
-                    )}
+                  <span className="inline-flex items-center gap-1">
+                    <span className="w-2 h-2 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-2 h-2 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-2 h-2 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                   </span>
                 </div>
               </div>
