@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { handleGoogleCallback } from '../services/auth';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 
 export default function AuthCallback() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [error, setError] = useState('');
   const [status, setStatus] = useState('processing');
@@ -17,7 +16,7 @@ export default function AuthCallback() {
     if (errorParam) {
       setError('Google 로그인이 취소되었습니다.');
       setStatus('error');
-      setTimeout(function() { navigate('/settings'); }, 2000);
+      setTimeout(function() { window.location.href = '/settings'; }, 2000);
       return;
     }
 
@@ -25,7 +24,7 @@ export default function AuthCallback() {
     if (!code) {
       setError('인증 코드가 없습니다.');
       setStatus('error');
-      setTimeout(function() { navigate('/settings'); }, 2000);
+      setTimeout(function() { window.location.href = '/settings'; }, 2000);
       return;
     }
 
@@ -37,17 +36,17 @@ export default function AuthCallback() {
         console.log('Google auth success:', result.user.email);
         setStatus('success');
         
-        // Redirect to home after success
-        setTimeout(function() { navigate('/'); }, 1500);
+        // Redirect to home after success - use window.location for full page reload
+        setTimeout(function() { window.location.href = '/'; }, 1500);
       })
       .catch(function(err) {
         console.error('Google auth failed:', err);
         setError(err.message || '인증에 실패했습니다.');
         setStatus('error');
         
-        setTimeout(function() { navigate('/settings'); }, 3000);
+        setTimeout(function() { window.location.href = '/settings'; }, 3000);
       });
-  }, [searchParams, navigate]);
+  }, [searchParams]);
 
   function getStatusMessage() {
     switch (status) {
