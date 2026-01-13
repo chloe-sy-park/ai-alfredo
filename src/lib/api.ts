@@ -245,13 +245,38 @@ export const habitsApi = {
 export interface DailyCondition {
   id: string;
   user_id: string;
-  date: string;
+  log_date: string; // YYYY-MM-DD
   energy_level: number; // 1-5
-  mood: 'great' | 'good' | 'neutral' | 'low' | 'bad';
-  physical_state?: 'excellent' | 'good' | 'normal' | 'tired' | 'sick';
-  notes?: string;
+  mood_level: number; // 1-5
+  focus_level: number; // 1-5
+  factors?: string[]; // ['sleep_quality', 'exercise', 'stress', ...]
+  note?: string;
   created_at: string;
   updated_at?: string;
+}
+
+export interface WeeklySummary {
+  days_logged: number;
+  average_energy: number | null;
+  average_mood: number | null;
+  average_focus: number | null;
+  trend: 'improving' | 'stable' | 'declining' | 'no_data';
+  best_day: { date: string; overall: number } | null;
+  worst_day: { date: string; overall: number } | null;
+  conditions?: DailyCondition[];
+}
+
+export interface MonthlyHeatmap {
+  year: number;
+  month: number;
+  days_in_month: number;
+  days_logged: number;
+  heatmap: Record<string, { 
+    level: number; 
+    energy: number; 
+    mood: number; 
+    focus: number; 
+  }>;
 }
 
 export const dailyConditionsApi = {
@@ -259,45 +284,41 @@ export const dailyConditionsApi = {
   list: (params?: { 
     start_date?: string; 
     end_date?: string; 
-    page?: string; 
+    offset?: string;
     limit?: string;
   }) => api.get<DailyCondition[]>('/daily-conditions', params),
 
   // 오늘 컨디션 조회
-  getToday: () => api.get<DailyCondition | null>('/daily-conditions/today'),
+  getToday: () => api.get<DailyCondition | { log_date: string; exists: false }>('/daily-conditions/today'),
 
   // 특정 날짜 컨디션 조회
-  getByDate: (date: string) => api.get<DailyCondition | null>(`/daily-conditions/date/${date}`),
+  getByDate: (date: string) => api.get<DailyCondition>(`/daily-conditions/${date}`),
 
   // 컨디션 기록 (생성 또는 업데이트)
   record: (data: {
-    date?: string; // 기본값: 오늘
-    energy_level: number;
-    mood: DailyCondition['mood'];
-    physical_state?: DailyCondition['physical_state'];
-    notes?: string;
+    log_date?: string; // 기본값: 오늘
+    energy_level?: number; // 1-5
+    mood_level?: number; // 1-5
+    focus_level?: number; // 1-5
+    factors?: string[];
+    note?: string;
   }) => api.post<DailyCondition>('/daily-conditions', data),
 
   // 컨디션 수정
-  update: (id: string, data: Partial<Omit<DailyCondition, 'id' | 'user_id' | 'created_at'>>) =>
+  update: (id: string, data: Partial<Omit<DailyCondition, 'id' | 'user_id' | 'log_date' | 'created_at'>>) =>
     api.patch<DailyCondition>(`/daily-conditions/${id}`, data),
 
   // 컨디션 삭제
   delete: (id: string) => api.delete(`/daily-conditions/${id}`),
 
   // 주간 요약 조회
-  getWeeklySummary: () => api.get<{
-    average_energy: number;
-    mood_distribution: Record<DailyCondition['mood'], number>;
-    days_logged: number;
-    trend: 'improving' | 'stable' | 'declining';
-  }>('/daily-conditions/weekly-summary'),
+  getWeeklySummary: () => api.get<WeeklySummary>('/daily-conditions/summary/weekly'),
 
-  // 월간 히트맵 데이터
-  getMonthlyHeatmap: (year: number, month: number) => 
-    api.get<Array<{ date: string; energy_level: number; mood: string }>>('/daily-conditions/heatmap', {
-      year: String(year),
-      month: String(month),
+  // 월간 히트맵 데이터 (Year in Pixels용)
+  getMonthlyHeatmap: (year?: number, month?: number) => 
+    api.get<MonthlyHeatmap>('/daily-conditions/heatmap/monthly', {
+      ...(year && { year: String(year) }),
+      ...(month && { month: String(month) }),
     }),
 };
 
