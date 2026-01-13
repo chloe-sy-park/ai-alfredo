@@ -178,6 +178,16 @@ var WorkPage = function(props) {
   var weather = props.weather;
   var userName = props.userName;
   
+  // ⏱️ 시간 추정 코치 props
+  var startTimeTimer = props.startTimeTimer;
+  var stopTimeTimer = props.stopTimeTimer;
+  var getSuggestedTime = props.getSuggestedTime;
+  
+  // 현재 타이머 실행 중인 태스크 ID
+  var activeTimerState = useState(null);
+  var activeTimerId = activeTimerState[0];
+  var setActiveTimerId = activeTimerState[1];
+  
   var tabState = useState('all'); // Default to 'all' tab
   var activeTab = tabState[0];
   var setActiveTab = tabState[1];
@@ -237,16 +247,35 @@ var WorkPage = function(props) {
 
   var handleToggleTask = function(task) {
     if (setTasks) {
+      var newCompleted = !(task.completed || task.status === 'done');
+      
+      // ⏱️ 태스크 완료 시 시간 추정 기록
+      if (newCompleted && activeTimerId === task.id && stopTimeTimer) {
+        stopTimeTimer(task.id, task.category || 'general');
+        setActiveTimerId(null);
+      }
+      
       setTasks(tasks.map(function(t) {
         if (t.id === task.id) {
-          var newCompleted = !(t.completed || t.status === 'done');
           return Object.assign({}, t, { 
             completed: newCompleted,
-            status: newCompleted ? 'done' : 'todo'
+            status: newCompleted ? 'done' : 'todo',
+            completedAt: newCompleted ? new Date().toISOString() : null
           });
         }
         return t;
       }));
+    }
+  };
+  
+  // ⏱️ 태스크 시작 (타이머 시작)
+  var handleStartTaskWithTimer = function(task) {
+    if (startTimeTimer && task && task.estimatedMinutes) {
+      startTimeTimer(task.id, task.estimatedMinutes);
+      setActiveTimerId(task.id);
+    }
+    if (onStartFocus) {
+      onStartFocus(task);
     }
   };
 
@@ -310,7 +339,7 @@ var WorkPage = function(props) {
         darkMode: darkMode,
         onAddTask: onOpenAddTask,
         onOpenProject: onOpenProject,
-        onStartFocus: onStartFocus,
+        onStartFocus: handleStartTaskWithTimer,
         onOpenInbox: onOpenInbox
       }),
       
@@ -360,7 +389,6 @@ var WorkPage = function(props) {
                 key: task.id,
                 task: task,
                 darkMode: darkMode,
-                // 🔧 FIX: SwipeableTaskItem이 기대하는 prop 이름 사용
                 onComplete: function() { handleToggleTask(task); },
                 onDelete: function() { handleDeleteTask(task); },
                 onPress: function() { handlePressTask(task); }
