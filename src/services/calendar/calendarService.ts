@@ -4,6 +4,16 @@
 import { getGoogleToken, isGoogleConnected } from '../auth';
 
 const CALENDAR_API_URL = '/api/calendar';
+const SELECTED_CALENDARS_KEY = 'selected_calendars';
+
+export interface CalendarInfo {
+  id: string;
+  summary: string;
+  description?: string;
+  backgroundColor?: string;
+  foregroundColor?: string;
+  primary: boolean;
+}
 
 export interface CalendarEvent {
   id: string;
@@ -13,6 +23,8 @@ export interface CalendarEvent {
   allDay?: boolean;
   description?: string;
   location?: string;
+  calendarId?: string;
+  backgroundColor?: string;
 }
 
 interface GoogleEvent {
@@ -28,10 +40,27 @@ interface GoogleEvent {
   };
   description?: string;
   location?: string;
+  calendarId?: string;
 }
 
 // Re-export auth check for convenience
 export { isGoogleConnected as isGoogleAuthenticated };
+
+// Get selected calendar IDs from localStorage
+export function getSelectedCalendars(): string[] {
+  var stored = localStorage.getItem(SELECTED_CALENDARS_KEY);
+  if (!stored) return [];
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return [];
+  }
+}
+
+// Save selected calendar IDs to localStorage
+export function setSelectedCalendars(calendarIds: string[]): void {
+  localStorage.setItem(SELECTED_CALENDARS_KEY, JSON.stringify(calendarIds));
+}
 
 // Transform Google Calendar event to our format
 function transformEvent(event: GoogleEvent): CalendarEvent {
@@ -43,8 +72,41 @@ function transformEvent(event: GoogleEvent): CalendarEvent {
     end: event.end?.dateTime || event.end?.date || '',
     allDay: isAllDay,
     description: event.description,
-    location: event.location
+    location: event.location,
+    calendarId: event.calendarId
   };
+}
+
+// Get list of calendars
+export async function getCalendarList(): Promise<CalendarInfo[]> {
+  var token = getGoogleToken();
+  if (!token) {
+    console.log('No Google access token');
+    return [];
+  }
+
+  try {
+    var response = await fetch(CALENDAR_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({
+        action: 'listCalendars'
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch calendars');
+    }
+
+    var data = await response.json();
+    return data.calendars || [];
+  } catch (error) {
+    console.error('Calendar list API error:', error);
+    return [];
+  }
 }
 
 // List events for today
@@ -60,6 +122,8 @@ export async function getTodayEvents(): Promise<CalendarEvent[]> {
   var tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
+  var selectedCalendars = getSelectedCalendars();
+
   try {
     var response = await fetch(CALENDAR_API_URL, {
       method: 'POST',
@@ -70,7 +134,8 @@ export async function getTodayEvents(): Promise<CalendarEvent[]> {
       body: JSON.stringify({
         action: 'list',
         timeMin: today.toISOString(),
-        timeMax: tomorrow.toISOString()
+        timeMax: tomorrow.toISOString(),
+        calendarIds: selectedCalendars.length > 0 ? selectedCalendars : undefined
       })
     });
 
@@ -97,6 +162,8 @@ export async function getEvents(startDate: Date, endDate: Date): Promise<Calenda
     return [];
   }
 
+  var selectedCalendars = getSelectedCalendars();
+
   try {
     var response = await fetch(CALENDAR_API_URL, {
       method: 'POST',
@@ -107,7 +174,8 @@ export async function getEvents(startDate: Date, endDate: Date): Promise<Calenda
       body: JSON.stringify({
         action: 'list',
         timeMin: startDate.toISOString(),
-        timeMax: endDate.toISOString()
+        timeMax: endDate.toISOString(),
+        calendarIds: selectedCalendars.length > 0 ? selectedCalendars : undefined
       })
     });
 
