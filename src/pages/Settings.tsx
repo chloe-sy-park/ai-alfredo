@@ -1,5 +1,4 @@
-import { useSettingsStore, TonePreset } from '@/stores/settingsStore';
-import { useAuthStore } from '@/stores/authStore';
+import { useAuthStore } from '../stores/authStore';
 import {
   User,
   Bell,
@@ -11,30 +10,13 @@ import {
   ChevronRight
 } from 'lucide-react';
 
-function Card({ children, padding = 'normal' }: { children: React.ReactNode; padding?: 'normal' | 'none' }) {
-  return (
-    <div className={`bg-white rounded-2xl shadow-sm ${padding === 'none' ? '' : 'p-4'}`}>
-      {children}
-    </div>
-  );
-}
-
 export default function Settings() {
   const { user, logout } = useAuthStore();
-  const { tonePreset, setTonePreset, notifications, setNotifications } = useSettingsStore();
-
-  const toneOptions: { value: TonePreset; label: string; emoji: string }[] = [
-    { value: 'gentle_friend', label: '따뜻한 친구', emoji: '🤗' },
-    { value: 'mentor', label: '멘토', emoji: '🧑‍🏫' },
-    { value: 'ceo', label: 'CEO', emoji: '💼' },
-    { value: 'cheerleader', label: '응원단', emoji: '💪' },
-    { value: 'silent_partner', label: '조용한 동료', emoji: '🧘' }
-  ];
 
   return (
-    <div className="p-4 space-y-4 max-w-lg mx-auto animate-fade-in">
+    <div className="p-4 space-y-4 max-w-lg mx-auto">
       {/* 프로필 */}
-      <Card>
+      <div className="bg-white rounded-2xl shadow-sm p-4">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-full bg-lavender-100 flex items-center justify-center">
             {user?.avatar_url ? (
@@ -48,18 +30,22 @@ export default function Settings() {
             <p className="text-sm text-gray-500">{user?.email}</p>
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* 알프레도 톤 */}
-      <Card>
+      <div className="bg-white rounded-2xl shadow-sm p-4">
         <h2 className="font-semibold mb-3">🐧 알프레도 톤</h2>
         <div className="grid grid-cols-2 gap-2">
-          {toneOptions.map((option) => (
+          {[
+            { label: '따뜻한 친구', emoji: '🤗' },
+            { label: '멘토', emoji: '🧑‍🏫' },
+            { label: 'CEO', emoji: '💼' },
+            { label: '응원단', emoji: '💪' },
+          ].map((option, i) => (
             <button
-              key={option.value}
-              onClick={() => setTonePreset(option.value)}
+              key={i}
               className={`p-3 rounded-xl text-left transition-all ${
-                tonePreset === option.value
+                i === 0
                   ? 'bg-lavender-100 border-2 border-lavender-400'
                   : 'bg-gray-50 border-2 border-transparent hover:bg-gray-100'
               }`}
@@ -69,40 +55,24 @@ export default function Settings() {
             </button>
           ))}
         </div>
-      </Card>
+      </div>
 
       {/* 알림 설정 */}
-      <Card>
+      <div className="bg-white rounded-2xl shadow-sm p-4">
         <h2 className="font-semibold mb-3 flex items-center gap-2">
           <Bell size={18} className="text-lavender-400" />
           알림
         </h2>
         <div className="space-y-3">
-          <ToggleItem
-            label="아침 브리핑"
-            checked={notifications.morningBriefing}
-            onChange={(checked) => setNotifications({ morningBriefing: checked })}
-          />
-          <ToggleItem
-            label="저녁 마무리"
-            checked={notifications.eveningWrapup}
-            onChange={(checked) => setNotifications({ eveningWrapup: checked })}
-          />
-          <ToggleItem
-            label="태스크 리마인더"
-            checked={notifications.taskReminders}
-            onChange={(checked) => setNotifications({ taskReminders: checked })}
-          />
-          <ToggleItem
-            label="미팅 알림"
-            checked={notifications.meetingReminders}
-            onChange={(checked) => setNotifications({ meetingReminders: checked })}
-          />
+          <ToggleItem label="아침 브리핑" defaultChecked={true} />
+          <ToggleItem label="저녁 마무리" defaultChecked={true} />
+          <ToggleItem label="태스크 리마인더" defaultChecked={false} />
+          <ToggleItem label="미팅 알림" defaultChecked={true} />
         </div>
-      </Card>
+      </div>
 
       {/* 기타 메뉴 */}
-      <Card padding="none">
+      <div className="bg-white rounded-2xl shadow-sm">
         <MenuItem icon={<Calendar />} label="캐린더 연동" />
         <MenuItem icon={<Shield />} label="개인정보 설정" />
         <MenuItem icon={<Palette />} label="테마" />
@@ -114,7 +84,7 @@ export default function Settings() {
           <LogOut size={20} />
           <span>로그아웃</span>
         </button>
-      </Card>
+      </div>
 
       {/* 버전 */}
       <p className="text-center text-xs text-gray-400">
@@ -124,30 +94,17 @@ export default function Settings() {
   );
 }
 
-function ToggleItem({
-  label,
-  checked,
-  onChange
-}: {
-  label: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}) {
+function ToggleItem({ label, defaultChecked }: { label: string; defaultChecked: boolean }) {
   return (
     <div className="flex items-center justify-between">
       <span className="text-sm text-gray-700">{label}</span>
-      <button
-        onClick={() => onChange(!checked)}
-        className={`w-11 h-6 rounded-full transition-colors relative ${
-          checked ? 'bg-lavender-400' : 'bg-gray-200'
-        }`}
-      >
-        <span
-          className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-            checked ? 'translate-x-6' : 'translate-x-1'
-          }`}
-        />
-      </button>
+      <div className={`w-11 h-6 rounded-full transition-colors relative ${
+        defaultChecked ? 'bg-lavender-400' : 'bg-gray-200'
+      }`}>
+        <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+          defaultChecked ? 'translate-x-6' : 'translate-x-1'
+        }`} />
+      </div>
     </div>
   );
 }
