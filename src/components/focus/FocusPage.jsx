@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, RefreshCw, CheckCircle2, Zap, Play, Pause, Coffee, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, RefreshCw, CheckCircle2, Zap, Play, Pause } from 'lucide-react';
 
 // 시간 옵션
 var TIME_OPTIONS = [
@@ -191,10 +191,6 @@ var FocusTimer = function(props) {
   var showBreakState = useState(false);
   var showBreak = showBreakState[0];
   var setShowBreak = showBreakState[1];
-  
-  var breakTimeState = useState(5 * 60);
-  var breakTime = breakTimeState[0];
-  var setBreakTime = breakTimeState[1];
   
   // 총 집중 시간
   var totalFocusTimeState = useState(0);
@@ -526,7 +522,6 @@ var FocusCompletionScreen = function(props) {
   var completedTask = props.completedTask;
   var nextTask = props.nextTask;
   var onStartNext = props.onStartNext;
-  var onTakeBreak = props.onTakeBreak;
   var onGoHome = props.onGoHome;
   var stats = props.stats;
   
