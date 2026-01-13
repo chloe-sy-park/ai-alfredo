@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
+import { getTodayEvents, isGoogleAuthenticated, CalendarEvent } from '../services/calendar';
 import {
   ModeSwitch,
   BriefingCard,
@@ -16,7 +17,7 @@ import {
 
 type Mode = 'all' | 'work' | 'life';
 
-// Dummy data (replace with API/store later)
+// Dummy data (fallback when not connected to Google)
 const DUMMY_PRIORITIES = [
   { id: '1', title: '프로젝트 리뷰 준비', sourceTag: 'WORK' as const, meta: '오후 2시' },
   { id: '2', title: '엄마 전화', sourceTag: 'LIFE' as const, meta: '오늘 중' },
@@ -35,7 +36,7 @@ const DUMMY_TIMELINE = [
 
 // WORK mode data
 const DUMMY_PROJECTS = [
-  { id: '1', name: 'Q1 마케팅 캐페인', signal: 'green' as const },
+  { id: '1', name: 'Q1 마케팅 캠페인', signal: 'green' as const },
   { id: '2', name: '신규 기능 개발', signal: 'yellow' as const },
   { id: '3', name: '고객 피드백 분석', signal: 'red' as const }
 ];
@@ -71,10 +72,74 @@ const DUMMY_RELATIONSHIPS = [
   { id: '2', name: '이준호', reason: '생일 D-5' }
 ];
 
+// Transform Calendar event to Timeline format
+const transformToTimelineItem = (event: CalendarEvent) => {
+  const startDate = new Date(event.start);
+  const timeRange = startDate.toLocaleTimeString('ko-KR', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: false 
+  });
+  
+  // Simple heuristic for importance
+  const title = event.title.toLowerCase();
+  let importance: 'low' | 'mid' | 'high' = 'mid';
+  if (title.includes('중요') || title.includes('마감') || title.includes('리뷰')) {
+    importance = 'high';
+  } else if (title.includes('점심') || title.includes('휴식')) {
+    importance = 'low';
+  }
+
+  // Simple heuristic for work/life
+  let sourceTag: 'WORK' | 'LIFE' = 'WORK';
+  if (title.includes('점심') || title.includes('저녁') || title.includes('운동') || 
+      title.includes('약속') || title.includes('개인')) {
+    sourceTag = 'LIFE';
+  }
+
+  return {
+    id: event.id,
+    timeRange,
+    title: event.title,
+    importance,
+    sourceTag
+  };
+};
+
 export default function Home() {
   const { user } = useAuthStore();
   const [mode, setMode] = useState<Mode>('all');
   const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
+  const [isLoadingCalendar, setIsLoadingCalendar] = useState(false);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [isGoogleConnected, setIsGoogleConnected] = useState(false);
+
+  // Check Google connection and fetch events
+  useEffect(() => {
+    const fetchCalendarData = async () => {
+      const connected = isGoogleAuthenticated();
+      setIsGoogleConnected(connected);
+      
+      if (connected) {
+        setIsLoadingCalendar(true);
+        try {
+          const events = await getTodayEvents();
+          setCalendarEvents(events);
+        } catch (error) {
+          console.error('Failed to fetch calendar:', error);
+        } finally {
+          setIsLoadingCalendar(false);
+        }
+      }
+    };
+
+    fetchCalendarData();
+  }, []);
+
+  // Use real calendar data if available, otherwise fallback to dummy
+  const timelineItems = calendarEvents.length > 0 
+    ? calendarEvents.map(transformToTimelineItem)
+    : DUMMY_TIMELINE;
 
   const now = new Date();
   const hours = now.getHours();
@@ -104,7 +169,7 @@ export default function Home() {
     if (hours < 12) {
       return {
         headline: '오전에 집중하고, 오후는 미팅에 맡기세요',
-        subline: '일정 3개 중 2개가 오후에 몰려있어요'
+        subline: `일정 ${timelineItems.length}개 중 ${timelineItems.filter(t => parseInt(t.timeRange) >= 12).length}개가 오후에 몰려있어요`
       };
     }
     if (hours < 18) {
@@ -127,9 +192,9 @@ export default function Home() {
     : DUMMY_PRIORITIES.filter(p => p.sourceTag.toLowerCase() === mode);
 
   // Work/Life ratio calculation
-  const workCount = DUMMY_TIMELINE.filter(t => t.sourceTag === 'WORK').length;
-  const lifeCount = DUMMY_TIMELINE.filter(t => t.sourceTag === 'LIFE').length;
-  const total = workCount + lifeCount;
+  const workCount = timelineItems.filter(t => t.sourceTag === 'WORK').length;
+  const lifeCount = timelineItems.filter(t => t.sourceTag === 'LIFE').length;
+  const total = workCount + lifeCount || 1;
   const workPercent = Math.round((workCount / total) * 100);
   const lifePercent = 100 - workPercent;
 
@@ -139,7 +204,7 @@ export default function Home() {
       return {
         why: '프로젝트 리뷰가 내일 마감이에요. 오늘 준비하면 여유가 생겨요.',
         whatChanged: '클라이언트에서 새로운 요청이 왔어요.',
-        tradeOff: '이메일 정리는 내일로 미뤘도 괜찮아요.'
+        tradeOff: '이메일 정리는 내일로 미뤄도 괜찮아요.'
       };
     }
     if (mode === 'life') {
@@ -152,7 +217,7 @@ export default function Home() {
     return {
       why: '오후 2시 프로젝트 리뷰가 가장 중요한 일정이에요. 준비가 필요하니 오전 시간을 활용하세요.',
       whatChanged: '어제 추가된 저녁 약속 때문에 퇴근 후 시간이 빠듯해요.',
-      tradeOff: '이메일 정리는 내일로 미뤘도 괜찮아요. 급한 건 없어 보여요.'
+      tradeOff: '이메일 정리는 내일로 미뤄도 괜찮아요. 급한 건 없어 보여요.'
     };
   };
 
@@ -169,7 +234,12 @@ export default function Home() {
               {user?.name || 'Boss'}님
             </h1>
           </div>
-          <span className="text-3xl">🐧</span>
+          <div className="flex items-center gap-2">
+            {isGoogleConnected && (
+              <span className="text-xs text-green-500">● 캘린더 연동</span>
+            )}
+            <span className="text-3xl">🐧</span>
+          </div>
         </div>
 
         {/* ModeSwitch */}
@@ -231,7 +301,14 @@ export default function Home() {
         )}
 
         {/* Timeline */}
-        <Timeline mode={mode} items={DUMMY_TIMELINE} />
+        <div className="relative">
+          {isLoadingCalendar && (
+            <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10 rounded-2xl">
+              <span className="text-sm text-neutral-500">일정 로딩 중...</span>
+            </div>
+          )}
+          <Timeline mode={mode} items={timelineItems} />
+        </div>
       </div>
 
       {/* Floating ChatLauncher */}
