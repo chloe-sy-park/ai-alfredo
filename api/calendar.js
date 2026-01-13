@@ -33,7 +33,13 @@ export default async function handler(req, res) {
     }
     const accessToken = authHeader.split(' ')[1];
 
-    const { action, event, events, eventId } = req.body;
+    const { action, event, events, eventId, calendarIds } = req.body;
+
+    // 캘린더 목록 가져오기
+    if (action === 'listCalendars') {
+      const result = await listCalendars(accessToken);
+      return res.status(200).json({ success: true, calendars: result });
+    }
 
     // 단일 이벤트 추가
     if (action === 'add' && event) {
@@ -61,10 +67,10 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true });
     }
 
-    // 이벤트 목록 가져오기
+    // 이벤트 목록 가져오기 (여러 캘린더 지원)
     if (action === 'list') {
       const { timeMin, timeMax } = req.body;
-      const result = await listEvents(accessToken, timeMin, timeMax);
+      const result = await listEvents(accessToken, timeMin, timeMax, calendarIds);
       return res.status(200).json({ success: true, events: result });
     }
 
@@ -74,6 +80,36 @@ export default async function handler(req, res) {
     console.error('Calendar error:', error);
     return res.status(500).json({ error: error.message });
   }
+}
+
+// 캘린더 목록 가져오기
+async function listCalendars(accessToken) {
+  const response = await fetch(
+    'https://www.googleapis.com/calendar/v3/users/me/calendarList',
+    {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Failed to list calendars');
+  }
+
+  const data = await response.json();
+  
+  // 필요한 정보만 반환
+  return (data.items || []).map(cal => ({
+    id: cal.id,
+    summary: cal.summary,
+    description: cal.description || '',
+    backgroundColor: cal.backgroundColor,
+    foregroundColor: cal.foregroundColor,
+    primary: cal.primary || false,
+    accessRole: cal.accessRole,
+  }));
 }
 
 // 이벤트 추가
@@ -171,8 +207,8 @@ function formatEvent(event) {
   return calendarEvent;
 }
 
-// 이벤트 목록 가져오기
-async function listEvents(accessToken, timeMin, timeMax) {
+// 이벤트 목록 가져오기 (여러 캘린더 지원)
+async function listEvents(accessToken, timeMin, timeMax, calendarIds) {
   const params = new URLSearchParams({
     timeMin: timeMin || new Date().toISOString(),
     timeMax: timeMax || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
@@ -181,20 +217,49 @@ async function listEvents(accessToken, timeMin, timeMax) {
     maxResults: '100',
   });
 
-  const response = await fetch(
-    `https://www.googleapis.com/calendar/v3/calendars/primary/events?${params}`,
-    {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-      },
-    }
+  // 캘린더 ID가 없으면 primary만
+  const calendarsToFetch = calendarIds && calendarIds.length > 0 
+    ? calendarIds 
+    : ['primary'];
+
+  // 여러 캘린더에서 이벤트 가져오기
+  const allEvents = await Promise.all(
+    calendarsToFetch.map(async (calendarId) => {
+      try {
+        const response = await fetch(
+          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          console.error(`Failed to fetch calendar ${calendarId}`);
+          return [];
+        }
+
+        const data = await response.json();
+        // 각 이벤트에 캘린더 ID 추가
+        return (data.items || []).map(event => ({
+          ...event,
+          calendarId: calendarId,
+        }));
+      } catch (err) {
+        console.error(`Error fetching calendar ${calendarId}:`, err);
+        return [];
+      }
+    })
   );
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.message || 'Failed to list events');
-  }
+  // 모든 이벤트 합치고 시간순 정렬
+  const merged = allEvents.flat();
+  merged.sort((a, b) => {
+    const aTime = a.start?.dateTime || a.start?.date || '';
+    const bTime = b.start?.dateTime || b.start?.date || '';
+    return aTime.localeCompare(bTime);
+  });
 
-  const data = await response.json();
-  return data.items || [];
+  return merged;
 }
