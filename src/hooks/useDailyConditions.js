@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { dailyConditionsApi, DailyCondition } from '../lib/api';
 
-// 📊 Daily Conditions Hook
-// - 컨디션 히스토리 트래킹
-// - localStorage 기반 (추후 서버 연동 가능)
+// 📊 Daily Conditions Hook (Hybrid Mode)
+// - API 우선 + localStorage 백업
+// - 오프라인 지원
 // - Year in Pixels 스타일 시각화 데이터 제공
 // - 패턴 분석 (요일별, 시간대별)
 
@@ -15,11 +16,29 @@ var CONDITION_LEVELS = {
   5: { emoji: '😊', label: '좋아요!', color: '#a855f7' }     // purple-500
 };
 
+// 무드 → 레벨 매핑
+var MOOD_TO_LEVEL = {
+  'bad': 1,
+  'low': 2,
+  'neutral': 3,
+  'good': 4,
+  'great': 5
+};
+
+var LEVEL_TO_MOOD = {
+  1: 'bad',
+  2: 'low',
+  3: 'neutral',
+  4: 'good',
+  5: 'great'
+};
+
 // 요일 이름
 var DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
 
 // localStorage 키
 var STORAGE_KEY = 'alfredo_daily_conditions';
+var SYNC_QUEUE_KEY = 'alfredo_conditions_sync_queue';
 
 // 날짜 키 생성 (YYYY-MM-DD)
 var getDateKey = function(date) {
@@ -39,7 +58,7 @@ var getTimeOfDay = function(date) {
   return 'night';
 };
 
-// 데이터 로드
+// localStorage 데이터 로드
 var loadConditions = function() {
   try {
     var data = localStorage.getItem(STORAGE_KEY);
@@ -50,7 +69,7 @@ var loadConditions = function() {
   }
 };
 
-// 데이터 저장
+// localStorage 데이터 저장
 var saveConditions = function(data) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -59,24 +78,122 @@ var saveConditions = function(data) {
   }
 };
 
-// 🎯 메인 훅
-export var useDailyConditions = function() {
+// 동기화 큐 관리
+var getSyncQueue = function() {
+  try {
+    var data = localStorage.getItem(SYNC_QUEUE_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+var addToSyncQueue = function(action) {
+  var queue = getSyncQueue();
+  queue.push(Object.assign({ timestamp: Date.now() }, action));
+  localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
+};
+
+var clearSyncQueue = function() {
+  localStorage.removeItem(SYNC_QUEUE_KEY);
+};
+
+// 🎯 메인 훅 (Hybrid Mode)
+export var useDailyConditions = function(options) {
+  var opts = options || {};
+  var useApi = opts.useApi !== false; // 기본값: true
+  
   var conditionsState = useState(function() {
     return loadConditions();
   });
   var conditions = conditionsState[0];
   var setConditions = conditionsState[1];
   
-  // 컨디션 기록
-  var recordCondition = useCallback(function(level, note) {
+  var loadingState = useState(false);
+  var isLoading = loadingState[0];
+  var setIsLoading = loadingState[1];
+  
+  var errorState = useState(null);
+  var error = errorState[0];
+  var setError = errorState[1];
+  
+  var syncedRef = useRef(false);
+  
+  // API에서 데이터 로드 (초기화 시)
+  useEffect(function() {
+    if (!useApi || syncedRef.current) return;
+    
+    var fetchFromApi = async function() {
+      setIsLoading(true);
+      try {
+        // 최근 90일 데이터 가져오기
+        var endDate = new Date();
+        var startDate = new Date();
+        startDate.setDate(startDate.getDate() - 90);
+        
+        var response = await dailyConditionsApi.list({
+          start_date: getDateKey(startDate),
+          end_date: getDateKey(endDate),
+          limit: '100'
+        });
+        
+        if (response.success && response.data) {
+          // API 데이터를 로컬 형식으로 변환
+          var apiData = {};
+          response.data.forEach(function(item) {
+            var date = new Date(item.date);
+            apiData[item.date] = {
+              date: item.date,
+              dayOfWeek: date.getDay(),
+              mainLevel: item.energy_level,
+              mood: item.mood,
+              physical_state: item.physical_state,
+              notes: item.notes,
+              records: [{
+                time: item.created_at,
+                timeOfDay: getTimeOfDay(new Date(item.created_at)),
+                level: item.energy_level,
+                note: item.notes || ''
+              }],
+              apiId: item.id // API ID 저장
+            };
+          });
+          
+          // 로컬 데이터와 병합 (API 데이터 우선)
+          var merged = Object.assign({}, conditions, apiData);
+          setConditions(merged);
+          saveConditions(merged);
+          syncedRef.current = true;
+        }
+      } catch (e) {
+        console.error('API fetch failed, using local data:', e);
+        setError(e.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchFromApi();
+  }, [useApi]);
+  
+  // 컨디션 기록 (Hybrid)
+  var recordCondition = useCallback(async function(level, note) {
     var now = new Date();
     var dateKey = getDateKey(now);
     var timeOfDay = getTimeOfDay(now);
+    var mood = LEVEL_TO_MOOD[level] || 'neutral';
+    
+    // 로컬 저장 (즉시)
+    var localRecord = {
+      time: now.toISOString(),
+      timeOfDay: timeOfDay,
+      level: level,
+      note: note || ''
+    };
     
     setConditions(function(prev) {
       var updated = Object.assign({}, prev);
       
-      // 해당 날짜의 기록이 없으면 생성
       if (!updated[dateKey]) {
         updated[dateKey] = {
           date: dateKey,
@@ -85,23 +202,46 @@ export var useDailyConditions = function() {
         };
       }
       
-      // 새 기록 추가
-      updated[dateKey].records.push({
-        time: now.toISOString(),
-        timeOfDay: timeOfDay,
-        level: level,
-        note: note || ''
-      });
-      
-      // 대표 컨디션 업데이트 (가장 최근 기록)
+      updated[dateKey].records.push(localRecord);
       updated[dateKey].mainLevel = level;
+      updated[dateKey].mood = mood;
       
       saveConditions(updated);
       return updated;
     });
     
+    // API 저장 (비동기)
+    if (useApi) {
+      try {
+        var response = await dailyConditionsApi.record({
+          date: dateKey,
+          energy_level: level,
+          mood: mood,
+          notes: note || undefined
+        });
+        
+        if (response.success && response.data) {
+          // API ID 업데이트
+          setConditions(function(prev) {
+            var updated = Object.assign({}, prev);
+            if (updated[dateKey]) {
+              updated[dateKey].apiId = response.data.id;
+            }
+            saveConditions(updated);
+            return updated;
+          });
+        }
+      } catch (e) {
+        console.error('API save failed, queued for sync:', e);
+        addToSyncQueue({
+          action: 'record',
+          data: { date: dateKey, energy_level: level, mood: mood, notes: note }
+        });
+      }
+    }
+    
     return { dateKey: dateKey, level: level };
-  }, []);
+  }, [useApi]);
   
   // 오늘 컨디션 가져오기
   var getTodayCondition = useCallback(function() {
@@ -114,6 +254,7 @@ export var useDailyConditions = function() {
     
     return {
       level: todayData.mainLevel,
+      mood: todayData.mood,
       records: todayData.records,
       lastRecord: todayData.records[todayData.records.length - 1]
     };
@@ -142,11 +283,12 @@ export var useDailyConditions = function() {
         dayOfWeek: date.getDay(),
         dayName: DAY_NAMES[date.getDay()],
         level: data ? data.mainLevel : null,
+        mood: data ? data.mood : null,
         hasRecord: !!data
       });
     }
     
-    return result.reverse(); // 오래된 순으로
+    return result.reverse();
   }, [conditions]);
   
   // 이번 달 컨디션 (Year in Pixels용)
@@ -238,7 +380,6 @@ export var useDailyConditions = function() {
     var maxStreak = 0;
     var currentStreak = 0;
     
-    // 날짜순 정렬
     var sortedDates = Object.keys(conditions).sort();
     
     sortedDates.forEach(function(dateKey, index) {
@@ -252,7 +393,6 @@ export var useDailyConditions = function() {
       }
     });
     
-    // 현재 스트릭 계산 (최근부터)
     var today = getDateKey();
     var checkDate = new Date();
     streakCount = 0;
@@ -263,7 +403,6 @@ export var useDailyConditions = function() {
         streakCount++;
         checkDate.setDate(checkDate.getDate() - 1);
       } else if (i === 0) {
-        // 오늘 기록이 없으면 어제부터 체크
         checkDate.setDate(checkDate.getDate() - 1);
       } else {
         break;
@@ -273,7 +412,6 @@ export var useDailyConditions = function() {
     var sum = allLevels.reduce(function(a, b) { return a + b; }, 0);
     var avg = allLevels.length > 0 ? Math.round(sum / allLevels.length * 10) / 10 : null;
     
-    // 레벨별 분포
     var distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     allLevels.forEach(function(level) {
       distribution[level]++;
@@ -298,7 +436,6 @@ export var useDailyConditions = function() {
     var weekdayAvg = getWeekdayAverages;
     var timeAvg = getTimeOfDayAverages;
     
-    // 기록 일수
     if (stats.totalDays >= 7) {
       insights.push({
         type: 'milestone',
@@ -307,7 +444,6 @@ export var useDailyConditions = function() {
       });
     }
     
-    // 스트릭
     if (stats.currentStreak >= 3) {
       insights.push({
         type: 'streak',
@@ -316,7 +452,6 @@ export var useDailyConditions = function() {
       });
     }
     
-    // 요일 패턴
     var bestDay = weekdayAvg.reduce(function(best, curr) {
       if (!best.average) return curr;
       if (!curr.average) return best;
@@ -345,7 +480,6 @@ export var useDailyConditions = function() {
       });
     }
     
-    // 시간대 패턴
     if (timeAvg.morning && timeAvg.afternoon) {
       if (timeAvg.morning > timeAvg.afternoon + 0.5) {
         insights.push({
@@ -362,12 +496,53 @@ export var useDailyConditions = function() {
       }
     }
     
-    return insights.slice(0, 3); // 최대 3개
+    return insights.slice(0, 3);
   }, [getOverallStats, getWeekdayAverages, getTimeOfDayAverages]);
   
+  // 동기화 큐 처리
+  var processSyncQueue = useCallback(async function() {
+    if (!useApi) return;
+    
+    var queue = getSyncQueue();
+    if (queue.length === 0) return;
+    
+    var failed = [];
+    
+    for (var i = 0; i < queue.length; i++) {
+      var item = queue[i];
+      try {
+        if (item.action === 'record') {
+          await dailyConditionsApi.record(item.data);
+        }
+      } catch (e) {
+        failed.push(item);
+      }
+    }
+    
+    if (failed.length > 0) {
+      localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(failed));
+    } else {
+      clearSyncQueue();
+    }
+  }, [useApi]);
+  
+  // 온라인 복구 시 동기화
+  useEffect(function() {
+    var handleOnline = function() {
+      processSyncQueue();
+    };
+    
+    window.addEventListener('online', handleOnline);
+    return function() {
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [processSyncQueue]);
+  
   return {
-    // 데이터
+    // 상태
     conditions: conditions,
+    isLoading: isLoading,
+    error: error,
     CONDITION_LEVELS: CONDITION_LEVELS,
     
     // 기록 함수
@@ -383,7 +558,11 @@ export var useDailyConditions = function() {
     weekdayAverages: getWeekdayAverages,
     timeOfDayAverages: getTimeOfDayAverages,
     overallStats: getOverallStats,
-    insights: getInsights
+    insights: getInsights,
+    
+    // 동기화
+    syncQueue: getSyncQueue(),
+    processSyncQueue: processSyncQueue
   };
 };
 
