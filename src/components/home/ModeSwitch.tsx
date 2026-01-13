@@ -1,5 +1,3 @@
-import { useState } from 'react';
-
 type Mode = 'all' | 'work' | 'life';
 
 interface ModeSwitchProps {
