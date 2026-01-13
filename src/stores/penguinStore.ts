@@ -73,7 +73,7 @@ export const usePenguinStore = create<PenguinState>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      const { data, error: dbError } = await supabase
+      const { data, error: dbError } = await (supabase as any)
         .from('penguin_status')
         .select('*')
         .eq('user_id', TEST_USER_ID)
@@ -82,19 +82,17 @@ export const usePenguinStore = create<PenguinState>((set, get) => ({
       if (dbError) {
         // 데이터 없으면 생성
         if (dbError.code === 'PGRST116') {
-          const newStatus: PenguinStatus = {
+          const newStatus = {
             user_id: TEST_USER_ID,
             level: 1,
             current_xp: 0,
             total_xp: 0,
-            xp_for_next_level: calculateXpForLevel(1),
             coins: 0,
             current_mood: 'happy',
-            streak_days: 0,
-            equipped_items: []
+            streak_days: 0
           };
 
-          const { data: newData, error: insertError } = await supabase
+          const { data: newData, error: insertError } = await (supabase as any)
             .from('penguin_status')
             .insert(newStatus)
             .select()
@@ -107,7 +105,7 @@ export const usePenguinStore = create<PenguinState>((set, get) => ({
             set({ 
               status: { 
                 ...newData, 
-                xp_for_next_level: calculateXpForLevel(newData.level),
+                xp_for_next_level: calculateXpForLevel(newData.level || 1),
                 equipped_items: [] 
               }, 
               isLoading: false 
@@ -121,7 +119,7 @@ export const usePenguinStore = create<PenguinState>((set, get) => ({
         set({ 
           status: { 
             ...data, 
-            xp_for_next_level: calculateXpForLevel(data.level),
+            xp_for_next_level: calculateXpForLevel(data.level || 1),
             equipped_items: [] 
           }, 
           isLoading: false 
@@ -136,7 +134,7 @@ export const usePenguinStore = create<PenguinState>((set, get) => ({
   fetchShop: async () => {
     try {
       // 모든 아이템 조회
-      const { data: items, error: itemsError } = await supabase
+      const { data: items, error: itemsError } = await (supabase as any)
         .from('penguin_items')
         .select('*')
         .order('price_coins', { ascending: true });
@@ -148,16 +146,16 @@ export const usePenguinStore = create<PenguinState>((set, get) => ({
       }
 
       // 소유한 아이템 조회
-      const { data: owned } = await supabase
+      const { data: owned } = await (supabase as any)
         .from('penguin_inventory')
         .select('item_id')
         .eq('user_id', TEST_USER_ID);
 
-      const ownedIds = (owned || []).map(o => o.item_id);
+      const ownedIds = (owned || []).map((o: any) => o.item_id);
       const currentStatus = get().status;
 
       // 상점 아이템에 소유 여부 추가
-      const shopData = (items || []).map(item => ({
+      const shopData = (items || []).map((item: any) => ({
         ...item,
         owned: ownedIds.includes(item.id),
         can_afford: currentStatus ? currentStatus.coins >= item.price_coins : false
@@ -172,7 +170,7 @@ export const usePenguinStore = create<PenguinState>((set, get) => ({
 
   fetchInventory: async () => {
     try {
-      const { data, error: dbError } = await supabase
+      const { data, error: dbError } = await (supabase as any)
         .from('penguin_inventory')
         .select('*, penguin_items(*)')
         .eq('user_id', TEST_USER_ID);
@@ -193,7 +191,7 @@ export const usePenguinStore = create<PenguinState>((set, get) => ({
   buyItem: async (itemId) => {
     try {
       // 아이템 정보 조회
-      const { data: item } = await supabase
+      const { data: item } = await (supabase as any)
         .from('penguin_items')
         .select('*')
         .eq('id', itemId)
@@ -211,7 +209,7 @@ export const usePenguinStore = create<PenguinState>((set, get) => ({
       }
 
       // 이미 소유한지 확인
-      const { data: existing } = await supabase
+      const { data: existing } = await (supabase as any)
         .from('penguin_inventory')
         .select('id')
         .eq('user_id', TEST_USER_ID)
@@ -225,7 +223,7 @@ export const usePenguinStore = create<PenguinState>((set, get) => ({
 
       // 코인 차감
       const newCoins = currentStatus.coins - item.price_coins;
-      const { error: updateError } = await supabase
+      const { error: updateError } = await (supabase as any)
         .from('penguin_status')
         .update({ coins: newCoins })
         .eq('user_id', TEST_USER_ID);
@@ -236,7 +234,7 @@ export const usePenguinStore = create<PenguinState>((set, get) => ({
       }
 
       // 인벤토리에 추가
-      const { error: insertError } = await supabase
+      const { error: insertError } = await (supabase as any)
         .from('penguin_inventory')
         .insert({
           user_id: TEST_USER_ID,
@@ -252,7 +250,7 @@ export const usePenguinStore = create<PenguinState>((set, get) => ({
       // 상태 업데이트
       set(state => ({
         status: state.status ? { ...state.status, coins: newCoins } : null,
-        shopItems: state.shopItems.map(shopItem =>
+        shopItems: state.shopItems.map((shopItem: ShopItem) =>
           shopItem.id === itemId ? { ...shopItem, owned: true } : shopItem
         )
       }));
@@ -273,7 +271,7 @@ export const usePenguinStore = create<PenguinState>((set, get) => ({
     try {
       // 같은 카테고리 아이템 해제 (한 종류만 장착 가능)
       if (equip) {
-        const { data: item } = await supabase
+        const { data: item } = await (supabase as any)
           .from('penguin_items')
           .select('item_type')
           .eq('id', itemId)
@@ -281,7 +279,7 @@ export const usePenguinStore = create<PenguinState>((set, get) => ({
 
         if (item) {
           // 같은 타입 아이템 해제
-          const { data: sameTypeItems } = await supabase
+          const { data: sameTypeItems } = await (supabase as any)
             .from('penguin_inventory')
             .select('id, item_id, penguin_items(item_type)')
             .eq('user_id', TEST_USER_ID)
@@ -290,10 +288,10 @@ export const usePenguinStore = create<PenguinState>((set, get) => ({
           if (sameTypeItems) {
             for (const invItem of sameTypeItems) {
               if ((invItem as any).penguin_items?.item_type === item.item_type) {
-                await supabase
+                await (supabase as any)
                   .from('penguin_inventory')
                   .update({ is_equipped: false })
-                  .eq('id', invItem.id);
+                  .eq('id', (invItem as any).id);
               }
             }
           }
@@ -301,7 +299,7 @@ export const usePenguinStore = create<PenguinState>((set, get) => ({
       }
 
       // 장착/해제
-      const { error: updateError } = await supabase
+      const { error: updateError } = await (supabase as any)
         .from('penguin_inventory')
         .update({ is_equipped: equip })
         .eq('user_id', TEST_USER_ID)
