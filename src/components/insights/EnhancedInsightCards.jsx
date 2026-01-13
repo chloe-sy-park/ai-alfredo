@@ -1,340 +1,313 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Sparkles, TrendingUp, Clock, Target, Zap, 
-  Calendar, BarChart3, Brain, Heart, Star,
-  ChevronRight, X, Lightbulb, Trophy
-} from 'lucide-react';
+import React, { useMemo } from 'react';
+import { Dna, Brain, TrendingUp, Clock, Zap, Target, AlertCircle, Sparkles, BarChart3 } from 'lucide-react';
 
 /**
- * 🧬 강화된 DNA 인사이트 시스템
- * - 패턴 발견 알림
- * - 시간 추정 인사이트
- * - 개인화된 추천
- * - 성취 축하
+ * 🧬 EnhancedInsightCards - DNA 및 고급 인사이트 카드 모음
  */
 
-// 패턴 발견 메시지
-const PATTERN_DISCOVERIES = {
-  peakTime: [
-    { emoji: '⚡', title: '골든타임 발견!', message: '{time}시에 가장 집중 잘 되시네요' },
-    { emoji: '🎯', title: '최적의 시간대', message: '{time}시가 딥워크 하기 좋은 시간이에요' },
-  ],
-  productiveDay: [
-    { emoji: '📊', title: '패턴 발견!', message: '{day}요일에 가장 많이 완료하시네요' },
-    { emoji: '💪', title: '생산성 요일', message: '{day}요일이 가장 집중 잘 되는 날!' },
-  ],
-  timeAccuracy: [
-    { emoji: '⏱️', title: '시간 추정 분석', message: '예상보다 평균 {percent}% 더 걸려요' },
-    { emoji: '📈', title: '시간 패턴', message: '{category} 작업은 여유 있게 잡으면 좋아요' },
-  ],
-  streak: [
-    { emoji: '🔥', title: '{count}일 연속!', message: '꾸준함이 대단해요. 이대로 가요!' },
-    { emoji: '🌟', title: '연속 달성', message: '{count}일째 목표 달성 중!' },
-  ],
-  improvement: [
-    { emoji: '📈', title: '성장 중!', message: '지난주보다 완료율 {percent}% 상승' },
-    { emoji: '🚀', title: '발전하고 있어요', message: '집중 시간이 {minutes}분 늘었어요' },
-  ],
-};
-
-// 랜덤 선택 헬퍼
-const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
-
-// 메시지 포맷팅
-const formatMessage = (template, data) => {
-  let result = template;
-  Object.entries(data).forEach(([key, value]) => {
-    result = result.replace(`{${key}}`, value);
-  });
-  return result;
-};
-
-/**
- * 패턴 발견 카드
- */
-export const PatternDiscoveryCard = ({ pattern, darkMode, onDismiss, onExplore }) => {
-  if (!pattern) return null;
+// DNA 확장 인사이트 카드
+export var DNAInsightCard = function(props) {
+  var dnaData = props.dnaData;
+  var darkMode = props.darkMode;
+  var onExpand = props.onExpand;
   
-  const cardBg = darkMode ? 'bg-gradient-to-r from-purple-900/30 to-indigo-900/30' : 'bg-gradient-to-r from-purple-50 to-indigo-50';
-  const borderColor = darkMode ? 'border-purple-500/30' : 'border-purple-200';
-  const textPrimary = darkMode ? 'text-white' : 'text-gray-800';
-  const textSecondary = darkMode ? 'text-gray-300' : 'text-gray-600';
+  if (!dnaData) return null;
   
-  return (
-    <div className={`${cardBg} border ${borderColor} rounded-2xl p-4 mb-4`}>
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
-            <span className="text-xl">{pattern.emoji}</span>
-          </div>
-          <div>
-            <h3 className={`font-bold ${textPrimary}`}>{pattern.title}</h3>
-            <p className={`text-sm ${textSecondary}`}>{pattern.message}</p>
-          </div>
-        </div>
-        {onDismiss && (
-          <button onClick={onDismiss} className="text-gray-400 hover:text-gray-600">
-            <X size={16} />
-          </button>
-        )}
-      </div>
-      
-      {onExplore && (
-        <button 
-          onClick={onExplore}
-          className="mt-3 w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-purple-500/10 text-purple-600 text-sm font-medium hover:bg-purple-500/20 transition-colors"
-        >
-          <Lightbulb size={16} />
-          자세히 보기
-          <ChevronRight size={14} />
-        </button>
-      )}
-    </div>
-  );
-};
-
-/**
- * 성취 축하 카드
- */
-export const AchievementCard = ({ achievement, darkMode, onDismiss }) => {
-  if (!achievement) return null;
+  var bgCard = darkMode ? 'bg-gray-800' : 'bg-white';
+  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+  var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
   
-  const cardBg = darkMode ? 'bg-gradient-to-r from-amber-900/30 to-yellow-900/30' : 'bg-gradient-to-r from-amber-50 to-yellow-50';
-  const borderColor = darkMode ? 'border-amber-500/30' : 'border-amber-200';
+  // DNA 특성 요약
+  var traits = [
+    { label: '최적 집중 시간', value: dnaData.peakFocusTime || '오전 10-12시', icon: Clock },
+    { label: '평균 집중 지속', value: (dnaData.avgFocusDuration || 25) + '분', icon: Target },
+    { label: '선호 업무 유형', value: dnaData.preferredTaskType || '창의적 업무', icon: Zap }
+  ];
   
-  return (
-    <div className={`${cardBg} border ${borderColor} rounded-2xl p-4 mb-4`}>
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center">
-          <Trophy size={24} className="text-amber-500" />
-        </div>
-        <div>
-          <p className="text-sm text-amber-600 font-medium">🎉 축하해요!</p>
-          <h3 className={`font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-            {achievement.title}
-          </h3>
-          <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-            {achievement.message}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-/**
- * 오늘의 추천 카드
- */
-export const TodayRecommendationCard = ({ recommendations, darkMode }) => {
-  if (!recommendations || recommendations.length === 0) return null;
-  
-  const cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
-  const textPrimary = darkMode ? 'text-white' : 'text-gray-800';
-  const textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
-  
-  return (
-    <div className={`${cardBg} rounded-2xl p-4 shadow-sm`}>
-      <div className="flex items-center gap-2 mb-3">
-        <Brain size={18} className="text-[#A996FF]" />
-        <span className={`font-bold ${textPrimary}`}>오늘의 추천</span>
-      </div>
-      
-      <div className="space-y-2">
-        {recommendations.slice(0, 3).map((rec, i) => (
-          <div 
-            key={i}
-            className={`flex items-center gap-3 p-3 rounded-xl ${darkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}
-          >
-            <span className="text-lg">{rec.emoji || '💡'}</span>
-            <div className="flex-1">
-              <p className={`text-sm ${textPrimary}`}>{rec.text}</p>
-              {rec.reason && (
-                <p className={`text-xs ${textSecondary} mt-0.5`}>{rec.reason}</p>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-/**
- * 주간 인사이트 요약 카드
- */
-export const WeeklyInsightSummary = ({ weekData, darkMode, onViewDetails }) => {
-  const cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
-  const textPrimary = darkMode ? 'text-white' : 'text-gray-800';
-  const textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
-  
-  const stats = useMemo(() => {
-    if (!weekData) return null;
+  return React.createElement('div', { className: bgCard + ' rounded-2xl p-4 shadow-sm border border-purple-500/20' },
+    // 헤더
+    React.createElement('div', { className: 'flex items-center justify-between mb-4' },
+      React.createElement('div', { className: 'flex items-center gap-2' },
+        React.createElement('div', { className: 'w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center' },
+          React.createElement(Dna, { size: 20, className: 'text-white' })
+        ),
+        React.createElement('div', null,
+          React.createElement('h3', { className: 'font-bold ' + textPrimary }, 'DNA 프로필'),
+          React.createElement('p', { className: 'text-xs ' + textSecondary }, '당신만의 업무 패턴')
+        )
+      ),
+      onExpand && React.createElement('button', {
+        onClick: onExpand,
+        className: 'text-xs text-purple-500 hover:text-purple-600'
+      }, '자세히')
+    ),
     
-    return {
-      tasksCompleted: weekData.tasksCompleted || 0,
-      focusMinutes: weekData.focusMinutes || 0,
-      bestDay: weekData.bestDay || '월요일',
-      avgCondition: weekData.avgCondition || 3,
-      streak: weekData.streak || 0,
-    };
-  }, [weekData]);
-  
-  if (!stats) return null;
-  
-  return (
-    <div className={`${cardBg} rounded-2xl p-4 shadow-sm`}>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <BarChart3 size={18} className="text-[#A996FF]" />
-          <span className={`font-bold ${textPrimary}`}>이번 주 요약</span>
-        </div>
-        {onViewDetails && (
-          <button 
-            onClick={onViewDetails}
-            className="text-sm text-[#A996FF] flex items-center gap-1"
-          >
-            자세히 <ChevronRight size={14} />
-          </button>
-        )}
-      </div>
-      
-      <div className="grid grid-cols-3 gap-3">
-        <div className={`p-3 rounded-xl text-center ${darkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-          <p className={`text-2xl font-bold ${textPrimary}`}>{stats.tasksCompleted}</p>
-          <p className={`text-xs ${textSecondary}`}>완료 태스크</p>
-        </div>
-        <div className={`p-3 rounded-xl text-center ${darkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-          <p className={`text-2xl font-bold ${textPrimary}`}>{Math.round(stats.focusMinutes / 60)}h</p>
-          <p className={`text-xs ${textSecondary}`}>집중 시간</p>
-        </div>
-        <div className={`p-3 rounded-xl text-center ${darkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-          <p className={`text-2xl font-bold ${textPrimary}`}>{stats.streak}일</p>
-          <p className={`text-xs ${textSecondary}`}>연속 달성</p>
-        </div>
-      </div>
-      
-      {/* 베스트 데이 */}
-      <div className={`mt-3 p-3 rounded-xl ${darkMode ? 'bg-emerald-900/20' : 'bg-emerald-50'} flex items-center gap-2`}>
-        <Star size={16} className="text-emerald-500" />
-        <span className={`text-sm ${darkMode ? 'text-emerald-300' : 'text-emerald-700'}`}>
-          {stats.bestDay}이 가장 생산적이었어요!
-        </span>
-      </div>
-    </div>
+    // 특성 그리드
+    React.createElement('div', { className: 'grid grid-cols-3 gap-2' },
+      traits.map(function(trait, i) {
+        var Icon = trait.icon;
+        return React.createElement('div', {
+          key: i,
+          className: 'p-3 rounded-xl text-center ' + (darkMode ? 'bg-gray-700/50' : 'bg-purple-50')
+        },
+          React.createElement(Icon, { size: 16, className: 'text-purple-500 mx-auto mb-1' }),
+          React.createElement('p', { className: 'text-xs ' + textSecondary + ' mb-0.5' }, trait.label),
+          React.createElement('p', { className: 'text-sm font-semibold ' + textPrimary }, trait.value)
+        );
+      })
+    ),
+    
+    // 인사이트 메시지
+    dnaData.insight && React.createElement('div', {
+      className: 'mt-3 p-3 rounded-xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20'
+    },
+      React.createElement('div', { className: 'flex items-center gap-2 mb-1' },
+        React.createElement(Sparkles, { size: 14, className: 'text-purple-500' }),
+        React.createElement('span', { className: 'text-xs font-semibold text-purple-500' }, 'AI 인사이트')
+      ),
+      React.createElement('p', { className: 'text-sm ' + textPrimary }, dnaData.insight)
+    )
   );
 };
 
-/**
- * 컨디션 기반 추천 카드
- */
-export const ConditionBasedTip = ({ condition, energy, darkMode }) => {
-  const tip = useMemo(() => {
-    if (condition <= 2 || energy <= 2) {
-      return {
-        emoji: '🌿',
-        title: '오늘은 가볍게',
-        message: '컨디션이 좋지 않을 때는 쉬운 일부터. 무리하지 마세요.',
-        color: 'blue',
-      };
-    } else if (condition >= 4 && energy >= 4) {
-      return {
-        emoji: '⚡',
-        title: '오늘 달려볼까요?',
-        message: '컨디션 좋은 날! 미뤘던 중요한 일 해치우기 좋아요.',
-        color: 'emerald',
-      };
-    } else {
-      return {
-        emoji: '🎯',
-        title: '차분하게 진행',
-        message: '평소처럼 해도 충분해요. 하나씩 해결해봐요.',
-        color: 'purple',
-      };
-    }
-  }, [condition, energy]);
+// 생산성 패턴 카드
+export var ProductivityPatternCard = function(props) {
+  var patterns = props.patterns || {};
+  var darkMode = props.darkMode;
   
-  const colorClasses = {
-    blue: darkMode ? 'bg-blue-900/20 border-blue-500/30 text-blue-300' : 'bg-blue-50 border-blue-200 text-blue-700',
-    emerald: darkMode ? 'bg-emerald-900/20 border-emerald-500/30 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-700',
-    purple: darkMode ? 'bg-purple-900/20 border-purple-500/30 text-purple-300' : 'bg-purple-50 border-purple-200 text-purple-700',
+  var bgCard = darkMode ? 'bg-gray-800' : 'bg-white';
+  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+  var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  
+  // 시간대별 생산성 (간소화)
+  var hourlyData = patterns.hourlyProductivity || [
+    { hour: '오전', level: 70 },
+    { hour: '점심', level: 40 },
+    { hour: '오후', level: 85 },
+    { hour: '저녁', level: 50 }
+  ];
+  
+  var maxLevel = Math.max.apply(null, hourlyData.map(function(d) { return d.level; }));
+  
+  return React.createElement('div', { className: bgCard + ' rounded-2xl p-4 shadow-sm' },
+    React.createElement('div', { className: 'flex items-center gap-2 mb-4' },
+      React.createElement(BarChart3, { size: 18, className: 'text-blue-500' }),
+      React.createElement('span', { className: 'font-bold ' + textPrimary }, '생산성 패턴')
+    ),
+    
+    // 바 차트
+    React.createElement('div', { className: 'flex items-end justify-between h-24 gap-2' },
+      hourlyData.map(function(item, i) {
+        var height = (item.level / maxLevel) * 100;
+        var isMax = item.level === maxLevel;
+        return React.createElement('div', {
+          key: i,
+          className: 'flex-1 flex flex-col items-center'
+        },
+          React.createElement('div', {
+            className: 'w-full rounded-t-lg transition-all ' + (isMax ? 'bg-blue-500' : (darkMode ? 'bg-gray-600' : 'bg-blue-200')),
+            style: { height: height + '%' }
+          }),
+          React.createElement('span', { className: 'text-xs ' + textSecondary + ' mt-1' }, item.hour)
+        );
+      })
+    ),
+    
+    // 요약
+    patterns.summary && React.createElement('p', {
+      className: 'text-sm ' + textSecondary + ' mt-3 text-center'
+    }, patterns.summary)
+  );
+};
+
+// 스트릭 카드
+export var StreakCard = function(props) {
+  var currentStreak = props.currentStreak || 0;
+  var longestStreak = props.longestStreak || 0;
+  var darkMode = props.darkMode;
+  
+  var bgCard = darkMode ? 'bg-gray-800' : 'bg-white';
+  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+  var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  
+  // 스트릭 레벨 결정
+  var level = currentStreak >= 30 ? 'legendary' : 
+              currentStreak >= 14 ? 'master' :
+              currentStreak >= 7 ? 'pro' :
+              currentStreak >= 3 ? 'good' : 'starting';
+  
+  var levelInfo = {
+    legendary: { emoji: '🔥', label: 'Legendary!', color: 'text-orange-500' },
+    master: { emoji: '⭐', label: 'Master', color: 'text-yellow-500' },
+    pro: { emoji: '💪', label: 'Pro', color: 'text-blue-500' },
+    good: { emoji: '👍', label: 'Good', color: 'text-green-500' },
+    starting: { emoji: '🌱', label: 'Starting', color: 'text-gray-500' }
   };
   
-  return (
-    <div className={`p-4 rounded-xl border ${colorClasses[tip.color]}`}>
-      <div className="flex items-center gap-2 mb-1">
-        <span className="text-lg">{tip.emoji}</span>
-        <span className="font-semibold">{tip.title}</span>
-      </div>
-      <p className="text-sm opacity-80 ml-7">{tip.message}</p>
-    </div>
+  var info = levelInfo[level];
+  
+  return React.createElement('div', { className: bgCard + ' rounded-2xl p-4 shadow-sm' },
+    React.createElement('div', { className: 'flex items-center justify-between' },
+      React.createElement('div', null,
+        React.createElement('div', { className: 'flex items-center gap-2 mb-1' },
+          React.createElement('span', { className: 'text-2xl' }, info.emoji),
+          React.createElement('span', { className: 'font-bold ' + info.color }, info.label)
+        ),
+        React.createElement('p', { className: 'text-3xl font-bold ' + textPrimary }, currentStreak, '일'),
+        React.createElement('p', { className: 'text-xs ' + textSecondary }, '연속 달성')
+      ),
+      React.createElement('div', { className: 'text-right' },
+        React.createElement('p', { className: 'text-xs ' + textSecondary }, '최고 기록'),
+        React.createElement('p', { className: 'text-lg font-semibold ' + textPrimary }, longestStreak, '일')
+      )
+    )
   );
 };
 
-/**
- * 인사이트 생성 훅
- */
-export function useInsightGenerator(userData) {
-  const [currentInsight, setCurrentInsight] = useState(null);
-  const [discovery, setDiscovery] = useState(null);
+// 오버로드 경고 카드
+export var OverloadWarningCard = function(props) {
+  var taskCount = props.taskCount || 0;
+  var threshold = props.threshold || 7;
+  var darkMode = props.darkMode;
+  var onAction = props.onAction;
   
-  useEffect(() => {
-    if (!userData) return;
-    
-    // 패턴 발견 로직
-    const generateDiscovery = () => {
-      const { peakHour, bestDay, timeAccuracy, streak, weeklyImprovement } = userData;
-      
-      // 우선순위에 따라 인사이트 선택
-      if (streak && streak >= 3) {
-        const msg = pickRandom(PATTERN_DISCOVERIES.streak);
-        return {
-          ...msg,
-          title: formatMessage(msg.title, { count: streak }),
-          message: formatMessage(msg.message, { count: streak }),
-        };
-      }
-      
-      if (peakHour) {
-        const msg = pickRandom(PATTERN_DISCOVERIES.peakTime);
-        return {
-          ...msg,
-          message: formatMessage(msg.message, { time: peakHour }),
-        };
-      }
-      
-      if (bestDay) {
-        const msg = pickRandom(PATTERN_DISCOVERIES.productiveDay);
-        return {
-          ...msg,
-          message: formatMessage(msg.message, { day: bestDay }),
-        };
-      }
-      
-      if (timeAccuracy && timeAccuracy > 1.2) {
-        const msg = pickRandom(PATTERN_DISCOVERIES.timeAccuracy);
-        return {
-          ...msg,
-          message: formatMessage(msg.message, { 
-            percent: Math.round((timeAccuracy - 1) * 100),
-            category: '복잡한',
-          }),
-        };
-      }
-      
-      return null;
-    };
-    
-    setDiscovery(generateDiscovery());
-  }, [userData]);
+  if (taskCount < threshold) return null;
   
-  return { currentInsight, discovery };
+  var severity = taskCount >= threshold * 2 ? 'high' : taskCount >= threshold * 1.5 ? 'medium' : 'low';
+  
+  var severityInfo = {
+    high: { 
+      bg: darkMode ? 'bg-red-900/30' : 'bg-red-50', 
+      border: 'border-red-500/30',
+      text: 'text-red-600',
+      message: '오늘 할 일이 너무 많아요. 우선순위를 정해볼까요?'
+    },
+    medium: { 
+      bg: darkMode ? 'bg-amber-900/30' : 'bg-amber-50', 
+      border: 'border-amber-500/30',
+      text: 'text-amber-600',
+      message: '할 일이 조금 많네요. 일부를 내일로 미뤄볼까요?'
+    },
+    low: { 
+      bg: darkMode ? 'bg-yellow-900/30' : 'bg-yellow-50', 
+      border: 'border-yellow-500/30',
+      text: 'text-yellow-600',
+      message: '오늘 할 일이 많은 편이에요.'
+    }
+  };
+  
+  var info = severityInfo[severity];
+  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+  
+  return React.createElement('div', { className: info.bg + ' border ' + info.border + ' rounded-2xl p-4' },
+    React.createElement('div', { className: 'flex items-center gap-2 mb-2' },
+      React.createElement(AlertCircle, { size: 18, className: info.text }),
+      React.createElement('span', { className: 'font-bold ' + info.text }, '오버로드 감지')
+    ),
+    React.createElement('p', { className: 'text-sm ' + textPrimary + ' mb-3' }, info.message),
+    React.createElement('div', { className: 'flex gap-2' },
+      React.createElement('button', {
+        onClick: function() { onAction && onAction('prioritize'); },
+        className: 'flex-1 py-2 bg-white/50 rounded-lg text-sm font-medium ' + info.text
+      }, '우선순위 정리'),
+      React.createElement('button', {
+        onClick: function() { onAction && onAction('delegate'); },
+        className: 'flex-1 py-2 bg-white/50 rounded-lg text-sm font-medium ' + info.text
+      }, '내일로 미루기')
+    )
+  );
+};
+
+// 에너지 예측 카드
+export var EnergyPredictionCard = function(props) {
+  var currentEnergy = props.currentEnergy || 50;
+  var predictedDip = props.predictedDip;
+  var darkMode = props.darkMode;
+  
+  var bgCard = darkMode ? 'bg-gray-800' : 'bg-white';
+  var textPrimary = darkMode ? 'text-white' : 'text-gray-800';
+  var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
+  
+  return React.createElement('div', { className: bgCard + ' rounded-2xl p-4 shadow-sm' },
+    React.createElement('div', { className: 'flex items-center gap-2 mb-3' },
+      React.createElement(Zap, { size: 18, className: 'text-yellow-500' }),
+      React.createElement('span', { className: 'font-bold ' + textPrimary }, '에너지 예측')
+    ),
+    
+    // 현재 에너지 바
+    React.createElement('div', { className: 'mb-3' },
+      React.createElement('div', { className: 'flex justify-between text-xs ' + textSecondary + ' mb-1' },
+        React.createElement('span', null, '현재 에너지'),
+        React.createElement('span', null, currentEnergy, '%')
+      ),
+      React.createElement('div', { className: 'h-2 rounded-full ' + (darkMode ? 'bg-gray-700' : 'bg-gray-200') },
+        React.createElement('div', {
+          className: 'h-full rounded-full bg-gradient-to-r from-yellow-400 to-orange-500',
+          style: { width: currentEnergy + '%' }
+        })
+      )
+    ),
+    
+    // 예측 메시지
+    predictedDip && React.createElement('div', {
+      className: 'p-3 rounded-xl ' + (darkMode ? 'bg-gray-700/50' : 'bg-yellow-50')
+    },
+      React.createElement('p', { className: 'text-sm ' + textPrimary },
+        '💡 ', predictedDip.time, '경에 에너지가 낮아질 것 같아요.'
+      ),
+      React.createElement('p', { className: 'text-xs ' + textSecondary + ' mt-1' },
+        '추천: ', predictedDip.suggestion
+      )
+    )
+  );
+};
+
+// useInsightGenerator 훅
+export function useInsightGenerator(tasks, completedToday, energy) {
+  return useMemo(function() {
+    var insights = [];
+    var hour = new Date().getHours();
+    
+    // 오버로드 체크
+    var pendingTasks = tasks ? tasks.filter(function(t) { return !t.completed && t.status !== 'done'; }).length : 0;
+    if (pendingTasks > 7) {
+      insights.push({
+        type: 'overload',
+        priority: 1,
+        data: { taskCount: pendingTasks, threshold: 7 }
+      });
+    }
+    
+    // 에너지 예측
+    if (hour >= 13 && hour < 15 && energy > 60) {
+      insights.push({
+        type: 'energy',
+        priority: 2,
+        data: {
+          currentEnergy: energy,
+          predictedDip: { time: '오후 2-3시', suggestion: '가벼운 업무나 휴식' }
+        }
+      });
+    }
+    
+    // 스트릭 축하
+    if (completedToday >= 3) {
+      insights.push({
+        type: 'streak',
+        priority: 3,
+        data: { currentStreak: completedToday, longestStreak: Math.max(completedToday, 7) }
+      });
+    }
+    
+    return insights;
+  }, [tasks, completedToday, energy]);
 }
 
 export default {
-  PatternDiscoveryCard,
-  AchievementCard,
-  TodayRecommendationCard,
-  WeeklyInsightSummary,
-  ConditionBasedTip,
-  useInsightGenerator,
+  DNAInsightCard: DNAInsightCard,
+  ProductivityPatternCard: ProductivityPatternCard,
+  StreakCard: StreakCard,
+  OverloadWarningCard: OverloadWarningCard,
+  EnergyPredictionCard: EnergyPredictionCard,
+  useInsightGenerator: useInsightGenerator
 };
