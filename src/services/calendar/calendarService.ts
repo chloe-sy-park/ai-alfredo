@@ -1,4 +1,7 @@
 // Calendar Service - Google Calendar API 연동
+// Uses centralized auth service for token management
+
+import { getGoogleToken, isGoogleConnected } from '../auth';
 
 const CALENDAR_API_URL = '/api/calendar';
 
@@ -27,29 +30,12 @@ interface GoogleEvent {
   location?: string;
 }
 
-// Get access token from localStorage
-const getAccessToken = (): string | null => {
-  return localStorage.getItem('google_access_token');
-};
-
-// Save access token to localStorage
-export const setAccessToken = (token: string): void => {
-  localStorage.setItem('google_access_token', token);
-};
-
-// Clear access token
-export const clearAccessToken = (): void => {
-  localStorage.removeItem('google_access_token');
-};
-
-// Check if authenticated
-export const isGoogleAuthenticated = (): boolean => {
-  return !!getAccessToken();
-};
+// Re-export auth check for convenience
+export { isGoogleConnected as isGoogleAuthenticated };
 
 // Transform Google Calendar event to our format
-const transformEvent = (event: GoogleEvent): CalendarEvent => {
-  const isAllDay = !event.start?.dateTime;
+function transformEvent(event: GoogleEvent): CalendarEvent {
+  var isAllDay = !event.start?.dateTime;
   return {
     id: event.id,
     title: event.summary || '(제목 없음)',
@@ -59,27 +45,27 @@ const transformEvent = (event: GoogleEvent): CalendarEvent => {
     description: event.description,
     location: event.location
   };
-};
+}
 
 // List events for today
-export const getTodayEvents = async (): Promise<CalendarEvent[]> => {
-  const token = getAccessToken();
+export async function getTodayEvents(): Promise<CalendarEvent[]> {
+  var token = getGoogleToken();
   if (!token) {
     console.log('No Google access token');
     return [];
   }
 
-  const today = new Date();
+  var today = new Date();
   today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
+  var tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
   try {
-    const response = await fetch(CALENDAR_API_URL, {
+    var response = await fetch(CALENDAR_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Authorization': 'Bearer ' + token
       },
       body: JSON.stringify({
         action: 'list',
@@ -90,34 +76,33 @@ export const getTodayEvents = async (): Promise<CalendarEvent[]> => {
 
     if (!response.ok) {
       if (response.status === 401) {
-        clearAccessToken();
         console.log('Google token expired');
       }
       throw new Error('Failed to fetch events');
     }
 
-    const data = await response.json();
+    var data = await response.json();
     return (data.events || []).map(transformEvent);
   } catch (error) {
     console.error('Calendar API error:', error);
     return [];
   }
-};
+}
 
 // List events for a date range
-export const getEvents = async (startDate: Date, endDate: Date): Promise<CalendarEvent[]> => {
-  const token = getAccessToken();
+export async function getEvents(startDate: Date, endDate: Date): Promise<CalendarEvent[]> {
+  var token = getGoogleToken();
   if (!token) {
     console.log('No Google access token');
     return [];
   }
 
   try {
-    const response = await fetch(CALENDAR_API_URL, {
+    var response = await fetch(CALENDAR_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Authorization': 'Bearer ' + token
       },
       body: JSON.stringify({
         action: 'list',
@@ -128,30 +113,30 @@ export const getEvents = async (startDate: Date, endDate: Date): Promise<Calenda
 
     if (!response.ok) {
       if (response.status === 401) {
-        clearAccessToken();
+        console.log('Google token expired');
       }
       throw new Error('Failed to fetch events');
     }
 
-    const data = await response.json();
+    var data = await response.json();
     return (data.events || []).map(transformEvent);
   } catch (error) {
     console.error('Calendar API error:', error);
     return [];
   }
-};
+}
 
 // Add a new event
-export const addEvent = async (event: Omit<CalendarEvent, 'id'>): Promise<CalendarEvent | null> => {
-  const token = getAccessToken();
+export async function addEvent(event: Omit<CalendarEvent, 'id'>): Promise<CalendarEvent | null> {
+  var token = getGoogleToken();
   if (!token) return null;
 
   try {
-    const response = await fetch(CALENDAR_API_URL, {
+    var response = await fetch(CALENDAR_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Authorization': 'Bearer ' + token
       },
       body: JSON.stringify({
         action: 'add',
@@ -169,10 +154,10 @@ export const addEvent = async (event: Omit<CalendarEvent, 'id'>): Promise<Calend
 
     if (!response.ok) throw new Error('Failed to add event');
 
-    const data = await response.json();
+    var data = await response.json();
     return transformEvent(data.event);
   } catch (error) {
     console.error('Failed to add event:', error);
     return null;
   }
-};
+}
