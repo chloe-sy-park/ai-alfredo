@@ -51,7 +51,7 @@ const ALFREDO_EXPRESSIONS = {
 };
 
 // 상황에 맞는 표정 결정 함수 (W1 강화)
-export const getAlfredoExpression = ({
+const getAlfredoExpression = ({
   completedTasks = 0,
   totalTasks = 0,
   energy = 50,
