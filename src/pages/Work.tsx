@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import Card from '@/components/common/Card';
-import Button from '@/components/common/Button';
+import { Card, Button } from '@/components/common';
 import { Plus, Star, Clock, Filter, CheckCircle2, Trash2, X } from 'lucide-react';
 import { useTaskStore } from '@/stores/taskStore';
 import type { Task, TaskStatus } from '@/types/database';
