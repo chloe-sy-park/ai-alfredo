@@ -1,15 +1,15 @@
 import { useEffect, useCallback, useState } from 'react';
-import { Card } from '@/components/common';
+import Card from '../components/common/Card';
 import { Calendar, CheckCircle2, Clock, Sparkles, CloudSun, Play, Pause, Brain, RefreshCw } from 'lucide-react';
-import { ProactiveNudge, ACTION_TYPES } from '@/components/home/ProactiveNudge';
-import { useTaskStore } from '@/stores/taskStore';
-import { useFocusStore } from '@/stores/focusStore';
-import { useSettingsStore } from '@/stores/settingsStore';
-import { useDNAStore } from '@/stores/dnaStore';
-import { DNAInsightList } from '@/components/home/DNAInsightCard';
-import DNAProfileSummary from '@/components/home/DNAProfileSummary';
-import { DNAMessageGenerator } from '@/services/dna/messageGenerator';
-import { CalendarEvent } from '@/services/dna/types';
+import { ProactiveNudge, ACTION_TYPES } from '../components/home/ProactiveNudge';
+import { useTaskStore } from '../stores/taskStore';
+import { useFocusStore } from '../stores/focusStore';
+import { useSettingsStore } from '../stores/settingsStore';
+import { useDNAStore } from '../stores/dnaStore';
+import { DNAInsightList } from '../components/home/DNAInsightCard';
+import DNAProfileSummary from '../components/home/DNAProfileSummary';
+import { DNAMessageGenerator } from '../services/dna/messageGenerator';
+import { CalendarEvent } from '../services/dna/types';
 
 export default function Home() {
   // Stores
