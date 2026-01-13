@@ -171,9 +171,8 @@ export function useFocusSessions() {
       var sessionData = {
         user_id: TEST_USER_ID,
         mode: opts.mode || 'pomodoro',
-        planned_duration: opts.plannedDuration || 25,
+        planned_minutes: opts.plannedMinutes || 25,
         task_id: opts.taskId || null,
-        task_title: opts.taskTitle || null,
         started_at: new Date().toISOString()
       };
 
@@ -216,16 +215,15 @@ export function useFocusSessions() {
     try {
       stopTimer();
       
-      var actualDuration = Math.floor(elapsedTime / 60);
-      var completed = opts.completed !== false;
+      var actualMinutes = Math.floor(elapsedTime / 60);
+      var endReason = opts.completed !== false ? 'completed' : 'cancelled';
       
       var { data: endedSession, error: dbError } = await supabase
         .from('focus_sessions')
         .update({
           ended_at: new Date().toISOString(),
-          actual_duration: actualDuration,
-          completed: completed,
-          notes: opts.notes || null
+          actual_minutes: actualMinutes,
+          end_reason: endReason
         })
         .eq('id', activeSession.id)
         .select()
@@ -240,8 +238,8 @@ export function useFocusSessions() {
 
       // XP 보상 (완료 시)
       var xpReward = 0;
-      if (completed && actualDuration >= 5) {
-        xpReward = Math.min(actualDuration, 60); // 분당 1XP, 최대 60XP
+      if (endReason === 'completed' && actualMinutes >= 5) {
+        xpReward = Math.min(actualMinutes, 60); // 분당 1XP, 최대 60XP
         
         var { data: penguin } = await supabase
           .from('penguin_status')
@@ -264,7 +262,7 @@ export function useFocusSessions() {
               user_id: TEST_USER_ID,
               amount: xpReward,
               source: 'focus_session',
-              description: actualDuration + '분 집중 세션 완료'
+              description: actualMinutes + '분 집중 세션 완료'
             });
         }
       }
@@ -283,7 +281,7 @@ export function useFocusSessions() {
         return updated;
       });
 
-      console.log('✅ 집중 세션 종료:', actualDuration + '분', xpReward > 0 ? '+' + xpReward + 'XP' : '');
+      console.log('✅ 집중 세션 종료:', actualMinutes + '분', xpReward > 0 ? '+' + xpReward + 'XP' : '');
       return { session: endedSession, rewards: { xp: xpReward } };
     } catch (e) {
       console.error('Session end failed:', e);
@@ -334,8 +332,8 @@ export function useFocusSessions() {
     var sessionDate = new Date(session.started_at).toDateString();
     var today = new Date().toDateString();
     
-    if (sessionDate === today && session.actual_duration) {
-      return total + session.actual_duration;
+    if (sessionDate === today && session.actual_minutes) {
+      return total + session.actual_minutes;
     }
     return total;
   }, 0);
