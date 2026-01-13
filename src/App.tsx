@@ -12,6 +12,7 @@ import Settings from './pages/Settings';
 import Login from './pages/Login';
 import Onboarding from './pages/Onboarding';
 import AuthCallback from './pages/AuthCallback';
+import Report from './pages/Report';
 
 // Layout
 import AppShell from './components/layout/AppShell';
@@ -65,6 +66,7 @@ function App() {
           <Route path="/life" element={<Life />} />
           <Route path="/chat" element={<Chat />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/report" element={<Report />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
