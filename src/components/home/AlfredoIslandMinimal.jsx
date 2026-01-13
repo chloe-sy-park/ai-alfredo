@@ -3,120 +3,13 @@ import { ChevronRight, X, Send, Sparkles, RefreshCw, AlertTriangle, Mic, Zap } f
 import { getSimpleBriefingMessage, generateMorningBriefingV2 } from '../alfredo/MorningBriefingV2';
 import { getSimpleEveningMessage, generateEveningBriefingV2 } from '../alfredo/EveningBriefingV2';
 
-// 🐧 알프레도 표정 시스템
-var ALFREDO_EXPRESSIONS = {
-  default: { emoji: '🐧', label: '기본' },
-  happy: { emoji: '😊🐧', label: '기쁨' },
-  excited: { emoji: '🎉🐧', label: '신남' },
-  cheer: { emoji: '💪🐧', label: '응원' },
-  comfort: { emoji: '🤗🐧', label: '위로' },
-  worried: { emoji: '😰🐧', label: '걱정' },
-  sleepy: { emoji: '😴🐧', label: '졸림' },
-  thinking: { emoji: '🤔🐧', label: '생각' },
-  love: { emoji: '💜🐧', label: '애정' },
-  proud: { emoji: '🌟🐧', label: '자랑' },
-  // 🆕 새 표정 추가
-  alert: { emoji: '⚡🐧', label: '긴급' },
-  care: { emoji: '💜🐧', label: '케어' },
-  peak: { emoji: '🔥🐧', label: '피크' }
-};
-
-// 상황에 따른 표정 결정 (🆕 DNA 컨텍스트 반영)
-var getAlfredoExpression = function(props) {
-  var tasks = props.tasks || [];
-  var condition = props.condition || 0;
-  var urgentEvent = props.urgentEvent;
-  var messageType = props.messageType || '';
-  var todayContext = props.todayContext;
-  var burnoutWarning = props.burnoutWarning;
-  var specialAlerts = props.specialAlerts || [];
-  
-  var now = new Date();
-  var hour = now.getHours();
-  var completed = tasks.filter(function(t) { return t.completed; }).length;
-  var total = tasks.length;
-  var completionRate = total > 0 ? (completed / total) * 100 : 0;
-  
-  // 🆕 1. 번아웃 경고 - 케어 표정
-  if (burnoutWarning && (burnoutWarning.level === 'critical' || burnoutWarning.level === 'warning')) {
-    return ALFREDO_EXPRESSIONS.care;
-  }
-  
-  // 🆕 2. 발표 임박 - 긴급 표정
-  var hasPresentationSoon = specialAlerts.some(function(a) {
-    return a.type === 'presentation' && a.daysUntil <= 1;
-  });
-  if (hasPresentationSoon) {
-    return ALFREDO_EXPRESSIONS.alert;
-  }
-  
-  // 3. 긴급 상황 - 걱정 표정
-  if (urgentEvent || messageType === 'urgent') {
-    return ALFREDO_EXPRESSIONS.worried;
-  }
-  
-  // 🆕 4. 피크 타임 - 피크 표정
-  if (messageType === 'peak' || messageType === 'dna-peak') {
-    return ALFREDO_EXPRESSIONS.peak;
-  }
-  
-  // 5. 밤 시간 (21시~5시) - 졸림 표정
-  if (hour >= 21 || hour < 5) {
-    return ALFREDO_EXPRESSIONS.sleepy;
-  }
-  
-  // 6. 컨디션 낮음 (1-2) - 위로 표정
-  if (condition > 0 && condition <= 2) {
-    return ALFREDO_EXPRESSIONS.comfort;
-  }
-  
-  // 🆕 7. 바쁜 날 - 응원 표정
-  if (todayContext && (todayContext.busyLevel === 'heavy' || todayContext.busyLevel === 'extreme')) {
-    return ALFREDO_EXPRESSIONS.cheer;
-  }
-  
-  // 8. 모든 태스크 완료 - 신남 표정
-  if (total > 0 && completed === total) {
-    return ALFREDO_EXPRESSIONS.excited;
-  }
-  
-  // 9. 저녁 + 높은 완료율 - 자랑 표정 (저녁 브리핑용)
-  if (hour >= 18 && completionRate >= 70) {
-    return ALFREDO_EXPRESSIONS.proud;
-  }
-  
-  // 10. 절반 이상 완료 - 기쁨 표정
-  if (completionRate >= 50 && completed > 0) {
-    return ALFREDO_EXPRESSIONS.happy;
-  }
-  
-  // 11. 컨디션 물어볼 때 - 애정 표정
-  if (condition === 0 || messageType === 'askCondition') {
-    return ALFREDO_EXPRESSIONS.love;
-  }
-  
-  // 12. 할 일 많이 남음 + 저녁 - 응원 표정
-  if (hour >= 17 && total > 0 && completionRate < 50) {
-    return ALFREDO_EXPRESSIONS.cheer;
-  }
-  
-  // 13. 컨디션 좋음 (4-5) - 기쁨 표정
-  if (condition >= 4) {
-    return ALFREDO_EXPRESSIONS.happy;
-  }
-  
-  // 기본 표정
-  return ALFREDO_EXPRESSIONS.default;
-};
-
-// 📜 시간대 판단 함수
-var getTimeOfDay = function() {
-  var hour = new Date().getHours();
-  if (hour >= 5 && hour < 12) return 'morning';
-  if (hour >= 12 && hour < 18) return 'afternoon';
-  if (hour >= 18 && hour < 22) return 'evening';
-  return 'night';
-};
+// 🆕 분리된 유틸리티 import
+import { 
+  ALFREDO_EXPRESSIONS, 
+  getAlfredoExpression, 
+  getTimeOfDay, 
+  isEveningOrNight 
+} from '../../utils/alfredoExpressions';
 
 // 📜 초기 대화 히스토리 생성 (시간대별 분기)
 var generateInitialHistory = function(props) {
@@ -309,7 +202,7 @@ export var AlfredoIslandMinimal = function(props) {
   var getBestFocusTime = props.getBestFocusTime;
   var getChronotype = props.getChronotype;
   var getPeakHours = props.getPeakHours;
-  // 🆕 DNA 확장 props
+  // DNA 확장 props
   var todayContext = props.todayContext;
   var getSpecialAlerts = props.getSpecialAlerts;
   var getBurnoutWarning = props.getBurnoutWarning;
@@ -336,14 +229,14 @@ export var AlfredoIslandMinimal = function(props) {
   
   var chatEndRef = useRef(null);
   
-  // 시간대 판단
+  // 시간대 판단 (분리된 유틸 사용)
   var timeOfDay = useMemo(function() {
     return getTimeOfDay();
   }, []);
   
   var isEvening = timeOfDay === 'evening' || timeOfDay === 'night';
   
-  // 🆕 특별 알림 & 번아웃 경고 가져오기
+  // 특별 알림 & 번아웃 경고 가져오기
   var specialAlerts = useMemo(function() {
     return getSpecialAlerts ? getSpecialAlerts(1) : [];
   }, [getSpecialAlerts]);
@@ -356,7 +249,7 @@ export var AlfredoIslandMinimal = function(props) {
     return getBriefingTone ? getBriefingTone() : 'gentle';
   }, [getBriefingTone]);
   
-  // 🧬 DNA 기반 메시지 생성 (시간대별 분기 + 🆕 확장 컨텍스트)
+  // 🧬 DNA 기반 메시지 생성 (시간대별 분기 + 확장 컨텍스트)
   var message = useMemo(function() {
     // DNA 인사이트 구성 (완전한 형태)
     var dnaInsight = null;
@@ -377,7 +270,7 @@ export var AlfredoIslandMinimal = function(props) {
         workLifeBalance: workLifeBalance,
         phase: dnaAnalysisPhase,
         suggestions: dnaSuggestions || [],
-        // 🆕 확장 컨텍스트 추가
+        // 확장 컨텍스트 추가
         todayContext: todayContext,
         burnoutWarning: burnoutWarning,
         specialAlerts: specialAlerts,
@@ -385,7 +278,7 @@ export var AlfredoIslandMinimal = function(props) {
       };
     }
     
-    // 🆕 1. 번아웃 경고 (최우선)
+    // 1. 번아웃 경고 (최우선)
     if (burnoutWarning && burnoutWarning.level === 'critical') {
       return {
         line1: '⚠️ Boss, 잠깐 멈춰요',
@@ -395,7 +288,7 @@ export var AlfredoIslandMinimal = function(props) {
       };
     }
     
-    // 🆕 2. 발표 D-1 또는 당일
+    // 2. 발표 D-1 또는 당일
     var presentationAlert = specialAlerts.find(function(a) {
       return a.type === 'presentation';
     });
@@ -417,7 +310,7 @@ export var AlfredoIslandMinimal = function(props) {
       }
     }
     
-    // 🆕 3. 연속 미팅 경고
+    // 3. 연속 미팅 경고
     if (todayContext && todayContext.hasConsecutiveMeetings) {
       return {
         line1: '🏃 오늘 미팅 마라톤!',
@@ -427,7 +320,7 @@ export var AlfredoIslandMinimal = function(props) {
       };
     }
     
-    // 🆕 4. 피크 타임 감지
+    // 4. 피크 타임 감지
     var currentHour = new Date().getHours();
     var peakHoursNow = getPeakHours ? getPeakHours() : [];
     if (peakHoursNow.includes(currentHour)) {
@@ -439,7 +332,7 @@ export var AlfredoIslandMinimal = function(props) {
       };
     }
     
-    // 🆕 5. 바쁜 날
+    // 5. 바쁜 날
     if (todayContext && todayContext.busyLevel === 'extreme') {
       return {
         line1: '🔥 오늘 풀스케줄!',
@@ -449,7 +342,7 @@ export var AlfredoIslandMinimal = function(props) {
       };
     }
     
-    // 🆕 6. 여유로운 날
+    // 6. 여유로운 날
     if (todayContext && todayContext.busyLevel === 'light' && events.length <= 2) {
       return {
         line1: '🌿 오늘은 여유로운 날!',
@@ -508,7 +401,7 @@ export var AlfredoIslandMinimal = function(props) {
     });
   }, [tasks, events, condition, userName, urgentEvent, weather, isEvening, dnaProfile, dnaAnalysisPhase, dnaSuggestions, getMorningBriefing, getEveningMessage, getStressLevel, getBestFocusTime, getChronotype, getPeakHours, todayContext, specialAlerts, burnoutWarning, briefingTone]);
   
-  // 표정 결정 (🆕 DNA 컨텍스트 전달)
+  // 표정 결정 (분리된 유틸 사용)
   var expression = useMemo(function() {
     return getAlfredoExpression({
       tasks: tasks,
@@ -560,7 +453,7 @@ export var AlfredoIslandMinimal = function(props) {
       ? '지금은 저녁/밤이에요. 하루를 마무리하는 대화를 나눠요. 성취를 인정하고, 쉬라고 격려해요.' 
       : '지금은 아침/낮이에요. 하루를 계획하고 시작하는 대화를 나눠요.';
     
-    // 🆕 DNA 컨텍스트 추가
+    // DNA 컨텍스트 추가
     var dnaContext = '';
     if (todayContext) {
       dnaContext = '\n## DNA 컨텍스트\n' +
@@ -698,7 +591,7 @@ export var AlfredoIslandMinimal = function(props) {
     }
   };
   
-  // 스타일 (메시지 타입에 따른 색상 + 🆕 새 타입 추가)
+  // 스타일 (메시지 타입에 따른 색상)
   var bgColor = message.type === 'urgent' 
     ? 'bg-gradient-to-r from-orange-50 to-red-50 border-orange-200' 
     : message.type === 'burnout'
@@ -734,7 +627,7 @@ export var AlfredoIslandMinimal = function(props) {
         ? 'animate-pulse'
         : '';
   
-  // 🆕 상태 배지 결정
+  // 상태 배지 결정
   var statusBadge = useMemo(function() {
     if (message.type === 'burnout') {
       return { icon: AlertTriangle, text: '케어', color: 'bg-red-100 text-red-600' };
@@ -795,7 +688,7 @@ export var AlfredoIslandMinimal = function(props) {
     isExpanded && React.createElement('div', {
       className: 'fixed inset-0 z-[60] flex flex-col justify-end'
     },
-      // 배경 딘
+      // 배경 딤
       React.createElement('div', {
         className: 'absolute inset-0 bg-black/40',
         onClick: function() { setExpanded(false); }
