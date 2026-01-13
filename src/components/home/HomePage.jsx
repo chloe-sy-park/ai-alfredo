@@ -10,6 +10,7 @@ import EveningBriefing from './EveningBriefing';
 import MorningBriefing from './MorningBriefing';
 import { ConditionQuickChange } from './ConditionQuickChange';
 import { useDailyConditions } from '../../hooks/useDailyConditions';
+import { TimeEstimateInsightCard } from '../adhd/TimeEstimatorUI';
 
 // 요일 이름
 var DAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -143,7 +144,6 @@ export var HomePage = function(props) {
   var weather = props.weather;
   var mood = props.mood;
   var setMood = props.setMood;
-  // 🔧 FIX: setView → onNavigate 통일
   var onNavigate = props.onNavigate;
   var onOpenAddTask = props.onOpenAddTask;
   var onOpenTask = props.onOpenTask;
@@ -153,7 +153,7 @@ export var HomePage = function(props) {
   var onStartBodyDoubling = props.onStartBodyDoubling;
   var userName = props.userName || props.userSettings?.name || 'Boss';
   
-  // 🐧 펭귄 상태바 컴포넌트 (App.jsx에서 전달)
+  // 🐧 펭귄 상태바 컴포넌트
   var PenguinStatusBar = props.PenguinStatusBar;
   
   // 🧬 DNA 인사이트 props
@@ -173,6 +173,14 @@ export var HomePage = function(props) {
   var getTodayEnergyDrain = props.getTodayEnergyDrain;
   var getRecommendedActions = props.getRecommendedActions;
   var getBriefingTone = props.getBriefingTone;
+  
+  // ⏱️ 시간 추정 코치 props
+  var timeInsight = props.timeInsight;
+  var timeEstimatorData = props.timeEstimatorData;
+  
+  // 🤗 저녁 리뷰 props
+  var onOpenEveningReview = props.onOpenEveningReview;
+  var todayCompletedCount = props.todayCompletedCount || 0;
   
   // 📊 컨디션 히스토리 훅
   var dailyConditions = useDailyConditions();
@@ -392,7 +400,7 @@ export var HomePage = function(props) {
     }
   };
   
-  // 🔧 FIX: 네비게이션 핸들러 통일
+  // 네비게이션 핸들러
   var handleNavigate = function(page) {
     if (onNavigate) {
       onNavigate(page);
@@ -456,7 +464,6 @@ export var HomePage = function(props) {
             variant: 'mini'
           }),
           
-          // 🔧 FIX: 설정 버튼 연결
           React.createElement('button', {
             className: 'min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-colors ' +
               (isNightMode ? 'hover:bg-white/10 active:bg-white/20' : 'hover:bg-gray-200 active:bg-gray-300'),
@@ -498,7 +505,6 @@ export var HomePage = function(props) {
             getChronotype: getChronotype,
             getPeakHours: getPeakHours,
             getStressLevel: getStressLevel,
-            // 🆕 DNA 확장 props
             todayContext: todayContext,
             getSpecialAlerts: getSpecialAlerts,
             getBurnoutWarning: getBurnoutWarning,
@@ -513,9 +519,7 @@ export var HomePage = function(props) {
             events: events,
             userName: userName,
             onTapAlfredo: onOpenChat,
-            // 🔧 FIX: 캘린더 이동 연결
             onViewTomorrow: function() { handleNavigate('CALENDAR'); },
-            // 🆕 DNA 확장 props
             todayContext: todayContext,
             getEveningMessage: getEveningMessage,
             getBurnoutWarning: getBurnoutWarning
@@ -539,7 +543,6 @@ export var HomePage = function(props) {
               getBestFocusTime: getBestFocusTime,
               getPeakHours: getPeakHours,
               getChronotype: getChronotype,
-              // 🆕 DNA 확장 props
               todayContext: todayContext,
               getSpecialAlerts: getSpecialAlerts,
               getBurnoutWarning: getBurnoutWarning,
@@ -556,12 +559,20 @@ export var HomePage = function(props) {
               getChronotype: getChronotype,
               getStressLevel: getStressLevel,
               getPeakHours: getPeakHours,
-              // 🆕 DNA 확장 props
               todayContext: todayContext,
               getSpecialAlerts: getSpecialAlerts,
               getBurnoutWarning: getBurnoutWarning,
               getTodayEnergyDrain: getTodayEnergyDrain
-            })
+            }),
+            
+            // ⏱️ 시간 추정 인사이트 카드
+            timeInsight && React.createElement('div', { className: 'mx-4 mt-3' },
+              React.createElement(TimeEstimateInsightCard, {
+                insight: timeInsight,
+                recentEntries: timeEstimatorData ? timeEstimatorData.entries.slice(-3).reverse() : [],
+                darkMode: false
+              })
+            )
           ),
           
           // 지금 이거부터
@@ -584,7 +595,19 @@ export var HomePage = function(props) {
             onOpenEvent: onOpenEvent,
             onAddTask: onOpenAddTask,
             compact: isEveningMode
-          })
+          }),
+          
+          // 🌙 저녁 모드: 하루 마무리 버튼
+          isEveningMode && onOpenEveningReview && React.createElement('div', { className: 'mx-4 mt-4 mb-6' },
+            React.createElement('button', {
+              onClick: onOpenEveningReview,
+              className: 'w-full py-4 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-medium flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-shadow'
+            },
+              React.createElement('span', null, '🌙'),
+              '하루 마무리하기',
+              todayCompletedCount > 0 && React.createElement('span', { className: 'bg-white/20 px-2 py-0.5 rounded-full text-sm' }, todayCompletedCount + '개 완료')
+            )
+          )
         ),
     
     // 🔔 플로팅 넛지
