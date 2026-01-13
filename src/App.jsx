@@ -162,6 +162,19 @@ function App() {
   var relationships = relationshipsState[0];
   var setRelationships = relationshipsState[1];
   
+  // 건강 데이터 상태
+  var healthDataState = useState(function() {
+    return loadFromStorage(STORAGE_KEYS.HEALTH, {
+      waterIntake: 0,
+      waterGoal: 8,
+      steps: 0,
+      sleepHours: 0,
+      medication: false
+    });
+  });
+  var healthData = healthDataState[0];
+  var setHealthData = healthDataState[1];
+  
   // 사용자 설정
   var userSettingsState = useState(function() {
     return loadFromStorage(STORAGE_KEYS.USER_SETTINGS, {
@@ -341,6 +354,10 @@ function App() {
   useEffect(function() {
     saveToStorage(STORAGE_KEYS.STREAK_DATA, streakData);
   }, [streakData]);
+  
+  useEffect(function() {
+    saveToStorage(STORAGE_KEYS.HEALTH, healthData);
+  }, [healthData]);
   
   // ============================================================
   // 스트릭 업데이트
@@ -563,9 +580,30 @@ function App() {
     setCurrentPage('INBOX');
   }, [currentPage]);
   
+  // 프로젝트 페이지 열기
+  var handleOpenProject = useCallback(function() {
+    setPreviousPage(currentPage);
+    setCurrentPage('PROJECTS');
+  }, [currentPage]);
+  
   // 리마인더 열기 (임시)
   var handleOpenReminder = useCallback(function() {
     console.log('Open reminder');
+  }, []);
+  
+  // 일기 열기 (임시 - 추후 구현)
+  var handleOpenJournal = useCallback(function() {
+    console.log('Open journal - 추후 구현 예정');
+  }, []);
+  
+  // 기분 기록 열기 (임시 - 추후 구현)
+  var handleOpenMoodLog = useCallback(function() {
+    console.log('Open mood log - 추후 구현 예정');
+  }, []);
+  
+  // 건강 편집 열기 (임시 - 추후 구현)
+  var handleEditHealth = useCallback(function() {
+    console.log('Edit health - 추후 구현 예정');
   }, []);
   
   // 포커스 모드
@@ -756,7 +794,8 @@ function App() {
           onOpenChat: handleOpenChat,
           onStartFocus: handleStartFocus,
           onStartBodyDoubling: handleStartBodyDoubling,
-          onOpenInbox: handleOpenInbox
+          onOpenInbox: handleOpenInbox,
+          onOpenProject: handleOpenProject
         }));
         
       case 'CALENDAR':
@@ -777,12 +816,19 @@ function App() {
       case 'LIFE':
         return React.createElement(LifePage, Object.assign({}, commonProps, {
           routines: routines,
+          setRoutines: setRoutines,
           relationships: relationships,
+          healthData: healthData,
+          setHealthData: setHealthData,
+          onOpenRoutines: handleOpenRoutineManager,
           onOpenRoutineManager: handleOpenRoutineManager,
           onUpdateRelationship: handleUpdateRelationship,
           onAddRelationship: handleAddRelationship,
           onDeleteRelationship: handleDeleteRelationship,
-          onOpenChat: handleOpenChat
+          onOpenChat: handleOpenChat,
+          onOpenJournal: handleOpenJournal,
+          onOpenMoodLog: handleOpenMoodLog,
+          onEditHealth: handleEditHealth
         }));
         
       case 'MORE':
@@ -879,7 +925,7 @@ function App() {
         return React.createElement(ProjectDashboardPage, Object.assign({}, commonProps, {
           projects: projects,
           tasks: tasks,
-          onBack: function() { setCurrentPage('MORE'); }
+          onBack: function() { setCurrentPage(previousPage); }
         }));
         
       case 'INBOX':
