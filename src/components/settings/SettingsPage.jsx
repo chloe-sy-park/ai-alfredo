@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { 
   ArrowLeft, Bell, Moon, Sun, ChevronRight,
-  Database, Cloud, Settings, Zap, Plus,
-  BellRing, BellOff, Check, Download, Upload, Loader2
+  Database, Cloud, Settings, Zap, Plus, Mail,
+  BellRing, BellOff, Check, Download, Upload, Loader2, RefreshCw, AlertCircle
 } from 'lucide-react';
 
 // Other Components
@@ -16,6 +16,7 @@ import AlfredoUnderstanding from '../alfredo/AlfredoUnderstanding';
 // 훅
 import { usePushNotifications } from '../../hooks/usePushNotifications';
 import { useGoogleDrive } from '../../hooks/useGoogleDrive';
+import { useGmail } from '../../hooks/useGmail';
 
 const SettingsPage = ({ 
   userName, 
@@ -61,6 +62,23 @@ const SettingsPage = ({
     restoreFromDrive,
     toggleSync,
   } = googleDrive;
+  
+  // 📧 Gmail 훅
+  const gmail = useGmail();
+  const {
+    isGmailEnabled,
+    isLoading: isGmailLoading,
+    isAnalyzing: isGmailAnalyzing,
+    error: gmailError,
+    needsReauth: gmailNeedsReauth,
+    stats: gmailStats,
+    settings: gmailSettings,
+    toggleGmail,
+    fetchAndAnalyze,
+    forceReconnect,
+    updateSettings: updateGmailSettings,
+    getLastSyncText,
+  } = gmail;
   
   // Google 계정 연결 상태 (Calendar OR Gmail 중 하나라도 연결되면 true)
   const isGoogleConnected = connections?.googleCalendar || connections?.gmail;
@@ -297,6 +315,15 @@ const SettingsPage = ({
     return `${days}일 전`;
   };
   
+  // 📧 Gmail 기간 옵션
+  const FETCH_PERIOD_OPTIONS = [
+    { value: '1d', label: '오늘' },
+    { value: '3d', label: '3일' },
+    { value: '7d', label: '1주일' },
+    { value: '14d', label: '2주일' },
+    { value: '30d', label: '1개월' },
+  ];
+  
   return (
     <div className={`flex-1 overflow-y-auto ${bgColor}`}>
       {/* Header */}
@@ -348,6 +375,139 @@ const SettingsPage = ({
               setAlfredoLearnings(learnings);
             }}
           />
+        </div>
+        
+        {/* 📧 Gmail 설정 섹션 - NEW! */}
+        <div className={`${cardBg} backdrop-blur-xl rounded-xl p-4`}>
+          <h3 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2`}>
+            <Mail size={18} className="text-[#A996FF]" />
+            Gmail 연동
+          </h3>
+          
+          {/* 재인증 필요 경고 */}
+          {gmailNeedsReauth && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 mb-3">
+              <div className="flex items-center gap-3">
+                <AlertCircle size={20} className="text-amber-500" />
+                <div className="flex-1">
+                  <p className="font-medium text-amber-700 dark:text-amber-400">Gmail 재연결 필요</p>
+                  <p className="text-xs text-amber-600/70 dark:text-amber-500/70">권한이 만료되었어요</p>
+                </div>
+                <button
+                  onClick={forceReconnect}
+                  className="px-3 py-1.5 bg-amber-500 text-white text-sm font-medium rounded-lg"
+                >
+                  재연결
+                </button>
+              </div>
+            </div>
+          )}
+          
+          {/* Gmail 활성화 토글 */}
+          <div className="flex items-center justify-between py-3">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">📧</span>
+              <div>
+                <p className={`font-medium ${textPrimary}`}>Gmail 분석</p>
+                <p className={`text-xs ${textSecondary}`}>
+                  {isGmailEnabled 
+                    ? (getLastSyncText ? getLastSyncText() : '활성화됨') 
+                    : '이메일에서 할 일을 찾아드려요'}
+                </p>
+              </div>
+            </div>
+            <ToggleSwitch 
+              enabled={isGmailEnabled} 
+              onChange={toggleGmail}
+              disabled={isGmailLoading || gmailNeedsReauth}
+            />
+          </div>
+          
+          {/* Gmail 활성화 시 추가 옵션 */}
+          {isGmailEnabled && !gmailNeedsReauth && (
+            <>
+              {/* 동기화 상태 */}
+              <div className={`${darkMode ? 'bg-gray-700' : 'bg-[#F5F3FF]'} rounded-xl p-3 mb-3`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {(isGmailLoading || isGmailAnalyzing) ? (
+                      <Loader2 size={16} className="text-[#A996FF] animate-spin" />
+                    ) : (
+                      <Check size={16} className="text-emerald-500" />
+                    )}
+                    <span className={`text-sm ${textPrimary}`}>
+                      {isGmailAnalyzing ? '분석 중...' : isGmailLoading ? '동기화 중...' : '동기화됨'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={fetchAndAnalyze}
+                    disabled={isGmailLoading || isGmailAnalyzing}
+                    className="flex items-center gap-1 px-3 py-1 bg-[#A996FF] text-white text-xs font-medium rounded-lg disabled:opacity-50"
+                  >
+                    <RefreshCw size={12} />
+                    동기화
+                  </button>
+                </div>
+                
+                {/* 통계 */}
+                {gmailStats && (
+                  <div className="flex gap-4 mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
+                    <div className="text-center">
+                      <p className={`text-lg font-bold ${textPrimary}`}>{gmailStats.total || 0}</p>
+                      <p className={`text-xs ${textSecondary}`}>이메일</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-red-500">{gmailStats.urgent || 0}</p>
+                      <p className={`text-xs ${textSecondary}`}>긴급</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-bold text-amber-500">{gmailStats.important || 0}</p>
+                      <p className={`text-xs ${textSecondary}`}>중요</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* 기간 설정 */}
+              <div className="py-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">📅</span>
+                    <div>
+                      <p className={`font-medium ${textPrimary}`}>가져올 기간</p>
+                      <p className={`text-xs ${textSecondary}`}>이 기간의 이메일을 분석해요</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 ml-10">
+                  {FETCH_PERIOD_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => updateGmailSettings && updateGmailSettings({ fetchPeriod: option.value })}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                        (gmailSettings?.fetchPeriod || '7d') === option.value
+                          ? 'bg-[#A996FF] text-white'
+                          : (darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600')
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              {/* 에러 표시 */}
+              {gmailError && (
+                <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-3 mt-2">
+                  <p className="text-sm text-red-600 dark:text-red-400">{gmailError}</p>
+                </div>
+              )}
+            </>
+          )}
+          
+          <p className={`text-xs ${textSecondary} mt-3 text-center`}>
+            🐧 알프레도가 이메일을 읽고 해야 할 일을 정리해드려요
+          </p>
         </div>
         
         {/* ☁️ 클라우드 동기화 섹션 */}
