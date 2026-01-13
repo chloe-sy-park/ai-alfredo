@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Mic } from 'lucide-react';
 import { useConversationStore } from '@/stores/conversationStore';
-import ErrorState from '@/components/common/ErrorState';
-import { ConversationsEmptyState } from '@/components/common/EmptyState';
+import { ErrorState, ConversationsEmptyState } from '@/components/common';
 
 export default function Chat() {
   const [input, setInput] = useState('');
