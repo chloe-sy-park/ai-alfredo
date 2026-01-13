@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Send, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -32,7 +32,6 @@ export default function Chat() {
     setInput('');
     setIsLoading(true);
 
-    // 임시 응답
     setTimeout(() => {
       const botMsg: Message = {
         id: `bot-${Date.now()}`,
@@ -46,7 +45,6 @@ export default function Chat() {
 
   return (
     <div className="flex flex-col h-full bg-lavender-50">
-      {/* 헤더 */}
       <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-100">
         <button
           onClick={() => navigate('/')}
@@ -58,7 +56,6 @@ export default function Chat() {
         <span className="font-semibold text-gray-800">알프레도</span>
       </div>
 
-      {/* 메시지 영역 */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 ? (
           <div className="text-center py-20">
@@ -96,7 +93,6 @@ export default function Chat() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* 입력 영역 */}
       <div className="p-4 bg-white border-t border-gray-100">
         <div className="flex items-center gap-2">
           <input
