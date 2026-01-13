@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-import { getTodayEvents, isGoogleAuthenticated, CalendarEvent } from '../services/calendar';
+import { getTodayEvents, CalendarEvent } from '../services/calendar';
 import { isGoogleConnected, startGoogleAuth } from '../services/auth';
 
 export default function CalendarPage() {
