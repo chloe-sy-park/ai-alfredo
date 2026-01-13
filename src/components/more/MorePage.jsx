@@ -4,7 +4,7 @@ import {
   ChevronRight, ExternalLink, Check, X, RefreshCw,
   Mail, HardDrive, MessageSquare, Bell, Shield, HelpCircle,
   Sparkles, Trophy, TrendingUp, Heart, Target, Flame, Download, Upload,
-  Moon, Sun, Loader2
+  Moon, Sun, Loader2, Activity
 } from 'lucide-react';
 
 // W2: 게이미피케이션
@@ -36,7 +36,8 @@ var MorePage = function(props) {
   var onConnect = props.onConnect;
   var onDisconnect = props.onDisconnect;
   var onOpenSettings = props.onOpenSettings;
-  var setView = props.setView;
+  // 🔧 FIX: onNavigate 사용 (setView 제거)
+  var onNavigate = props.onNavigate;
   
   // Defensive: merge with defaults
   var gameState = Object.assign({}, DEFAULT_GAME_STATE, props.gameState);
@@ -45,6 +46,11 @@ var MorePage = function(props) {
   var subPageState = useState(null);
   var currentSubPage = subPageState[0];
   var setSubPage = subPageState[1];
+  
+  // 토스트 상태
+  var toastState = useState(null);
+  var toast = toastState[0];
+  var setToast = toastState[1];
   
   // 게이미피케이션 훅
   var gamification = useGamification ? useGamification() : gameState;
@@ -67,6 +73,14 @@ var MorePage = function(props) {
   var textPrimary = darkMode ? 'text-gray-100' : 'text-gray-800';
   var textSecondary = darkMode ? 'text-gray-400' : 'text-gray-500';
   var borderColor = darkMode ? 'border-gray-700' : 'border-[#A996FF]/20';
+
+  // 토스트 표시 함수
+  var showToast = function(message) {
+    setToast(message);
+    setTimeout(function() {
+      setToast(null);
+    }, 2000);
+  };
 
   // 연동 서비스 목록 - Gmail은 특별 처리
   var services = [
@@ -129,6 +143,30 @@ var MorePage = function(props) {
       color: 'from-blue-400 to-blue-600',
       description: '백업 & 복원',
       onClick: function() { setSubPage('data'); }
+    }
+  ];
+
+  // 🆕 추가 메뉴 (페이지 이동)
+  var extraMenus = [
+    {
+      id: 'weekly_review',
+      name: '주간 리뷰',
+      icon: '📅',
+      color: 'from-orange-400 to-orange-600',
+      description: '한 주 돌아보기',
+      onClick: function() { 
+        if (onNavigate) onNavigate('WEEKLY_REVIEW');
+      }
+    },
+    {
+      id: 'energy_rhythm',
+      name: '에너지 리듬',
+      icon: '⚡',
+      color: 'from-yellow-400 to-yellow-600',
+      description: '생산성 패턴',
+      onClick: function() { 
+        if (onNavigate) onNavigate('ENERGY_RHYTHM');
+      }
     }
   ];
 
@@ -276,7 +314,7 @@ var MorePage = function(props) {
             <span className={textPrimary + ' font-bold'}>나의 인사이트</span>
           </div>
           
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-3 mb-3">
             {insightMenus.map(function(menu) {
               return (
                 <button
@@ -289,6 +327,27 @@ var MorePage = function(props) {
                   </div>
                   <p className={textPrimary + ' font-semibold text-sm'}>{menu.name}</p>
                   <p className={textSecondary + ' text-xs mt-0.5'}>{menu.description}</p>
+                </button>
+              );
+            })}
+          </div>
+          
+          {/* 🆕 추가 메뉴 (주간 리뷰, 에너지 리듬) */}
+          <div className="grid grid-cols-2 gap-3">
+            {extraMenus.map(function(menu) {
+              return (
+                <button
+                  key={menu.id}
+                  onClick={menu.onClick}
+                  className={(darkMode ? 'bg-gray-700/50 hover:bg-gray-700' : 'bg-gray-50 hover:bg-gray-100') + ' p-3 rounded-xl transition-all flex items-center gap-3 group'}
+                >
+                  <div className={'w-10 h-10 bg-gradient-to-br ' + menu.color + ' rounded-lg flex items-center justify-center text-lg shadow-sm group-hover:scale-105 transition-transform'}>
+                    {menu.icon}
+                  </div>
+                  <div className="text-left">
+                    <p className={textPrimary + ' font-semibold text-sm'}>{menu.name}</p>
+                    <p className={textSecondary + ' text-xs'}>{menu.description}</p>
+                  </div>
                 </button>
               );
             })}
@@ -459,7 +518,7 @@ var MorePage = function(props) {
             {[
               { icon: Bell, label: '알림 설정', onClick: onOpenSettings },
               { icon: Shield, label: '개인정보 보호', onClick: onOpenSettings },
-              { icon: HelpCircle, label: '도움말', onClick: function() {} }
+              { icon: HelpCircle, label: '도움말', onClick: function() { showToast('도움말 페이지 준비 중이에요 🐧'); } }
             ].map(function(item, index) {
               return (
                 <button
@@ -488,6 +547,15 @@ var MorePage = function(props) {
         </div>
 
       </div>
+      
+      {/* 🆕 토스트 알림 */}
+      {toast && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 animate-fade-in">
+          <div className="bg-gray-800 text-white px-4 py-2 rounded-full shadow-lg text-sm">
+            {toast}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
