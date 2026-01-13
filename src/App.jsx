@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
-  Home, Calendar, Briefcase, Heart, MoreHorizontal, MessageSquare,
-  Settings, X, Menu, Smile, Zap, Battery, Users, Plus, Edit3
+  Home, Calendar, Briefcase, Heart, MoreHorizontal
 } from 'lucide-react';
 
 // 페이지 컴포넌트
@@ -41,7 +40,6 @@ import { DayEndModal } from './components/common/FailureCareSystem';
 
 // 훅
 import { useGoogleCalendar } from './hooks/useGoogleCalendar';
-import { useSmartNotifications } from './hooks/useSmartNotifications';
 import { useTimeTracking } from './hooks/useTimeTracking';
 import { useDNAEngine } from './hooks/useDNAEngine';
 
@@ -73,7 +71,7 @@ function loadFromStorage(key, defaultValue) {
       return JSON.parse(stored);
     }
   } catch (e) {
-    console.warn('Failed to load from localStorage:', key, e);
+    // 로드 실패 시 기본값 반환
   }
   return defaultValue;
 }
@@ -83,34 +81,8 @@ function saveToStorage(key, value) {
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch (e) {
-    console.warn('Failed to save to localStorage:', key, e);
+    // 저장 실패 무시
   }
-}
-
-// 오늘 날짜 체크 헬퍼
-function isToday(dateString) {
-  if (!dateString) return false;
-  var today = new Date();
-  var date = new Date(dateString);
-  return today.toDateString() === date.toDateString();
-}
-
-// 날짜 포맷 헬퍼
-function formatDate(date) {
-  return date.toLocaleDateString('ko-KR', { 
-    month: 'short', 
-    day: 'numeric',
-    weekday: 'short'
-  });
-}
-
-function formatTime(dateString) {
-  if (!dateString) return '';
-  return new Date(dateString).toLocaleTimeString('ko-KR', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  });
 }
 
 // ============================================================
@@ -154,7 +126,6 @@ function App() {
   
   var projectsState = useState(mockProjects);
   var projects = projectsState[0];
-  var setProjects = projectsState[1];
   
   var routinesState = useState(function() {
     return loadFromStorage(STORAGE_KEYS.ROUTINES, mockRoutines);
@@ -164,7 +135,6 @@ function App() {
   
   var weatherState = useState(mockWeather);
   var weather = weatherState[0];
-  var setWeather = weatherState[1];
   
   var relationshipsState = useState(function() {
     return loadFromStorage(STORAGE_KEYS.RELATIONSHIPS, mockRelationships);
@@ -300,7 +270,6 @@ function App() {
   
   // 포커스 모드
   var focusModeState = useState(false);
-  var isFocusMode = focusModeState[0];
   var setIsFocusMode = focusModeState[1];
   
   var focusTaskState = useState(null);
@@ -312,11 +281,6 @@ function App() {
   var bodyDoublingTask = bodyDoublingTaskState[0];
   var setBodyDoublingTask = bodyDoublingTaskState[1];
   
-  // 플로팅 챗 상태
-  var showFloatingChatState = useState(false);
-  var showFloatingChat = showFloatingChatState[0];
-  var setShowFloatingChat = showFloatingChatState[1];
-  
   // ============================================================
   // Google 캘린더 연동
   // ============================================================
@@ -325,7 +289,6 @@ function App() {
   var events = googleCalendar.events;
   var isConnected = googleCalendar.isConnected;
   var isLoading = googleCalendar.isLoading;
-  var error = googleCalendar.error;
   var connect = googleCalendar.connect;
   var disconnect = googleCalendar.disconnect;
   var addEvent = googleCalendar.addEvent;
@@ -333,8 +296,8 @@ function App() {
   var deleteEvent = googleCalendar.deleteEvent;
   var refreshEvents = googleCalendar.refreshEvents;
   
-  // 시간 추적
-  var timeTracking = useTimeTracking();
+  // 시간 추적 (향후 사용 예정)
+  useTimeTracking();
   
   // 🧬 DNA 엔진 (캘린더 기반 인사이트) - 확장된 함수 추출
   var dnaEngine = useDNAEngine();
@@ -357,14 +320,6 @@ function App() {
   var getTodayEnergyDrain = dnaEngine.getTodayEnergyDrain;
   var getRecommendedActions = dnaEngine.getRecommendedActions;
   var getBriefingTone = dnaEngine.getBriefingTone;
-  
-  // 알림 훅 (넛지용 데이터)
-  var smartNotifications = useSmartNotifications({
-    tasks: tasks,
-    events: events,
-    mood: mood,
-    energy: energy
-  });
   
   // 오늘 완료한 태스크 수 계산
   var todayCompletedCount = useMemo(function() {
@@ -519,10 +474,6 @@ function App() {
   }, [connect]);
   
   // 네비게이션
-  var handleNavigate = useCallback(function(page) {
-    setCurrentPage(page);
-  }, []);
-  
   var handlePageChange = useCallback(function(newPage) {
     if (newPage !== 'CHAT') {
       setPreviousPage(currentPage);
@@ -756,10 +707,6 @@ function App() {
   }, []);
   
   // 넛지 관련
-  var handleShowNudge = useCallback(function(nudge) {
-    setCurrentNudge(nudge);
-  }, []);
-  
   var handleDismissNudge = useCallback(function() {
     setCurrentNudge(null);
   }, []);
@@ -782,21 +729,12 @@ function App() {
         setCurrentPage('CALENDAR');
         break;
       default:
-        console.log('Unknown nudge action:', action);
+        break;
     }
     handleDismissNudge();
   }, [handleOpenChat, handleStartFocus, handleStartBodyDoubling, handleOpenInbox]);
   
-  // Day End 모달
-  var handleOpenDayEnd = useCallback(function() {
-    setShowDayEndModal(true);
-  }, []);
-  
   // Google 연동
-  var handleConnectGoogle = useCallback(function() {
-    setShowGoogleAuth(true);
-  }, []);
-  
   var handleGoogleAuthSuccess = useCallback(function() {
     setShowGoogleAuth(false);
     refreshEvents();
