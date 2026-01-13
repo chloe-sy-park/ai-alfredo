@@ -117,7 +117,7 @@ export function useHabits(autoFetch) {
         frequency: 'daily',
         is_active: true,
         current_streak: 0,
-        longest_streak: 0,
+        best_streak: 0,
         total_completions: 0
       }, data);
 
@@ -144,7 +144,7 @@ export function useHabits(autoFetch) {
         return updated;
       });
 
-      console.log('✅ 습관 생성:', newHabit.name);
+      console.log('✅ 습관 생성:', newHabit.title);
       return newHabit;
     } catch (e) {
       console.error('Habit create failed:', e);
@@ -184,7 +184,7 @@ export function useHabits(autoFetch) {
         return updated;
       });
 
-      console.log('✅ 습관 수정:', updatedHabit.name);
+      console.log('✅ 습관 수정:', updatedHabit.title);
       return updatedHabit;
     } catch (e) {
       console.error('Habit update failed:', e);
@@ -283,14 +283,14 @@ export function useHabits(autoFetch) {
         var habit = habits.find(function(h) { return h.id === id; });
         if (habit) {
           var newStreak = habit.current_streak + 1;
-          var newLongest = Math.max(habit.longest_streak, newStreak);
+          var newBest = Math.max(habit.best_streak || 0, newStreak);
           var newTotal = habit.total_completions + 1;
 
           await supabase
             .from('habits')
             .update({
               current_streak: newStreak,
-              longest_streak: newLongest,
+              best_streak: newBest,
               total_completions: newTotal
             })
             .eq('id', id);
@@ -321,7 +321,7 @@ export function useHabits(autoFetch) {
                 user_id: TEST_USER_ID,
                 amount: xpReward,
                 source: 'habit_complete',
-                description: '습관 완료: ' + habit.name + ' (' + newStreak + '일 연속)'
+                description: '습관 완료: ' + habit.title + ' (' + newStreak + '일 연속)'
               });
           }
 
@@ -333,7 +333,7 @@ export function useHabits(autoFetch) {
                   completed_today: true,
                   today_log: logData,
                   current_streak: newStreak,
-                  longest_streak: newLongest,
+                  best_streak: newBest,
                   total_completions: newTotal
                 });
               }
@@ -343,7 +343,7 @@ export function useHabits(autoFetch) {
             return updated;
           });
 
-          console.log('✅ 습관 완료 +' + xpReward + 'XP:', habit.name, '(' + newStreak + '일 연속)');
+          console.log('✅ 습관 완료 +' + xpReward + 'XP:', habit.title, '(' + newStreak + '일 연속)');
         }
       }
 
