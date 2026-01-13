@@ -5,7 +5,9 @@ import { supabase } from '../lib/supabase';
 // - Supabase 클라이언트 직접 사용 (Edge Function 없이)
 // - localStorage 백업
 // - 오프라인 지원
-// - Year in Pixels 스타일 시각화 데이터 제공
+
+// 테스트용 사용자 ID (실제 인증 구현 전까지 사용)
+var TEST_USER_ID = '00000000-0000-0000-0000-000000000001';
 
 // 컨디션 레벨 정의
 var CONDITION_LEVELS = {
@@ -124,6 +126,7 @@ export var useDailyConditions = function(options) {
         var { data, error: dbError } = await supabase
           .from('daily_conditions')
           .select('*')
+          .eq('user_id', TEST_USER_ID)
           .gte('log_date', getDateKey(startDate))
           .lte('log_date', getDateKey(endDate))
           .order('log_date', { ascending: false })
@@ -241,29 +244,52 @@ export var useDailyConditions = function(options) {
     // DB 저장 (비동기) - Supabase 직접 호출
     if (useDb) {
       try {
-        // UPSERT: 오늘 기록이 있으면 업데이트, 없으면 생성
-        var { data, error: dbError } = await supabase
+        // 먼저 오늘 기록이 있는지 확인
+        var { data: existing } = await supabase
           .from('daily_conditions')
-          .upsert({
-            log_date: dateKey,
-            energy_level: energy_level,
-            mood_level: mood_level,
-            focus_level: focus_level,
-            note: noteText || null,
-            updated_at: now.toISOString()
-          }, {
-            onConflict: 'user_id,log_date',
-            ignoreDuplicates: false
-          })
-          .select()
+          .select('id')
+          .eq('user_id', TEST_USER_ID)
+          .eq('log_date', dateKey)
           .single();
         
-        if (dbError) {
-          console.error('DB save error:', dbError);
-          // RLS 정책 때문에 실패할 수 있음 - 로컬에만 저장
+        var result;
+        
+        if (existing) {
+          // UPDATE
+          result = await supabase
+            .from('daily_conditions')
+            .update({
+              energy_level: energy_level,
+              mood_level: mood_level,
+              focus_level: focus_level,
+              note: noteText || null,
+              updated_at: now.toISOString()
+            })
+            .eq('id', existing.id)
+            .select()
+            .single();
+        } else {
+          // INSERT
+          result = await supabase
+            .from('daily_conditions')
+            .insert({
+              user_id: TEST_USER_ID,
+              log_date: dateKey,
+              energy_level: energy_level,
+              mood_level: mood_level,
+              focus_level: focus_level,
+              note: noteText || null
+            })
+            .select()
+            .single();
+        }
+        
+        if (result.error) {
+          console.error('DB save error:', result.error);
           addToSyncQueue({
             action: 'record',
             data: { 
+              user_id: TEST_USER_ID,
               log_date: dateKey, 
               energy_level: energy_level, 
               mood_level: mood_level, 
@@ -271,23 +297,24 @@ export var useDailyConditions = function(options) {
               note: noteText 
             }
           });
-        } else if (data) {
+        } else if (result.data) {
           // DB ID 업데이트
           setConditions(function(prev) {
             var updated = Object.assign({}, prev);
             if (updated[dateKey]) {
-              updated[dateKey].dbId = data.id;
+              updated[dateKey].dbId = result.data.id;
             }
             saveConditions(updated);
             return updated;
           });
-          console.log('✅ 컨디션 DB 저장 성공:', data);
+          console.log('✅ 컨디션 DB 저장 성공:', result.data);
         }
       } catch (e) {
         console.error('DB save failed, saved locally:', e);
         addToSyncQueue({
           action: 'record',
           data: { 
+            user_id: TEST_USER_ID,
             log_date: dateKey, 
             energy_level: energy_level, 
             mood_level: mood_level, 
@@ -576,10 +603,7 @@ export var useDailyConditions = function(options) {
         if (item.action === 'record') {
           var { error: dbError } = await supabase
             .from('daily_conditions')
-            .upsert(item.data, {
-              onConflict: 'user_id,log_date',
-              ignoreDuplicates: false
-            });
+            .insert(item.data);
           
           if (dbError) {
             failed.push(item);
