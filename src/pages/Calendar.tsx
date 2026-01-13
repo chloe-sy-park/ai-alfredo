@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Plus, RefreshCw } from 'lucide-react';
-import { getTodayEvents, getSelectedCalendars, CalendarEvent } from '../services/calendar';
+import { getEvents, getSelectedCalendars, CalendarEvent } from '../services/calendar';
 import { isGoogleConnected, startGoogleAuth } from '../services/auth';
 
 export default function CalendarPage() {
   var [currentDate, setCurrentDate] = useState(new Date());
-  var [events, setEvents] = useState<CalendarEvent[]>([]);
+  var [selectedDate, setSelectedDate] = useState(new Date());
+  var [monthEvents, setMonthEvents] = useState<CalendarEvent[]>([]);
   var [isLoading, setIsLoading] = useState(false);
   var [googleConnected, setGoogleConnected] = useState(false);
   var [selectedCount, setSelectedCount] = useState(0);
@@ -13,17 +14,22 @@ export default function CalendarPage() {
   var year = currentDate.getFullYear();
   var month = currentDate.getMonth();
 
-  // Fetch events function
-  var fetchEvents = useCallback(function() {
+  // Fetch month events
+  var fetchMonthEvents = useCallback(function() {
     var connected = isGoogleConnected();
     setGoogleConnected(connected);
     setSelectedCount(getSelectedCalendars().length);
     
     if (connected) {
       setIsLoading(true);
-      getTodayEvents()
+      
+      // 월의 시작과 끝
+      var startOfMonth = new Date(year, month, 1);
+      var endOfMonth = new Date(year, month + 1, 0, 23, 59, 59);
+      
+      getEvents(startOfMonth, endOfMonth)
         .then(function(data) {
-          setEvents(data);
+          setMonthEvents(data);
         })
         .catch(function(err) {
           console.error('Failed to fetch events:', err);
@@ -32,16 +38,15 @@ export default function CalendarPage() {
           setIsLoading(false);
         });
     }
-  }, []);
+  }, [year, month]);
 
   // Initial load and refresh on visibility change
   useEffect(function() {
-    fetchEvents();
+    fetchMonthEvents();
 
-    // Refresh when page becomes visible (tab switch)
     function handleVisibilityChange() {
       if (document.visibilityState === 'visible') {
-        fetchEvents();
+        fetchMonthEvents();
       }
     }
 
@@ -50,7 +55,25 @@ export default function CalendarPage() {
     return function() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [fetchEvents]);
+  }, [fetchMonthEvents]);
+
+  // Get events for a specific date
+  function getEventsForDate(date: Date): CalendarEvent[] {
+    var dateStr = date.toISOString().split('T')[0];
+    return monthEvents.filter(function(event) {
+      var eventDate = event.start.split('T')[0];
+      return eventDate === dateStr;
+    });
+  }
+
+  // Get selected date events
+  var selectedDateEvents = getEventsForDate(selectedDate);
+
+  // Check if date has events
+  function hasEvents(d: number): boolean {
+    var date = new Date(year, month, d);
+    return getEventsForDate(date).length > 0;
+  }
 
   // Get days in month
   function getDaysInMonth(y: number, m: number) {
@@ -75,6 +98,11 @@ export default function CalendarPage() {
     setCurrentDate(new Date(year, month + 1, 1));
   }
 
+  // Select date
+  function handleSelectDate(day: number) {
+    setSelectedDate(new Date(year, month, day));
+  }
+
   // Month name
   var monthNames = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
 
@@ -92,7 +120,8 @@ export default function CalendarPage() {
   // Days of month
   for (var d = 1; d <= daysInMonth; d++) {
     var isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === d;
-    calendarDays.push({ day: d, isToday: isToday, key: 'day-' + d });
+    var isSelected = selectedDate.getFullYear() === year && selectedDate.getMonth() === month && selectedDate.getDate() === d;
+    calendarDays.push({ day: d, isToday: isToday, isSelected: isSelected, hasEvents: hasEvents(d), key: 'day-' + d });
   }
 
   function handleConnectGoogle() {
@@ -103,7 +132,20 @@ export default function CalendarPage() {
   }
 
   function handleRefresh() {
-    fetchEvents();
+    fetchMonthEvents();
+  }
+
+  // Format selected date
+  function formatSelectedDate() {
+    var m = selectedDate.getMonth() + 1;
+    var d = selectedDate.getDate();
+    var dayOfWeek = ['일', '월', '화', '수', '목', '금', '토'][selectedDate.getDay()];
+    
+    var isToday = selectedDate.toDateString() === today.toDateString();
+    if (isToday) {
+      return '오늘 (' + m + '/' + d + ' ' + dayOfWeek + ')';
+    }
+    return m + '월 ' + d + '일 ' + dayOfWeek + '요일';
   }
 
   return (
@@ -140,30 +182,44 @@ export default function CalendarPage() {
           <div className="grid grid-cols-7 gap-1">
             {calendarDays.map(function(item) {
               if (item.day === null) {
-                return <div key={item.key} className="h-10" />;
+                return <div key={item.key} className="h-12" />;
               }
+              
+              var bgClass = '';
+              if (item.isSelected) {
+                bgClass = 'bg-lavender-400 text-white font-bold';
+              } else if (item.isToday) {
+                bgClass = 'bg-lavender-100 text-lavender-600 font-bold';
+              } else {
+                bgClass = 'hover:bg-lavender-50';
+              }
+              
               return (
                 <button
                   key={item.key}
-                  className={'h-10 rounded-full flex items-center justify-center text-sm transition-colors ' +
-                    (item.isToday 
-                      ? 'bg-lavender-400 text-white font-bold' 
-                      : 'hover:bg-lavender-50')}
+                  onClick={function() { handleSelectDate(item.day as number); }}
+                  className={'h-12 rounded-xl flex flex-col items-center justify-center text-sm transition-colors ' + bgClass}
                 >
-                  {item.day}
+                  <span>{item.day}</span>
+                  {item.hasEvents && !item.isSelected && (
+                    <span className="w-1 h-1 bg-lavender-400 rounded-full mt-0.5" />
+                  )}
+                  {item.hasEvents && item.isSelected && (
+                    <span className="w-1 h-1 bg-white rounded-full mt-0.5" />
+                  )}
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Today's Events */}
+        {/* Selected Date Events */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h2 className="font-semibold">오늘 일정</h2>
+              <h2 className="font-semibold">{formatSelectedDate()}</h2>
               {googleConnected && selectedCount > 0 && (
-                <p className="text-xs text-gray-400">{selectedCount}개 캘린더에서</p>
+                <p className="text-xs text-gray-400">{selectedCount}개 캘린더</p>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -198,13 +254,13 @@ export default function CalendarPage() {
             <div className="text-center py-6 text-gray-400">
               일정 불러오는 중...
             </div>
-          ) : events.length === 0 ? (
+          ) : selectedDateEvents.length === 0 ? (
             <div className="text-center py-6 text-gray-400">
-              오늘 일정이 없어요 🎉
+              일정이 없어요 🎉
             </div>
           ) : (
             <div className="space-y-2">
-              {events.map(function(event) {
+              {selectedDateEvents.map(function(event) {
                 var time = event.allDay 
                   ? '종일' 
                   : new Date(event.start).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
