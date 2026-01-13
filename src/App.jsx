@@ -31,6 +31,7 @@ import QuickCaptureModal from './components/modals/QuickCaptureModal';
 import GoogleAuthModal from './components/modals/GoogleAuthModal';
 import MoodLogModal from './components/modals/MoodLogModal';
 import JournalModal from './components/modals/JournalModal';
+import HealthEditModal from './components/modals/HealthEditModal';
 
 // 알림 - AlfredoNudge로 통합
 import AlfredoNudge from './components/common/AlfredoNudge';
@@ -450,15 +451,10 @@ function App() {
   
   // 🐧 온보딩 완료 핸들러 (W2)
   var handleOnboardingComplete = useCallback(function(data) {
-    // 완료 상태 저장
     localStorage.setItem(STORAGE_KEYS.ONBOARDING_COMPLETE, 'true');
-    
-    // 컨디션 저장
     if (data && data.condition) {
       handleUpdateCondition(data.condition);
     }
-    
-    // 온보딩 닫기
     setShowOnboarding(false);
   }, [handleUpdateCondition]);
   
@@ -474,7 +470,6 @@ function App() {
     setCurrentPage(page);
   }, []);
   
-  // 페이지 변경 시 이전 페이지 저장
   var handlePageChange = useCallback(function(newPage) {
     if (newPage !== 'CHAT') {
       setPreviousPage(currentPage);
@@ -482,13 +477,11 @@ function App() {
     setCurrentPage(newPage);
   }, [currentPage]);
   
-  // 채팅 열기
   var handleOpenChat = useCallback(function() {
     setPreviousPage(currentPage);
     setCurrentPage('CHAT');
   }, [currentPage]);
   
-  // 채팅 닫기
   var handleCloseChat = useCallback(function() {
     setCurrentPage(previousPage);
   }, [previousPage]);
@@ -588,17 +581,14 @@ function App() {
     setShowRoutineModal(true);
   }, []);
   
-  // 🆕 루틴 저장 (isEditing 파라미터 추가)
   var handleSaveRoutine = useCallback(function(routine, isEditing) {
     if (isEditing) {
-      // 기존 루틴 업데이트
       setRoutines(function(prev) {
         return prev.map(function(r) {
           return r.id === routine.id ? routine : r;
         });
       });
     } else {
-      // 새 루틴 추가
       setRoutines(function(prev) { return prev.concat([routine]); });
     }
   }, []);
@@ -654,7 +644,6 @@ function App() {
     setMoodLogs(function(prev) {
       return [log].concat(prev);
     });
-    // 기분/에너지도 업데이트
     handleUpdateMoodEnergy({
       mood: log.mood,
       energy: log.energy
@@ -722,7 +711,6 @@ function App() {
     setCurrentNudge(null);
   }, []);
   
-  // 넛지 액션 처리
   var handleNudgeAction = useCallback(function(action) {
     switch(action) {
       case 'open_chat':
@@ -770,7 +758,6 @@ function App() {
     });
   }, []);
   
-  // 관계 추가
   var handleAddRelationship = useCallback(function(newRelationship) {
     var relationshipWithId = Object.assign({}, newRelationship, {
       id: Date.now()
@@ -778,7 +765,6 @@ function App() {
     setRelationships(function(prev) { return prev.concat([relationshipWithId]); });
   }, []);
   
-  // 관계 삭제
   var handleDeleteRelationship = useCallback(function(relationshipId) {
     setRelationships(function(prev) {
       return prev.filter(function(r) { return r.id !== relationshipId; });
@@ -806,7 +792,6 @@ function App() {
   // 렌더링
   // ============================================================
   
-  // 🐧 온보딩 표시 (W2 - 첫 방문 시)
   if (showOnboarding) {
     return React.createElement(Onboarding, {
       onComplete: handleOnboardingComplete,
@@ -817,7 +802,6 @@ function App() {
     });
   }
   
-  // 메인 콘텐츠 렌더링
   var renderContent = function() {
     switch(currentPage) {
       case 'HOME':
@@ -836,7 +820,6 @@ function App() {
           onOpenReminder: handleOpenReminder,
           isGoogleConnected: isConnected,
           onConnectGoogle: function() { setShowGoogleAuth(true); },
-          // 🧬 DNA 인사이트
           dnaProfile: dnaProfile,
           dnaSuggestions: dnaSuggestions,
           dnaAnalysisPhase: dnaAnalysisPhase,
@@ -917,7 +900,6 @@ function App() {
           onToggleTask: handleToggleTask,
           onStartFocus: handleStartFocus,
           onStartBodyDoubling: handleStartBodyDoubling,
-          // 🧬 DNA 인사이트 전달
           dnaProfile: dnaProfile,
           getChronotype: getChronotype,
           getStressLevel: getStressLevel,
@@ -1023,7 +1005,6 @@ function App() {
     }
   };
   
-  // 네비게이션 아이템
   var navItems = [
     { id: 'HOME', icon: Home, label: '홈' },
     { id: 'CALENDAR', icon: Calendar, label: '캘린더' },
@@ -1032,7 +1013,6 @@ function App() {
     { id: 'MORE', icon: MoreHorizontal, label: '더보기' }
   ];
   
-  // 네비게이션 바 렌더링 조건
   var showNavBar = ['HOME', 'CALENDAR', 'WORK', 'LIFE', 'MORE'].includes(currentPage);
   
   return React.createElement('div', {
@@ -1043,7 +1023,6 @@ function App() {
       flexDirection: 'column'
     }
   },
-    // 메인 콘텐츠
     React.createElement('main', {
       style: {
         flex: 1,
@@ -1051,7 +1030,6 @@ function App() {
       }
     }, renderContent()),
     
-    // 하단 네비게이션 (특정 페이지에서만)
     showNavBar && React.createElement('nav', {
       style: {
         position: 'fixed',
@@ -1103,17 +1081,13 @@ function App() {
       })
     ),
     
-    // 넛지 알림
     currentNudge && React.createElement(AlfredoNudge, {
       nudge: currentNudge,
       onDismiss: handleDismissNudge,
       onAction: handleNudgeAction
     }),
     
-    // ============================================================
     // 모달들
-    // ============================================================
-    
     React.createElement(AddTaskModal, {
       isOpen: showAddTaskModal,
       onAdd: handleAddTask,
@@ -1143,7 +1117,6 @@ function App() {
       }
     }),
     
-    // 🆕 루틴 관리 모달 (새 버전)
     React.createElement(RoutineManageModal, {
       isOpen: showRoutineModal,
       routines: routines,
@@ -1176,7 +1149,6 @@ function App() {
       onClose: function() { setShowDayEndModal(false); }
     }),
     
-    // 🆕 기분 기록 모달
     React.createElement(MoodLogModal, {
       isOpen: showMoodLogModal,
       onClose: function() { setShowMoodLogModal(false); },
@@ -1185,11 +1157,18 @@ function App() {
       currentEnergy: energy
     }),
     
-    // 🆕 일기 모달
     React.createElement(JournalModal, {
       isOpen: showJournalModal,
       onClose: function() { setShowJournalModal(false); },
       onSave: handleSaveJournal
+    }),
+    
+    // 🆕 건강 편집 모달
+    React.createElement(HealthEditModal, {
+      isOpen: showHealthEditModal,
+      onClose: function() { setShowHealthEditModal(false); },
+      onSave: handleSaveHealth,
+      healthData: healthData
     })
   );
 }
