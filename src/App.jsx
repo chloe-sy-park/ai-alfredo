@@ -331,7 +331,7 @@ function App() {
   // 시간 추적
   var timeTracking = useTimeTracking();
   
-  // 🧬 DNA 엔진 (캘린더 기반 인사이트)
+  // 🧬 DNA 엔진 (캘린더 기반 인사이트) - 확장된 함수 추출
   var dnaEngine = useDNAEngine();
   var dnaProfile = dnaEngine.profile;
   var dnaSuggestions = dnaEngine.suggestions;
@@ -343,6 +343,15 @@ function App() {
   var getBestFocusTime = dnaEngine.getBestFocusTime;
   var getPeakHours = dnaEngine.getPeakHours;
   var getChronotype = dnaEngine.getChronotype;
+  // 🆕 DNA 자동 분석용 추가 함수
+  var analyzeCalendar = dnaEngine.analyzeCalendar;
+  var todayContext = dnaEngine.todayContext;
+  var refreshTodayContext = dnaEngine.refreshTodayContext;
+  var getSpecialAlerts = dnaEngine.getSpecialAlerts;
+  var getBurnoutWarning = dnaEngine.getBurnoutWarning;
+  var getTodayEnergyDrain = dnaEngine.getTodayEnergyDrain;
+  var getRecommendedActions = dnaEngine.getRecommendedActions;
+  var getBriefingTone = dnaEngine.getBriefingTone;
   
   // 알림 훅 (넛지용 데이터)
   var smartNotifications = useSmartNotifications({
@@ -359,6 +368,37 @@ function App() {
       return t.completed && t.completedAt && new Date(t.completedAt).toDateString() === today;
     }).length;
   }, [tasks]);
+  
+  // ============================================================
+  // 🧬 DNA 자동 분석 Effects
+  // ============================================================
+  
+  // events 변경 시 DNA 자동 분석
+  useEffect(function() {
+    if (events && events.length > 0 && analyzeCalendar && !isAnalyzingDNA) {
+      var calendarEvents = events.map(function(e) {
+        return {
+          id: e.id || String(Date.now()),
+          title: e.title || e.summary || '',
+          start: new Date(e.start || e.startTime),
+          end: new Date(e.end || e.endTime),
+          isAllDay: e.isAllDay || false,
+          location: e.location || '',
+          description: e.description || ''
+        };
+      });
+      analyzeCalendar(calendarEvents);
+    }
+  }, [events, analyzeCalendar, isAnalyzingDNA]);
+  
+  // 매 시간 todayContext 새로고침
+  useEffect(function() {
+    if (!refreshTodayContext) return;
+    var interval = setInterval(function() {
+      refreshTodayContext();
+    }, 60 * 60 * 1000); // 1시간
+    return function() { clearInterval(interval); };
+  }, [refreshTodayContext]);
   
   // ============================================================
   // 데이터 저장 Effects
@@ -820,6 +860,7 @@ function App() {
           onOpenReminder: handleOpenReminder,
           isGoogleConnected: isConnected,
           onConnectGoogle: function() { setShowGoogleAuth(true); },
+          // 기존 DNA props
           dnaProfile: dnaProfile,
           dnaSuggestions: dnaSuggestions,
           dnaAnalysisPhase: dnaAnalysisPhase,
@@ -828,7 +869,14 @@ function App() {
           getStressLevel: getStressLevel,
           getBestFocusTime: getBestFocusTime,
           getPeakHours: getPeakHours,
-          getChronotype: getChronotype
+          getChronotype: getChronotype,
+          // 🆕 DNA 확장 props
+          todayContext: todayContext,
+          getSpecialAlerts: getSpecialAlerts,
+          getBurnoutWarning: getBurnoutWarning,
+          getTodayEnergyDrain: getTodayEnergyDrain,
+          getRecommendedActions: getRecommendedActions,
+          getBriefingTone: getBriefingTone
         }));
         
       case 'WORK':
