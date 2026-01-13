@@ -2,79 +2,90 @@ import React from 'react';
 import BriefingCard from '../core/BriefingCard';
 import PriorityStack from '../core/PriorityStack';
 import Timeline from '../core/Timeline';
-import LifeFactors from '../life/LifeFactors';
-import RelationshipReminder from '../life/RelationshipReminder';
+import { TrendingUp, TrendingDown, Minus, Heart } from 'lucide-react';
 
 /**
  * LifeHome - LIFE 모드 홈 화면
- * 
- * 스펙:
- * - 나를 소모하지 않으면서 하루를 잘 굴리도록 돕는다
- * 
- * Must Show:
- * - L1. Alfredo LIFE Briefing
- * - L2. Life Priority (오늘 꼭 챙겨야 할 개인 항목)
- * - L3. Life Factors Overview (습관/건강/취미/개인목표)
- * - L4. Relationship Reminders (이름 직접 언급)
- * - L5. Life Timeline (개인 일정 강조, 업무는 흐리게)
- * 
- * Must NOT Show:
- * - 업무 프로젝트
- * - KPI, 완료율
- * - 생산성 점수
  */
-
-function LifeHome(props) {
-  var briefing = props.briefing;
-  var priorities = props.priorities || [];
-  var lifeFactors = props.lifeFactors || [];
-  var relationships = props.relationships || [];
-  var timelineItems = props.timelineItems || [];
-  var onMoreBriefing = props.onMoreBriefing;
-  var onPriorityClick = props.onPriorityClick;
-  var onRelationshipClick = props.onRelationshipClick;
-  var onTimelineClick = props.onTimelineClick;
+function LifeHome({
+  briefing,
+  priorities = [],
+  lifeFactors = [],
+  relationships = [],
+  timelineItems = [],
+  onMoreBriefing,
+  onPriorityClick
+}) {
+  const getSignalIcon = (signal) => {
+    switch(signal) {
+      case 'up': return <TrendingUp size={14} className="text-green-500" />;
+      case 'down': return <TrendingDown size={14} className="text-red-500" />;
+      default: return <Minus size={14} className="text-neutral-400" />;
+    }
+  };
   
-  return React.createElement('div', {
-    className: 'space-y-4'
-  },
-    // L1. Briefing Card
-    React.createElement(BriefingCard, {
-      variant: briefing.variant || 'default',
-      headline: briefing.headline,
-      subline: briefing.subline,
-      hasMore: true,
-      onMore: onMoreBriefing,
-      hintBadge: briefing.hintBadge
-    }),
-    
-    // L2. Life Priority
-    React.createElement(PriorityStack, {
-      items: priorities.map(function(p) {
-        return Object.assign({}, p, { sourceTag: 'LIFE' });
-      }),
-      variant: 'top3',
-      onItemClick: onPriorityClick
-    }),
-    
-    // L3. Life Factors
-    lifeFactors.length > 0 && React.createElement(LifeFactors, {
-      items: lifeFactors
-    }),
-    
-    // L4. Relationship Reminders
-    relationships.length > 0 && React.createElement(RelationshipReminder, {
-      reminders: relationships,
-      onOpen: onRelationshipClick
-    }),
-    
-    // L5. Life Timeline
-    React.createElement(Timeline, {
-      items: timelineItems,
-      mode: 'life',
-      title: '오늘 일정',
-      onItemClick: onTimelineClick
-    })
+  return (
+    <div className="space-y-4">
+      {/* L1. Briefing Card */}
+      <BriefingCard
+        variant={briefing?.variant || 'default'}
+        headline={briefing?.headline}
+        subline={briefing?.subline}
+        hasMore={true}
+        onMore={onMoreBriefing}
+      />
+      
+      {/* L2. Priority Stack (LIFE only) */}
+      <PriorityStack
+        items={priorities}
+        variant="top3"
+        onItemClick={onPriorityClick}
+      />
+      
+      {/* L3. Life Factors */}
+      {lifeFactors.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-card overflow-hidden">
+          <div className="p-3 border-b border-neutral-100">
+            <h3 className="text-sm font-medium text-neutral-500">컨디션 요소</h3>
+          </div>
+          <div className="p-4 grid grid-cols-2 gap-3">
+            {lifeFactors.map((factor) => (
+              <div key={factor.id} className="flex items-center gap-2 p-2 bg-neutral-50 rounded-xl">
+                {getSignalIcon(factor.signal)}
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-neutral-700">{factor.label}</p>
+                  <p className="text-xs text-neutral-400 truncate">{factor.statusText}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* L4. Relationship Reminder */}
+      {relationships.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-card overflow-hidden">
+          <div className="p-3 border-b border-neutral-100 flex items-center gap-2">
+            <Heart size={14} className="text-pink-400" />
+            <h3 className="text-sm font-medium text-neutral-500">연락해볼까요?</h3>
+          </div>
+          <div className="p-4 space-y-3">
+            {relationships.map((person, idx) => (
+              <div key={idx} className="flex items-center justify-between">
+                <span className="font-medium text-neutral-700">{person.name}</span>
+                <span className="text-sm text-neutral-400">{person.reason}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* L5. Timeline (LIFE events) */}
+      <Timeline
+        items={timelineItems}
+        mode="life"
+      />
+    </div>
   );
 }
 

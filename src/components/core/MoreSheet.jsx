@@ -1,120 +1,55 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import { X } from 'lucide-react';
 
 /**
- * MoreSheet - 근거/상세를 인라인 확장(시트)
- * 
- * 스펙:
- * - 페이지 이동 금지
- * - 이유는 절대 기본 렌더링 금지
- * - Why/What/Trade-off 섹션
+ * MoreSheet - 판단 근거 바텀시트
  */
-
-function MoreSheet(props) {
-  var isOpen = props.isOpen;
-  var title = props.title || '판단 근거';
-  var sections = props.sections || [];
-  var onClose = props.onClose;
-  
-  var sheetRef = useRef(null);
-  
-  // 바깥 클릭 시 닫기
-  useEffect(function() {
-    var handleClickOutside = function(event) {
-      if (sheetRef.current && !sheetRef.current.contains(event.target)) {
-        onClose && onClose();
-      }
-    };
-    
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      // 스크롤 잠금
-      document.body.style.overflow = 'hidden';
-    }
-    
-    return function() {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.body.style.overflow = '';
-    };
-  }, [isOpen, onClose]);
-  
+function MoreSheet({ isOpen, title, sections = [], onClose }) {
   if (!isOpen) return null;
   
-  return React.createElement('div', {
-    className: 'fixed inset-0 z-50 flex items-end justify-center'
-  },
-    // 배경 오버레이
-    React.createElement('div', {
-      className: 'absolute inset-0 bg-black/30 animate-fade-in'
-    }),
-    
-    // 시트
-    React.createElement('div', {
-      ref: sheetRef,
-      className: [
-        'relative w-full max-w-mobile',
-        'bg-white rounded-t-card-lg',
-        'shadow-sheet',
-        'animate-slide-up',
-        'max-h-[80vh] overflow-y-auto'
-      ].join(' ')
-    },
-      // 핸들바
-      React.createElement('div', {
-        className: 'sticky top-0 bg-white pt-3 pb-2 px-4 border-b border-neutral-100'
-      },
-        React.createElement('div', {
-          className: 'w-10 h-1 bg-neutral-200 rounded-full mx-auto mb-3'
-        }),
-        
-        // 헤더
-        React.createElement('div', {
-          className: 'flex items-center justify-between'
-        },
-          React.createElement('h2', {
-            className: 'text-lg font-semibold text-neutral-800'
-          }, title),
-          
-          React.createElement('button', {
-            onClick: onClose,
-            className: [
-              'w-8 h-8 rounded-full',
-              'flex items-center justify-center',
-              'text-neutral-400 hover:text-neutral-600',
-              'hover:bg-neutral-100',
-              'transition-colors duration-normal'
-            ].join(' ')
-          },
-            React.createElement(X, { size: 18 })
-          )
-        )
-      ),
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-200"
+        onClick={onClose}
+      />
       
-      // 섹션들
-      React.createElement('div', { className: 'p-4 space-y-4' },
-        sections.map(function(section, index) {
-          return React.createElement('div', {
-            key: index,
-            className: 'space-y-2'
-          },
-            // 섹션 라벨
-            React.createElement('p', {
-              className: 'text-sm font-medium text-primary'
-            }, section.label),
-            
-            // 섹션 아이템들
-            React.createElement('div', { className: 'space-y-1.5' },
-              section.items.map(function(item, itemIndex) {
-                return React.createElement('p', {
-                  key: itemIndex,
-                  className: 'text-md text-neutral-700 leading-relaxed'
-                }, item);
-              })
-            )
-          );
-        })
-      )
-    )
+      {/* Sheet */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-h-[80vh] overflow-hidden animate-slideUp">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-neutral-100">
+          <h2 className="text-lg font-semibold text-neutral-800">{title}</h2>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
+          >
+            <X size={20} />
+          </button>
+        </div>
+        
+        {/* Content */}
+        <div className="p-4 overflow-y-auto max-h-[calc(80vh-60px)] space-y-6">
+          {sections.map((section, idx) => (
+            <div key={idx}>
+              <h3 className="text-sm font-medium text-neutral-500 mb-2">
+                {section.label}
+              </h3>
+              <ul className="space-y-2">
+                {section.items.map((item, itemIdx) => (
+                  <li
+                    key={itemIdx}
+                    className="text-neutral-700 pl-3 border-l-2 border-primary/30"
+                  >
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
   );
 }
 
