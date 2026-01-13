@@ -71,7 +71,7 @@ interface PenguinState {
   clearError: () => void;
 }
 
-export const usePenguinStore = create<PenguinState>((set, get) => ({
+export const usePenguinStore = create<PenguinState>((set) => ({
   status: DEFAULT_PENGUIN_STATUS, // 기본값으로 시작
   shopItems: [],
   inventory: [],
@@ -100,12 +100,12 @@ export const usePenguinStore = create<PenguinState>((set, get) => ({
     set({ inventory: [] });
   },
 
-  buyItem: async (itemId) => {
+  buyItem: async (_itemId: string) => {
     console.log('🛒 구매 기능은 DB 연결 후 사용 가능');
     return false;
   },
 
-  equipItem: async (itemId, equip = true) => {
+  equipItem: async (_itemId: string, _equip = true) => {
     console.log('👔 장착 기능은 DB 연결 후 사용 가능');
     return false;
   },
