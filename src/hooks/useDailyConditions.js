@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { dailyConditionsApi, DailyCondition } from '../lib/api';
+import { dailyConditionsApi } from '../lib/api';
 
 // 📊 Daily Conditions Hook (Hybrid Mode)
 // - API 우선 + localStorage 백업
@@ -16,21 +16,11 @@ var CONDITION_LEVELS = {
   5: { emoji: '😊', label: '좋아요!', color: '#a855f7' }     // purple-500
 };
 
-// 무드 → 레벨 매핑
-var MOOD_TO_LEVEL = {
-  'bad': 1,
-  'low': 2,
-  'neutral': 3,
-  'good': 4,
-  'great': 5
-};
-
-var LEVEL_TO_MOOD = {
-  1: 'bad',
-  2: 'low',
-  3: 'neutral',
-  4: 'good',
-  5: 'great'
+// 레벨 라벨
+var LEVEL_LABELS = {
+  energy: { 1: '피곤', 2: '나른', 3: '보통', 4: '활기', 5: '최상' },
+  mood: { 1: '우울', 2: '가라앉음', 3: '평온', 4: '좋음', 5: '행복' },
+  focus: { 1: '산만', 2: '흐릿', 3: '보통', 4: '집중', 5: '몰입' }
 };
 
 // 요일 이름
@@ -141,21 +131,31 @@ export var useDailyConditions = function(options) {
           // API 데이터를 로컬 형식으로 변환
           var apiData = {};
           response.data.forEach(function(item) {
-            var date = new Date(item.date);
-            apiData[item.date] = {
-              date: item.date,
+            var date = new Date(item.log_date);
+            // 평균 레벨 계산 (energy, mood, focus의 평균)
+            var avgLevel = Math.round(
+              ((item.energy_level || 3) + (item.mood_level || 3) + (item.focus_level || 3)) / 3
+            );
+            
+            apiData[item.log_date] = {
+              date: item.log_date,
               dayOfWeek: date.getDay(),
-              mainLevel: item.energy_level,
-              mood: item.mood,
-              physical_state: item.physical_state,
-              notes: item.notes,
+              mainLevel: avgLevel,
+              energy_level: item.energy_level,
+              mood_level: item.mood_level,
+              focus_level: item.focus_level,
+              factors: item.factors || [],
+              note: item.note,
               records: [{
                 time: item.created_at,
                 timeOfDay: getTimeOfDay(new Date(item.created_at)),
-                level: item.energy_level,
-                note: item.notes || ''
+                level: avgLevel,
+                energy: item.energy_level,
+                mood: item.mood_level,
+                focus: item.focus_level,
+                note: item.note || ''
               }],
-              apiId: item.id // API ID 저장
+              apiId: item.id
             };
           });
           
@@ -177,18 +177,40 @@ export var useDailyConditions = function(options) {
   }, [useApi]);
   
   // 컨디션 기록 (Hybrid)
-  var recordCondition = useCallback(async function(level, note) {
+  // level: 1-5 (간단 기록용, energy_level로 사용)
+  // 또는 { energy_level, mood_level, focus_level } 객체
+  var recordCondition = useCallback(async function(levelOrData, note) {
     var now = new Date();
     var dateKey = getDateKey(now);
     var timeOfDay = getTimeOfDay(now);
-    var mood = LEVEL_TO_MOOD[level] || 'neutral';
+    
+    // 입력 형태 판단
+    var energy_level, mood_level, focus_level;
+    var noteText = note;
+    
+    if (typeof levelOrData === 'object') {
+      energy_level = levelOrData.energy_level || 3;
+      mood_level = levelOrData.mood_level || 3;
+      focus_level = levelOrData.focus_level || 3;
+      noteText = levelOrData.note || note;
+    } else {
+      // 단일 레벨로 입력 시 세 가지 모두 같은 값
+      energy_level = levelOrData;
+      mood_level = levelOrData;
+      focus_level = levelOrData;
+    }
+    
+    var avgLevel = Math.round((energy_level + mood_level + focus_level) / 3);
     
     // 로컬 저장 (즉시)
     var localRecord = {
       time: now.toISOString(),
       timeOfDay: timeOfDay,
-      level: level,
-      note: note || ''
+      level: avgLevel,
+      energy: energy_level,
+      mood: mood_level,
+      focus: focus_level,
+      note: noteText || ''
     };
     
     setConditions(function(prev) {
@@ -203,8 +225,10 @@ export var useDailyConditions = function(options) {
       }
       
       updated[dateKey].records.push(localRecord);
-      updated[dateKey].mainLevel = level;
-      updated[dateKey].mood = mood;
+      updated[dateKey].mainLevel = avgLevel;
+      updated[dateKey].energy_level = energy_level;
+      updated[dateKey].mood_level = mood_level;
+      updated[dateKey].focus_level = focus_level;
       
       saveConditions(updated);
       return updated;
@@ -214,10 +238,11 @@ export var useDailyConditions = function(options) {
     if (useApi) {
       try {
         var response = await dailyConditionsApi.record({
-          date: dateKey,
-          energy_level: level,
-          mood: mood,
-          notes: note || undefined
+          log_date: dateKey,
+          energy_level: energy_level,
+          mood_level: mood_level,
+          focus_level: focus_level,
+          note: noteText || undefined
         });
         
         if (response.success && response.data) {
@@ -235,12 +260,18 @@ export var useDailyConditions = function(options) {
         console.error('API save failed, queued for sync:', e);
         addToSyncQueue({
           action: 'record',
-          data: { date: dateKey, energy_level: level, mood: mood, notes: note }
+          data: { 
+            log_date: dateKey, 
+            energy_level: energy_level, 
+            mood_level: mood_level, 
+            focus_level: focus_level, 
+            note: noteText 
+          }
         });
       }
     }
     
-    return { dateKey: dateKey, level: level };
+    return { dateKey: dateKey, level: avgLevel };
   }, [useApi]);
   
   // 오늘 컨디션 가져오기
@@ -254,7 +285,9 @@ export var useDailyConditions = function(options) {
     
     return {
       level: todayData.mainLevel,
-      mood: todayData.mood,
+      energy_level: todayData.energy_level,
+      mood_level: todayData.mood_level,
+      focus_level: todayData.focus_level,
       records: todayData.records,
       lastRecord: todayData.records[todayData.records.length - 1]
     };
@@ -283,7 +316,9 @@ export var useDailyConditions = function(options) {
         dayOfWeek: date.getDay(),
         dayName: DAY_NAMES[date.getDay()],
         level: data ? data.mainLevel : null,
-        mood: data ? data.mood : null,
+        energy_level: data ? data.energy_level : null,
+        mood_level: data ? data.mood_level : null,
+        focus_level: data ? data.focus_level : null,
         hasRecord: !!data
       });
     }
@@ -544,6 +579,7 @@ export var useDailyConditions = function(options) {
     isLoading: isLoading,
     error: error,
     CONDITION_LEVELS: CONDITION_LEVELS,
+    LEVEL_LABELS: LEVEL_LABELS,
     
     // 기록 함수
     recordCondition: recordCondition,
