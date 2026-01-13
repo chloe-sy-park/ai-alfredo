@@ -29,6 +29,8 @@ import RoutineManagerModal from './components/modals/RoutineManagerModal';
 import SearchModal from './components/modals/SearchModal';
 import QuickCaptureModal from './components/modals/QuickCaptureModal';
 import GoogleAuthModal from './components/modals/GoogleAuthModal';
+import MoodLogModal from './components/modals/MoodLogModal';
+import JournalModal from './components/modals/JournalModal';
 
 // 알림 - AlfredoNudge로 통합
 import AlfredoNudge from './components/common/AlfredoNudge';
@@ -57,7 +59,9 @@ var STORAGE_KEYS = {
   USER_SETTINGS: 'lifebutler_user_settings',
   MOOD_ENERGY: 'lifebutler_mood_energy',
   STREAK_DATA: 'lifebutler_streak_data',
-  ONBOARDING_COMPLETE: 'lifebutler_onboarding_complete'
+  ONBOARDING_COMPLETE: 'lifebutler_onboarding_complete',
+  JOURNAL_ENTRIES: 'lifebutler_journal_entries',
+  MOOD_LOGS: 'lifebutler_mood_logs'
 };
 
 // localStorage에서 데이터 로드
@@ -206,6 +210,20 @@ function App() {
   var energy = moodEnergy.energy;
   var condition = moodEnergy.condition;
   
+  // 일기 기록
+  var journalEntriesState = useState(function() {
+    return loadFromStorage(STORAGE_KEYS.JOURNAL_ENTRIES, []);
+  });
+  var journalEntries = journalEntriesState[0];
+  var setJournalEntries = journalEntriesState[1];
+  
+  // 기분 로그
+  var moodLogsState = useState(function() {
+    return loadFromStorage(STORAGE_KEYS.MOOD_LOGS, []);
+  });
+  var moodLogs = moodLogsState[0];
+  var setMoodLogs = moodLogsState[1];
+  
   // 스트릭 데이터
   var streakState = useState(function() {
     return loadFromStorage(STORAGE_KEYS.STREAK_DATA, {
@@ -250,6 +268,15 @@ function App() {
   var showDayEndModalState = useState(false);
   var showDayEndModal = showDayEndModalState[0];
   var setShowDayEndModal = showDayEndModalState[1];
+  
+  // 🆕 일기/기분 모달 상태
+  var showMoodLogModalState = useState(false);
+  var showMoodLogModal = showMoodLogModalState[0];
+  var setShowMoodLogModal = showMoodLogModalState[1];
+  
+  var showJournalModalState = useState(false);
+  var showJournalModal = showJournalModalState[0];
+  var setShowJournalModal = showJournalModalState[1];
   
   // 선택된 항목
   var selectedEventState = useState(null);
@@ -358,6 +385,14 @@ function App() {
   useEffect(function() {
     saveToStorage(STORAGE_KEYS.HEALTH, healthData);
   }, [healthData]);
+  
+  useEffect(function() {
+    saveToStorage(STORAGE_KEYS.JOURNAL_ENTRIES, journalEntries);
+  }, [journalEntries]);
+  
+  useEffect(function() {
+    saveToStorage(STORAGE_KEYS.MOOD_LOGS, moodLogs);
+  }, [moodLogs]);
   
   // ============================================================
   // 스트릭 업데이트
@@ -591,15 +626,36 @@ function App() {
     console.log('Open reminder');
   }, []);
   
-  // 일기 열기 (임시 - 추후 구현)
+  // 🆕 일기 열기
   var handleOpenJournal = useCallback(function() {
-    console.log('Open journal - 추후 구현 예정');
+    setShowJournalModal(true);
   }, []);
   
-  // 기분 기록 열기 (임시 - 추후 구현)
+  // 🆕 기분 기록 열기
   var handleOpenMoodLog = useCallback(function() {
-    console.log('Open mood log - 추후 구현 예정');
+    setShowMoodLogModal(true);
   }, []);
+  
+  // 🆕 일기 저장
+  var handleSaveJournal = useCallback(function(entry) {
+    setJournalEntries(function(prev) {
+      return [entry].concat(prev);
+    });
+    setShowJournalModal(false);
+  }, []);
+  
+  // 🆕 기분 저장
+  var handleSaveMoodLog = useCallback(function(log) {
+    setMoodLogs(function(prev) {
+      return [log].concat(prev);
+    });
+    // 기분/에너지도 업데이트
+    handleUpdateMoodEnergy({
+      mood: log.mood,
+      energy: log.energy
+    });
+    setShowMoodLogModal(false);
+  }, [handleUpdateMoodEnergy]);
   
   // 건강 편집 열기 (임시 - 추후 구현)
   var handleEditHealth = useCallback(function() {
@@ -1044,7 +1100,7 @@ function App() {
     }),
     
     // ============================================================
-    // 모달들 (수정됨 - isOpen prop 추가)
+    // 모달들
     // ============================================================
     
     React.createElement(AddTaskModal, {
@@ -1105,6 +1161,22 @@ function App() {
       completedCount: todayCompletedCount,
       totalTasks: tasks.filter(function(t) { return !t.completed; }).length + todayCompletedCount,
       onClose: function() { setShowDayEndModal(false); }
+    }),
+    
+    // 🆕 기분 기록 모달
+    React.createElement(MoodLogModal, {
+      isOpen: showMoodLogModal,
+      onClose: function() { setShowMoodLogModal(false); },
+      onSave: handleSaveMoodLog,
+      currentMood: mood,
+      currentEnergy: energy
+    }),
+    
+    // 🆕 일기 모달
+    React.createElement(JournalModal, {
+      isOpen: showJournalModal,
+      onClose: function() { setShowJournalModal(false); },
+      onSave: handleSaveJournal
     })
   );
 }
