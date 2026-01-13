@@ -14,7 +14,7 @@
 | W3+ | 코드 품질 및 메시지 확장 | ✅ 완료 |
 | W4 | 코드 정리 및 타입 강화 | ✅ 완료 |
 | W4+ | 추가 코드 정리 | ✅ 완료 |
-| W5 | Google 클라우드 연동 (Calendar/Gmail/Drive) | 🔄 진행중 |
+| W5 | Google 클라우드 연동 (Calendar/Gmail/Drive) | ✅ 완료 |
 
 ---
 
@@ -31,7 +31,67 @@
 
 ## 📝 최근 작업 내역
 
-### 2026-01-13: Gmail/Drive UI 연결 완료 📧☁️
+### 2026-01-13: Gmail 인박스 기능 완성 🎉📧
+
+#### 🐛 버그 수정 (Critical)
+
+| 문제 | 증상 | 원인 | 해결 |
+|------|------|------|------|
+| **AI 분석 JSON 잘림** | 이메일 분석 후 빈 배열 반환, "처리할 이메일이 없어요" 표시 | `max_tokens: 500` 부족 → 20개 이메일 분석 시 JSON 중간에서 잘림 → 파싱 실패 | `api/chat.js`에서 `max_tokens: 2000`으로 증가 |
+| **이메일 내용 표시 안됨** | 카드에 제목/발신자가 빈 상태로 표시 | InboxPage.jsx 필드명 불일치: `action.subject` vs 실제 `action.email.subject` | 올바른 필드 매핑으로 수정 |
+| **Task 클릭 에러** | 클릭 시 `t is not a function` 에러 | WorkPage.jsx → SwipeableTaskItem prop 이름 불일치 (`onToggle/onClick` vs `onComplete/onPress`) | prop 이름 통일 |
+
+#### ✅ 커밋 내역 (버그 수정)
+
+| 커밋 | 내용 | 파일 |
+|------|------|------|
+| `7acbf1b` | 🔧 fix: increase max_tokens 500 → 2000 for Gmail analysis | `api/chat.js` |
+| `dc4013f` | 🔧 fix: correct field mapping for email display | `src/components/work/InboxPage.jsx` |
+| `2047819` | 🔧 fix: correct prop names for SwipeableTaskItem | `src/components/work/WorkPage.jsx` |
+
+#### 📊 데이터 흐름 확인
+
+```
+Gmail API (21.8kB, 20개 이메일)
+    ↓
+useGmail.js → analyzeEmails() → 15개 이메일 요약 전송
+    ↓
+/api/chat → Claude API (max_tokens: 2000)
+    ↓
+AI 분석 결과 JSON 배열 (~1500 토큰)
+    ↓
+enrichedActions (email 정보 포함)
+    ↓
+InboxPage.jsx 렌더링
+    ├── action.email.subject
+    ├── action.email.from.name
+    ├── action.suggestedAction
+    └── action.actionType
+```
+
+#### 🔧 필드 매핑 상세
+
+**InboxPage.jsx 수정 전후:**
+
+| UI 필드 | 수정 전 (잘못됨) | 수정 후 (정상) |
+|---------|-----------------|----------------|
+| 제목 | `action.subject` | `action.email.subject` |
+| 발신자 | `action.from` | `action.email.from.name` |
+| 추천 액션 | `action.action` | `action.suggestedAction` |
+| 액션 타입 | `action.type` | `action.actionType` |
+| 마감일 | `action.deadline` | `action.dueDate` |
+
+**WorkPage.jsx prop 수정:**
+
+| SwipeableTaskItem 기대 | WorkPage 전달 (잘못됨) | 수정 후 |
+|------------------------|----------------------|---------|
+| `onComplete` | `onToggle` | `onComplete` |
+| `onPress` | `onClick` | `onPress` |
+| `onDelete` | `onDelete` | `onDelete` ✅ |
+
+---
+
+### 2026-01-13 (이전): Gmail/Drive UI 연결 완료 📧☁️
 
 #### ✅ Gmail UI 연결 (App.jsx + InboxPage.jsx)
 | 구현 항목 | 설명 |
@@ -224,7 +284,8 @@
 - ✅ 태스크 리스트
 - ✅ 태스크 상세/수정
 - ✅ 우선순위 자동 계산
-- ✅ 인박스 (Gmail 연동)
+- ✅ 인박스 (Gmail 연동) **← 완성!**
+- ✅ Task 클릭/완료/삭제 정상 동작
 
 ### 캘린더 페이지 (Calendar)
 - ✅ 타임라인 뷰
@@ -263,7 +324,7 @@
 | useTasks | ✅ | ✅ | 완료 |
 | useHabits | ✅ | ✅ | 완료 |
 | useFocusSessions | ✅ | ✅ | 완료 |
-| useGmail | ✅ | - | 완료 |
+| useGmail | ✅ | - | ✅ 완료 |
 | useGoogleDrive | ✅ | - | 완료 |
 | useGoogleCalendar | ✅ | - | 완료 |
 
@@ -280,7 +341,9 @@ src/
 │   │   └── ...
 │   ├── home/                    # ✅ 정리 완료
 │   ├── work/
-│   │   └── InboxPage.jsx       # ✅ Gmail 연동
+│   │   ├── InboxPage.jsx       # ✅ Gmail 연동 (필드 매핑 수정)
+│   │   ├── WorkPage.jsx        # ✅ prop 이름 수정
+│   │   └── SwipeableTaskItem.jsx
 │   ├── life/                    # ✅ 정리 완료
 │   ├── calendar/                # ✅ 양방향 동기화
 │   ├── chat/                    # ✅ 정리 완료
@@ -294,7 +357,7 @@ src/
 │   ├── useTasks.js             # ✅ Supabase 직접 연동
 │   ├── useHabits.js            # ✅ Supabase 직접 연동
 │   ├── useFocusSessions.js     # ✅ Supabase 직접 연동
-│   ├── useGmail.js             # ✅ Gmail API 연동
+│   ├── useGmail.js             # ✅ Gmail API 연동 (AI 분석)
 │   ├── useGoogleDrive.js       # ✅ Drive API 연동
 │   ├── useGoogleCalendar.js    # ✅ Calendar API 연동
 │   └── useDNAEngine.ts         # ✅ 타입 강화 완료
@@ -309,6 +372,7 @@ src/
 └── App.jsx                     # ✅ Gmail 훅 통합
 
 api/
+├── chat.js                     # ✅ max_tokens 2000으로 증가
 ├── gmail.js                    # ✅ Gmail API 엔드포인트
 └── ...
 
@@ -321,10 +385,10 @@ supabase/
 
 ## 🔜 다음 작업
 
-### 즉시 (P0)
-- [ ] Gmail API 활성화 (Google Cloud Console)
-- [ ] Gmail 동작 테스트
-- [ ] 401 에러 시 자동 재연결 개선
+### 즉시 (P0) - ✅ 완료
+- [x] Gmail AI 분석 토큰 한도 수정
+- [x] 인박스 UI 필드 매핑 수정
+- [x] Task 클릭 이벤트 수정
 
 ### 단기 (P1)
 - [ ] 각 훅 기능 테스트
@@ -336,6 +400,16 @@ supabase/
 - [ ] 실시간 펭귄 상태 표시
 - [ ] 주간/월간 리포트
 - [ ] 에러 핸들링 강화
+
+---
+
+## 🐛 해결된 버그 히스토리
+
+| 날짜 | 버그 | 원인 | 해결 | 커밋 |
+|------|------|------|------|------|
+| 2026-01-13 | AI 분석 JSON 잘림 | max_tokens 500 부족 | 2000으로 증가 | `7acbf1b` |
+| 2026-01-13 | 이메일 내용 안 보임 | 필드명 불일치 | 올바른 매핑 적용 | `dc4013f` |
+| 2026-01-13 | Task 클릭 에러 | prop 이름 불일치 | prop 이름 통일 | `2047819` |
 
 ---
 
