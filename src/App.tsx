@@ -5,6 +5,7 @@ import LoadingSpinner from './components/common/LoadingSpinner';
 
 // Pages
 import Home from './pages/Home';
+import Calendar from './pages/Calendar';
 import Work from './pages/Work';
 import Life from './pages/Life';
 import Chat from './pages/Chat';
@@ -62,6 +63,7 @@ function App() {
       <Routes>
         <Route element={<AppShell />}>
           <Route path="/" element={<Home />} />
+          <Route path="/calendar" element={<Calendar />} />
           <Route path="/work" element={<Work />} />
           <Route path="/life" element={<Life />} />
           <Route path="/chat" element={<Chat />} />
