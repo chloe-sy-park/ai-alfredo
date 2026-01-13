@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Heart, Droplets, Moon, Footprints, Pill, Users, BookOpen,
-  ChevronRight, Plus, Check, Calendar, Clock, Phone, MessageCircle,
-  Sparkles, Sun, Cloud, CloudRain, Coffee, Zap, Target, AlertCircle,
-  Activity, Smile, Frown, Meh, TrendingUp, Bell, Star, Edit3
+  ChevronRight, Plus, Check, Phone, MessageCircle,
+  Activity, Smile, Frown, Meh, Edit3
 } from 'lucide-react';
 import { mockRoutines, mockWeather } from '../../data/mockData';
 import { AlfredoEmptyState } from '../common/AlfredoEmptyState';
@@ -15,9 +14,6 @@ var AlfredoBriefing = function(props) {
   var relationships = props.relationships || [];
   var routines = props.routines || [];
   var mood = props.mood;
-  var energy = props.energy;
-  var weather = props.weather;
-  var userName = props.userName || 'Boss';
   
   var hour = new Date().getHours();
   
@@ -411,15 +407,11 @@ var LifePage = function(props) {
   var setRoutines = props.setRoutines;
   var relationships = props.relationships || [];
   var mood = props.mood;
-  var energy = props.energy;
-  var setMood = props.setMood;
-  var setEnergy = props.setEnergy;
   var onOpenRoutines = props.onOpenRoutines;
   var onOpenJournal = props.onOpenJournal;
   var onOpenMoodLog = props.onOpenMoodLog;
   var onAddRelationship = props.onAddRelationship;
   var onEditHealth = props.onEditHealth;
-  var weather = props.weather || mockWeather;
   var userName = props.userName;
 
   var handleLogWater = function() {
@@ -448,8 +440,7 @@ var LifePage = function(props) {
   };
 
   var handleContact = function(person, method) {
-    console.log('Contact', person.name, 'via', method);
-    // 여기에 실제 연락 기능 구현 (전화/메시지 앱 열기 등)
+    // 연락 기능 - 전화/메시지 앱 열기
   };
 
   var bgColor = darkMode ? 'bg-gray-900' : 'bg-[#F0EBFF]';
@@ -475,8 +466,6 @@ var LifePage = function(props) {
         relationships: relationships,
         routines: routines,
         mood: mood,
-        energy: energy,
-        weather: weather,
         userName: userName
       }),
       
