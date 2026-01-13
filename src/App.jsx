@@ -1,16 +1,16 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef, Suspense, lazy } from 'react';
-import { Home, Calendar, Briefcase, MessageCircle, Settings, CheckCircle, Circle, Clock, Star, Plus, ChevronRight, Sparkles, Sun, Moon, CloudRain, Zap, Coffee, Brain, X, Camera, Mail, User } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
+import { Home, Calendar, Briefcase, MessageCircle, Settings, Heart } from 'lucide-react';
 import { loadFromStorage, saveToStorage } from './utils/storage';
 import { generateBriefing as generateAlfredoBriefing } from './utils/briefingEngine';
-import { PenguinStatusBar } from './components/home/PenguinStatusBar';
 import FloatingCaptureButton from './components/FloatingCaptureButton';
 import QuickCaptureModal from './components/modals/QuickCaptureModal';
 import NotificationToast from './components/NotificationToast';
 
 // Lazy load pages
-var HomePage = lazy(function() { return import('./components/home/HomePage'); });
+var NewHomePage = lazy(function() { return import('./components/modes/NewHomePage'); });
 var CalendarPage = lazy(function() { return import('./components/calendar/CalendarPage'); });
 var WorkPage = lazy(function() { return import('./components/work/WorkPage'); });
+var LifePage = lazy(function() { return import('./pages/Life'); });
 var ChatPage = lazy(function() { return import('./components/chat/ChatPage'); });
 var SettingsPage = lazy(function() { return import('./components/settings/SettingsPage'); });
 var OnboardingPage = lazy(function() { return import('./components/onboarding/OnboardingPage'); });
@@ -23,10 +23,10 @@ var ProjectModal = lazy(function() { return import('./components/modals/ProjectM
 
 // Page Loading component
 var PageLoading = function() {
-  return React.createElement('div', { className: 'min-h-screen flex items-center justify-center bg-[#F0EBFF]' },
+  return React.createElement('div', { className: 'min-h-screen flex items-center justify-center bg-background' },
     React.createElement('div', { className: 'text-center' },
-      React.createElement('div', { className: 'w-12 h-12 border-4 border-[#A996FF] border-t-transparent rounded-full animate-spin mx-auto mb-4' }),
-      React.createElement('p', { className: 'text-gray-500' }, '로딩 중...')
+      React.createElement('div', { className: 'w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4' }),
+      React.createElement('p', { className: 'text-neutral-500' }, '로딩 중...')
     )
   );
 };
@@ -41,7 +41,15 @@ var DEFAULT_PROJECTS = [
 // 기본 태스크
 var DEFAULT_TASKS = [
   { id: 1, title: '알프레도 시작하기', completed: false, priority: 'high', project: 'inbox', dueDate: null, estimatedMinutes: 15 },
-  { id: 2, title: '오늘의 Top 3 설정하기', completed: false, priority: 'medium', project: 'work', dueDate: new Date().toISOString().split('T')[0], estimatedMinutes: 10 }
+  { id: 2, title: '오늘의 Top 3 설정하기', completed: false, priority: 'medium', project: 'work', dueDate: new Date().toISOString().split('T')[0], estimatedMinutes: 10 },
+  { id: 3, title: '운동 30분', completed: false, priority: 'medium', project: 'personal', dueDate: new Date().toISOString().split('T')[0], estimatedMinutes: 30 }
+];
+
+// 기본 이벤트
+var DEFAULT_EVENTS = [
+  { id: '1', title: '팀 스탠드업', startTime: '10:00', location: '회의실 A', importance: 'mid' },
+  { id: '2', title: '프로젝트 리뷰', startTime: '14:00', location: 'Zoom', importance: 'high' },
+  { id: '3', title: '1:1 미팅', startTime: '16:30', location: '카페', importance: 'low' }
 ];
 
 // ADHD 훅
@@ -54,10 +62,6 @@ function App() {
   var pageState = useState('home');
   var currentPage = pageState[0];
   var setCurrentPage = pageState[1];
-  
-  var darkModeState = useState(false);
-  var darkMode = darkModeState[0];
-  var setDarkMode = darkModeState[1];
   
   var onboardingState = useState(function() {
     return loadFromStorage('alfredo_onboarding_complete') || false;
@@ -78,28 +82,11 @@ function App() {
   var projects = projectsState[0];
   var setProjects = projectsState[1];
   
-  // 펭귄 상태
-  var penguinState = useState('happy');
-  var penguinMood = penguinState[0];
-  var setPenguinMood = penguinState[1];
-  
-  var penguinEnergyState = useState(80);
-  var penguinEnergy = penguinEnergyState[0];
-  var setPenguinEnergy = penguinEnergyState[1];
-  
-  var penguinLevelState = useState(1);
-  var penguinLevel = penguinLevelState[0];
-  var setPenguinLevel = penguinLevelState[1];
-  
-  var penguinNameState = useState('알프레도');
-  var penguinName = penguinNameState[0];
-  var setPenguinName = penguinNameState[1];
+  var eventsState = useState(DEFAULT_EVENTS);
+  var events = eventsState[0];
   
   // 🌙 저녁 케어 훅
   var dayEndCare = useDayEndCare();
-  var showDayEndModal = dayEndCare.showModal;
-  var setShowDayEndModal = dayEndCare.setShowModal;
-  var dayEndCareType = dayEndCare.careType;
   var triggerDayEndCare = dayEndCare.triggerManually;
   
   // ⏱️ 시간 추정 코치 훅
@@ -107,32 +94,22 @@ function App() {
   var startTimeTimer = timeEstimator.startTimer;
   var stopTimeTimer = timeEstimator.stopTimer;
   var getSuggestedTime = timeEstimator.getSuggestedTime;
-  var getTimeInsight = timeEstimator.getInsight;
-  var timeEstimatorData = timeEstimator.data;
   var timeLastResult = timeEstimator.lastResult;
   var clearTimeResult = timeEstimator.clearLastResult;
-  
-  // 시간 인사이트 (오후 모드용)
-  var timeInsight = useMemo(function() {
-    var hour = new Date().getHours();
-    if (hour >= 12 && hour < 21) {
-      return getTimeInsight();
-    }
-    return null;
-  }, [getTimeInsight]);
   
   // URL 기반 라우팅
   useEffect(function() {
     var path = window.location.pathname;
     if (path === '/calendar') setCurrentPage('calendar');
     else if (path === '/work') setCurrentPage('work');
+    else if (path === '/life') setCurrentPage('life');
     else if (path === '/chat') setCurrentPage('chat');
     else if (path === '/settings') setCurrentPage('settings');
   }, []);
   
   // 온보딩 체크
   if (!onboardingComplete) {
-    return React.createElement('div', { className: 'min-h-screen flex items-center justify-center bg-[#F0EBFF]' },
+    return React.createElement('div', { className: 'min-h-screen flex items-center justify-center bg-background' },
       React.createElement(Suspense, { fallback: React.createElement(PageLoading) },
         React.createElement(OnboardingPage, {
           onComplete: function() {
@@ -193,7 +170,6 @@ function App() {
         if (task.id === taskId) {
           var newCompleted = !task.completed;
           if (newCompleted) {
-            // 시간 추정 기록
             stopTimeTimer(taskId, task.category);
             showNotification('태스크 완료! 🎉', 'success');
           }
@@ -264,7 +240,6 @@ function App() {
     setProjects(function(prev) {
       return prev.filter(function(project) { return project.id !== projectId; });
     });
-    // 해당 프로젝트의 태스크들을 inbox로 이동
     setTasks(function(prev) {
       return prev.map(function(task) {
         if (task.project === projectId) {
@@ -288,92 +263,50 @@ function App() {
     setShowQuickCapture(false);
   }, [handleAddTask]);
   
-  // 브리핑 생성
-  var todayBriefing = useMemo(function() {
-    var completedCount = tasks.filter(function(t) { return t.completed; }).length;
-    var totalCount = tasks.length;
-    return generateAlfredoBriefing({
-      completedTasks: completedCount,
-      totalTasks: totalCount,
-      hour: new Date().getHours(),
-      weather: 'clear',
-      energy: penguinEnergy
-    });
-  }, [tasks, penguinEnergy]);
+  // 네비게이션
+  var handleNavigate = useCallback(function(page) {
+    setCurrentPage(page);
+  }, []);
   
-  // 오늘 태스크
-  var todayTasks = useMemo(function() {
-    var today = new Date().toISOString().split('T')[0];
-    return tasks.filter(function(task) {
-      return task.dueDate === today || (!task.dueDate && !task.completed);
-    });
-  }, [tasks]);
-  
-  // Top 3 태스크
-  var top3Tasks = useMemo(function() {
-    return todayTasks
-      .filter(function(t) { return !t.completed && t.priority === 'high'; })
-      .slice(0, 3);
-  }, [todayTasks]);
-  
-  // 완료율
-  var completionRate = useMemo(function() {
-    var todayCompleted = todayTasks.filter(function(t) { return t.completed; }).length;
-    return todayTasks.length > 0 ? Math.round((todayCompleted / todayTasks.length) * 100) : 0;
-  }, [todayTasks]);
-  
-  // 펭귄 상태 업데이트
-  useEffect(function() {
-    if (completionRate >= 80) {
-      setPenguinMood('excited');
-    } else if (completionRate >= 50) {
-      setPenguinMood('happy');
-    } else if (completionRate >= 20) {
-      setPenguinMood('neutral');
-    } else {
-      setPenguinMood('tired');
+  // 태스크 클릭
+  var handleTaskClick = useCallback(function(taskId) {
+    var task = tasks.find(function(t) { return t.id === taskId; });
+    if (task) {
+      setTaskModal({ isOpen: true, task: task });
     }
-  }, [completionRate]);
+  }, [tasks]);
   
   // 네비게이션 아이템
   var navItems = [
     { id: 'home', icon: Home, label: '홈' },
     { id: 'calendar', icon: Calendar, label: '캘린더' },
     { id: 'work', icon: Briefcase, label: '업무' },
-    { id: 'chat', icon: MessageCircle, label: '알프레도' },
-    { id: 'settings', icon: Settings, label: '설정' }
+    { id: 'life', icon: Heart, label: '라이프' },
+    { id: 'chat', icon: MessageCircle, label: '알프레도' }
   ];
   
   // 페이지 렌더링
   var renderPage = function() {
     return React.createElement(Suspense, { fallback: React.createElement(PageLoading) },
-      currentPage === 'home' && React.createElement(HomePage, {
+      // 홈 페이지 - NewHomePage 사용
+      currentPage === 'home' && React.createElement(NewHomePage, {
         tasks: tasks,
         projects: projects,
-        todayTasks: todayTasks,
-        top3Tasks: top3Tasks,
-        completionRate: completionRate,
-        briefing: todayBriefing,
-        penguinMood: penguinMood,
-        penguinEnergy: penguinEnergy,
-        darkMode: darkMode,
-        timeInsight: timeInsight,
-        onTaskClick: function(task) { setTaskModal({ isOpen: true, task: task }); },
-        onCompleteTask: handleCompleteTask,
-        onAddTask: function() { setShowAddTaskModal(true); },
-        onTriggerDayEndCare: triggerDayEndCare
+        events: events,
+        onNavigate: handleNavigate,
+        onTaskClick: handleTaskClick
       }),
+      
       currentPage === 'calendar' && React.createElement(CalendarPage, {
         tasks: tasks,
         projects: projects,
-        darkMode: darkMode,
         onTaskClick: function(task) { setTaskModal({ isOpen: true, task: task }); },
         onAddTask: handleAddTask
       }),
+      
       currentPage === 'work' && React.createElement(WorkPage, {
         tasks: tasks,
         projects: projects,
-        darkMode: darkMode,
         onTaskClick: function(task) { setTaskModal({ isOpen: true, task: task }); },
         onCompleteTask: handleCompleteTask,
         onAddTask: function() { setShowAddTaskModal(true); },
@@ -383,45 +316,33 @@ function App() {
         stopTimeTimer: stopTimeTimer,
         getSuggestedTime: getSuggestedTime
       }),
+      
+      currentPage === 'life' && React.createElement(LifePage, {
+        tasks: tasks.filter(function(t) { return t.project === 'personal'; }),
+        onTaskClick: function(task) { setTaskModal({ isOpen: true, task: task }); }
+      }),
+      
       currentPage === 'chat' && React.createElement(ChatPage, {
         tasks: tasks,
         projects: projects,
-        darkMode: darkMode,
-        penguinMood: penguinMood,
         onAddTask: handleAddTask,
         onCompleteTask: handleCompleteTask
       }),
+      
       currentPage === 'settings' && React.createElement(SettingsPage, {
-        darkMode: darkMode,
-        setDarkMode: setDarkMode,
-        penguinName: penguinName,
-        setPenguinName: setPenguinName,
         showNotification: showNotification
       })
     );
   };
   
-  // 배경색
-  var bgColor = darkMode ? 'bg-gray-900' : 'bg-[#F0EBFF]';
-  
-  return React.createElement('div', { className: bgColor + ' min-h-screen' },
-    // 펭귄 상태바
-    React.createElement(PenguinStatusBar, {
-      state: penguinState,
-      mood: penguinMood,
-      energy: penguinEnergy,
-      level: penguinLevel,
-      name: penguinName,
-      onClick: function() { setCurrentPage('chat'); }
-    }),
-    
+  return React.createElement('div', { className: 'bg-background min-h-screen' },
     // 메인 콘텐츠
     React.createElement('main', { className: 'pb-20' },
       renderPage()
     ),
     
-    // 플로팅 캡처 버튼
-    currentPage !== 'chat' && React.createElement(FloatingCaptureButton, {
+    // 플로팅 캡처 버튼 (홈/채팅에서는 숨김 - ChatLauncher가 있음)
+    currentPage !== 'chat' && currentPage !== 'home' && React.createElement(FloatingCaptureButton, {
       onClick: function() { setShowQuickCapture(true); }
     }),
     
@@ -433,28 +354,27 @@ function App() {
     }),
     
     // 시간 추정 결과 토스트
-    timeLastResult && React.createElement('div', { className: 'fixed top-20 left-4 right-4 z-50 max-w-lg mx-auto' },
+    timeLastResult && React.createElement('div', { className: 'fixed top-4 left-4 right-4 z-50 max-w-lg mx-auto' },
       React.createElement(TimeResultToast, {
         taskName: timeLastResult.taskName,
         estimated: timeLastResult.estimated,
         actual: timeLastResult.actual,
-        darkMode: darkMode,
         onClose: clearTimeResult
       })
     ),
     
     // 하단 네비게이션
-    React.createElement('nav', { className: 'fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 pb-safe z-40' },
+    React.createElement('nav', { className: 'fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 px-2 pb-safe z-40' },
       React.createElement('div', { className: 'flex justify-around items-center h-16 max-w-lg mx-auto' },
         navItems.map(function(item) {
           var isActive = currentPage === item.id;
           return React.createElement('button', {
             key: item.id,
             onClick: function() { setCurrentPage(item.id); },
-            className: 'flex flex-col items-center justify-center w-16 h-full transition-colors ' + (isActive ? 'text-[#A996FF]' : 'text-gray-400')
+            className: 'flex flex-col items-center justify-center w-16 h-full transition-colors ' + (isActive ? 'text-primary' : 'text-neutral-400')
           },
             React.createElement(item.icon, { size: 22, strokeWidth: isActive ? 2.5 : 2 }),
-            React.createElement('span', { className: 'text-[10px] mt-1 font-medium' + (isActive ? ' text-[#A996FF]' : '') }, item.label)
+            React.createElement('span', { className: 'text-[10px] mt-1 font-medium' + (isActive ? ' text-primary' : '') }, item.label)
           );
         })
       )
@@ -474,7 +394,6 @@ function App() {
         isOpen: taskModal.isOpen,
         task: taskModal.task,
         projects: projects,
-        darkMode: darkMode,
         onClose: function() { setTaskModal({ isOpen: false, task: null }); },
         onUpdate: function(updates) {
           handleUpdateTask(taskModal.task.id, updates);
