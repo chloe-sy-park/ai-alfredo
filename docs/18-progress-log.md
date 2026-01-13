@@ -9,7 +9,8 @@
 | 단계 | 목표 | 상태 |
 |------|------|------|
 | W1-W4 | UI/기능 로드맵 | ✅ 100% 완료 |
-| W2+ | DB 연동 (Supabase) | ✅ 설정 완료 |
+| W2 | daily_conditions DB 연동 | ✅ 완료 |
+| W3 | 핵심 훅 DB 연동 | ✅ 완료 |
 
 ---
 
@@ -26,6 +27,45 @@
 
 ## 📝 최근 작업 내역
 
+### 2025-01-13: W3 핵심 훅 Supabase 직접 연동 완료 🎉
+
+#### ✅ useDailyConditions.js
+- Supabase 클라이언트 직접 사용 (CORS 해결)
+- 테스트용 user_id 추가
+- **DB 저장 테스트 성공** ✅
+
+#### ✅ usePenguin.js
+- Supabase 직접 연동
+- XP/레벨/코인 관리
+- 아이템 구매/장착
+- XP 추가 함수
+
+#### ✅ useTasks.js
+- Supabase 직접 연동
+- CRUD + 완료/미루기
+- 태스크 완료 시 XP 보상
+  - 일반: 10XP
+  - 높음: 20XP
+  - 긴급: 30XP
+  - Top3 보너스: +5XP
+
+#### ✅ useHabits.js
+- Supabase 직접 연동
+- 습관 로그 기록
+- 스트릭 자동 계산
+- 습관 완료 시 XP 보상
+  - 기본: 5XP
+  - 7일 연속: 10XP
+  - 30일 연속: 15XP
+
+#### ✅ useFocusSessions.js
+- Supabase 직접 연동
+- 타이머 관리
+- 세션 완료 시 XP 보상
+  - 분당 1XP (최대 60XP)
+
+---
+
 ### 2025-01-13: Supabase 프로젝트 설정 완료
 
 #### ✅ 새 Supabase 프로젝트 생성
@@ -41,115 +81,18 @@
 - `habits`, `habit_logs`
 - `focus_sessions`
 - `daily_conditions` ⭐
-- `penguin_status`, `penguin_items`, `xp_history`
+- `penguin_status`, `penguin_items`, `penguin_inventory`, `xp_history`
 - `conversations`, `messages`, `conversation_summaries`
 - `calendar_events`, `calendar_insights`
 - `briefings`, `daily_summaries`, `weekly_insights`
-
-**추가 기능:**
-- ENUM 타입 (22개)
-- RLS 정책 (사용자별 데이터 격리)
-- 트리거 (updated_at 자동 업데이트, 습관 스트릭 자동 계산)
-- 펭귄 아이템 초기 데이터 (14개)
-
----
-
-### 2025-01-13: W2 daily_conditions 완전 구현
-
-#### ✅ Edge Function 추가
-**커밋**: `23c23d42407ec89dc6a8deeb332d9e497c940d1f`
-
-`supabase/functions/daily-conditions/index.ts` 생성:
-
-```
-/daily-conditions
-├── GET /                    # 목록 조회 (날짜 범위 필터)
-├── GET /today              # 오늘 컨디션
-├── GET /:date              # 특정 날짜 (YYYY-MM-DD)
-├── POST /                  # 컨디션 기록 (생성/업데이트)
-├── PATCH /:id              # 컨디션 수정
-├── DELETE /:id             # 컨디션 삭제
-├── GET /summary/weekly     # 주간 요약
-└── GET /heatmap/monthly    # 월간 히트맵 (Year in Pixels용)
-```
-
-**기능:**
-- 날짜별 자동 생성/업데이트 (UPSERT)
-- 주간 요약: 평균, 트렌드, 최고/최저일
-- 월간 히트맵: Year in Pixels 시각화용
-- 펭귄 XP 보상 연동
-
-#### ✅ api.ts DB 스키마 적용
-**커밋**: `c8935a8d9db6192b5589689a9af817699a577a0d`
-
-```typescript
-// DB 스키마 기반 인터페이스
-interface DailyCondition {
-  id: string;
-  user_id: string;
-  log_date: string;      // YYYY-MM-DD (DB 컬럼명)
-  energy_level: number;  // 1-5
-  mood_level: number;    // 1-5
-  focus_level: number;   // 1-5
-  factors?: string[];    // ['sleep_quality', 'exercise', ...]
-  note?: string;
-}
-
-// 응답 타입
-interface WeeklySummary { ... }
-interface MonthlyHeatmap { ... }
-```
-
-#### ✅ useDailyConditions 훅 업데이트
-**커밋**: `1fe3024a9756a98239528f1da4f39338e191a975`
-
-- **3축 컨디션 지원**: energy_level, mood_level, focus_level
-- **평균 레벨 계산**: mainLevel = (energy + mood + focus) / 3
-- **레벨 라벨 추가**: LEVEL_LABELS (각 축별 1-5 라벨)
-
-```javascript
-// 기록 방법 1: 단일 레벨 (3축 동일 값)
-recordCondition(4, '오늘 좋아요');
-
-// 기록 방법 2: 개별 레벨
-recordCondition({
-  energy_level: 5,
-  mood_level: 4,
-  focus_level: 3,
-  note: '에너지 최고, 집중은 보통'
-});
-```
-
----
-
-### 2025-01-13 (이전): 초기 설정
-
-#### ✅ mockData.js 정리
-**커밋**: `5c758ecb92a1976ca28dfdb84527596021fa5211`
-
-- 모든 샘플 데이터 제거
-- 날씨 데이터만 기본값 유지
-- 파일 크기: 16KB → 2KB
-
----
-
-### 2025-01-12: W1-W4 로드맵 완료
-
-**커밋**: `24ddd626128a9d72d3a7e1db829d611d501e11e0`
-
-- AlfredoBriefingV2 개선
-- 빈 데이터 상태 처리
-- 자연스러운 말투
-- 컨디션 케어 강화
 
 ---
 
 ## 🏗️ 완성된 기능
 
 ### 홈 페이지 (Home)
-
 - ✅ 알프레도 브리핑 V2
-- ✅ 컨디션 퀵 체인지
+- ✅ 컨디션 퀵 체인지 (DB 연동)
 - ✅ 오늘의 탑3 태스크
 - ✅ 지금 집중할 것
 - ✅ 기억해야 할 것
@@ -157,100 +100,70 @@ recordCondition({
 - ✅ 날씨 위젯
 
 ### 업무 페이지 (Work)
-
 - ✅ 태스크 리스트
 - ✅ 태스크 상세/수정
 - ✅ 우선순위 자동 계산
 
 ### 캘린더 페이지 (Calendar)
-
 - ✅ 타임라인 뷰
 - ✅ Google Calendar 연동
 
 ### 채팅 페이지 (Chat)
-
 - ✅ Claude AI 연동
 - ✅ 스트리밍 응답
 
 ### UI/UX
-
 - ✅ Apple 2025 디자인
 - ✅ 글라스모피즘
 - ✅ 모바일 최적화
 
 ---
 
-## 📁 코드베이스 구조
+## 🗄️ DB 연동 현황
 
-```
-supabase/functions/
-├── _shared/               # 공용 모듈
-│   ├── cors.ts
-│   ├── response.ts
-│   └── supabase.ts
-├── daily-conditions/      # ✅ W2 완료
-├── habits/
-├── tasks/
-├── focus-sessions/
-├── penguin/
-├── conversations/
-└── auth-*/
-
-src/
-├── lib/
-│   ├── api.ts            # ✅ dailyConditionsApi 완료
-│   └── supabase.ts
-├── hooks/
-│   ├── useDailyConditions.js  # ✅ 3축 컨디션 지원
-│   └── ...
-└── components/
-```
+| 훅 | Supabase 연동 | XP 보상 | 상태 |
+|-----|--------------|---------|------|
+| useDailyConditions | ✅ | ✅ | 완료 |
+| usePenguin | ✅ | - | 완료 |
+| useTasks | ✅ | ✅ | 완료 |
+| useHabits | ✅ | ✅ | 완료 |
+| useFocusSessions | ✅ | ✅ | 완료 |
 
 ---
 
-## 🗄️ DB 연동 현황
+## 📁 코드베이스 구조
 
-| 항목 | 상태 |
-|------|------|
-| Supabase 프로젝트 | ✅ 생성 완료 |
-| 환경 변수 (Vercel) | ✅ 설정 완료 |
-| DB 마이그레이션 | ✅ 실행 완료 |
-| daily_conditions API | ✅ 코드 완료 |
-| daily_conditions 훅 | ✅ 하이브리드 모드 |
+```
+src/hooks/
+├── useDailyConditions.js  # ✅ Supabase 직접 연동
+├── usePenguin.js          # ✅ Supabase 직접 연동
+├── useTasks.js            # ✅ Supabase 직접 연동
+├── useHabits.js           # ✅ Supabase 직접 연동
+├── useFocusSessions.js    # ✅ Supabase 직접 연동
+└── ...
 
-상세 스키마: `docs/06-database-schema.md`
+src/lib/
+├── supabase.ts            # Supabase 클라이언트
+└── api.ts                 # Edge Function API (대체됨)
+
+supabase/
+├── migrations/            # DB 스키마
+└── functions/             # Edge Functions (미사용)
+```
 
 ---
 
 ## 🔜 다음 작업
 
-### 즉시
+### 테스트
+- [ ] 각 훅 기능 테스트
+- [ ] XP 보상 확인
+- [ ] 펭귄 레벨업 테스트
 
-- [ ] 앱에서 컨디션 기록 테스트
-- [ ] DB 저장 확인
-
-### 단기 (W3)
-
-- [ ] penguin_status API
-- [ ] habits API
-- [ ] tasks API
-- [ ] focus_sessions API
-
-### 중기 (W4)
-
-- [ ] daily_summaries API
-- [ ] weekly_insights API
-- [ ] 주간 리뷰 기능
-
----
-
-## 📚 기술 문서 목록
-
-| # | 문서 | 설명 |
-|---|------|------|
-| 06 | database-schema.md | DB 스키마 |
-| 17 | api-specification.md | API 명세 |
-| 18 | progress-log.md | 진행 로그 (현재 문서) |
+### 추가 기능
+- [ ] 사용자 인증 (Google OAuth)
+- [ ] 실시간 펭귄 상태 표시
+- [ ] 주간/월간 리포트
 
 ---
 
