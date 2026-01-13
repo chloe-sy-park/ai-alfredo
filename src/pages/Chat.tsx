@@ -43,9 +43,9 @@ export default function Chat() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col h-full">
       {/* 헤더 */}
-      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm px-4 py-3 border-b border-neutral-100">
+      <header className="flex-shrink-0 bg-white/80 backdrop-blur-sm px-4 py-3 border-b border-neutral-100">
         <div className="flex items-center gap-3">
           <button 
             onClick={() => navigate('/')}
@@ -113,7 +113,7 @@ export default function Chat() {
       </div>
 
       {/* 입력 영역 */}
-      <div className="sticky bottom-0 p-4 bg-white border-t border-neutral-100">
+      <div className="flex-shrink-0 p-4 bg-white border-t border-neutral-100">
         <div className="flex items-center gap-2 max-w-lg mx-auto">
           <div className="flex-1 flex items-center bg-neutral-100 rounded-full px-4 py-2">
             <input
