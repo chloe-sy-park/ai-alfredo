@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Send, Sparkles, Calendar, Target, Clock, Zap, CheckCircle2, RefreshCw, Plus, ThumbsUp, ThumbsDown, X } from 'lucide-react';
+import { ArrowLeft, Send, Zap, RefreshCw, Plus, ThumbsUp, ThumbsDown, X } from 'lucide-react';
 
 // Common Components
 import { AlfredoAvatar } from '../common';
@@ -85,11 +85,12 @@ const AlfredoChat = ({ onBack, tasks, events, mood, energy, onAddTask, onToggleT
             }
           }
         }
-      } catch (e) {}
+      } catch (e) {
+        // JSON 파싱 실패는 무시
+      }
       
       return { text: responseText };
     } catch (error) {
-      console.error('Claude API Error:', error);
       return { text: '네트워크 오류가 발생했어요. 다시 시도해주세요 🐧' };
     }
   };
