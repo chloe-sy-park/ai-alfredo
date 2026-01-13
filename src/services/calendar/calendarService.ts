@@ -51,7 +51,9 @@ export function getSelectedCalendars(): string[] {
   var stored = localStorage.getItem(SELECTED_CALENDARS_KEY);
   if (!stored) return [];
   try {
-    return JSON.parse(stored);
+    var parsed = JSON.parse(stored);
+    console.log('[Calendar] Selected calendars from storage:', parsed);
+    return parsed;
   } catch {
     return [];
   }
@@ -59,6 +61,7 @@ export function getSelectedCalendars(): string[] {
 
 // Save selected calendar IDs to localStorage
 export function setSelectedCalendars(calendarIds: string[]): void {
+  console.log('[Calendar] Saving selected calendars:', calendarIds);
   localStorage.setItem(SELECTED_CALENDARS_KEY, JSON.stringify(calendarIds));
 }
 
@@ -81,7 +84,7 @@ function transformEvent(event: GoogleEvent): CalendarEvent {
 export async function getCalendarList(): Promise<CalendarInfo[]> {
   var token = getGoogleToken();
   if (!token) {
-    console.log('No Google access token');
+    console.log('[Calendar] No Google access token');
     return [];
   }
 
@@ -102,9 +105,10 @@ export async function getCalendarList(): Promise<CalendarInfo[]> {
     }
 
     var data = await response.json();
+    console.log('[Calendar] Fetched calendar list:', data.calendars);
     return data.calendars || [];
   } catch (error) {
-    console.error('Calendar list API error:', error);
+    console.error('[Calendar] Calendar list API error:', error);
     return [];
   }
 }
@@ -113,7 +117,7 @@ export async function getCalendarList(): Promise<CalendarInfo[]> {
 export async function getTodayEvents(): Promise<CalendarEvent[]> {
   var token = getGoogleToken();
   if (!token) {
-    console.log('No Google access token');
+    console.log('[Calendar] No Google access token');
     return [];
   }
 
@@ -125,31 +129,35 @@ export async function getTodayEvents(): Promise<CalendarEvent[]> {
   var selectedCalendars = getSelectedCalendars();
 
   try {
+    var requestBody = {
+      action: 'list',
+      timeMin: today.toISOString(),
+      timeMax: tomorrow.toISOString(),
+      calendarIds: selectedCalendars.length > 0 ? selectedCalendars : undefined
+    };
+    console.log('[Calendar] Fetching today events with:', requestBody);
+
     var response = await fetch(CALENDAR_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + token
       },
-      body: JSON.stringify({
-        action: 'list',
-        timeMin: today.toISOString(),
-        timeMax: tomorrow.toISOString(),
-        calendarIds: selectedCalendars.length > 0 ? selectedCalendars : undefined
-      })
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
       if (response.status === 401) {
-        console.log('Google token expired');
+        console.log('[Calendar] Google token expired');
       }
       throw new Error('Failed to fetch events');
     }
 
     var data = await response.json();
+    console.log('[Calendar] Today events response:', data.events?.length, 'events');
     return (data.events || []).map(transformEvent);
   } catch (error) {
-    console.error('Calendar API error:', error);
+    console.error('[Calendar] API error:', error);
     return [];
   }
 }
@@ -158,38 +166,42 @@ export async function getTodayEvents(): Promise<CalendarEvent[]> {
 export async function getEvents(startDate: Date, endDate: Date): Promise<CalendarEvent[]> {
   var token = getGoogleToken();
   if (!token) {
-    console.log('No Google access token');
+    console.log('[Calendar] No Google access token');
     return [];
   }
 
   var selectedCalendars = getSelectedCalendars();
 
   try {
+    var requestBody = {
+      action: 'list',
+      timeMin: startDate.toISOString(),
+      timeMax: endDate.toISOString(),
+      calendarIds: selectedCalendars.length > 0 ? selectedCalendars : undefined
+    };
+    console.log('[Calendar] Fetching events with:', requestBody);
+
     var response = await fetch(CALENDAR_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + token
       },
-      body: JSON.stringify({
-        action: 'list',
-        timeMin: startDate.toISOString(),
-        timeMax: endDate.toISOString(),
-        calendarIds: selectedCalendars.length > 0 ? selectedCalendars : undefined
-      })
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
       if (response.status === 401) {
-        console.log('Google token expired');
+        console.log('[Calendar] Google token expired');
       }
       throw new Error('Failed to fetch events');
     }
 
     var data = await response.json();
+    console.log('[Calendar] Events response:', data.events?.length, 'events');
     return (data.events || []).map(transformEvent);
   } catch (error) {
-    console.error('Calendar API error:', error);
+    console.error('[Calendar] API error:', error);
     return [];
   }
 }
@@ -225,7 +237,7 @@ export async function addEvent(event: Omit<CalendarEvent, 'id'>): Promise<Calend
     var data = await response.json();
     return transformEvent(data.event);
   } catch (error) {
-    console.error('Failed to add event:', error);
+    console.error('[Calendar] Failed to add event:', error);
     return null;
   }
 }
