@@ -15,6 +15,7 @@
 | W4 | 코드 정리 및 타입 강화 | ✅ 완료 |
 | W4+ | 추가 코드 정리 | ✅ 완료 |
 | W5 | Google 클라우드 연동 (Calendar/Gmail/Drive) | ✅ 완료 |
+| W6 | 모듈화 리팩토링 | ✅ 진행중 |
 
 ---
 
@@ -30,6 +31,69 @@
 ---
 
 ## 📝 최근 작업 내역
+
+### 2026-01-13: 대규모 모듈화 리팩토링 🔧
+
+#### ✅ MeetingUploader 분할 (39KB → 6개 파일)
+
+| 파일 | 크기 | 역할 |
+|------|------|------|
+| `meeting/meetingUtils.js` | 5KB | 유틸리티 함수 |
+| `meeting/MeetingUploadStep.jsx` | 4KB | 업로드 UI |
+| `meeting/MeetingProgressStep.jsx` | 3KB | 진행 상태 UI |
+| `meeting/MeetingResultView.jsx` | 17KB | 결과 표시 UI |
+| `meeting/MeetingUploader.jsx` | 12KB | 메인 (상태 관리) |
+| `meeting/index.js` | 0.4KB | export |
+
+**관련 커밋:**
+- `3f6cfb4` - meetingUtils.js
+- `cc7ff39` - MeetingUploadStep.jsx
+- `7e9f3cc` - MeetingProgressStep.jsx
+- `2500f66` - MeetingResultView.jsx
+- `2f725fc` - index.js
+- `1a6f1ce` - MeetingUploader.jsx
+- `dae396b` - 기존 파일 리다이렉트
+
+#### ✅ useDailyConditions 분할 (20KB → 4개 파일)
+
+| 파일 | 크기 | 역할 |
+|------|------|------|
+| `conditions/conditionUtils.js` | 2.6KB | 상수 + 유틸리티 |
+| `conditions/useDailyConditions.js` | 14.8KB | 메인 훅 |
+| `conditions/useYearInPixels.js` | 0.7KB | Year in Pixels |
+| `conditions/index.js` | 0.2KB | export |
+
+**관련 커밋:**
+- `a3b31f7` - conditionUtils.js
+- `f1139aa` - useYearInPixels.js
+- `286c61f` - useDailyConditions.js
+- `393518c` - index.js
+- `f96a848` - 기존 파일 리다이렉트
+
+#### ✅ Gmail/Calendar 유틸리티 분리
+
+| 파일 | 내용 |
+|------|------|
+| `hooks/gmail/gmailUtils.js` | Gmail 상수, 기본 설정 |
+| `hooks/gmail/index.js` | export |
+| `hooks/calendar/calendarUtils.js` | OAuth 설정, 스코프, 색상 |
+| `hooks/calendar/index.js` | export |
+
+**관련 커밋:**
+- `5d0e175` - gmailUtils.js
+- `c20acd0` - gmail/index.js
+- `5f638f9` - calendarUtils.js
+- `1561fab` - calendar/index.js
+
+#### 📊 리팩토링 요약
+
+| 대상 | 이전 | 이후 | 감소율 |
+|------|------|------|--------|
+| MeetingUploader.jsx | 39KB (1 파일) | 6개 파일 (max 17KB) | -56% |
+| useDailyConditions.js | 20KB (1 파일) | 4개 파일 (max 14.8KB) | -26% |
+| Gmail/Calendar | 인라인 상수 | 분리된 유틸리티 | 재사용성 ↑ |
+
+---
 
 ### 2026-01-13: Gmail 인박스 기능 완성 🎉📧
 
@@ -49,269 +113,55 @@
 | `dc4013f` | 🔧 fix: correct field mapping for email display | `src/components/work/InboxPage.jsx` |
 | `2047819` | 🔧 fix: correct prop names for SwipeableTaskItem | `src/components/work/WorkPage.jsx` |
 
-#### 📊 데이터 흐름 확인
+---
+
+## 🏗️ 코드베이스 구조 (리팩토링 후)
 
 ```
-Gmail API (21.8kB, 20개 이메일)
-    ↓
-useGmail.js → analyzeEmails() → 15개 이메일 요약 전송
-    ↓
-/api/chat → Claude API (max_tokens: 2000)
-    ↓
-AI 분석 결과 JSON 배열 (~1500 토큰)
-    ↓
-enrichedActions (email 정보 포함)
-    ↓
-InboxPage.jsx 렌더링
-    ├── action.email.subject
-    ├── action.email.from.name
-    ├── action.suggestedAction
-    └── action.actionType
+src/
+├── components/
+│   ├── common/
+│   ├── home/
+│   ├── work/
+│   ├── life/
+│   ├── calendar/
+│   ├── chat/
+│   ├── focus/
+│   ├── settings/
+│   ├── auth/                    # ✅ 분리됨
+│   │   ├── LoginPage.jsx
+│   │   ├── AuthCallbackPage.jsx
+│   │   └── index.js
+│   ├── meeting/                 # ✅ 분리됨
+│   │   ├── meetingUtils.js
+│   │   ├── MeetingUploadStep.jsx
+│   │   ├── MeetingProgressStep.jsx
+│   │   ├── MeetingResultView.jsx
+│   │   ├── MeetingUploader.jsx
+│   │   └── index.js
+│   └── MeetingUploader.jsx      # → 리다이렉트
+├── hooks/
+│   ├── conditions/              # ✅ 분리됨
+│   │   ├── conditionUtils.js
+│   │   ├── useDailyConditions.js
+│   │   ├── useYearInPixels.js
+│   │   └── index.js
+│   ├── gmail/                   # ✅ 분리됨
+│   │   ├── gmailUtils.js
+│   │   └── index.js
+│   ├── calendar/                # ✅ 분리됨
+│   │   ├── calendarUtils.js
+│   │   └── index.js
+│   ├── useDailyConditions.js    # → 리다이렉트
+│   ├── useGmail.js
+│   ├── useGoogleCalendar.js
+│   └── ...
+├── utils/
+│   └── storage.js               # ✅ 분리됨
+├── constants/
+│   └── common.js
+└── App.jsx                      # 37KB (55KB에서 감소)
 ```
-
-#### 🔧 필드 매핑 상세
-
-**InboxPage.jsx 수정 전후:**
-
-| UI 필드 | 수정 전 (잘못됨) | 수정 후 (정상) |
-|---------|-----------------|----------------|
-| 제목 | `action.subject` | `action.email.subject` |
-| 발신자 | `action.from` | `action.email.from.name` |
-| 추천 액션 | `action.action` | `action.suggestedAction` |
-| 액션 타입 | `action.type` | `action.actionType` |
-| 마감일 | `action.deadline` | `action.dueDate` |
-
-**WorkPage.jsx prop 수정:**
-
-| SwipeableTaskItem 기대 | WorkPage 전달 (잘못됨) | 수정 후 |
-|------------------------|----------------------|---------|
-| `onComplete` | `onToggle` | `onComplete` |
-| `onPress` | `onClick` | `onPress` |
-| `onDelete` | `onDelete` | `onDelete` ✅ |
-
----
-
-### 2026-01-13 (이전): Gmail/Drive UI 연결 완료 📧☁️
-
-#### ✅ Gmail UI 연결 (App.jsx + InboxPage.jsx)
-| 구현 항목 | 설명 |
-|----------|------|
-| useGmail 훅 통합 | App.jsx에서 Gmail 훅 호출 및 상태 관리 |
-| InboxPage props 전달 | 모든 Gmail 관련 상태/함수 전달 |
-| 연결 상태 UI | 미연결/재인증 필요/연결됨 상태별 카드 |
-| 액션 리스트 | 우선순위별 색상 구분, 액션 타입 아이콘 |
-| Task 변환 | 이메일 액션을 태스크로 변환 기능 |
-
-#### ✅ SettingsPage Gmail 섹션 추가
-| 구현 항목 | 설명 |
-|----------|------|
-| Gmail 토글 | isGmailEnabled 상태 토글 |
-| 동기화 버튼 | fetchAndAnalyze 호출 |
-| 기간 설정 | 1/3/7/14/30일 선택 가능 |
-| 통계 표시 | 전체/긴급/액션 개수 |
-| 재연결 경고 | needsReauth 시 경고 카드 표시 |
-
-#### ✅ 커밋 내역
-- `d70d531` - App.jsx useGmail 훅 통합
-- `9798dbd` - InboxPage Gmail 데이터 연동
-- `d2a926e` - SettingsPage Gmail 섹션 추가
-- `aef0ab9` - fetchPeriod 숫자 형식 통일
-
----
-
-### 2026-01-13: Google Calendar 양방향 동기화 UI 연결 📅
-
-#### ✅ 구현 내용
-- CalendarPage에서 useGoogleCalendar 훅 통합
-- 캘린더 CRUD (생성/수정/삭제) UI 버튼 연결
-- 동기화 상태 표시 및 수동 동기화 버튼
-
----
-
-### 2026-01-13: 코드 품질 개선 3차 🧹
-
-#### ✅ 추가 컴포넌트 정리
-| 파일 | 제거된 항목 |
-|------|------------|
-| AlfredoChat.jsx | 미사용 아이콘 5개 (Calendar, Target, Clock, Sparkles, CheckCircle2), console.error |
-| BodyDoublingMode.jsx | 미사용 아이콘 3개 (Clock, Volume2, VolumeX) |
-| FocusPage.jsx | 미사용 import 3개 (useRef, Coffee, Sparkles), 미사용 변수 3개 (breakTime, breakTimeState, onTakeBreak) |
-
----
-
-### 2026-01-13: 코드 품질 개선 2차 🧹
-
-#### ✅ 컴포넌트 정리
-| 파일 | 제거된 import | 크기 변화 |
-|------|--------------|----------|
-| App.jsx | 10개 아이콘, 1개 훅 | 40KB → 38KB |
-| WorkPage.jsx | 17개 import | 15.5KB → 15KB |
-| HomePage.jsx | DAYS 중복 제거 | 21.8KB → 21.7KB |
-| CalendarPage.jsx | 7개 아이콘, 미사용 변수 | 24KB → 23.8KB |
-| LifePage.jsx | 15개 아이콘, 미사용 props | 21.8KB → 21.3KB |
-
-#### ✅ 공통 상수 파일 생성
-- `/src/constants/common.js` 신규 생성
-- 요일, 컨디션, 우선순위, 시간대 상수 통합
-- 헬퍼 함수: `getTimePhase()`, `formatDateKR()`, `getRelativeTime()`
-
-#### ✅ README 전면 업데이트
-- 라이브 데모 URL 추가
-- 기술 스택 현행화
-- 프로젝트 구조 39개 컴포넌트 반영
-- 개발 현황 업데이트
-
-#### ✅ TypeScript 타입 강화 (useDNAEngine.ts)
-- 모든 타입 명시적 export
-- 반환 타입 인터페이스 정의
-  - `UseDNAEngineReturn`
-  - `UseDNARecommendationsReturn`
-- 개별 타입 정의
-  - `StressLevel`, `Chronotype`, `BriefingTone`
-  - `BusyLevel`, `WorkLifeBalanceStatus`
-  - `RecommendedTaskType`
-- 결과 타입 인터페이스
-  - `MorningBriefingResult`
-  - `BestFocusTimeResult`
-  - `MeetingRatioResult`
-
----
-
-### 2025-01-13: 코드 품질 개선 및 메시지 확장 🧹
-
-#### ✅ DNA 메시지 확장 (dnaMessages.ts)
-- 기존 60개 → **100개+ 메시지**로 확장
-- 새로운 카테고리 추가:
-  - **계절별** (spring, summer, autumn, winter)
-  - **날씨별** (sunny, cloudy, rainy, snowy, hot, cold)
-  - **특별한 날** (monthStart, monthEnd, quarterEnd, yearEnd, newYear, holiday, longWeekend, afterHoliday)
-  - **시간대별** (earlyMorning, morning, lunch, afternoon, evening, lateNight)
-  - **요일별 확장** (tuesday, wednesday, thursday 추가)
-  - **격려/축하** (encouragement, celebration)
-- 유틸리티 함수 추가:
-  - `getCurrentSeason()` - 현재 계절 자동 감지
-  - `getCurrentTimeOfDay()` - 현재 시간대 자동 감지
-  - `detectSpecialDay()` - 특별한 날 자동 감지
-
-#### ✅ Empty State 처리 (EmptyState.jsx)
-- 범용 EmptyState 컴포넌트 생성
-- 6가지 프리셋 타입 (noTasks, noEvents, noData, noResults, noConnection, custom)
-- 시간대별 알프레도 멘트
-- 다크모드 지원
-
-#### ✅ App.jsx 코드 정리
-- 미사용 import 제거 (MessageSquare, Settings, X, Menu 등)
-- console.log/warn 제거
-- 미사용 변수 정리 (error, handleNavigate 등)
-- 미사용 훅 제거 (useSmartNotifications)
-- 파일 크기: 40KB → 38KB
-
----
-
-### 2025-01-13: W3 핵심 훅 Supabase 직접 연동 완료 🎉
-
-#### ✅ useDailyConditions.js
-- Supabase 클라이언트 직접 사용 (CORS 해결)
-- 테스트용 user_id 추가
-- **DB 저장 테스트 성공** ✅
-
-#### ✅ usePenguin.js
-- Supabase 직접 연동
-- XP/레벨/코인 관리
-- 아이템 구매/장착
-- XP 추가 함수
-
-#### ✅ useTasks.js
-- Supabase 직접 연동
-- CRUD + 완료/미루기
-- 태스크 완료 시 XP 보상
-  - 일반: 10XP
-  - 높음: 20XP
-  - 긴급: 30XP
-  - Top3 보너스: +5XP
-
-#### ✅ useHabits.js
-- Supabase 직접 연동
-- 습관 로그 기록
-- 스트릭 자동 계산
-- 습관 완료 시 XP 보상
-  - 기본: 5XP
-  - 7일 연속: 10XP
-  - 30일 연속: 15XP
-
-#### ✅ useFocusSessions.js
-- Supabase 직접 연동
-- 타이머 관리
-- 세션 완료 시 XP 보상
-  - 분당 1XP (최대 60XP)
-
----
-
-### 2025-01-13: Supabase 프로젝트 설정 완료
-
-#### ✅ 새 Supabase 프로젝트 생성
-- **URL**: `https://nuazfhjmnarngdreqcyk.supabase.co`
-- **Vercel 환경 변수**: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY 설정 완료
-
-#### ✅ DB 마이그레이션 실행
-`supabase/migrations/20250111_initial_schema.sql` 실행 완료
-
-**생성된 테이블 (18개):**
-- `users`, `user_settings`, `user_subscriptions`
-- `tasks`, `task_history`
-- `habits`, `habit_logs`
-- `focus_sessions`
-- `daily_conditions` ⭐
-- `penguin_status`, `penguin_items`, `penguin_inventory`, `xp_history`
-- `conversations`, `messages`, `conversation_summaries`
-- `calendar_events`, `calendar_insights`
-- `briefings`, `daily_summaries`, `weekly_insights`
-
----
-
-## 🏗️ 완성된 기능
-
-### 홈 페이지 (Home)
-- ✅ 알프레도 브리핑 V2
-- ✅ 컨디션 퀵 체인지 (DB 연동)
-- ✅ 오늘의 탑3 태스크
-- ✅ 지금 집중할 것
-- ✅ 기억해야 할 것
-- ✅ 오늘 타임라인
-- ✅ 날씨 위젯
-
-### 업무 페이지 (Work)
-- ✅ 태스크 리스트
-- ✅ 태스크 상세/수정
-- ✅ 우선순위 자동 계산
-- ✅ 인박스 (Gmail 연동) **← 완성!**
-- ✅ Task 클릭/완료/삭제 정상 동작
-
-### 캘린더 페이지 (Calendar)
-- ✅ 타임라인 뷰
-- ✅ Google Calendar 양방향 동기화
-
-### 채팅 페이지 (Chat)
-- ✅ Claude AI 연동
-- ✅ 스트리밍 응답
-
-### 설정 페이지 (Settings)
-- ✅ Gmail 연동 설정
-- ✅ Google Drive 백업/복원
-- ✅ 푸시 알림 설정
-- ✅ 알프레도 육성 시스템
-
-### UI/UX
-- ✅ Apple 2025 디자인
-- ✅ 글라스모피즘
-- ✅ 모바일 최적화
-- ✅ Empty State 처리
-
-### DNA 엔진
-- ✅ 캘린더 기반 패턴 분석
-- ✅ 100개+ 상황별 메시지
-- ✅ 시간대/계절/날씨 자동 감지
-- ✅ TypeScript 타입 완전 정의
 
 ---
 
@@ -330,65 +180,7 @@ InboxPage.jsx 렌더링
 
 ---
 
-## 📁 코드베이스 구조
-
-```
-src/
-├── components/
-│   ├── common/
-│   │   ├── EmptyState.jsx      # ✅ 범용 빈 상태
-│   │   ├── AlfredoEmptyState.jsx
-│   │   └── ...
-│   ├── home/                    # ✅ 정리 완료
-│   ├── work/
-│   │   ├── InboxPage.jsx       # ✅ Gmail 연동 (필드 매핑 수정)
-│   │   ├── WorkPage.jsx        # ✅ prop 이름 수정
-│   │   └── SwipeableTaskItem.jsx
-│   ├── life/                    # ✅ 정리 완료
-│   ├── calendar/                # ✅ 양방향 동기화
-│   ├── chat/                    # ✅ 정리 완료
-│   ├── focus/                   # ✅ 정리 완료
-│   ├── settings/
-│   │   └── SettingsPage.jsx    # ✅ Gmail 섹션 추가
-│   └── ...
-├── hooks/
-│   ├── useDailyConditions.js   # ✅ Supabase 직접 연동
-│   ├── usePenguin.js           # ✅ Supabase 직접 연동
-│   ├── useTasks.js             # ✅ Supabase 직접 연동
-│   ├── useHabits.js            # ✅ Supabase 직접 연동
-│   ├── useFocusSessions.js     # ✅ Supabase 직접 연동
-│   ├── useGmail.js             # ✅ Gmail API 연동 (AI 분석)
-│   ├── useGoogleDrive.js       # ✅ Drive API 연동
-│   ├── useGoogleCalendar.js    # ✅ Calendar API 연동
-│   └── useDNAEngine.ts         # ✅ 타입 강화 완료
-├── services/
-│   └── dna/
-│       └── dnaMessages.ts      # ✅ 100개+ 메시지
-├── constants/
-│   └── common.js               # ✅ 공통 상수
-├── lib/
-│   ├── supabase.ts             # Supabase 클라이언트
-│   └── api.ts                  # Edge Function API (대체됨)
-└── App.jsx                     # ✅ Gmail 훅 통합
-
-api/
-├── chat.js                     # ✅ max_tokens 2000으로 증가
-├── gmail.js                    # ✅ Gmail API 엔드포인트
-└── ...
-
-supabase/
-├── migrations/                 # DB 스키마
-└── functions/                  # Edge Functions (미사용)
-```
-
----
-
 ## 🔜 다음 작업
-
-### 즉시 (P0) - ✅ 완료
-- [x] Gmail AI 분석 토큰 한도 수정
-- [x] 인박스 UI 필드 매핑 수정
-- [x] Task 클릭 이벤트 수정
 
 ### 단기 (P1)
 - [ ] 각 훅 기능 테스트
@@ -400,16 +192,6 @@ supabase/
 - [ ] 실시간 펭귄 상태 표시
 - [ ] 주간/월간 리포트
 - [ ] 에러 핸들링 강화
-
----
-
-## 🐛 해결된 버그 히스토리
-
-| 날짜 | 버그 | 원인 | 해결 | 커밋 |
-|------|------|------|------|------|
-| 2026-01-13 | AI 분석 JSON 잘림 | max_tokens 500 부족 | 2000으로 증가 | `7acbf1b` |
-| 2026-01-13 | 이메일 내용 안 보임 | 필드명 불일치 | 올바른 매핑 적용 | `dc4013f` |
-| 2026-01-13 | Task 클릭 에러 | prop 이름 불일치 | prop 이름 통일 | `2047819` |
 
 ---
 
