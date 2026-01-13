@@ -7,9 +7,7 @@
  * - Calm 방식: 3초 만에 가치 전달
  */
 
-var React = require('react');
-var useState = React.useState;
-var useEffect = React.useEffect;
+import React, { useState, useEffect } from 'react';
 
 function SampleBriefingExperience(props) {
   var isDarkMode = props.isDarkMode !== false;
@@ -336,11 +334,4 @@ function SampleBriefingExperience(props) {
   );
 }
 
-// Export
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = SampleBriefingExperience;
-}
-
-if (typeof window !== 'undefined') {
-  window.SampleBriefingExperience = SampleBriefingExperience;
-}
+export default SampleBriefingExperience;
