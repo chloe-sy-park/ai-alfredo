@@ -1,9 +1,9 @@
 // 인사이트 컴포넌트 모음
-export { 
-  PatternDiscoveryCard,
-  AchievementCard,
-  TodayRecommendationCard,
-  WeeklyInsightSummary,
-  ConditionBasedTip,
+export {
+  DNAInsightCard,
+  ProductivityPatternCard,
+  StreakCard,
+  OverloadWarningCard,
+  EnergyPredictionCard,
   useInsightGenerator
 } from './EnhancedInsightCards';
