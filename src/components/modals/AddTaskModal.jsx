@@ -3,8 +3,9 @@ import { X, Clock, Target, Calendar, ChevronDown, Plus } from 'lucide-react';
 
 // Data
 import { mockProjects } from '../../data/mockData';
+import { TimeEstimateHelper } from '../adhd/TimeEstimatorUI';
 
-const AddTaskModal = ({ isOpen, onClose, onAdd, projects }) => {
+const AddTaskModal = ({ isOpen, onClose, onAdd, projects, getSuggestedTime }) => {
   const [title, setTitle] = useState('');
   const [project, setProject] = useState('');
   const [deadline, setDeadline] = useState('');
@@ -12,6 +13,7 @@ const AddTaskModal = ({ isOpen, onClose, onAdd, projects }) => {
   const [importance, setImportance] = useState('medium');
   const [repeat, setRepeat] = useState('none');
   const [note, setNote] = useState('');
+  const [estimatedMinutes, setEstimatedMinutes] = useState('');
   
   if (!isOpen) return null;
   
@@ -33,6 +35,7 @@ const AddTaskModal = ({ isOpen, onClose, onAdd, projects }) => {
       note: note.trim() || null,
       priorityChange: 'new',
       sparkline: [50, 55, 60, 65, 70],
+      estimatedMinutes: estimatedMinutes ? parseInt(estimatedMinutes) : null,
     };
     
     onAdd(newTask);
@@ -45,6 +48,7 @@ const AddTaskModal = ({ isOpen, onClose, onAdd, projects }) => {
     setImportance('medium');
     setRepeat('none');
     setNote('');
+    setEstimatedMinutes('');
     onClose();
   };
   
@@ -176,6 +180,48 @@ const AddTaskModal = ({ isOpen, onClose, onAdd, projects }) => {
                 </button>
               ))}
             </div>
+          </div>
+          
+          {/* ⏱️ 예상 소요시간 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1.5">예상 소요시간</label>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                value={estimatedMinutes}
+                onChange={(e) => setEstimatedMinutes(e.target.value)}
+                placeholder="30"
+                min="1"
+                max="480"
+                className="flex-1 p-3.5 bg-gray-50 rounded-xl border-none focus:ring-2 focus:ring-[#A996FF] text-gray-800 placeholder-gray-400"
+              />
+              <span className="flex items-center text-gray-500 text-sm">분</span>
+              {/* 빠른 선택 */}
+              <div className="flex gap-1">
+                {[15, 30, 60].map(min => (
+                  <button
+                    key={min}
+                    type="button"
+                    onClick={() => setEstimatedMinutes(min.toString())}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      parseInt(estimatedMinutes) === min
+                        ? 'bg-[#A996FF] text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {min}분
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* TimeEstimateHelper */}
+            {getSuggestedTime && (
+              <TimeEstimateHelper
+                category="general"
+                getSuggestedTime={getSuggestedTime}
+                onApplySuggestion={(suggestedMin) => setEstimatedMinutes(suggestedMin.toString())}
+              />
+            )}
           </div>
           
           {/* 메모 */}
