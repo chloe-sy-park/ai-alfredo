@@ -1,8 +1,5 @@
 import React, { useState } from 'react';
-import { 
-  ArrowLeft, Grid, Layout, Clock, Calendar, Target, 
-  CheckCircle2, Zap, Heart, TrendingUp
-} from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Zap } from 'lucide-react';
 
 const WidgetGallery = ({ onBack, tasks, events, mood, energy, darkMode }) => {
   const [activeTab, setActiveTab] = useState('gallery'); // gallery, editor, myWidgets
@@ -127,8 +124,6 @@ const WidgetGallery = ({ onBack, tasks, events, mood, energy, darkMode }) => {
     },
   };
   
-  const currentTheme = themes[widgetConfig.theme];
-  
   const bgColor = darkMode ? 'bg-gray-900' : 'bg-[#F0EBFF]';
   const cardBg = darkMode ? 'bg-gray-800' : 'bg-white';
   const textPrimary = darkMode ? 'text-white' : 'text-gray-800';
@@ -137,7 +132,6 @@ const WidgetGallery = ({ onBack, tasks, events, mood, energy, darkMode }) => {
   // === 커스텀 위젯 렌더러 ===
   const CustomWidget = ({ config, preview = false }) => {
     const theme = themes[config.theme];
-    const isLockscreen = config.size === 'lockscreen';
     
     // 배경 스타일
     const getBgClass = () => {
@@ -783,7 +777,5 @@ const WidgetGallery = ({ onBack, tasks, events, mood, energy, darkMode }) => {
     </div>
   );
 };
-
-// === Settings Page ===
 
 export default WidgetGallery;
