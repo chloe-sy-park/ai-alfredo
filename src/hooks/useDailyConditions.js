@@ -1,19 +1,19 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { dailyConditionsApi } from '../lib/api';
+import { supabase } from '../lib/supabase';
 
-// 📊 Daily Conditions Hook (Hybrid Mode)
-// - API 우선 + localStorage 백업
+// 📊 Daily Conditions Hook (Supabase Direct Mode)
+// - Supabase 클라이언트 직접 사용 (Edge Function 없이)
+// - localStorage 백업
 // - 오프라인 지원
 // - Year in Pixels 스타일 시각화 데이터 제공
-// - 패턴 분석 (요일별, 시간대별)
 
 // 컨디션 레벨 정의
 var CONDITION_LEVELS = {
-  1: { emoji: '😫', label: '힘들어요', color: '#ef4444' },   // red-500
-  2: { emoji: '😔', label: '그저그래요', color: '#f97316' }, // orange-500
-  3: { emoji: '😐', label: '보통이에요', color: '#6b7280' }, // gray-500
-  4: { emoji: '🙂', label: '괜찮아요', color: '#22c55e' },   // green-500
-  5: { emoji: '😊', label: '좋아요!', color: '#a855f7' }     // purple-500
+  1: { emoji: '😫', label: '힘들어요', color: '#ef4444' },
+  2: { emoji: '😔', label: '그저그래요', color: '#f97316' },
+  3: { emoji: '😐', label: '보통이에요', color: '#6b7280' },
+  4: { emoji: '🙂', label: '괜찮아요', color: '#22c55e' },
+  5: { emoji: '😊', label: '좋아요!', color: '#a855f7' }
 };
 
 // 레벨 라벨
@@ -88,10 +88,10 @@ var clearSyncQueue = function() {
   localStorage.removeItem(SYNC_QUEUE_KEY);
 };
 
-// 🎯 메인 훅 (Hybrid Mode)
+// 🎯 메인 훅 (Supabase Direct Mode)
 export var useDailyConditions = function(options) {
   var opts = options || {};
-  var useApi = opts.useApi !== false; // 기본값: true
+  var useDb = opts.useDb !== false; // 기본값: true
   
   var conditionsState = useState(function() {
     return loadConditions();
@@ -109,11 +109,11 @@ export var useDailyConditions = function(options) {
   
   var syncedRef = useRef(false);
   
-  // API에서 데이터 로드 (초기화 시)
+  // DB에서 데이터 로드 (초기화 시)
   useEffect(function() {
-    if (!useApi || syncedRef.current) return;
+    if (!useDb || syncedRef.current) return;
     
-    var fetchFromApi = async function() {
+    var fetchFromDb = async function() {
       setIsLoading(true);
       try {
         // 최근 90일 데이터 가져오기
@@ -121,23 +121,30 @@ export var useDailyConditions = function(options) {
         var startDate = new Date();
         startDate.setDate(startDate.getDate() - 90);
         
-        var response = await dailyConditionsApi.list({
-          start_date: getDateKey(startDate),
-          end_date: getDateKey(endDate),
-          limit: '100'
-        });
+        var { data, error: dbError } = await supabase
+          .from('daily_conditions')
+          .select('*')
+          .gte('log_date', getDateKey(startDate))
+          .lte('log_date', getDateKey(endDate))
+          .order('log_date', { ascending: false })
+          .limit(100);
         
-        if (response.success && response.data) {
-          // API 데이터를 로컬 형식으로 변환
-          var apiData = {};
-          response.data.forEach(function(item) {
+        if (dbError) {
+          console.error('DB fetch error:', dbError);
+          setError(dbError.message);
+          return;
+        }
+        
+        if (data && data.length > 0) {
+          // DB 데이터를 로컬 형식으로 변환
+          var dbData = {};
+          data.forEach(function(item) {
             var date = new Date(item.log_date);
-            // 평균 레벨 계산 (energy, mood, focus의 평균)
             var avgLevel = Math.round(
               ((item.energy_level || 3) + (item.mood_level || 3) + (item.focus_level || 3)) / 3
             );
             
-            apiData[item.log_date] = {
+            dbData[item.log_date] = {
               date: item.log_date,
               dayOfWeek: date.getDay(),
               mainLevel: avgLevel,
@@ -155,30 +162,28 @@ export var useDailyConditions = function(options) {
                 focus: item.focus_level,
                 note: item.note || ''
               }],
-              apiId: item.id
+              dbId: item.id
             };
           });
           
-          // 로컬 데이터와 병합 (API 데이터 우선)
-          var merged = Object.assign({}, conditions, apiData);
+          // 로컬 데이터와 병합 (DB 데이터 우선)
+          var merged = Object.assign({}, conditions, dbData);
           setConditions(merged);
           saveConditions(merged);
           syncedRef.current = true;
         }
       } catch (e) {
-        console.error('API fetch failed, using local data:', e);
+        console.error('DB fetch failed, using local data:', e);
         setError(e.message);
       } finally {
         setIsLoading(false);
       }
     };
     
-    fetchFromApi();
-  }, [useApi]);
+    fetchFromDb();
+  }, [useDb]);
   
   // 컨디션 기록 (Hybrid)
-  // level: 1-5 (간단 기록용, energy_level로 사용)
-  // 또는 { energy_level, mood_level, focus_level } 객체
   var recordCondition = useCallback(async function(levelOrData, note) {
     var now = new Date();
     var dateKey = getDateKey(now);
@@ -194,7 +199,6 @@ export var useDailyConditions = function(options) {
       focus_level = levelOrData.focus_level || 3;
       noteText = levelOrData.note || note;
     } else {
-      // 단일 레벨로 입력 시 세 가지 모두 같은 값
       energy_level = levelOrData;
       mood_level = levelOrData;
       focus_level = levelOrData;
@@ -234,30 +238,53 @@ export var useDailyConditions = function(options) {
       return updated;
     });
     
-    // API 저장 (비동기)
-    if (useApi) {
+    // DB 저장 (비동기) - Supabase 직접 호출
+    if (useDb) {
       try {
-        var response = await dailyConditionsApi.record({
-          log_date: dateKey,
-          energy_level: energy_level,
-          mood_level: mood_level,
-          focus_level: focus_level,
-          note: noteText || undefined
-        });
+        // UPSERT: 오늘 기록이 있으면 업데이트, 없으면 생성
+        var { data, error: dbError } = await supabase
+          .from('daily_conditions')
+          .upsert({
+            log_date: dateKey,
+            energy_level: energy_level,
+            mood_level: mood_level,
+            focus_level: focus_level,
+            note: noteText || null,
+            updated_at: now.toISOString()
+          }, {
+            onConflict: 'user_id,log_date',
+            ignoreDuplicates: false
+          })
+          .select()
+          .single();
         
-        if (response.success && response.data) {
-          // API ID 업데이트
+        if (dbError) {
+          console.error('DB save error:', dbError);
+          // RLS 정책 때문에 실패할 수 있음 - 로컬에만 저장
+          addToSyncQueue({
+            action: 'record',
+            data: { 
+              log_date: dateKey, 
+              energy_level: energy_level, 
+              mood_level: mood_level, 
+              focus_level: focus_level, 
+              note: noteText 
+            }
+          });
+        } else if (data) {
+          // DB ID 업데이트
           setConditions(function(prev) {
             var updated = Object.assign({}, prev);
             if (updated[dateKey]) {
-              updated[dateKey].apiId = response.data.id;
+              updated[dateKey].dbId = data.id;
             }
             saveConditions(updated);
             return updated;
           });
+          console.log('✅ 컨디션 DB 저장 성공:', data);
         }
       } catch (e) {
-        console.error('API save failed, queued for sync:', e);
+        console.error('DB save failed, saved locally:', e);
         addToSyncQueue({
           action: 'record',
           data: { 
@@ -272,7 +299,7 @@ export var useDailyConditions = function(options) {
     }
     
     return { dateKey: dateKey, level: avgLevel };
-  }, [useApi]);
+  }, [useDb]);
   
   // 오늘 컨디션 가져오기
   var getTodayCondition = useCallback(function() {
@@ -536,7 +563,7 @@ export var useDailyConditions = function(options) {
   
   // 동기화 큐 처리
   var processSyncQueue = useCallback(async function() {
-    if (!useApi) return;
+    if (!useDb) return;
     
     var queue = getSyncQueue();
     if (queue.length === 0) return;
@@ -547,7 +574,16 @@ export var useDailyConditions = function(options) {
       var item = queue[i];
       try {
         if (item.action === 'record') {
-          await dailyConditionsApi.record(item.data);
+          var { error: dbError } = await supabase
+            .from('daily_conditions')
+            .upsert(item.data, {
+              onConflict: 'user_id,log_date',
+              ignoreDuplicates: false
+            });
+          
+          if (dbError) {
+            failed.push(item);
+          }
         }
       } catch (e) {
         failed.push(item);
@@ -559,7 +595,7 @@ export var useDailyConditions = function(options) {
     } else {
       clearSyncQueue();
     }
-  }, [useApi]);
+  }, [useDb]);
   
   // 온라인 복구 시 동기화
   useEffect(function() {
