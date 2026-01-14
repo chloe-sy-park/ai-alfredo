@@ -32,11 +32,11 @@ export default function RingProgress({
   var circumference = 2 * Math.PI * radius;
   var offset = circumference - (percent / 100) * circumference;
   
-  // Color classes
-  var colorClasses = {
-    accent: 'stroke-accent',
-    success: 'stroke-success',
-    primary: 'stroke-primary',
+  // 라이트모드 색상 (hex)
+  var colorValues = {
+    accent: '#FFD700',
+    success: '#4ADE80',
+    primary: '#A996FF',
   };
 
   return (
@@ -55,9 +55,8 @@ export default function RingProgress({
           cy={config.dimension / 2}
           r={radius}
           fill="none"
-          stroke="currentColor"
+          stroke="#E5E5E5"
           strokeWidth={actualStrokeWidth}
-          className="text-neutral-200"
         />
         
         {/* Progress ring */}
@@ -66,15 +65,12 @@ export default function RingProgress({
           cy={config.dimension / 2}
           r={radius}
           fill="none"
+          stroke={colorValues[color]}
           strokeWidth={actualStrokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
-          className={[
-            colorClasses[color],
-            animate ? 'transition-all duration-emphasis ease-default' : '',
-          ].join(' ')}
-          style={animate ? { animation: 'progressFill 800ms ease-out' } : undefined}
+          className={animate ? 'transition-all duration-300 ease-out' : ''}
         />
       </svg>
       
@@ -83,7 +79,7 @@ export default function RingProgress({
         {centerContent ? (
           centerContent
         ) : showPercent ? (
-          <span className={`font-bold text-neutral-800 ${config.fontSize}`}>
+          <span className={'font-bold text-[#1A1A1A] ' + config.fontSize}>
             {Math.round(percent)}%
           </span>
         ) : null}
@@ -115,31 +111,32 @@ export function Sparkline({
   var points = data.map(function(value, index) {
     var x = (index / (data.length - 1)) * width;
     var y = height - ((value - min) / range) * (height - 4) - 2;
-    return `${x},${y}`;
+    return x + ',' + y;
   }).join(' ');
   
-  var colorClasses = {
-    accent: 'stroke-accent',
-    success: 'stroke-success',
-    error: 'stroke-error',
+  // 라이트모드 색상 (hex)
+  var colorValues = {
+    accent: '#FFD700',
+    success: '#4ADE80',
+    error: '#EF4444',
   };
 
   return (
     <svg width={width} height={height} className="overflow-visible">
       <polyline
         fill="none"
+        stroke={colorValues[color]}
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
         points={points}
-        className={colorClasses[color]}
       />
       {/* End dot */}
       <circle
         cx={(data.length - 1) / (data.length - 1) * width}
         cy={height - ((data[data.length - 1] - min) / range) * (height - 4) - 2}
         r="3"
-        className={`fill-current ${colorClasses[color].replace('stroke-', 'text-')}`}
+        fill={colorValues[color]}
       />
     </svg>
   );
