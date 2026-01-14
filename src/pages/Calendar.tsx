@@ -151,11 +151,6 @@ export default function CalendarPage() {
     setSelectedDate(newDate);
     if (newDate.getMonth() !== month) setCurrentDate(new Date(newDate.getFullYear(), newDate.getMonth(), 1));
   }
-  function goToToday() {
-    var now = new Date();
-    setCurrentDate(new Date(now.getFullYear(), now.getMonth(), 1));
-    setSelectedDate(now);
-  }
 
   function handleSelectDate(day: number | Date) {
     if (typeof day === 'number') {
@@ -250,12 +245,7 @@ export default function CalendarPage() {
           </div>
           
           <div className="flex items-center gap-1">
-            {!isCurrentMonth && (
-              <button onClick={goToToday} className="px-2.5 py-1 text-xs bg-lavender-100 text-lavender-600 rounded-full hover:bg-lavender-200">
-                오늘
-              </button>
-            )}
-            <div className="flex bg-gray-100 rounded-lg p-0.5 mx-1">
+            <div className="flex bg-gray-100 rounded-lg p-0.5">
               <button
                 onClick={function() { setViewMode('month'); }}
                 className={'px-2.5 py-1 rounded-md text-xs font-medium transition-colors ' + 
@@ -298,7 +288,7 @@ export default function CalendarPage() {
                 })}
               </div>
 
-              {/* 날짜 그리드 - 더 크게 */}
+              {/* 날짜 그리드 */}
               <div className="grid grid-cols-7 gap-0.5">
                 {calendarDays.map(function(item) {
                   if (item.isOtherMonth) {
