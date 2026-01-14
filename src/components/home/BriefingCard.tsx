@@ -27,13 +27,13 @@ export default function BriefingCard({
         )}
         
         {/* 헤드라인 */}
-        <h2 className="font-semibold text-neutral-800 leading-relaxed">
+        <h2 className="font-semibold text-[#1A1A1A] leading-relaxed">
           {headline}
         </h2>
         
         {/* 서브라인 */}
         {subline && (
-          <p className="text-sm text-neutral-500 leading-relaxed">
+          <p className="text-sm text-[#666666] leading-relaxed">
             {subline}
           </p>
         )}
