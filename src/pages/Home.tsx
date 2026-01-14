@@ -5,6 +5,8 @@ import { ConditionLevel, getTodayCondition } from '../services/condition';
 import { Top3Item, getTop3 } from '../services/top3';
 import { FocusItem, setFocusFromTop3, getCurrentFocus } from '../services/focusNow';
 import { getWeather, WeatherData } from '../services/weather';
+import { hasSeenEntryToday, markEntryAsSeen, updateVisit } from '../services/visit';
+import { generateBriefing } from '../services/briefing';
 
 // Components
 import { PageHeader } from '../components/layout';
@@ -16,6 +18,7 @@ import TodayTop3 from '../components/home/TodayTop3';
 import FocusNow from '../components/home/FocusNow';
 import WeatherCard from '../components/home/WeatherCard';
 import QuickMemoCard from '../components/home/QuickMemoCard';
+import DailyEntry from '../components/home/DailyEntry';
 import { calculateIntensity } from '../components/common/IntensityBadge';
 import { SkeletonCard, SkeletonBriefing } from '../components/common/Skeleton';
 
@@ -31,6 +34,18 @@ export default function Home() {
   var [intensity, setIntensity] = useState<IntensityLevel>('normal');
   var [top3Items, setTop3Items] = useState<Top3Item[]>([]);
   var [isLoading, setIsLoading] = useState(true);
+  var [showDailyEntry, setShowDailyEntry] = useState(false);
+  var [briefing, setBriefing] = useState({ headline: '', subline: '' });
+
+  // 방문 체크 및 Daily Entry 표시
+  useEffect(function() {
+    updateVisit();
+    
+    // Daily Entry를 아직 안 봤으면 표시
+    if (!hasSeenEntryToday()) {
+      setShowDailyEntry(true);
+    }
+  }, []);
 
   // 데이터 로드
   useEffect(function() {
@@ -67,6 +82,23 @@ export default function Home() {
     var items = getTop3();
     setTop3Items(items);
     
+    // 브리핑 생성
+    var now = new Date();
+    var days = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+    var briefingData = generateBriefing({
+      currentTime: now,
+      dayOfWeek: days[now.getDay()],
+      weather: weather || undefined,
+      todayCalendar: calendarEvents,
+      incompleteTasks: [], // TODO: tasks 서비스 연동
+      condition: currentCondition || undefined
+    });
+    
+    setBriefing({
+      headline: briefingData.headline,
+      subline: briefingData.subline
+    });
+    
     // 로딩 완료
     setTimeout(function() { setIsLoading(false); }, 500);
   }, []);
@@ -93,6 +125,12 @@ export default function Home() {
     setCurrentFocus(focus);
   }
 
+  // Daily Entry 완료
+  function handleDailyEntryComplete() {
+    markEntryAsSeen();
+    setShowDailyEntry(false);
+  }
+
   // 시간 기반 인사
   var now = new Date();
   var hours = now.getHours();
@@ -104,77 +142,6 @@ export default function Home() {
     if (hours < 22) return '저녁 시간이에요';
     return '늦은 밤이에요';
   }
-
-  // 알프레도 브리핑 생성
-  function getBriefing(): { headline: string; subline: string } {
-    // 컨디션 우선
-    if (currentCondition === 'bad') {
-      return {
-        headline: '오늘은 무리하지 않는 게 가장 생산적인 선택이에요',
-        subline: '꼭 필요한 것만 하고 푹 쉬세요 🌙'
-      };
-    }
-    
-    // 강도 기반
-    if (intensity === 'overloaded') {
-      return {
-        headline: '오늘 일정이 많네요. 우선순위에 집중하세요',
-        subline: '모든 걸 다 할 필요 없어요. 중요한 것만 🎯'
-      };
-    }
-    
-    if (intensity === 'heavy') {
-      return {
-        headline: '바쁜 하루가 될 거예요. 페이스 조절이 중요해요',
-        subline: '중간중간 쉬는 것도 일의 일부예요 ☕'
-      };
-    }
-    
-    // 날씨 기반
-    if (weather && (weather.condition === 'rainy' || weather.condition === 'snowy')) {
-      return {
-        headline: weather.icon + ' 오늘은 ' + weather.description,
-        subline: '우산 챙기세요! 실내 작업에 집중하기 좋은 날이에요'
-      };
-    }
-    
-    // 시간대 기반
-    if (hours < 10) {
-      var eventCount = calendarEvents.length;
-      return {
-        headline: '오늘 일정 ' + eventCount + '개, 에너지 있을 때 중요한 것부터!',
-        subline: '오전에 집중하면 오후가 편해져요 ☀️'
-      };
-    }
-    
-    if (hours < 14) {
-      return {
-        headline: '지금 가장 중요한 것 하나에 집중하세요',
-        subline: '한 번에 하나씩, ADHD 친화적으로 🎯'
-      };
-    }
-    
-    if (hours < 18) {
-      return {
-        headline: '오후 슬럼프를 이겨내세요!',
-        subline: '잠깐 쉬거나 간단한 일부터 시작해보세요 ☕'
-      };
-    }
-    
-    if (currentCondition === 'great') {
-      return {
-        headline: '컨디션이 좋네요! 💪',
-        subline: '내일을 위해 정리하고 일찍 쉬세요'
-      };
-    }
-    
-    return {
-      headline: (user?.name || 'Boss') + '님, 오늘 하루 수고했어요',
-      subline: '이제 푹 쉬세요. 내일도 함께할게요 ✨'
-    };
-  }
-
-  var briefing = getBriefing();
 
   // MoreSheet 콘텐츠
   function getMoreContent() {
@@ -202,9 +169,8 @@ export default function Home() {
   var moreContent = getMoreContent();
 
   // Mode Cards 데이터 계산
-  // Top3는 work/life 구분이 없으므로 전체를 업무로 표시
   var workCount = top3Items.filter(function(item) { 
-    return !item.completed; // 미완료 항목만
+    return !item.completed;
   }).length;
   
   var conditionStatus = currentCondition ? {
@@ -216,6 +182,16 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#F5F5F5]">
+      {/* Daily Entry */}
+      {showDailyEntry && (
+        <DailyEntry 
+          onComplete={handleDailyEntryComplete}
+          userName={user?.name || 'Boss'}
+          briefing={briefing}
+          isFirstVisitToday={!hasSeenEntryToday()}
+        />
+      )}
+      
       {/* 헤더 */}
       <PageHeader />
 
