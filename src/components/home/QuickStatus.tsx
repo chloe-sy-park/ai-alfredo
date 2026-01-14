@@ -1,4 +1,3 @@
-import { Cloud, Thermometer, Battery, Smile } from 'lucide-react';
 import { WeatherData } from '../../services/weather';
 import { ConditionLevel } from '../../services/condition';
 
@@ -15,8 +14,7 @@ export default function QuickStatus({ weather, condition, onConditionClick }: Qu
       case 'great': return '😊';
       case 'good': return '🙂';
       case 'normal': return '😐';
-      case 'tired': return '😴';
-      case 'bad': return '😫';
+      case 'bad': return '😴';
       default: return '🙂';
     }
   }
@@ -26,7 +24,6 @@ export default function QuickStatus({ weather, condition, onConditionClick }: Qu
       case 'great': return '최고';
       case 'good': return '좋음';
       case 'normal': return '보통';
-      case 'tired': return '피곤';
       case 'bad': return '힘듦';
       default: return '체크';
     }
@@ -41,7 +38,7 @@ export default function QuickStatus({ weather, condition, onConditionClick }: Qu
           <div className="min-w-0">
             <p className="text-xs text-[#999999]">날씨</p>
             <p className="text-sm font-medium text-[#1A1A1A] truncate">
-              {weather.temperature}° {weather.description}
+              {weather.temp}° {weather.description}
             </p>
           </div>
         </div>
