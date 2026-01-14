@@ -1,10 +1,16 @@
 import { useOnboardingStore } from '../../stores/onboardingStore';
+import { useAuthStore } from '../../stores/authStore';
+import { useNavigate } from 'react-router-dom';
 
 export default function Step1Welcome() {
   var { nextStep, complete } = useOnboardingStore();
+  var { completeOnboarding } = useAuthStore();
+  var navigate = useNavigate();
 
   function handleSkip() {
     complete();
+    completeOnboarding();
+    navigate('/');
   }
 
   return (
