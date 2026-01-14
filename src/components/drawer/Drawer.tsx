@@ -1,7 +1,5 @@
 import { useEffect } from 'react';
-import { X } from 'lucide-react';
 import { useDrawerStore } from '../../stores';
-import { DRAWER_MAIN_MENU, DRAWER_SECONDARY_MENU } from '../../constants';
 import DrawerOverlay from './DrawerOverlay';
 import DrawerHeader from './DrawerHeader';
 import DrawerMenu from './DrawerMenu';
@@ -11,14 +9,14 @@ export default function Drawer() {
 
   // ESC 키로 닫기
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) close();
     };
-    if (isOpen) window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, close]);
 
-  // 스크롤 잠금
+  // 열릴 때 스크롤 방지
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -39,25 +37,10 @@ export default function Drawer() {
           (isOpen ? 'translate-x-0' : 'translate-x-full')
         }
       >
-        {/* Close Button */}
-        <button
-          onClick={close}
-          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center text-[#999999] hover:text-[#666666]"
-        >
-          <X size={20} />
-        </button>
-
-        {/* Header */}
-        <DrawerHeader daysWithAlfredo={14} />
-
-        {/* Main Menu */}
-        <DrawerMenu items={DRAWER_MAIN_MENU} onItemClick={close} />
-
-        {/* Divider */}
-        <div className="mx-6 border-t border-[#E5E5E5]" />
-
-        {/* Secondary Menu */}
-        <DrawerMenu items={DRAWER_SECONDARY_MENU} onItemClick={close} />
+        <div className="flex flex-col h-full safe-area-top safe-area-bottom">
+          <DrawerHeader onClose={close} />
+          <DrawerMenu onClose={close} />
+        </div>
       </div>
     </>
   );
