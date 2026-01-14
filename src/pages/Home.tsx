@@ -6,7 +6,7 @@ import { Top3Item, getTop3 } from '../services/top3';
 import { FocusItem, setFocusFromTop3, getCurrentFocus } from '../services/focusNow';
 import { getWeather, WeatherData } from '../services/weather';
 import { hasSeenEntryToday, markEntryAsSeen, updateVisit } from '../services/visit';
-import { generateBriefing } from '../services/briefing';
+import { generateBriefing, WeatherData as BriefingWeatherData } from '../services/briefing';
 
 // Components
 import { PageHeader } from '../components/layout';
@@ -46,6 +46,17 @@ export default function Home() {
       setShowDailyEntry(true);
     }
   }, []);
+
+  // WeatherData를 BriefingWeatherData로 변환하는 헬퍼 함수
+  function convertWeatherForBriefing(weatherData: WeatherData | null): BriefingWeatherData | undefined {
+    if (!weatherData) return undefined;
+    return {
+      temp: weatherData.temp,
+      condition: weatherData.condition,
+      description: weatherData.description,
+      icon: weatherData.icon
+    };
+  }
 
   // 데이터 로드
   useEffect(function() {
@@ -88,7 +99,7 @@ export default function Home() {
     var briefingData = generateBriefing({
       currentTime: now,
       dayOfWeek: days[now.getDay()],
-      weather: weather || undefined,
+      weather: convertWeatherForBriefing(weather),
       todayCalendar: calendarEvents,
       incompleteTasks: [], // TODO: tasks 서비스 연동
       condition: currentCondition || undefined
