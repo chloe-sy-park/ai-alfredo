@@ -10,7 +10,7 @@ interface FloatingBarProps {
 }
 
 export default function FloatingBar({ onChatSubmit, onQuickAction }: FloatingBarProps) {
-  const { mode, expand, collapse, openChat } = useFloatingBarStore();
+  const { mode, expand, collapse } = useFloatingBarStore();
   const { isRunning } = useTimerStore();
 
   // 타이머 실행 중이면 타이머 모드
