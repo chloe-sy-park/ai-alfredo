@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
-import { X, MapPin, AlignLeft, Clock, Calendar, Trash2 } from 'lucide-react';
-import { CalendarEvent } from '../../services/calendar';
+import { X, MapPin, AlignLeft, Clock, Calendar, Trash2, ChevronDown } from 'lucide-react';
+import { CalendarEvent, CalendarInfo, getEditableCalendars } from '../../services/calendar';
 
 interface EventModalProps {
   event?: CalendarEvent | null;
   selectedDate?: Date;
   isOpen: boolean;
   onClose: () => void;
-  onSave?: (event: Omit<CalendarEvent, 'id'>) => void;
-  onDelete?: (eventId: string) => void;
+  onSave?: (event: Omit<CalendarEvent, 'id'>, calendarId?: string) => void;
+  onUpdate?: (eventId: string, event: Omit<CalendarEvent, 'id'>, calendarId?: string) => void;
+  onDelete?: (eventId: string, calendarId?: string) => void;
   mode: 'view' | 'edit' | 'create';
 }
 
@@ -18,6 +19,7 @@ export default function EventModal({
   isOpen, 
   onClose, 
   onSave,
+  onUpdate,
   onDelete,
   mode 
 }: EventModalProps) {
@@ -31,6 +33,25 @@ export default function EventModal({
   var [description, setDescription] = useState(event?.description || '');
   var [location, setLocation] = useState(event?.location || '');
   var [isEditing, setIsEditing] = useState(mode === 'create' || mode === 'edit');
+  
+  // Calendar selection
+  var [editableCalendars, setEditableCalendars] = useState<CalendarInfo[]>([]);
+  var [selectedCalendarId, setSelectedCalendarId] = useState<string>(event?.calendarId || 'primary');
+  var [showCalendarPicker, setShowCalendarPicker] = useState(false);
+
+  // Load editable calendars
+  useEffect(function() {
+    var calendars = getEditableCalendars();
+    setEditableCalendars(calendars);
+    
+    // Set default calendar
+    if (event?.calendarId) {
+      setSelectedCalendarId(event.calendarId);
+    } else if (calendars.length > 0) {
+      var primary = calendars.find(function(c) { return c.primary; });
+      setSelectedCalendarId(primary ? primary.id : calendars[0].id);
+    }
+  }, [event]);
 
   // Reset form when event changes
   useEffect(function() {
@@ -42,6 +63,7 @@ export default function EventModal({
       setIsAllDay(event.allDay || false);
       setDescription(event.description || '');
       setLocation(event.location || '');
+      setSelectedCalendarId(event.calendarId || 'primary');
     } else {
       setTitle('');
       setDate(initialDate);
@@ -77,6 +99,10 @@ export default function EventModal({
     return month + '월 ' + day + '일 (' + dayOfWeek + ')';
   }
 
+  function getSelectedCalendar(): CalendarInfo | undefined {
+    return editableCalendars.find(function(c) { return c.id === selectedCalendarId; });
+  }
+
   function handleSave() {
     if (!title.trim()) {
       alert('일정 제목을 입력해주세요.');
@@ -92,8 +118,10 @@ export default function EventModal({
       location: location
     };
 
-    if (onSave) {
-      onSave(newEvent);
+    if (mode === 'create' && onSave) {
+      onSave(newEvent, selectedCalendarId);
+    } else if (event && onUpdate) {
+      onUpdate(event.id, newEvent, event.calendarId || selectedCalendarId);
     }
     onClose();
   }
@@ -101,7 +129,7 @@ export default function EventModal({
   function handleDelete() {
     if (event && onDelete) {
       if (confirm('이 일정을 삭제할까요?')) {
-        onDelete(event.id);
+        onDelete(event.id, event.calendarId);
         onClose();
       }
     }
@@ -122,7 +150,7 @@ export default function EventModal({
       />
       
       {/* Modal */}
-      <div className="relative w-full max-w-lg bg-white rounded-t-3xl p-5 pb-8 animate-slideUp safe-area-bottom">
+      <div className="relative w-full max-w-lg bg-white rounded-t-3xl p-5 pb-8 animate-slideUp safe-area-bottom max-h-[85vh] overflow-y-auto">
         {/* Handle */}
         <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
         
@@ -206,6 +234,50 @@ export default function EventModal({
         {/* Edit/Create Mode */}
         {isEditing && (
           <div className="space-y-4">
+            {/* Calendar Picker (only for create mode) */}
+            {mode === 'create' && editableCalendars.length > 1 && (
+              <div className="relative">
+                <button
+                  onClick={function() { setShowCalendarPicker(!showCalendarPicker); }}
+                  className="w-full flex items-center justify-between px-4 py-3 border border-gray-200 rounded-xl"
+                >
+                  <div className="flex items-center gap-2">
+                    <span 
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: getSelectedCalendar()?.backgroundColor || '#A996FF' }}
+                    />
+                    <span className="text-sm">{getSelectedCalendar()?.summary || '캘린더 선택'}</span>
+                  </div>
+                  <ChevronDown size={18} className={'text-gray-400 transition-transform ' + (showCalendarPicker ? 'rotate-180' : '')} />
+                </button>
+                
+                {showCalendarPicker && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-10 overflow-hidden">
+                    {editableCalendars.map(function(cal) {
+                      return (
+                        <button
+                          key={cal.id}
+                          onClick={function() { 
+                            setSelectedCalendarId(cal.id); 
+                            setShowCalendarPicker(false); 
+                          }}
+                          className={'w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 text-left ' + 
+                            (cal.id === selectedCalendarId ? 'bg-lavender-50' : '')}
+                        >
+                          <span 
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: cal.backgroundColor || '#A996FF' }}
+                          />
+                          <span className="text-sm">{cal.summary}</span>
+                          {cal.primary && <span className="text-xs text-gray-400">(기본)</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Title */}
             <input
               type="text"
