@@ -25,12 +25,12 @@ export function createNote(title: string, content: string): Note {
   };
 }
 
-export function updateNote(id: string, updates: Partial<Note>): Note | null {
+export function updateNote(_id: string, _updates: Partial<Note>): Note | null {
   // 추후 구현
   return null;
 }
 
-export function deleteNote(id: string): boolean {
+export function deleteNote(_id: string): boolean {
   // 추후 구현
   return false;
 }

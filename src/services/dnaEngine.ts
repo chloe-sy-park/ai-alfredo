@@ -11,7 +11,7 @@ export class DNAExpansionEngine {
     
     // 첫 일정 시간 분석
     var firstEventTimes = events
-      .filter(e => !e.isAllDay)
+      .filter(e => !e.allDay)
       .map(e => new Date(e.start).getHours());
     
     if (firstEventTimes.length > 0) {
@@ -117,10 +117,14 @@ export class DNAExpansionEngine {
     var insights: DNAInsight[] = [];
     
     // 미팅 비율 계산
+    // 참석자 수가 없으므로 제목으로만 판단
     var meetingEvents = events.filter(e => 
       e.title.includes('미팅') || 
       e.title.includes('회의') || 
-      e.attendees.length > 1
+      e.title.includes('meeting') ||
+      e.title.includes('Meeting') ||
+      e.title.includes('sync') ||
+      e.title.includes('1:1')
     );
     
     var meetingRatio = meetingEvents.length / events.length;
@@ -143,9 +147,9 @@ export class DNAExpansionEngine {
       });
     }
     
-    // 1:1 미팅 분석
-    var oneOnOnes = meetingEvents.filter(e => e.attendees.length === 2);
-    if (oneOnOnes.length > meetingEvents.length * 0.5) {
+    // 1:1 미팅 분석 (제목에 1:1이 포함된 경우)
+    var oneOnOnes = meetingEvents.filter(e => e.title.includes('1:1'));
+    if (oneOnOnes.length > meetingEvents.length * 0.3) {
       insights.push({
         type: 'workstyle',
         signal: '1:1 미팅 많음',
@@ -169,7 +173,8 @@ export class DNAExpansionEngine {
     var weekendWork = events.filter(e => {
       var day = new Date(e.start).getDay();
       return (day === 0 || day === 6) && 
-             (e.title.includes('업무') || e.title.includes('작업'));
+             (e.title.includes('업무') || e.title.includes('작업') || 
+              e.title.includes('work') || e.title.includes('Work'));
     });
     
     if (weekendWork.length > 0) {
@@ -182,21 +187,7 @@ export class DNAExpansionEngine {
       });
     }
     
-    // 취소 빈도 체크 (이전 데이터 필요)
-    if (previousEvents) {
-      var cancelledEvents = events.filter(e => e.status === 'cancelled');
-      var cancelRate = cancelledEvents.length / events.length;
-      
-      if (cancelRate > 0.2) {
-        insights.push({
-          type: 'stress',
-          signal: '취소 빈도 급증',
-          inference: '번아웃 위험',
-          confidence: 3,
-          usage: '톤 부드럽게, 필수 일정만 유지 권유'
-        });
-      }
-    }
+    // 취소 빈도 체크 - 취소된 이벤트는 무시 (상태 필드가 없음)
     
     return insights;
   }

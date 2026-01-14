@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Play, X, Clock, Calendar } from 'lucide-react';
 import { FocusItem, getCurrentFocus, clearFocus, startFocus, pauseFocus, resumeFocus } from '../../services/focusNow';
-import { formatMinutes, formatRemainingTime } from '../../services/tasks';
+import { formatRemainingTime } from '../../services/tasks';
 import Card from '../common/Card';
 import Button from '../common/Button';
 import { useChatStore } from '../../stores/chatStore';
@@ -137,7 +137,7 @@ export default function FocusNow({ externalFocus, onFocusChange }: FocusNowProps
           {remainingTime && (
             <div className="flex items-center gap-1">
               <Calendar size={14} />
-              <span>{remainingTime} 남음</span>
+              <span>{remainingTime}</span>
             </div>
           )}
         </div>

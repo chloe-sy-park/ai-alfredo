@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { ChatMessage, ChatSession, ChatContext, DNAInsight } from '../types/chat';
+import { ChatMessage, ChatSession, ChatContext, DNAInsight, JudgementReflection } from '../types/chat';
 import { DNAExpansionEngine } from '../services/dnaEngine';
 import { getTodayEvents } from '../services/calendar';
 
@@ -158,8 +158,8 @@ async function generateAlfredoResponse(userInput: string, context: ChatContext) 
   
   var understanding = '네, 이해했어요. ';
   var summary = '';
-  var judgement = {
-    type: 'maintain' as const,
+  var judgement: JudgementReflection = {
+    type: 'maintain',
     message: '지금 기준은 유지할게요.',
     confidence: 0.8
   };
