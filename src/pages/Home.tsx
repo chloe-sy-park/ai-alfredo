@@ -195,8 +195,9 @@ export default function Home() {
   var moreContent = getMoreContent();
 
   return (
-    <div className="min-h-screen bg-background pb-24">
-      <div className="max-w-mobile mx-auto p-4 space-y-4">
+    <div className="min-h-screen bg-background pb-[96px]">
+      {/* 메인 컨텐츠 - 24px 패딩, 16px 카드 간격 */}
+      <div className="max-w-mobile mx-auto px-[24px] py-[24px] space-y-[16px]">
         
         {/* 헤더 */}
         <header className="flex justify-between items-center animate-fade-in">
@@ -206,12 +207,13 @@ export default function Home() {
               {user?.name || 'Boss'}님
             </h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-[16px]">
             {isGoogleConnected && (
               <span className="text-xs text-success">● 캘린더 연동</span>
             )}
-            <div className="w-10 h-10 bg-white rounded-full shadow-card flex items-center justify-center">
-              <span className="text-xl">🐧</span>
+            {/* 아바타 - 48x48 */}
+            <div className="w-[48px] h-[48px] bg-white rounded-full shadow-card flex items-center justify-center">
+              <span className="text-2xl">🐧</span>
             </div>
           </div>
         </header>
