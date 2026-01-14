@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Home, Calendar, Briefcase, Heart, MessageCircle } from 'lucide-react';
 
-const navItems = [
+var navItems = [
   { path: '/', icon: Home, label: '홈' },
   { path: '/calendar', icon: Calendar, label: '캘린더' },
   { path: '/work', icon: Briefcase, label: '업무' },
@@ -10,24 +10,28 @@ const navItems = [
 ];
 
 export default function BottomNav() {
-  const location = useLocation();
-  const navigate = useNavigate();
+  var location = useLocation();
+  var navigate = useNavigate();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-50">
-      <div className="flex justify-around items-center h-16 max-w-lg mx-auto">
-        {navItems.map((item) => {
-          const isActive = location.pathname === item.path;
+    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E5E5E5] z-50 safe-area-bottom">
+      <div className="flex justify-around items-center h-16 max-w-lg mx-auto px-2">
+        {navItems.map(function(item) {
+          var isActive = location.pathname === item.path;
+          var Icon = item.icon;
           return (
             <button
               key={item.path}
-              onClick={() => navigate(item.path)}
-              className={`flex flex-col items-center justify-center w-16 h-full transition-colors ${
-                isActive ? 'text-lavender-500' : 'text-gray-400'
-              }`}
+              onClick={function() { navigate(item.path); }}
+              className={
+                'flex flex-col items-center justify-center min-w-[56px] h-full transition-colors ' +
+                (isActive ? 'text-[#A996FF]' : 'text-[#999999]')
+              }
             >
-              <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} />
-              <span className="text-xs mt-1">{item.label}</span>
+              <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+              <span className={'text-[10px] mt-1 font-medium ' + (isActive ? 'text-[#A996FF]' : 'text-[#999999]')}>
+                {item.label}
+              </span>
             </button>
           );
         })}
