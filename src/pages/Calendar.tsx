@@ -227,42 +227,51 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-[#F5F5F5] pb-24">
       <div className="max-w-mobile mx-auto px-4 pt-4">
         
         {/* 미니멀 헤더 */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
-            <button onClick={viewMode === 'month' ? prevMonth : prevWeek} className="p-2 -ml-2 hover:bg-gray-100 rounded-full">
-              <ChevronLeft size={20} />
+            <button 
+              onClick={viewMode === 'month' ? prevMonth : prevWeek} 
+              className="p-2 -ml-2 hover:bg-[#EEEEEE] rounded-full min-w-[44px] min-h-[44px] flex items-center justify-center"
+            >
+              <ChevronLeft size={20} className="text-[#666666]" />
             </button>
-            <h1 className="text-lg font-bold min-w-[100px] text-center">
+            <h1 className="text-lg font-bold min-w-[100px] text-center text-[#1A1A1A]">
               {year}년 {monthNames[month]}
             </h1>
-            <button onClick={viewMode === 'month' ? nextMonth : nextWeek} className="p-2 hover:bg-gray-100 rounded-full">
-              <ChevronRight size={20} />
+            <button 
+              onClick={viewMode === 'month' ? nextMonth : nextWeek} 
+              className="p-2 hover:bg-[#EEEEEE] rounded-full min-w-[44px] min-h-[44px] flex items-center justify-center"
+            >
+              <ChevronRight size={20} className="text-[#666666]" />
             </button>
           </div>
           
           <div className="flex items-center gap-1">
-            <div className="flex bg-gray-100 rounded-lg p-0.5">
+            <div className="flex bg-[#F5F5F5] rounded-lg p-0.5">
               <button
                 onClick={function() { setViewMode('month'); }}
-                className={'px-2.5 py-1 rounded-md text-xs font-medium transition-colors ' + 
-                  (viewMode === 'month' ? 'bg-white shadow-sm text-lavender-600' : 'text-gray-500')}
+                className={'px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors min-h-[32px] ' + 
+                  (viewMode === 'month' ? 'bg-white shadow-sm text-[#A996FF]' : 'text-[#999999]')}
               >
                 월
               </button>
               <button
                 onClick={function() { setViewMode('week'); }}
-                className={'px-2.5 py-1 rounded-md text-xs font-medium transition-colors ' + 
-                  (viewMode === 'week' ? 'bg-white shadow-sm text-lavender-600' : 'text-gray-500')}
+                className={'px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors min-h-[32px] ' + 
+                  (viewMode === 'week' ? 'bg-white shadow-sm text-[#A996FF]' : 'text-[#999999]')}
               >
                 주
               </button>
             </div>
-            <button onClick={function() { setShowSearch(true); }} className="p-2 hover:bg-gray-100 rounded-full">
-              <Search size={18} className="text-gray-500" />
+            <button 
+              onClick={function() { setShowSearch(true); }} 
+              className="p-2 hover:bg-[#EEEEEE] rounded-full min-w-[44px] min-h-[44px] flex items-center justify-center"
+            >
+              <Search size={18} className="text-[#999999]" />
             </button>
           </div>
         </div>
@@ -271,7 +280,7 @@ export default function CalendarPage() {
           <>
             {/* 캘린더 그리드 */}
             <div 
-              className="bg-white rounded-2xl p-4 shadow-sm mb-3"
+              className="bg-white rounded-xl p-4 shadow-card mb-3"
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
@@ -279,7 +288,7 @@ export default function CalendarPage() {
               {/* 요일 헤더 */}
               <div className="grid grid-cols-7 mb-2">
                 {dayNames.map(function(name, idx) {
-                  var color = idx === 0 ? 'text-red-400' : idx === 6 ? 'text-blue-400' : 'text-gray-500';
+                  var color = idx === 0 ? 'text-[#EF4444]' : idx === 6 ? 'text-[#60A5FA]' : 'text-[#999999]';
                   return (
                     <div key={name} className={'text-center text-xs font-medium ' + color}>
                       {name}
@@ -294,18 +303,18 @@ export default function CalendarPage() {
                   if (item.isOtherMonth) {
                     return (
                       <div key={item.key} className="h-12 flex flex-col items-center justify-center">
-                        <span className="text-sm text-gray-300">{item.day}</span>
+                        <span className="text-sm text-[#CCCCCC]">{item.day}</span>
                       </div>
                     );
                   }
                   
                   var bgClass = '';
                   if (item.isSelected) {
-                    bgClass = 'bg-lavender-400 text-white font-bold';
+                    bgClass = 'bg-[#A996FF] text-white font-bold';
                   } else if (item.isToday) {
-                    bgClass = 'bg-lavender-100 text-lavender-600 font-bold';
+                    bgClass = 'bg-[#F0F0FF] text-[#A996FF] font-bold';
                   } else {
-                    bgClass = 'hover:bg-lavender-50';
+                    bgClass = 'hover:bg-[#F0F0FF] text-[#1A1A1A]';
                   }
                   
                   var colors = item.colors || [];
@@ -339,41 +348,41 @@ export default function CalendarPage() {
             {/* 오늘 요약 - 한 줄 */}
             {googleConnected && isCurrentMonth && (
               <div className="px-1 mb-3">
-                <p className="text-sm text-gray-500">{getTodaySummary()}</p>
+                <p className="text-sm text-[#999999]">{getTodaySummary()}</p>
               </div>
             )}
 
             {/* 선택된 날짜 일정 */}
-            <div className="bg-white rounded-2xl p-4 shadow-sm">
+            <div className="bg-white rounded-xl p-4 shadow-card">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-base">{formatSelectedDateShort()}</h2>
+                <h2 className="font-semibold text-base text-[#1A1A1A]">{formatSelectedDateShort()}</h2>
                 {googleConnected && selectedCount > 0 && (
-                  <span className="text-xs text-gray-400">{selectedDateEvents.length}개 일정</span>
+                  <span className="text-xs text-[#999999]">{selectedDateEvents.length}개 일정</span>
                 )}
               </div>
 
               {!googleConnected ? (
                 <div className="text-center py-8">
-                  <p className="text-sm text-gray-500 mb-4">
+                  <p className="text-sm text-[#999999] mb-4">
                     Google 캘린더를 연결해주세요
                   </p>
                   <button
                     onClick={handleConnectGoogle}
-                    className="px-5 py-2.5 bg-lavender-400 text-white rounded-xl text-sm font-medium hover:bg-lavender-500"
+                    className="px-5 py-2.5 bg-[#A996FF] text-white rounded-xl text-sm font-medium hover:bg-[#8B7BE8] min-h-[44px]"
                   >
                     연결하기
                   </button>
                 </div>
               ) : isLoading ? (
-                <div className="text-center py-8 text-gray-400 text-sm">
+                <div className="text-center py-8 text-[#999999] text-sm">
                   불러오는 중...
                 </div>
               ) : selectedDateEvents.length === 0 ? (
                 <div className="text-center py-6">
-                  <p className="text-gray-400 text-sm mb-3">일정이 없어요</p>
+                  <p className="text-[#999999] text-sm mb-3">일정이 없어요</p>
                   <button
                     onClick={handleAddEvent}
-                    className="text-sm text-lavender-500 font-medium hover:text-lavender-600"
+                    className="text-sm text-[#A996FF] font-medium hover:text-[#8B7BE8] min-h-[44px]"
                   >
                     + 새 일정
                   </button>
@@ -388,14 +397,14 @@ export default function CalendarPage() {
                       <button
                         key={event.id}
                         onClick={function() { handleEventClick(event); }}
-                        className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 text-left"
+                        className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#F5F5F5] text-left min-h-[44px]"
                       >
                         <div 
                           className="w-1 h-8 rounded-full flex-shrink-0"
                           style={{ backgroundColor: event.backgroundColor || '#A996FF' }}
                         />
-                        <span className="text-sm text-gray-500 w-12 flex-shrink-0">{time}</span>
-                        <span className="text-sm font-medium truncate">{event.title}</span>
+                        <span className="text-sm text-[#999999] w-12 flex-shrink-0">{time}</span>
+                        <span className="text-sm font-medium truncate text-[#1A1A1A]">{event.title}</span>
                       </button>
                     );
                   })}
@@ -423,7 +432,7 @@ export default function CalendarPage() {
       {googleConnected && (
         <button
           onClick={handleAddEvent}
-          className="fixed bottom-24 right-4 w-14 h-14 bg-lavender-400 text-white rounded-full shadow-lg hover:bg-lavender-500 transition-all hover:scale-105 flex items-center justify-center z-40"
+          className="fixed bottom-24 right-4 w-14 h-14 bg-[#A996FF] text-white rounded-full shadow-lg hover:bg-[#8B7BE8] transition-all hover:scale-105 flex items-center justify-center z-40"
         >
           <span className="text-2xl font-light">+</span>
         </button>
