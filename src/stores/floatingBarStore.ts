@@ -8,7 +8,7 @@ interface FloatingBarState {
   expand: () => void;
   collapse: () => void;
   openChat: () => void;
-  showTimer: () => void;
+  resetMode: () => void;
 }
 
 export const useFloatingBarStore = create<FloatingBarState>((set) => ({
@@ -17,5 +17,5 @@ export const useFloatingBarStore = create<FloatingBarState>((set) => ({
   expand: () => set({ mode: 'expanded' }),
   collapse: () => set({ mode: 'default' }),
   openChat: () => set({ mode: 'chat' }),
-  showTimer: () => set({ mode: 'timer' }),
+  resetMode: () => set({ mode: 'default' }),
 }));
