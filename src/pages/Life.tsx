@@ -263,14 +263,14 @@ export default function Life() {
           ) : (
             <div className="space-y-2">
               {reminders.slice(0, 3).map(function(person) {
-                var daysSince = getDaysSinceContact(person.id);
+                var daysSince = getDaysSinceContact(person);
                 return (
                   <div key={person.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded-xl">
                     <span className="text-2xl">{person.emoji}</span>
                     <div className="flex-1">
                       <p className="font-medium text-sm">{person.name}</p>
                       <p className="text-xs text-gray-400">
-                        {daysSince}일 전 연락
+                        {daysSince !== null ? daysSince + '일 전 연락' : '연락 기록 없음'}
                       </p>
                     </div>
                     <button
