@@ -8,7 +8,7 @@ interface NotificationSetupProps {
   onSkip: () => void;
 }
 
-export default function NotificationSetup({ data, onNext }: NotificationSetupProps) {
+export default function NotificationSetup({ onNext }: NotificationSetupProps) {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [selectedTimes, setSelectedTimes] = useState(['morning', 'important']);
 

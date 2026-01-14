@@ -6,6 +6,16 @@ interface User {
   name: string;
   email: string;
   avatar_url?: string;
+  onboarded?: boolean;
+  preferences?: {
+    context: 'work' | 'life' | 'unsure';
+    boundary: 'soft' | 'balanced' | 'firm';
+    calendarConnected: boolean;
+    notifications: {
+      enabled: boolean;
+      times: string[];
+    };
+  };
 }
 
 interface AuthState {
@@ -15,6 +25,7 @@ interface AuthState {
   isOnboarded: boolean;
   login: () => void;
   logout: () => void;
+  setUser: (user: User) => void;
   completeOnboarding: () => void;
   setLoading: (loading: boolean) => void;
 }
@@ -40,6 +51,14 @@ export const useAuthStore = create<AuthState>()(
           user: null,
           isAuthenticated: false,
           isOnboarded: false
+        });
+      },
+
+      setUser: (user: User) => {
+        set({
+          user,
+          isAuthenticated: true,
+          isOnboarded: user.onboarded || false
         });
       },
       
