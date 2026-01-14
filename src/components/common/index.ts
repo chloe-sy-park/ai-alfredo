@@ -4,5 +4,5 @@ export { default as Card, AlfredoCard, PriorityCard } from './Card';
 export { default as IntensityBadge, calculateIntensity } from './IntensityBadge';
 export { default as RingProgress, Sparkline } from './RingProgress';
 export { default as LoadingSpinner } from './LoadingSpinner';
-export { default as Toast, useToast } from './Toast';
+export { ToastProvider, useToast } from './Toast';
 export { default as EventModal } from './EventModal';
