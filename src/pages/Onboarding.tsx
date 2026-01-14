@@ -66,19 +66,19 @@ export default function Onboarding() {
   };
 
   return (
-    <div className="min-h-screen bg-lavender-50 p-6 flex flex-col">
+    <div className="min-h-screen bg-[#F0F0FF] p-6 flex flex-col">
       {/* 진행바 */}
       <div className="flex gap-2 mb-8">
         {PHASES.map((_, i) => (
-          <div key={i} className={`h-1 flex-1 rounded-full ${i <= currentPhase ? 'bg-lavender-400' : 'bg-lavender-200'}`} />
+          <div key={i} className={`h-1 flex-1 rounded-full ${i <= currentPhase ? 'bg-[#A996FF]' : 'bg-[#E5E0FF]'}`} />
         ))}
       </div>
 
       {/* 콘텐츠 */}
       <div className="flex-1 flex flex-col items-center justify-center max-w-md mx-auto w-full">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">{phase.title}</h1>
-          <p className="text-gray-600">{phase.subtitle}</p>
+          <h1 className="text-2xl font-bold text-[#1A1A1A] mb-2">{phase.title}</h1>
+          <p className="text-[#666666]">{phase.subtitle}</p>
         </div>
 
         <div className="w-full grid grid-cols-2 gap-3">
@@ -86,15 +86,15 @@ export default function Onboarding() {
             <button
               key={option.value}
               onClick={() => handleSelect(option.value)}
-              className={`p-4 rounded-2xl text-left transition-all ${
+              className={`p-4 rounded-xl text-left transition-all min-h-[88px] ${
                 answers[phase.id] === option.value
-                  ? 'bg-lavender-100 border-2 border-lavender-400'
-                  : 'bg-white border-2 border-transparent hover:bg-gray-50'
+                  ? 'bg-[#F0F0FF] border-2 border-[#A996FF]'
+                  : 'bg-white border-2 border-transparent hover:bg-[#F5F5F5]'
               }`}
             >
               <span className="text-2xl mb-2 block">{option.emoji}</span>
-              <span className="font-medium text-gray-800">{option.label}</span>
-              {answers[phase.id] === option.value && <Check className="inline-block ml-2 text-lavender-500" size={16} />}
+              <span className="font-medium text-[#1A1A1A]">{option.label}</span>
+              {answers[phase.id] === option.value && <Check className="inline-block ml-2 text-[#A996FF]" size={16} />}
             </button>
           ))}
         </div>
@@ -102,13 +102,17 @@ export default function Onboarding() {
 
       {/* 하단 네비 */}
       <div className="flex justify-between items-center pt-6">
-        <button onClick={handleBack} disabled={currentPhase === 0} className="flex items-center gap-1 text-gray-500 disabled:opacity-30">
+        <button 
+          onClick={handleBack} 
+          disabled={currentPhase === 0} 
+          className="flex items-center gap-1 text-[#999999] disabled:opacity-30 min-h-[44px] px-2"
+        >
           <ChevronLeft size={20} /> 이전
         </button>
         <button
           onClick={handleNext}
           disabled={!answers[phase.id]}
-          className="flex items-center gap-1 px-4 py-2 bg-lavender-500 text-white rounded-full disabled:opacity-50"
+          className="flex items-center gap-1 px-5 py-2.5 bg-[#A996FF] text-white rounded-full disabled:opacity-50 min-h-[44px] hover:bg-[#8B7BE8]"
         >
           {isLastPhase ? '시작하기' : '다음'} <ChevronRight size={18} />
         </button>
