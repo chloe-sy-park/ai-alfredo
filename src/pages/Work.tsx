@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../components/layout';
 import { 
   WorkBriefing, 
@@ -9,13 +8,12 @@ import {
   FocusTimer,
   TaskModal
 } from '../components/work';
-import { getTasksByCategory, Task, getTasks, updateProjectTaskCounts } from '../services/tasks';
+import { getTasksByCategory, Task } from '../services/tasks';
 import { getTodayEvents, CalendarEvent } from '../services/calendar';
-import { getActiveProjects, Project } from '../services/projects';
+import { getActiveProjects, Project, updateProjectTaskCounts } from '../services/projects';
 import { Briefcase, Plus, LayoutGrid, List } from 'lucide-react';
 
 export default function Work() {
-  var navigate = useNavigate();
   var [tasks, setTasks] = useState<Task[]>([]);
   var [projects, setProjects] = useState<Project[]>([]);
   var [events, setEvents] = useState<CalendarEvent[]>([]);
