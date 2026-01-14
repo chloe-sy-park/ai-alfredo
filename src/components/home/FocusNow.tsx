@@ -96,9 +96,9 @@ export default function FocusNow({ externalFocus, onFocusChange }: FocusNowProps
   // 집중 중인 상태
   if (focus) {
     return (
-      <div className="relative overflow-hidden rounded-xl border-2 border-accent bg-gradient-to-br from-amber-50 to-yellow-50 p-4 shadow-gold-glow animate-fade-in">
+      <div className="relative overflow-hidden rounded-xl border-2 border-[#FFD700] bg-gradient-to-br from-[#FFFBEB] to-[#FEF3C7] p-4 shadow-[0_0_12px_rgba(255,215,0,0.4)] animate-fade-in">
         {/* 골드 글로우 효과 */}
-        <div className="absolute -top-10 -right-10 w-32 h-32 bg-accent/20 rounded-full blur-2xl" />
+        <div className="absolute -top-10 -right-10 w-32 h-32 bg-[#FFD700]/20 rounded-full blur-2xl" />
         
         <div className="relative flex items-center gap-4">
           {/* 링 프로그레스 */}
@@ -108,7 +108,7 @@ export default function FocusNow({ externalFocus, onFocusChange }: FocusNowProps
             color="accent"
             centerContent={
               <div className="text-center">
-                <span className="text-lg font-bold text-neutral-800">
+                <span className="text-lg font-bold text-[#1A1A1A]">
                   {formatTime(elapsedTime)}
                 </span>
               </div>
@@ -118,40 +118,36 @@ export default function FocusNow({ externalFocus, onFocusChange }: FocusNowProps
           {/* 내용 */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <Target size={14} className="text-accent" />
-              <span className="text-xs font-medium text-amber-600 uppercase">
+              <Target size={14} className="text-[#FFD700]" />
+              <span className="text-xs font-semibold text-[#B45309] uppercase">
                 지금 집중
               </span>
             </div>
-            <h3 className="font-semibold text-neutral-800 truncate">
+            <h3 className="font-semibold text-[#1A1A1A] truncate">
               {focus.title}
             </h3>
-            <p className="text-xs text-neutral-500 mt-0.5">
+            <p className="text-xs text-[#666666] mt-0.5">
               집중 중...
             </p>
           </div>
           
-          {/* 액션 버튼들 */}
+          {/* 액션 버튼들 - 48x48 */}
           <div className="flex items-center gap-2">
-            <Button
-              variant="icon"
-              size="sm"
+            <button
               onClick={handleComplete}
-              className="bg-success text-white hover:bg-success/90"
+              className="w-12 h-12 rounded-full flex items-center justify-center bg-[#4ADE80] text-white hover:bg-[#4ADE80]/90 transition-colors"
               aria-label="완료"
             >
-              <Check size={16} />
-            </Button>
+              <Check size={20} />
+            </button>
             
-            <Button
-              variant="icon"
-              size="sm"
+            <button
               onClick={handleClear}
-              className="bg-neutral-200 text-neutral-500 hover:bg-neutral-300"
+              className="w-12 h-12 rounded-full flex items-center justify-center bg-[#E5E5E5] text-[#666666] hover:bg-[#D4D4D4] transition-colors"
               aria-label="취소"
             >
-              <X size={16} />
-            </Button>
+              <X size={20} />
+            </button>
           </div>
         </div>
       </div>
@@ -161,9 +157,9 @@ export default function FocusNow({ externalFocus, onFocusChange }: FocusNowProps
   // 입력 모드
   if (isAdding) {
     return (
-      <div className="rounded-xl border-2 border-dashed border-accent/50 bg-amber-50/50 p-4 animate-fade-in">
+      <div className="rounded-xl border-2 border-dashed border-[#FFD700]/50 bg-[#F0F0FF] p-4 animate-fade-in">
         <div className="flex items-center gap-3">
-          <Target size={20} className="text-accent flex-shrink-0" />
+          <Target size={20} className="text-[#FFD700] flex-shrink-0" />
           <input
             type="text"
             value={newTitle}
@@ -173,7 +169,7 @@ export default function FocusNow({ externalFocus, onFocusChange }: FocusNowProps
               if (e.key === 'Escape') { setIsAdding(false); setNewTitle(''); }
             }}
             placeholder="지금 집중할 일을 입력하세요"
-            className="flex-1 bg-transparent outline-none text-neutral-800 placeholder:text-neutral-400"
+            className="flex-1 bg-transparent outline-none text-[#1A1A1A] placeholder:text-[#999999]"
             autoFocus
           />
           <Button size="sm" onClick={handleAddFocus} disabled={!newTitle.trim()}>
@@ -195,17 +191,17 @@ export default function FocusNow({ externalFocus, onFocusChange }: FocusNowProps
   return (
     <button
       onClick={function() { setIsAdding(true); }}
-      className="w-full rounded-xl border-2 border-dashed border-neutral-300 bg-white/50 p-4 text-left hover:border-accent hover:bg-amber-50/30 transition-all duration-fast group"
+      className="w-full rounded-xl border-2 border-dashed border-[#E5E5E5] bg-white p-4 text-left hover:border-[#FFD700] hover:bg-[#FFFBEB] transition-all duration-200 group min-h-[72px]"
     >
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-neutral-100 group-hover:bg-accent/20 flex items-center justify-center transition-colors">
-          <Target size={20} className="text-neutral-400 group-hover:text-accent" />
+        <div className="w-10 h-10 rounded-full bg-[#F5F5F5] group-hover:bg-[#FFD700]/20 flex items-center justify-center transition-colors">
+          <Target size={20} className="text-[#999999] group-hover:text-[#FFD700]" />
         </div>
         <div>
-          <p className="font-medium text-neutral-600 group-hover:text-neutral-800">
+          <p className="font-medium text-[#666666] group-hover:text-[#1A1A1A]">
             지금 집중할 것 하나를 정하세요
           </p>
-          <p className="text-xs text-neutral-400">
+          <p className="text-xs text-[#999999]">
             한 번에 하나씩, ADHD 친화적으로 🎯
           </p>
         </div>
