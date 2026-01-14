@@ -117,7 +117,8 @@ export default function Work() {
     filteredTasks = filteredTasks.filter(function(t) { return t.projectId === selectedProjectId; });
   }
   if (selectedTag) {
-    filteredTasks = filteredTasks.filter(function(t) { return t.tags && t.tags.indexOf(selectedTag) !== -1; });
+    var tagToFilter = selectedTag;
+    filteredTasks = filteredTasks.filter(function(t) { return t.tags && t.tags.indexOf(tagToFilter) !== -1; });
   }
   filteredTasks = filterTasks(filteredTasks, filterBy);
   
