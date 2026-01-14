@@ -46,6 +46,12 @@ export function getTodayTop3(): Top3Data | null {
   }
 }
 
+// Alias for getTodayTop3 - returns items array directly
+export function getTop3(): Top3Item[] {
+  var data = getTodayTop3();
+  return data ? data.items : [];
+}
+
 export function saveTop3(items: Top3Item[]): void {
   try {
     var data: Top3Data = {

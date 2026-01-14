@@ -9,7 +9,6 @@ import {
   XCircle, 
   ChevronDown, 
   ChevronUp,
-  Sparkles,
   Volume2,
   Target,
   RotateCcw

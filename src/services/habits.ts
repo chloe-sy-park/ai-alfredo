@@ -203,7 +203,6 @@ export function getStreak(habitId: string): number {
   var currentDate = new Date();
   
   for (var i = 0; i < logs.length; i++) {
-    var logDate = new Date(logs[i].date);
     var expectedDate = new Date(currentDate);
     expectedDate.setDate(expectedDate.getDate() - i);
     

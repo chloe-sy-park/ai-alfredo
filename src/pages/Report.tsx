@@ -3,14 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
   TrendingUp, 
-  Calendar, 
   Target,
   Zap,
   Heart,
   Award,
   ChevronRight
 } from 'lucide-react';
-import { getTasks, Task } from '../services/tasks';
+import { getTasks } from '../services/tasks';
 import { getHabits, getTodayCompletionRate } from '../services/habits';
 import { getConditionHistory, ConditionRecord, conditionConfig } from '../services/condition';
 
@@ -35,7 +34,7 @@ export default function Report() {
   function loadWeeklyData() {
     // 이번 주 데이터 계산
     var tasks = getTasks();
-    var habits = getHabits();
+    getHabits(); // Initialize habits
     var history = getConditionHistory(7);
     setConditionHistory(history);
 

@@ -1,255 +1,244 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Heart, 
-  Droplets,
-  Moon,
-  Users,
-  Sparkles,
   Plus,
-  Check,
   Phone,
-  X
+  Sparkles
 } from 'lucide-react';
+import { ConditionLevel, conditionConfig, getTodayCondition, setTodayCondition } from '../services/condition';
 import { 
-  Habit, 
-  HabitLog,
   getHabits, 
-  getTodayLogs,
+  addHabit, 
+  getTodayHabitLog, 
+  incrementHabit, 
   toggleHabitComplete,
-  incrementHabit,
   getTodayCompletionRate,
   getStreak,
-  addHabit
+  Habit,
+  HabitLog
 } from '../services/habits';
-import { 
+import {
   Relationship,
-  getRelationships,
-  getNeedContactReminders,
-  recordContact,
   addRelationship,
+  recordContact,
+  getDaysSinceContact,
+  getNeedContactReminders,
   categoryLabels
 } from '../services/relationships';
-import { 
-  ConditionLevel, 
-  getTodayCondition, 
-  setTodayCondition,
-  conditionConfig 
-} from '../services/condition';
 
 export default function Life() {
+  var navigate = useNavigate();
+  var [condition, setCondition] = useState<ConditionLevel | null>(null);
   var [habits, setHabits] = useState<Habit[]>([]);
-  var [todayLogs, setTodayLogs] = useState<HabitLog[]>([]);
+  var [habitLogs, setHabitLogs] = useState<Record<string, HabitLog | null>>({});
+  var [reminders, setReminders] = useState<Relationship[]>([]);
   var [completionRate, setCompletionRate] = useState(0);
-  var [reminders, setReminders] = useState<Array<Relationship & { daysSince: number }>>([]);
-  var [currentCondition, setCurrentCondition] = useState<ConditionLevel | null>(null);
   
-  // 모달 상태
-  var [isAddingHabit, setIsAddingHabit] = useState(false);
-  var [isAddingRelationship, setIsAddingRelationship] = useState(false);
+  // 모달
+  var [showAddHabit, setShowAddHabit] = useState(false);
+  var [showAddRelation, setShowAddRelation] = useState(false);
   var [newHabitTitle, setNewHabitTitle] = useState('');
   var [newHabitIcon, setNewHabitIcon] = useState('✨');
-  var [newRelName, setNewRelName] = useState('');
-  var [newRelCategory, setNewRelCategory] = useState<'family' | 'friend' | 'work' | 'other'>('friend');
+  var [newRelationName, setNewRelationName] = useState('');
+  var [newRelationCategory, setNewRelationCategory] = useState<'family' | 'friend' | 'work' | 'other'>('friend');
 
   useEffect(function() {
     loadData();
   }, []);
 
   function loadData() {
-    setHabits(getHabits());
-    setTodayLogs(getTodayLogs());
-    setCompletionRate(getTodayCompletionRate());
-    setReminders(getNeedContactReminders());
-    
-    var condition = getTodayCondition();
-    if (condition) {
-      setCurrentCondition(condition.level);
+    // 컨디션
+    var todayCondition = getTodayCondition();
+    if (todayCondition) {
+      setCondition(todayCondition.level);
     }
+    
+    // 습관
+    var allHabits = getHabits();
+    setHabits(allHabits);
+    
+    // 습관 로그
+    var logs: Record<string, HabitLog | null> = {};
+    allHabits.forEach(function(h) {
+      logs[h.id] = getTodayHabitLog(h.id);
+    });
+    setHabitLogs(logs);
+    
+    // 완료율
+    setCompletionRate(getTodayCompletionRate());
+    
+    // 연락 리마인더
+    setReminders(getNeedContactReminders());
   }
 
-  function handleToggleHabit(habitId: string) {
-    toggleHabitComplete(habitId);
-    loadData();
+  function handleConditionSelect(level: ConditionLevel) {
+    setTodayCondition(level);
+    setCondition(level);
   }
 
-  function handleIncrementHabit(habitId: string) {
+  function handleHabitIncrement(habitId: string) {
     incrementHabit(habitId);
     loadData();
   }
 
-  function handleConditionChange(level: ConditionLevel) {
-    setTodayCondition(level);
-    setCurrentCondition(level);
-  }
-
-  function handleRecordContact(relId: string) {
-    recordContact(relId);
+  function handleHabitToggle(habitId: string) {
+    toggleHabitComplete(habitId);
     loadData();
   }
 
   function handleAddHabit() {
     if (!newHabitTitle.trim()) return;
     addHabit({
-      title: newHabitTitle.trim(),
+      title: newHabitTitle,
       icon: newHabitIcon,
       frequency: 'daily',
       targetCount: 1
     });
     setNewHabitTitle('');
     setNewHabitIcon('✨');
-    setIsAddingHabit(false);
+    setShowAddHabit(false);
     loadData();
   }
 
-  function handleAddRelationship() {
-    if (!newRelName.trim()) return;
+  function handleAddRelation() {
+    if (!newRelationName.trim()) return;
     addRelationship({
-      name: newRelName.trim(),
-      emoji: '👋',
-      category: newRelCategory,
+      name: newRelationName,
+      emoji: '👤',
+      category: newRelationCategory,
       reminderDays: 14
     });
-    setNewRelName('');
-    setNewRelCategory('friend');
-    setIsAddingRelationship(false);
+    setNewRelationName('');
+    setNewRelationCategory('friend');
+    setShowAddRelation(false);
+    loadData();
+  }
+
+  function handleRecordContact(id: string) {
+    recordContact(id);
     loadData();
   }
 
   // 웰니스 팁
-  function getWellnessTip(): string {
-    var tips = [
-      '오늘 하루도 충분히 잘하고 있어요 💜',
-      '잠깐 스트레칭 해볼까요? 몸이 편해져요',
-      '물 한 잔 마시고 가세요 💧',
-      '숨 크게 쉬어보세요. 마음이 차분해져요',
-      '오늘의 작은 성취를 인정해주세요 ✨'
-    ];
-    return tips[Math.floor(Math.random() * tips.length)];
-  }
+  var wellnessTips = [
+    '오늘도 잘하고 있어요! 작은 성취도 축하해요 🎉',
+    '충분한 수면은 최고의 생산성 도구예요 😴',
+    '5분 스트레칭으로 몸과 마음을 리프레시하세요 🧘',
+    '물 한 잔 마시고 잠시 쉬어가세요 💧',
+    '당신은 충분히 잘하고 있어요. 믿어요! ✨'
+  ];
+  var randomTip = wellnessTips[Math.floor(Math.random() * wellnessTips.length)];
 
-  var habitIcons = ['💧', '🏃', '😴', '📖', '🧘', '🥗', '☀️', '✨'];
+  var conditionLevels: ConditionLevel[] = ['great', 'good', 'normal', 'bad'];
+  var habitIcons = ['✨', '💪', '📚', '🎯', '🧘', '🏃', '💧', '😴'];
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      <div className="max-w-mobile mx-auto p-4 space-y-4">
+      <div className="max-w-lg mx-auto p-4 space-y-4">
         
         {/* 헤더 */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Heart className="text-pink-400" size={24} />
+            <Heart size={24} className="text-pink-500" />
             <h1 className="text-xl font-bold">라이프</h1>
           </div>
-          <span className="text-2xl">🌿</span>
         </div>
 
         {/* 컨디션 상세 */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <h2 className="font-semibold text-sm text-gray-500 mb-3">💜 오늘의 컨디션</h2>
-          
+          <h3 className="font-semibold mb-3">오늘 컨디션</h3>
           <div className="grid grid-cols-4 gap-2">
-            {(Object.keys(conditionConfig) as ConditionLevel[]).map(function(level) {
-              var config = conditionConfig[level];
-              var isSelected = currentCondition === level;
+            {conditionLevels.map(function(level) {
+              var info = conditionConfig[level];
+              var isSelected = condition === level;
               return (
                 <button
                   key={level}
-                  onClick={function() { handleConditionChange(level); }}
-                  className={
-                    'flex flex-col items-center py-3 rounded-xl transition-all ' +
-                    (isSelected 
-                      ? 'bg-lavender-100 border-2 border-lavender-400' 
-                      : 'bg-gray-50 border-2 border-transparent hover:bg-gray-100')
+                  onClick={function() { handleConditionSelect(level); }}
+                  className={'flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all ' +
+                    (isSelected
+                      ? 'border-lavender-400 bg-lavender-50'
+                      : 'border-gray-100 hover:border-gray-200')
                   }
                 >
-                  <span className="text-2xl mb-1">{config.emoji}</span>
-                  <span className="text-xs text-gray-600">{config.label}</span>
+                  <span className="text-2xl">{info.emoji}</span>
+                  <span className="text-xs font-medium text-gray-600">{info.label}</span>
                 </button>
               );
             })}
           </div>
-          
-          {currentCondition && (
-            <p className="text-sm text-gray-500 mt-3 text-center">
-              {conditionConfig[currentCondition].message}
-            </p>
-          )}
         </div>
 
         {/* 습관 트래커 */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold">오늘의 습관</h3>
             <div className="flex items-center gap-2">
-              <Sparkles size={18} className="text-yellow-400" />
-              <h2 className="font-semibold">오늘의 습관</h2>
-              <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">
-                {completionRate}%
+              <span className="text-xs text-lavender-500 bg-lavender-50 px-2 py-1 rounded-full">
+                {completionRate}% 달성
               </span>
+              <button
+                onClick={function() { setShowAddHabit(true); }}
+                className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200"
+              >
+                <Plus size={16} />
+              </button>
             </div>
-            <button
-              onClick={function() { setIsAddingHabit(true); }}
-              className="p-1.5 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200"
-            >
-              <Plus size={16} />
-            </button>
           </div>
           
-          <div className="space-y-2">
+          <div className="space-y-3">
             {habits.map(function(habit) {
-              var log = todayLogs.find(function(l) { return l.habitId === habit.id; });
-              var isCompleted = log ? log.completed : false;
-              var currentCount = log ? log.count : 0;
+              var log = habitLogs[habit.id];
+              var count = log ? log.count : 0;
+              var isComplete = log ? log.completed : false;
               var streak = getStreak(habit.id);
+              var progress = Math.min((count / habit.targetCount) * 100, 100);
               
               return (
-                <div 
-                  key={habit.id}
-                  className={
-                    'flex items-center gap-3 p-3 rounded-xl transition-all ' +
-                    (isCompleted ? 'bg-green-50' : 'bg-gray-50')
-                  }
-                >
+                <div key={habit.id} className="flex items-center gap-3">
                   <button
-                    onClick={function() { handleToggleHabit(habit.id); }}
-                    className={
-                      'w-8 h-8 rounded-full flex items-center justify-center transition-all ' +
-                      (isCompleted 
-                        ? 'bg-green-500 text-white' 
-                        : 'bg-white border-2 border-gray-200')
+                    onClick={function() { 
+                      if (habit.targetCount === 1) {
+                        handleHabitToggle(habit.id);
+                      } else {
+                        handleHabitIncrement(habit.id);
+                      }
+                    }}
+                    className={'w-10 h-10 rounded-full flex items-center justify-center text-lg transition-all ' +
+                      (isComplete ? 'bg-green-100' : 'bg-gray-100')
                     }
                   >
-                    {isCompleted ? <Check size={16} /> : <span className="text-lg">{habit.icon}</span>}
+                    {habit.icon}
                   </button>
-                  
                   <div className="flex-1">
-                    <p className={'text-sm ' + (isCompleted ? 'text-green-600' : 'text-gray-700')}>
-                      {habit.title}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{habit.title}</span>
+                      {streak > 0 && (
+                        <span className="text-xs text-orange-500">🔥 {streak}일</span>
+                      )}
+                    </div>
                     {habit.targetCount > 1 && (
                       <div className="flex items-center gap-2 mt-1">
-                        <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-green-400 rounded-full transition-all"
-                            style={{ width: Math.min(100, (currentCount / habit.targetCount) * 100) + '%' }}
+                            className="h-full bg-lavender-400 transition-all"
+                            style={{ width: progress + '%' }}
                           />
                         </div>
                         <span className="text-xs text-gray-400">
-                          {currentCount}/{habit.targetCount}{habit.unit || ''}
+                          {count}/{habit.targetCount}{habit.unit || ''}
                         </span>
                       </div>
                     )}
                   </div>
-                  
-                  {habit.targetCount > 1 && !isCompleted && (
+                  {habit.targetCount > 1 && !isComplete && (
                     <button
-                      onClick={function() { handleIncrementHabit(habit.id); }}
-                      className="px-3 py-1 bg-lavender-100 text-lavender-600 rounded-lg text-xs"
+                      onClick={function() { handleHabitIncrement(habit.id); }}
+                      className="text-xs px-2 py-1 bg-lavender-100 text-lavender-600 rounded-full"
                     >
                       +1
                     </button>
-                  )}
-                  
-                  {streak > 0 && (
-                    <span className="text-xs text-orange-500">🔥 {streak}일</span>
                   )}
                 </div>
               );
@@ -260,40 +249,35 @@ export default function Life() {
         {/* 관계 리마인더 */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Users size={18} className="text-blue-400" />
-              <h2 className="font-semibold">연락하기</h2>
-            </div>
+            <h3 className="font-semibold">연락할 사람</h3>
             <button
-              onClick={function() { setIsAddingRelationship(true); }}
-              className="p-1.5 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200"
+              onClick={function() { setShowAddRelation(true); }}
+              className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200"
             >
               <Plus size={16} />
             </button>
           </div>
           
           {reminders.length === 0 ? (
-            <p className="text-center text-gray-400 py-4 text-sm">
-              소중한 사람들을 등록해보세요
+            <p className="text-sm text-gray-400 text-center py-4">
+              연락 리마인더가 없어요
             </p>
           ) : (
             <div className="space-y-2">
-              {reminders.slice(0, 3).map(function(rel) {
+              {reminders.slice(0, 3).map(function(person) {
+                var daysSince = getDaysSinceContact(person.id);
                 return (
-                  <div 
-                    key={rel.id}
-                    className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl"
-                  >
-                    <span className="text-2xl">{rel.emoji}</span>
+                  <div key={person.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded-xl">
+                    <span className="text-2xl">{person.emoji}</span>
                     <div className="flex-1">
-                      <p className="text-sm font-medium">{rel.name}</p>
-                      <p className="text-xs text-gray-500">
-                        {rel.daysSince}일 전 마지막 연락
+                      <p className="font-medium text-sm">{person.name}</p>
+                      <p className="text-xs text-gray-400">
+                        {daysSince}일 전 연락
                       </p>
                     </div>
                     <button
-                      onClick={function() { handleRecordContact(rel.id); }}
-                      className="p-2 bg-blue-100 rounded-full text-blue-500 hover:bg-blue-200"
+                      onClick={function() { handleRecordContact(person.id); }}
+                      className="p-2 bg-green-100 text-green-600 rounded-full hover:bg-green-200"
                     >
                       <Phone size={16} />
                     </button>
@@ -307,58 +291,61 @@ export default function Life() {
         {/* 웰니스 팁 */}
         <div className="bg-gradient-to-r from-pink-100 to-purple-100 rounded-2xl p-4">
           <div className="flex items-start gap-3">
-            <span className="text-2xl">🐧</span>
+            <Sparkles className="text-pink-500 flex-shrink-0" size={20} />
             <div>
-              <p className="text-sm font-medium text-gray-700">알프레도의 한마디</p>
-              <p className="text-sm text-gray-600 mt-1">{getWellnessTip()}</p>
+              <p className="font-medium text-gray-800">알프레도의 한마디</p>
+              <p className="text-sm text-gray-600 mt-1">{randomTip}</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* 습관 추가 모달 */}
-      {isAddingHabit && (
-        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50">
-          <div className="bg-white rounded-t-3xl p-6 w-full max-w-lg">
-            <h3 className="font-bold text-lg mb-4">습관 추가</h3>
+      {showAddHabit && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center">
+          <div className="bg-white w-full max-w-lg rounded-t-2xl p-4 animate-slide-up">
+            <h3 className="font-semibold text-lg mb-4">새 습관 추가</h3>
             
-            <div className="flex gap-2 mb-4 flex-wrap">
-              {habitIcons.map(function(icon) {
-                return (
-                  <button
-                    key={icon}
-                    onClick={function() { setNewHabitIcon(icon); }}
-                    className={
-                      'w-10 h-10 rounded-xl flex items-center justify-center text-xl ' +
-                      (newHabitIcon === icon ? 'bg-lavender-100 border-2 border-lavender-400' : 'bg-gray-100')
-                    }
-                  >
-                    {icon}
-                  </button>
-                );
-              })}
+            <div className="mb-4">
+              <label className="text-sm text-gray-500 mb-2 block">아이콘</label>
+              <div className="flex gap-2 flex-wrap">
+                {habitIcons.map(function(icon) {
+                  return (
+                    <button
+                      key={icon}
+                      onClick={function() { setNewHabitIcon(icon); }}
+                      className={'w-10 h-10 rounded-full flex items-center justify-center text-lg ' +
+                        (newHabitIcon === icon ? 'bg-lavender-100 ring-2 ring-lavender-400' : 'bg-gray-100')
+                      }
+                    >
+                      {icon}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             
-            <input
-              type="text"
-              value={newHabitTitle}
-              onChange={function(e) { setNewHabitTitle(e.target.value); }}
-              placeholder="습관 이름 (예: 물 8잔 마시기)"
-              className="w-full p-3 border border-gray-200 rounded-xl mb-4 outline-none focus:border-lavender-400"
-              autoFocus
-            />
+            <div className="mb-4">
+              <label className="text-sm text-gray-500 mb-2 block">습관 이름</label>
+              <input
+                type="text"
+                value={newHabitTitle}
+                onChange={function(e) { setNewHabitTitle(e.target.value); }}
+                placeholder="예: 명상 10분"
+                className="w-full p-3 border border-gray-200 rounded-xl"
+              />
+            </div>
             
             <div className="flex gap-2">
               <button
-                onClick={function() { setIsAddingHabit(false); setNewHabitTitle(''); }}
-                className="flex-1 py-3 bg-gray-100 rounded-xl text-gray-600"
+                onClick={function() { setShowAddHabit(false); }}
+                className="flex-1 py-3 bg-gray-100 rounded-xl font-medium"
               >
                 취소
               </button>
               <button
                 onClick={handleAddHabit}
-                disabled={!newHabitTitle.trim()}
-                className="flex-1 py-3 bg-lavender-400 text-white rounded-xl disabled:opacity-50"
+                className="flex-1 py-3 bg-lavender-400 text-white rounded-xl font-medium"
               >
                 추가
               </button>
@@ -368,50 +355,53 @@ export default function Life() {
       )}
 
       {/* 관계 추가 모달 */}
-      {isAddingRelationship && (
-        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50">
-          <div className="bg-white rounded-t-3xl p-6 w-full max-w-lg">
-            <h3 className="font-bold text-lg mb-4">소중한 사람 추가</h3>
+      {showAddRelation && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center">
+          <div className="bg-white w-full max-w-lg rounded-t-2xl p-4 animate-slide-up">
+            <h3 className="font-semibold text-lg mb-4">연락처 추가</h3>
             
-            <input
-              type="text"
-              value={newRelName}
-              onChange={function(e) { setNewRelName(e.target.value); }}
-              placeholder="이름"
-              className="w-full p-3 border border-gray-200 rounded-xl mb-4 outline-none focus:border-lavender-400"
-              autoFocus
-            />
+            <div className="mb-4">
+              <label className="text-sm text-gray-500 mb-2 block">이름</label>
+              <input
+                type="text"
+                value={newRelationName}
+                onChange={function(e) { setNewRelationName(e.target.value); }}
+                placeholder="이름 입력"
+                className="w-full p-3 border border-gray-200 rounded-xl"
+              />
+            </div>
             
-            <div className="flex gap-2 mb-4">
-              {(Object.keys(categoryLabels) as Array<keyof typeof categoryLabels>).map(function(cat) {
-                return (
-                  <button
-                    key={cat}
-                    onClick={function() { setNewRelCategory(cat); }}
-                    className={
-                      'flex-1 py-2 rounded-xl text-sm transition-colors ' +
-                      (newRelCategory === cat 
-                        ? 'bg-blue-100 text-blue-600 border border-blue-200' 
-                        : 'bg-gray-100 text-gray-500')
-                    }
-                  >
-                    {categoryLabels[cat]}
-                  </button>
-                );
-              })}
+            <div className="mb-4">
+              <label className="text-sm text-gray-500 mb-2 block">관계</label>
+              <div className="flex gap-2">
+                {(['family', 'friend', 'work', 'other'] as const).map(function(cat) {
+                  return (
+                    <button
+                      key={cat}
+                      onClick={function() { setNewRelationCategory(cat); }}
+                      className={'flex-1 py-2 px-3 rounded-xl text-sm font-medium ' +
+                        (newRelationCategory === cat
+                          ? 'bg-lavender-100 text-lavender-600'
+                          : 'bg-gray-100 text-gray-600')
+                      }
+                    >
+                      {categoryLabels[cat]}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             
             <div className="flex gap-2">
               <button
-                onClick={function() { setIsAddingRelationship(false); setNewRelName(''); }}
-                className="flex-1 py-3 bg-gray-100 rounded-xl text-gray-600"
+                onClick={function() { setShowAddRelation(false); }}
+                className="flex-1 py-3 bg-gray-100 rounded-xl font-medium"
               >
                 취소
               </button>
               <button
-                onClick={handleAddRelationship}
-                disabled={!newRelName.trim()}
-                className="flex-1 py-3 bg-lavender-400 text-white rounded-xl disabled:opacity-50"
+                onClick={handleAddRelation}
+                className="flex-1 py-3 bg-lavender-400 text-white rounded-xl font-medium"
               >
                 추가
               </button>

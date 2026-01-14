@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { 
   ConditionLevel, 
-  conditionInfo, 
+  conditionConfig, 
   getTodayCondition, 
-  saveCondition,
+  setTodayCondition,
   getConditionAdvice 
 } from '../../services/condition';
 
@@ -25,7 +25,7 @@ export default function ConditionQuick({ onConditionChange }: ConditionQuickProp
   }, []);
 
   function handleSelect(level: ConditionLevel) {
-    saveCondition(level);
+    setTodayCondition(level);
     setCurrentLevel(level);
     setAdvice(getConditionAdvice(level));
     setIsExpanded(false);
@@ -35,7 +35,7 @@ export default function ConditionQuick({ onConditionChange }: ConditionQuickProp
     }
   }
 
-  var levels: ConditionLevel[] = ['great', 'okay', 'tired'];
+  var levels: ConditionLevel[] = ['great', 'good', 'normal', 'bad'];
 
   // 컨디션 미설정 상태
   if (!currentLevel) {
@@ -44,7 +44,7 @@ export default function ConditionQuick({ onConditionChange }: ConditionQuickProp
         <p className="text-sm text-gray-500 mb-3">오늘 컨디션은 어때요?</p>
         <div className="flex gap-2">
           {levels.map(function(level) {
-            var info = conditionInfo[level];
+            var info = conditionConfig[level];
             return (
               <button
                 key={level}
@@ -61,7 +61,7 @@ export default function ConditionQuick({ onConditionChange }: ConditionQuickProp
     );
   }
 
-  var currentInfo = conditionInfo[currentLevel];
+  var currentInfo = conditionConfig[currentLevel];
 
   // 컨디션 설정된 상태 - 컴팩트 뷰
   return (
@@ -103,7 +103,7 @@ export default function ConditionQuick({ onConditionChange }: ConditionQuickProp
             <p className="text-xs text-gray-400 mb-2">변경하기</p>
             <div className="flex gap-2">
               {levels.map(function(level) {
-                var info = conditionInfo[level];
+                var info = conditionConfig[level];
                 var isSelected = level === currentLevel;
                 return (
                   <button

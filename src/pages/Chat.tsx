@@ -2,8 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { Send, ArrowLeft, RefreshCw, Zap, Brain, Calendar, Heart, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getTodayCondition, conditionConfig } from '../services/condition';
-import { getTop3 } from '../services/top3';
-import { getCurrentFocus } from '../services/focusNow';
+import { getTodayTop3, Top3Item } from '../services/top3';
+import { getCurrentFocus, FocusItem } from '../services/focusNow';
 import { getAlfredoSettings, getToneLabel } from '../services/alfredoSettings';
 
 interface Message {
@@ -20,26 +20,27 @@ interface QuickAction {
 }
 
 export default function Chat() {
-  const navigate = useNavigate();
-  const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [showQuickActions, setShowQuickActions] = useState(true);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  var navigate = useNavigate();
+  var [input, setInput] = useState('');
+  var [messages, setMessages] = useState<Message[]>([]);
+  var [isLoading, setIsLoading] = useState(false);
+  var [error, setError] = useState<string | null>(null);
+  var [showQuickActions, setShowQuickActions] = useState(true);
+  var messagesEndRef = useRef<HTMLDivElement>(null);
 
   // 컨텍스트 정보
-  const condition = getTodayCondition();
-  const top3 = getTop3();
-  const currentFocus = getCurrentFocus();
-  const settings = getAlfredoSettings();
+  var condition = getTodayCondition();
+  var top3Data = getTodayTop3();
+  var top3 = top3Data ? top3Data.items : [];
+  var currentFocus = getCurrentFocus();
+  var settings = getAlfredoSettings();
 
-  useEffect(() => {
+  useEffect(function() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   // 퀵 액션 정의
-  const quickActions: QuickAction[] = [
+  var quickActions: QuickAction[] = [
     {
       id: 'braindump',
       icon: <Brain size={18} />,
@@ -67,8 +68,8 @@ export default function Chat() {
   ];
 
   // 컨텍스트 빌드
-  const buildContext = () => {
-    const ctx: any = {
+  function buildContext() {
+    var ctx: Record<string, unknown> = {
       tone: getToneLabel(settings.tone),
       motivation: settings.motivation
     };
@@ -82,10 +83,12 @@ export default function Chat() {
     }
 
     if (top3.length > 0) {
-      ctx.top3 = top3.map(t => ({
-        title: t.title,
-        completed: t.completed
-      }));
+      ctx.top3 = top3.map(function(t: Top3Item) {
+        return {
+          title: t.title,
+          completed: t.completed
+        };
+      });
     }
 
     if (currentFocus) {
@@ -96,48 +99,50 @@ export default function Chat() {
     }
 
     return ctx;
-  };
+  }
 
-  const sendToAPI = async (allMessages: Message[]) => {
+  async function sendToAPI(allMessages: Message[]) {
     try {
-      const response = await fetch('/api/chat', {
+      var response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          messages: allMessages.map(m => ({
-            role: m.role,
-            content: m.content
-          })),
+          messages: allMessages.map(function(m) {
+            return {
+              role: m.role,
+              content: m.content
+            };
+          }),
           context: buildContext()
         }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        var errorData = await response.json();
         throw new Error(errorData.error || 'API 호출 실패');
       }
 
-      const data = await response.json();
+      var data = await response.json();
       return data.text;
     } catch (err) {
       console.error('Chat API error:', err);
       throw err;
     }
-  };
+  }
 
-  const handleSend = async (text?: string) => {
-    const messageText = text || input.trim();
+  async function handleSend(text?: string) {
+    var messageText = text || input.trim();
     if (!messageText || isLoading) return;
 
-    const userMsg: Message = {
-      id: `user-${Date.now()}`,
+    var userMsg: Message = {
+      id: 'user-' + Date.now(),
       role: 'user',
       content: messageText
     };
 
-    const updatedMessages = [...messages, userMsg];
+    var updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setInput('');
     setIsLoading(true);
@@ -145,61 +150,67 @@ export default function Chat() {
     setShowQuickActions(false);
 
     try {
-      const responseText = await sendToAPI(updatedMessages);
+      var responseText = await sendToAPI(updatedMessages);
       
-      const botMsg: Message = {
-        id: `bot-${Date.now()}`,
+      var botMsg: Message = {
+        id: 'bot-' + Date.now(),
         role: 'assistant',
         content: responseText
       };
-      setMessages(prev => [...prev, botMsg]);
+      setMessages(function(prev) { return [...prev, botMsg]; });
     } catch (err) {
       setError(err instanceof Error ? err.message : '응답을 받지 못했어요');
-      const errorMsg: Message = {
-        id: `error-${Date.now()}`,
+      var errorMsg: Message = {
+        id: 'error-' + Date.now(),
         role: 'assistant',
         content: '죄송해요, 지금 응답하기 어려워요. 잠시 후 다시 시도해주세요. 🐧'
       };
-      setMessages(prev => [...prev, errorMsg]);
+      setMessages(function(prev) { return [...prev, errorMsg]; });
     } finally {
       setIsLoading(false);
     }
-  };
+  }
 
-  const handleQuickAction = (action: QuickAction) => {
+  function handleQuickAction(action: QuickAction) {
     handleSend(action.prompt);
-  };
+  }
 
-  const handleRetry = async () => {
-    const lastUserMsgIndex = messages.map(m => m.role).lastIndexOf('user');
+  async function handleRetry() {
+    var lastUserMsgIndex = -1;
+    for (var i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') {
+        lastUserMsgIndex = i;
+        break;
+      }
+    }
     if (lastUserMsgIndex === -1) return;
     
-    const messagesUpToLastUser = messages.slice(0, lastUserMsgIndex + 1);
+    var messagesUpToLastUser = messages.slice(0, lastUserMsgIndex + 1);
     setMessages(messagesUpToLastUser);
     setIsLoading(true);
     setError(null);
 
     try {
-      const responseText = await sendToAPI(messagesUpToLastUser);
+      var responseText = await sendToAPI(messagesUpToLastUser);
       
-      const botMsg: Message = {
-        id: `bot-${Date.now()}`,
+      var botMsg: Message = {
+        id: 'bot-' + Date.now(),
         role: 'assistant',
         content: responseText
       };
-      setMessages(prev => [...prev, botMsg]);
+      setMessages(function(prev) { return [...prev, botMsg]; });
     } catch (err) {
       setError(err instanceof Error ? err.message : '응답을 받지 못했어요');
     } finally {
       setIsLoading(false);
     }
-  };
+  }
 
   return (
     <div className="flex flex-col h-full bg-background">
       {/* 헤더 */}
       <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-100">
-        <button onClick={() => navigate('/')} className="p-2 rounded-full hover:bg-gray-100">
+        <button onClick={function() { navigate('/'); }} className="p-2 rounded-full hover:bg-gray-100">
           <ArrowLeft size={20} className="text-gray-600" />
         </button>
         <span className="text-2xl">🐧</span>
@@ -224,18 +235,20 @@ export default function Chat() {
         <div className="px-4 py-2 bg-lavender-50 border-b border-lavender-100">
           <p className="text-xs text-gray-500 mb-1">오늘의 탑3</p>
           <div className="flex flex-wrap gap-1">
-            {top3.map((item, idx) => (
-              <span 
-                key={item.id}
-                className={`text-xs px-2 py-0.5 rounded-full ${
-                  item.completed 
-                    ? 'bg-green-100 text-green-600 line-through' 
-                    : 'bg-white text-gray-600'
-                }`}
-              >
-                {idx + 1}. {item.title}
-              </span>
-            ))}
+            {top3.map(function(item: Top3Item, idx: number) {
+              return (
+                <span 
+                  key={item.id}
+                  className={'text-xs px-2 py-0.5 rounded-full ' +
+                    (item.completed 
+                      ? 'bg-green-100 text-green-600 line-through' 
+                      : 'bg-white text-gray-600')
+                  }
+                >
+                  {idx + 1}. {item.title}
+                </span>
+              );
+            })}
           </div>
         </div>
       )}
@@ -251,31 +264,35 @@ export default function Chat() {
             {/* 퀵 액션 */}
             {showQuickActions && (
               <div className="mt-8 grid grid-cols-2 gap-2 max-w-xs mx-auto">
-                {quickActions.map(action => (
-                  <button
-                    key={action.id}
-                    onClick={() => handleQuickAction(action)}
-                    className="flex items-center gap-2 p-3 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow text-left"
-                  >
-                    <span className="text-lavender-500">{action.icon}</span>
-                    <span className="text-sm text-gray-700">{action.label}</span>
-                  </button>
-                ))}
+                {quickActions.map(function(action) {
+                  return (
+                    <button
+                      key={action.id}
+                      onClick={function() { handleQuickAction(action); }}
+                      className="flex items-center gap-2 p-3 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow text-left"
+                    >
+                      <span className="text-lavender-500">{action.icon}</span>
+                      <span className="text-sm text-gray-700">{action.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
         ) : (
-          messages.map(msg => (
-            <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[80%] px-4 py-2 rounded-2xl ${
-                msg.role === 'user'
-                  ? 'bg-primary text-white rounded-br-sm'
-                  : 'bg-white text-gray-800 rounded-bl-sm shadow-sm'
-              }`}>
-                {msg.content}
+          messages.map(function(msg) {
+            return (
+              <div key={msg.id} className={'flex ' + (msg.role === 'user' ? 'justify-end' : 'justify-start')}>
+                <div className={'max-w-[80%] px-4 py-2 rounded-2xl ' +
+                  (msg.role === 'user'
+                    ? 'bg-primary text-white rounded-br-sm'
+                    : 'bg-white text-gray-800 rounded-bl-sm shadow-sm')
+                }>
+                  {msg.content}
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
         {isLoading && (
           <div className="flex justify-start">
@@ -306,16 +323,18 @@ export default function Chat() {
         {/* 퀵 액션 칩 (대화 중에도 표시) */}
         {messages.length > 0 && (
           <div className="flex gap-2 mb-3 overflow-x-auto pb-2">
-            {quickActions.map(action => (
-              <button
-                key={action.id}
-                onClick={() => handleQuickAction(action)}
-                className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-full text-xs text-gray-600 hover:bg-gray-200"
-              >
-                {action.icon}
-                <span>{action.label}</span>
-              </button>
-            ))}
+            {quickActions.map(function(action) {
+              return (
+                <button
+                  key={action.id}
+                  onClick={function() { handleQuickAction(action); }}
+                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-full text-xs text-gray-600 hover:bg-gray-200"
+                >
+                  {action.icon}
+                  <span>{action.label}</span>
+                </button>
+              );
+            })}
           </div>
         )}
         
@@ -323,20 +342,20 @@ export default function Chat() {
           <input
             type="text"
             value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSend()}
+            onChange={function(e) { setInput(e.target.value); }}
+            onKeyDown={function(e) { if (e.key === 'Enter') handleSend(); }}
             placeholder="메시지를 입력하세요..."
             className="flex-1 px-4 py-3 bg-gray-100 rounded-full outline-none focus:ring-2 focus:ring-primary/30"
             disabled={isLoading}
           />
           <button
-            onClick={() => handleSend()}
+            onClick={function() { handleSend(); }}
             disabled={!input.trim() || isLoading}
-            className={`p-3 rounded-full transition-colors ${
-              input.trim() && !isLoading 
+            className={'p-3 rounded-full transition-colors ' +
+              (input.trim() && !isLoading 
                 ? 'bg-primary text-white hover:bg-primary/90' 
-                : 'bg-gray-200 text-gray-400'
-            }`}
+                : 'bg-gray-200 text-gray-400')
+            }
           >
             <Send size={20} />
           </button>

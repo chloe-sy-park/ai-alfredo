@@ -86,7 +86,7 @@ export default function Home() {
   // 알프레도 브리핑 생성
   function getBriefing(): { headline: string; subline: string } {
     // 컨디션 우선
-    if (currentCondition === 'tired') {
+    if (currentCondition === 'bad') {
       return {
         headline: '오늘은 무리하지 않는 게 가장 생산적인 선택이에요',
         subline: '꼭 필요한 것만 하고 푹 쉬세요 🌙'
@@ -141,7 +141,7 @@ export default function Home() {
 
   // MoreSheet 콘텐츠
   function getMoreContent() {
-    if (currentCondition === 'tired') {
+    if (currentCondition === 'bad') {
       return {
         why: '컨디션이 좋지 않을 때 무리하면 오히려 역효과예요.',
         whatChanged: '컨디션이 "힘듦"으로 설정되었어요.',
