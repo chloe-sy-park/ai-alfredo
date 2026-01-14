@@ -10,41 +10,43 @@ interface ProjectPulseProps {
 }
 
 export default function ProjectPulse({ projects, onOpen }: ProjectPulseProps) {
-  const signalColors = {
-    green: 'bg-green-400',
-    yellow: 'bg-yellow-400',
-    red: 'bg-red-400'
+  var signalColors = {
+    green: 'bg-[#4ADE80]',
+    yellow: 'bg-[#FBBF24]',
+    red: 'bg-[#EF4444]'
   };
 
-  const signalLabels = {
+  var signalLabels = {
     green: '순항 중',
     yellow: '주의 필요',
     red: '위험'
   };
 
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm">
-      <h3 className="text-sm font-semibold text-neutral-700 mb-3">
+    <div className="bg-white rounded-xl p-4 shadow-card">
+      <h3 className="text-sm font-semibold text-[#1A1A1A] mb-3">
         프로젝트 상태
       </h3>
       <div className="space-y-2">
-        {projects.map((project) => (
-          <button
-            key={project.id}
-            onClick={() => onOpen?.(project.id)}
-            className="w-full flex items-center justify-between p-3 rounded-xl bg-neutral-50 hover:bg-neutral-100 transition-colors"
-          >
-            <span className="text-sm font-medium text-neutral-800">
-              {project.name}
-            </span>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-neutral-500">
-                {signalLabels[project.signal]}
+        {projects.map(function(project) {
+          return (
+            <button
+              key={project.id}
+              onClick={function() { if (onOpen) onOpen(project.id); }}
+              className="w-full flex items-center justify-between p-3 rounded-xl bg-[#F5F5F5] hover:bg-[#EEEEEE] transition-colors min-h-[44px]"
+            >
+              <span className="text-sm font-medium text-[#1A1A1A]">
+                {project.name}
               </span>
-              <span className={`w-3 h-3 rounded-full ${signalColors[project.signal]}`} />
-            </div>
-          </button>
-        ))}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-[#999999]">
+                  {signalLabels[project.signal]}
+                </span>
+                <span className={'w-3 h-3 rounded-full ' + signalColors[project.signal]} />
+              </div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
