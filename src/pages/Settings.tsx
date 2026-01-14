@@ -12,7 +12,11 @@ import {
   Volume2,
   Target,
   RotateCcw,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  Scale,
+  Zap,
+  Monitor,
+  Palette
 } from 'lucide-react';
 import { PageHeader } from '../components/layout';
 import { 
@@ -33,34 +37,35 @@ import {
   getAlfredoSettings,
   saveAlfredoSettings,
   resetAlfredoSettings,
-  getToneLabel,
-  getToneExample,
-  getFrequencyLabel,
-  getMotivationLabel,
-  getMotivationExample
+  applyTonePreset,
+  getWorkLifeLabel,
+  getProactivityLabel,
+  TONE_PRESET_INFO,
+  getToneAxisLabel,
+  getToneExample
 } from '../services/alfredoSettings';
 
 export default function Settings() {
-  var authStore = useAuthStore();
-  var user = authStore.user;
-  var logout = authStore.logout;
+  const authStore = useAuthStore();
+  const user = authStore.user;
+  const logout = authStore.logout;
   
-  var [googleConnected, setGoogleConnected] = useState(false);
-  var [googleUser, setGoogleUser] = useState<GoogleUser | null>(null);
-  var [connecting, setConnecting] = useState(false);
+  const [googleConnected, setGoogleConnected] = useState(false);
+  const [googleUser, setGoogleUser] = useState<GoogleUser | null>(null);
+  const [connecting, setConnecting] = useState(false);
   
   // 캘린더 선택 관련
-  var [calendars, setCalendars] = useState<CalendarInfo[]>([]);
-  var [selectedIds, setSelectedIds] = useState<string[]>([]);
-  var [showCalendars, setShowCalendars] = useState(false);
-  var [loadingCalendars, setLoadingCalendars] = useState(false);
+  const [calendars, setCalendars] = useState<CalendarInfo[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [showCalendars, setShowCalendars] = useState(false);
+  const [loadingCalendars, setLoadingCalendars] = useState(false);
 
   // 알프레도 설정
-  var [alfredoSettings, setAlfredoSettingsState] = useState<AlfredoSettings>(getAlfredoSettings());
-  var [showAlfredoSettings, setShowAlfredoSettings] = useState(false);
+  const [settings, setSettings] = useState<AlfredoSettings>(getAlfredoSettings());
+  const [showToneCustom, setShowToneCustom] = useState(false);
 
   useEffect(function checkGoogleConnection() {
-    var connected = isGoogleConnected();
+    const connected = isGoogleConnected();
     setGoogleConnected(connected);
     setGoogleUser(getGoogleUser());
     
@@ -83,7 +88,7 @@ export default function Settings() {
         setShowCalendars(true);
         
         if (selectedIds.length === 0) {
-          var primaryCal = list.find(function(c) { return c.primary; });
+          const primaryCal = list.find(function(c) { return c.primary; });
           if (primaryCal) {
             setSelectedIds([primaryCal.id]);
             setSelectedCalendars([primaryCal.id]);
@@ -100,7 +105,7 @@ export default function Settings() {
   }
 
   function handleToggleCalendar(calendarId: string) {
-    var newSelected: string[];
+    let newSelected: string[];
     if (selectedIds.includes(calendarId)) {
       newSelected = selectedIds.filter(function(id) { return id !== calendarId; });
     } else {
@@ -130,16 +135,26 @@ export default function Settings() {
     }
   }
 
-  // 알프레도 설정 변경
-  function handleAlfredoSettingChange(key: keyof AlfredoSettings, value: number | string | boolean) {
-    var updated = saveAlfredoSettings({ [key]: value });
-    setAlfredoSettingsState(updated);
+  // 설정 변경 핸들러
+  function handleSettingChange<K extends keyof AlfredoSettings>(
+    key: K, 
+    value: AlfredoSettings[K]
+  ) {
+    const updated = saveAlfredoSettings({ [key]: value });
+    setSettings(updated);
   }
 
-  function handleResetAlfredoSettings() {
-    if (confirm('알프레도 설정을 초기화할까요?')) {
-      var reset = resetAlfredoSettings();
-      setAlfredoSettingsState(reset);
+  function handleToneAxisChange(axis: keyof AlfredoSettings['toneAxes'], value: number) {
+    const newAxes = { ...settings.toneAxes, [axis]: value };
+    const updated = saveAlfredoSettings({ toneAxes: newAxes, tonePreset: 'custom' });
+    setSettings(updated);
+  }
+
+  function handleResetSettings() {
+    if (confirm('모든 설정을 초기화할까요?')) {
+      const reset = resetAlfredoSettings();
+      setSettings(reset);
+      setShowToneCustom(false);
     }
   }
 
@@ -168,121 +183,219 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* 알프레도 육성 */}
-        <div className="bg-white rounded-xl p-4 shadow-card">
-          <button
-            onClick={function() { setShowAlfredoSettings(!showAlfredoSettings); }}
-            className="w-full flex items-center justify-between min-h-[44px]"
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">🐧</span>
-              <h2 className="font-semibold text-[#1A1A1A]">알프레도 육성</h2>
+        {/* 핵심 기능 설정 */}
+        <div className="bg-white rounded-xl p-4 shadow-card space-y-6">
+          <h2 className="font-semibold text-[#1A1A1A] flex items-center gap-2">
+            <span className="text-2xl">🐧</span>
+            핵심 기능
+          </h2>
+
+          {/* Role Blend */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Scale size={16} className="text-[#A996FF]" />
+              <span className="text-sm font-medium text-[#1A1A1A]">Work-Life Balance</span>
+              <span className="text-xs text-[#999999] ml-auto">{getWorkLifeLabel(settings.workLifeBalance)}</span>
             </div>
-            {showAlfredoSettings ? <ChevronUp size={20} className="text-[#999999]" /> : <ChevronDown size={20} className="text-[#999999]" />}
+            <input
+              type="range"
+              min="1"
+              max="5"
+              value={settings.workLifeBalance}
+              onChange={(e) => handleSettingChange('workLifeBalance', parseInt(e.target.value))}
+              className="w-full h-2 bg-[#E5E5E5] rounded-full appearance-none cursor-pointer accent-[#A996FF]"
+            />
+            <div className="flex justify-between text-xs text-[#999999] mt-1">
+              <span>🏠 Life</span>
+              <span>💼 Work</span>
+            </div>
+          </div>
+
+          {/* Intervention Level */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Zap size={16} className="text-[#A996FF]" />
+              <span className="text-sm font-medium text-[#1A1A1A]">개입 수준</span>
+              <span className="text-xs text-[#999999] ml-auto">{getProactivityLabel(settings.proactivity)}</span>
+            </div>
+            <input
+              type="range"
+              min="1"
+              max="5"
+              value={settings.proactivity}
+              onChange={(e) => handleSettingChange('proactivity', parseInt(e.target.value))}
+              className="w-full h-2 bg-[#E5E5E5] rounded-full appearance-none cursor-pointer accent-[#A996FF]"
+            />
+            <div className="flex justify-between text-xs text-[#999999] mt-1">
+              <span>🤫 최소</span>
+              <span>🔊 밀착</span>
+            </div>
+          </div>
+
+          {/* 기본 뷰 */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Monitor size={16} className="text-[#A996FF]" />
+              <span className="text-sm font-medium text-[#1A1A1A]">기본 화면</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {(['integrated', 'work', 'life'] as const).map((view) => (
+                <button
+                  key={view}
+                  onClick={() => handleSettingChange('defaultView', view)}
+                  className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                    settings.defaultView === view
+                      ? 'bg-[#A996FF] text-white'
+                      : 'bg-[#F5F5F5] text-[#666666] hover:bg-[#E5E5E5]'
+                  }`}
+                >
+                  {view === 'integrated' && '🌐 통합'}
+                  {view === 'work' && '💼 업무'}
+                  {view === 'life' && '🏠 일상'}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* 톤 설정 */}
+        <div className="bg-white rounded-xl p-4 shadow-card space-y-4">
+          <h2 className="font-semibold text-[#1A1A1A] flex items-center gap-2">
+            <Palette size={18} className="text-[#A996FF]" />
+            알프레도 성격
+          </h2>
+
+          {/* 프리셋 선택 */}
+          <div className="grid grid-cols-3 gap-2">
+            {(Object.keys(TONE_PRESET_INFO) as Array<keyof typeof TONE_PRESET_INFO>).map((preset) => {
+              const info = TONE_PRESET_INFO[preset];
+              const isSelected = settings.tonePreset === preset;
+              return (
+                <button
+                  key={preset}
+                  onClick={() => {
+                    const updated = applyTonePreset(preset);
+                    setSettings(updated);
+                    setShowToneCustom(false);
+                  }}
+                  className={`p-3 rounded-xl border-2 transition-all ${
+                    isSelected
+                      ? 'border-[#A996FF] bg-[#F0F0FF]'
+                      : 'border-[#E5E5E5] hover:border-[#CCCCCC]'
+                  }`}
+                >
+                  <div className="text-2xl mb-1">{info.icon}</div>
+                  <div className="text-xs font-medium text-[#1A1A1A]">{info.label}</div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 프리셋 설명 */}
+          {settings.tonePreset !== 'custom' && (
+            <div className="bg-[#F5F5F5] p-3 rounded-lg">
+              <p className="text-sm text-[#666666] mb-1">
+                {TONE_PRESET_INFO[settings.tonePreset].desc}
+              </p>
+              <p className="text-xs text-[#999999] italic">
+                {getToneExample(settings)}
+              </p>
+            </div>
+          )}
+
+          {/* 세부 조정 토글 */}
+          <button
+            onClick={() => setShowToneCustom(!showToneCustom)}
+            className="w-full flex items-center justify-between py-2 text-sm text-[#666666] hover:text-[#A996FF]"
+          >
+            <span>세부 조정하기</span>
+            {showToneCustom ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
           </button>
-          
-          {showAlfredoSettings && (
-            <div className="mt-4 space-y-6">
+
+          {/* 5축 커스터마이징 */}
+          {showToneCustom && (
+            <div className="space-y-4 pt-4 border-t border-[#E5E5E5]">
+              {(Object.keys(settings.toneAxes) as Array<keyof typeof settings.toneAxes>).map((axis) => (
+                <div key={axis}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium text-[#666666] capitalize">
+                      {axis === 'warmth' && '따뜻함'}
+                      {axis === 'proactivity' && '적극성'}
+                      {axis === 'directness' && '직접성'}
+                      {axis === 'humor' && '유머'}
+                      {axis === 'pressure' && '압박'}
+                    </span>
+                    <span className="text-xs text-[#999999]">
+                      {getToneAxisLabel(axis, settings.toneAxes[axis])}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="5"
+                    value={settings.toneAxes[axis]}
+                    onChange={(e) => handleToneAxisChange(axis, parseInt(e.target.value))}
+                    className="w-full h-1.5 bg-[#E5E5E5] rounded-full appearance-none cursor-pointer accent-[#A996FF]"
+                  />
+                </div>
+              ))}
               
-              {/* 말투 */}
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Volume2 size={16} className="text-[#A996FF]" />
-                  <span className="text-sm font-medium text-[#1A1A1A]">말투</span>
-                  <span className="text-xs text-[#999999] ml-auto">{getToneLabel(alfredoSettings.tone)}</span>
-                </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="5"
-                  value={alfredoSettings.tone}
-                  onChange={function(e) { handleAlfredoSettingChange('tone', parseInt(e.target.value)); }}
-                  className="w-full h-2 bg-[#E5E5E5] rounded-full appearance-none cursor-pointer accent-[#A996FF]"
-                />
-                <div className="flex justify-between text-xs text-[#999999] mt-1">
-                  <span>🌸 다정</span>
-                  <span>🔥 직설</span>
-                </div>
-                <p className="text-xs text-[#666666] mt-2 bg-[#F5F5F5] p-2 rounded-lg">
-                  {getToneExample(alfredoSettings.tone)}
+              {settings.tonePreset === 'custom' && (
+                <p className="text-xs text-[#999999] italic bg-[#F5F5F5] p-2 rounded-lg mt-3">
+                  {getToneExample(settings)}
                 </p>
-              </div>
+              )}
+            </div>
+          )}
+        </div>
 
-              {/* 알림 빈도 */}
+        {/* 알림 설정 */}
+        <div className="bg-white rounded-xl p-4 shadow-card space-y-4">
+          <h2 className="font-semibold text-[#1A1A1A] flex items-center gap-2">
+            <Bell size={18} className="text-[#A996FF]" />
+            알림 설정
+          </h2>
+          
+          {/* 알림 on/off */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-[#666666]">푸시 알림</span>
+            <button
+              onClick={() => handleSettingChange('notificationsEnabled', !settings.notificationsEnabled)}
+              className={
+                'w-11 h-6 rounded-full relative transition-colors ' +
+                (settings.notificationsEnabled ? 'bg-[#A996FF]' : 'bg-[#CCCCCC]')
+              }
+            >
+              <span 
+                className={
+                  'absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ' +
+                  (settings.notificationsEnabled ? 'translate-x-6' : 'translate-x-1')
+                }
+              />
+            </button>
+          </div>
+
+          {/* 알림 시간 */}
+          {settings.notificationsEnabled && (
+            <div className="grid grid-cols-2 gap-4 pt-2">
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Bell size={16} className="text-[#A996FF]" />
-                  <span className="text-sm font-medium text-[#1A1A1A]">알림 빈도</span>
-                  <span className="text-xs text-[#999999] ml-auto">{getFrequencyLabel(alfredoSettings.notificationFrequency)}</span>
-                </div>
+                <label className="text-sm font-medium text-[#666666] block mb-1">아침 브리핑</label>
                 <input
-                  type="range"
-                  min="1"
-                  max="5"
-                  value={alfredoSettings.notificationFrequency}
-                  onChange={function(e) { handleAlfredoSettingChange('notificationFrequency', parseInt(e.target.value)); }}
-                  className="w-full h-2 bg-[#E5E5E5] rounded-full appearance-none cursor-pointer accent-[#A996FF]"
+                  type="time"
+                  value={settings.morningAlertTime}
+                  onChange={(e) => handleSettingChange('morningAlertTime', e.target.value)}
+                  className="w-full p-2 border border-[#E5E5E5] rounded-lg text-sm text-[#1A1A1A]"
                 />
-                <div className="flex justify-between text-xs text-[#999999] mt-1">
-                  <span>🤫 필요시만</span>
-                  <span>💬 자주</span>
-                </div>
               </div>
-
-              {/* 동기부여 */}
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Target size={16} className="text-[#A996FF]" />
-                  <span className="text-sm font-medium text-[#1A1A1A]">동기부여 방식</span>
-                  <span className="text-xs text-[#999999] ml-auto">{getMotivationLabel(alfredoSettings.motivation)}</span>
-                </div>
+                <label className="text-sm font-medium text-[#666666] block mb-1">저녁 리뷰</label>
                 <input
-                  type="range"
-                  min="1"
-                  max="5"
-                  value={alfredoSettings.motivation}
-                  onChange={function(e) { handleAlfredoSettingChange('motivation', parseInt(e.target.value)); }}
-                  className="w-full h-2 bg-[#E5E5E5] rounded-full appearance-none cursor-pointer accent-[#A996FF]"
+                  type="time"
+                  value={settings.eveningAlertTime}
+                  onChange={(e) => handleSettingChange('eveningAlertTime', e.target.value)}
+                  className="w-full p-2 border border-[#E5E5E5] rounded-lg text-sm text-[#1A1A1A]"
                 />
-                <div className="flex justify-between text-xs text-[#999999] mt-1">
-                  <span>🌊 느긋</span>
-                  <span>🏆 도전적</span>
-                </div>
-                <p className="text-xs text-[#666666] mt-2 bg-[#F5F5F5] p-2 rounded-lg">
-                  {getMotivationExample(alfredoSettings.motivation)}
-                </p>
               </div>
-
-              {/* 알림 시간 */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-[#666666] block mb-1">아침 알림</label>
-                  <input
-                    type="time"
-                    value={alfredoSettings.morningAlertTime}
-                    onChange={function(e) { handleAlfredoSettingChange('morningAlertTime', e.target.value); }}
-                    className="w-full p-2 border border-[#E5E5E5] rounded-lg text-sm text-[#1A1A1A] min-h-[44px]"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-[#666666] block mb-1">저녁 알림</label>
-                  <input
-                    type="time"
-                    value={alfredoSettings.eveningAlertTime}
-                    onChange={function(e) { handleAlfredoSettingChange('eveningAlertTime', e.target.value); }}
-                    className="w-full p-2 border border-[#E5E5E5] rounded-lg text-sm text-[#1A1A1A] min-h-[44px]"
-                  />
-                </div>
-              </div>
-
-              {/* 초기화 */}
-              <button
-                onClick={handleResetAlfredoSettings}
-                className="flex items-center gap-2 text-sm text-[#999999] hover:text-[#666666] min-h-[44px]"
-              >
-                <RotateCcw size={14} />
-                <span>설정 초기화</span>
-              </button>
             </div>
           )}
         </div>
@@ -311,7 +424,7 @@ export default function Settings() {
                 <button
                   onClick={handleLoadCalendars}
                   disabled={loadingCalendars}
-                  className="w-full flex items-center justify-between py-2 text-sm text-[#666666] hover:text-[#A996FF] min-h-[44px]"
+                  className="w-full flex items-center justify-between py-2 text-sm text-[#666666] hover:text-[#A996FF]"
                 >
                   <span>표시할 캘린더 선택 ({selectedIds.length}개 선택됨)</span>
                   {loadingCalendars ? (
@@ -326,12 +439,12 @@ export default function Settings() {
                 {showCalendars && calendars.length > 0 && (
                   <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
                     {calendars.map(function(cal) {
-                      var isSelected = selectedIds.includes(cal.id);
+                      const isSelected = selectedIds.includes(cal.id);
                       return (
                         <button
                           key={cal.id}
-                          onClick={function() { handleToggleCalendar(cal.id); }}
-                          className="w-full flex items-center gap-3 py-2 px-2 rounded-lg hover:bg-[#F5F5F5] text-left min-h-[44px]"
+                          onClick={() => handleToggleCalendar(cal.id)}
+                          className="w-full flex items-center gap-3 py-2 px-2 rounded-lg hover:bg-[#F5F5F5] text-left"
                         >
                           <div
                             className="w-4 h-4 rounded border-2 flex items-center justify-center"
@@ -359,7 +472,7 @@ export default function Settings() {
               
               <button
                 onClick={handleDisconnectGoogle}
-                className="w-full py-2.5 px-4 text-sm text-[#EF4444] border border-[#FECACA] rounded-xl hover:bg-[#FEF2F2] transition-colors min-h-[44px]"
+                className="w-full py-2.5 px-4 text-sm text-[#EF4444] border border-[#FECACA] rounded-xl hover:bg-[#FEF2F2] transition-colors"
               >
                 연결 해제
               </button>
@@ -376,7 +489,7 @@ export default function Settings() {
               <button
                 onClick={handleConnectGoogle}
                 disabled={connecting}
-                className="w-full py-2.5 px-4 bg-[#A996FF] text-white rounded-xl hover:bg-[#8B7BE8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[44px]"
+                className="w-full py-2.5 px-4 bg-[#A996FF] text-white rounded-xl hover:bg-[#8B7BE8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {connecting ? (
                   <>
@@ -394,45 +507,25 @@ export default function Settings() {
           )}
         </div>
 
-        {/* 알림 */}
-        <div className="bg-white rounded-xl p-4 shadow-card">
-          <h2 className="font-semibold mb-3 flex items-center gap-2 text-[#1A1A1A]">
-            <Bell size={18} className="text-[#A996FF]" />
-            알림
-          </h2>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between min-h-[44px]">
-              <span className="text-sm text-[#666666]">아침 브리핑</span>
-              <button
-                onClick={function() { handleAlfredoSettingChange('notificationsEnabled', !alfredoSettings.notificationsEnabled); }}
-                className={
-                  'w-11 h-6 rounded-full relative transition-colors ' +
-                  (alfredoSettings.notificationsEnabled ? 'bg-[#A996FF]' : 'bg-[#CCCCCC]')
-                }
-              >
-                <span 
-                  className={
-                    'absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ' +
-                    (alfredoSettings.notificationsEnabled ? 'translate-x-6' : 'translate-x-1')
-                  }
-                />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* 로그아웃 */}
-        <div className="bg-white rounded-xl shadow-card">
+        {/* 초기화 & 로그아웃 */}
+        <div className="bg-white rounded-xl shadow-card divide-y divide-[#E5E5E5]">
+          <button
+            onClick={handleResetSettings}
+            className="w-full flex items-center gap-3 px-4 py-3 text-[#666666] hover:bg-[#F5F5F5] rounded-t-xl"
+          >
+            <RotateCcw size={20} />
+            <span>설정 초기화</span>
+          </button>
           <button
             onClick={logout}
-            className="w-full flex items-center gap-3 px-4 py-3 text-[#EF4444] hover:bg-[#FEF2F2] rounded-xl min-h-[48px]"
+            className="w-full flex items-center gap-3 px-4 py-3 text-[#EF4444] hover:bg-[#FEF2F2] rounded-b-xl"
           >
             <LogOut size={20} />
             <span>로그아웃</span>
           </button>
         </div>
 
-        <p className="text-center text-xs text-[#999999]">알프레도 v0.2.0</p>
+        <p className="text-center text-xs text-[#999999]">알프레도 v0.3.0</p>
       </div>
     </div>
   );
