@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Share2, Calendar } from 'lucide-react';
+import { ChevronLeft, Share2 } from 'lucide-react';
 import WeeklyReport from '../components/report/WeeklyReport';
 
 export default function Report() {
