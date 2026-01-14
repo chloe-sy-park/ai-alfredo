@@ -16,9 +16,12 @@ export default function FocusTask({ task, onLater }: FocusTaskProps) {
 
   if (!task) {
     return (
-      <div className="bg-white rounded-2xl p-6 shadow-sm text-center">
-        <p className="text-[#999999]">지금 집중할 작업이 없어요</p>
-        <p className="text-sm text-[#666666] mt-2">업무 목록에서 작업을 선택해주세요</p>
+      <div className="bg-white rounded-2xl p-6 shadow-sm text-center animate-fade-in">
+        <div className="opacity-50 space-y-2">
+          <div className="w-12 h-12 bg-neutral-100 rounded-full mx-auto mb-3" />
+          <p className="text-[#999999]">지금 집중할 작업이 없어요</p>
+          <p className="text-sm text-[#666666]">업무 목록에서 작업을 선택해주세요</p>
+        </div>
       </div>
     );
   }
@@ -33,7 +36,7 @@ export default function FocusTask({ task, onLater }: FocusTaskProps) {
   }
 
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-[#A996FF]">
+    <div className="bg-white rounded-2xl p-6 shadow-card hover:shadow-card-hover transition-all duration-fast border-2 border-[#A996FF] animate-slide-up">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs text-[#A996FF] font-medium">지금 집중</span>
         <span className="px-2 py-0.5 bg-[#FEF2F2] text-[#EF4444] text-xs rounded-full">
@@ -62,14 +65,15 @@ export default function FocusTask({ task, onLater }: FocusTaskProps) {
         <button
           onClick={handleStart}
           disabled={isStarting}
-          className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#1A1A1A] text-white rounded-xl hover:bg-[#333333] transition-colors"
+          className={'flex-1 flex items-center justify-center gap-2 py-3 bg-[#1A1A1A] text-white rounded-xl transition-all duration-fast ' +
+            (isStarting ? 'scale-95 opacity-75' : 'hover:bg-[#333333] active:scale-95')}
         >
-          <Play size={16} />
-          <span>시작하기</span>
+          <Play size={16} className={isStarting ? 'animate-pulse' : ''} />
+          <span>{isStarting ? '시작 중...' : '시작하기'}</span>
         </button>
         <button
           onClick={onLater}
-          className="px-4 py-3 text-[#666666] hover:text-[#1A1A1A] transition-colors"
+          className="px-4 py-3 text-[#666666] hover:text-[#1A1A1A] transition-colors duration-fast active:scale-95"
         >
           나중에
         </button>

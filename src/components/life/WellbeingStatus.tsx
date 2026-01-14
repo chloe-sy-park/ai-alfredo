@@ -67,8 +67,8 @@ export default function WellbeingStatus({ condition: propCondition }: WellbeingS
   }
 
   return (
-    <div className={`bg-gradient-to-r ${getGradient()} rounded-2xl p-6 relative overflow-hidden`}>
-      <div className="absolute top-4 right-4 text-4xl opacity-20">
+    <div className={`bg-gradient-to-r ${getGradient()} rounded-2xl p-6 relative overflow-hidden animate-slide-down`}>
+      <div className="absolute top-4 right-4 text-4xl opacity-20 animate-pulse">
         {icon}
       </div>
       
@@ -82,19 +82,19 @@ export default function WellbeingStatus({ condition: propCondition }: WellbeingS
           {message}
         </h2>
         
-        <p className="text-sm text-[#666666]">
+        <p className="text-sm text-[#666666] animate-fade-in animation-delay-150">
           {subMessage}
         </p>
         
         {/* 감정 아이콘들 */}
         <div className="flex gap-3 mt-4">
-          <button className="p-2 bg-white/70 rounded-lg hover:bg-white transition-colors">
+          <button className="p-2 bg-white/70 rounded-lg hover:bg-white transition-all duration-fast hover:scale-105 active:scale-95">
             <Sparkles size={16} className="text-yellow-500" />
           </button>
-          <button className="p-2 bg-white/70 rounded-lg hover:bg-white transition-colors">
+          <button className="p-2 bg-white/70 rounded-lg hover:bg-white transition-all duration-fast hover:scale-105 active:scale-95">
             <Zap size={16} className="text-orange-500" />
           </button>
-          <button className="p-2 bg-white/70 rounded-lg hover:bg-white transition-colors">
+          <button className="p-2 bg-white/70 rounded-lg hover:bg-white transition-all duration-fast hover:scale-105 active:scale-95">
             <Cloud size={16} className="text-blue-500" />
           </button>
         </div>

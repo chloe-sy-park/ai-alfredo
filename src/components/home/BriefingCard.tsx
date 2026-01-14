@@ -17,11 +17,11 @@ export default function BriefingCard({
   onMore,
 }: BriefingCardProps) {
   return (
-    <AlfredoCard onMore={onMore} className="animate-fade-in">
+    <AlfredoCard onMore={onMore} className="animate-slide-down">
       <div className="space-y-2">
         {/* 강도 뱃지 */}
         {intensity && (
-          <div className="mb-2">
+          <div className="mb-2 animate-fade-in animation-delay-100">
             <IntensityBadge level={intensity} size="sm" />
           </div>
         )}
@@ -33,7 +33,7 @@ export default function BriefingCard({
         
         {/* 서브라인 */}
         {subline && (
-          <p className="text-sm text-[#666666] leading-relaxed">
+          <p className="text-sm text-[#666666] leading-relaxed animate-fade-in animation-delay-150">
             {subline}
           </p>
         )}
