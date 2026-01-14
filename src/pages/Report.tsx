@@ -148,27 +148,30 @@ export default function Report() {
   var completionRate = stats ? Math.round((stats.completedTasks / Math.max(stats.totalTasks, 1)) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-[#F5F5F5] pb-24">
       <div className="max-w-lg mx-auto">
         
         {/* 헤더 */}
-        <div className="sticky top-0 bg-background z-10 px-4 py-3 flex items-center gap-3">
-          <button onClick={function() { navigate(-1); }} className="p-2 rounded-full hover:bg-white">
-            <ArrowLeft size={20} className="text-gray-600" />
+        <div className="sticky top-0 bg-[#F5F5F5] z-10 px-4 py-3 flex items-center gap-3">
+          <button 
+            onClick={function() { navigate(-1); }} 
+            className="p-2 rounded-full hover:bg-white min-w-[44px] min-h-[44px] flex items-center justify-center"
+          >
+            <ArrowLeft size={20} className="text-[#666666]" />
           </button>
-          <h1 className="text-xl font-bold">주간 리포트</h1>
-          <span className="ml-auto text-sm text-gray-400">이번 주</span>
+          <h1 className="text-xl font-bold text-[#1A1A1A]">주간 리포트</h1>
+          <span className="ml-auto text-sm text-[#999999]">이번 주</span>
         </div>
 
         <div className="p-4 space-y-4">
           
           {/* 알프레도 인사이트 */}
-          <div className="bg-gradient-to-r from-lavender-100 to-purple-100 rounded-2xl p-4">
+          <div className="bg-gradient-to-r from-[#F0F0FF] to-[#FCE7F3] rounded-xl p-4">
             <div className="flex items-start gap-3">
               <span className="text-3xl">🐧</span>
               <div>
-                <p className="font-semibold text-gray-800">알프레도의 한마디</p>
-                <p className="text-sm text-gray-600 mt-1">{getInsightMessage()}</p>
+                <p className="font-semibold text-[#1A1A1A]">알프레도의 한마디</p>
+                <p className="text-sm text-[#666666] mt-1">{getInsightMessage()}</p>
               </div>
             </div>
           </div>
@@ -178,58 +181,58 @@ export default function Report() {
             <div className="grid grid-cols-2 gap-3">
               
               {/* 완료율 */}
-              <div className="bg-white rounded-2xl p-4 shadow-sm">
+              <div className="bg-white rounded-xl p-4 shadow-card">
                 <div className="flex items-center gap-2 mb-2">
-                  <Target size={16} className="text-green-500" />
-                  <span className="text-sm text-gray-500">완료율</span>
+                  <Target size={16} className="text-[#22C55E]" />
+                  <span className="text-sm text-[#999999]">완료율</span>
                 </div>
                 <div className="flex items-end gap-2">
-                  <span className="text-3xl font-bold text-green-500">{completionRate}%</span>
+                  <span className="text-3xl font-bold text-[#22C55E]">{completionRate}%</span>
                 </div>
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-[#999999] mt-1">
                   {stats.completedTasks}/{stats.totalTasks} 완료
                 </p>
               </div>
 
               {/* 평균 컨디션 */}
-              <div className="bg-white rounded-2xl p-4 shadow-sm">
+              <div className="bg-white rounded-xl p-4 shadow-card">
                 <div className="flex items-center gap-2 mb-2">
-                  <Heart size={16} className="text-pink-500" />
-                  <span className="text-sm text-gray-500">평균 컨디션</span>
+                  <Heart size={16} className="text-[#EC4899]" />
+                  <span className="text-sm text-[#999999]">평균 컨디션</span>
                 </div>
                 <div className="flex items-end gap-2">
                   <span className="text-3xl">{getConditionEmoji(stats.avgCondition)}</span>
-                  <span className="text-lg font-bold text-gray-700">{stats.avgCondition}/4</span>
+                  <span className="text-lg font-bold text-[#666666]">{stats.avgCondition}/4</span>
                 </div>
               </div>
 
               {/* 최고 생산성 요일 */}
-              <div className="bg-white rounded-2xl p-4 shadow-sm">
+              <div className="bg-white rounded-xl p-4 shadow-card">
                 <div className="flex items-center gap-2 mb-2">
-                  <Zap size={16} className="text-yellow-500" />
-                  <span className="text-sm text-gray-500">최고 생산성</span>
+                  <Zap size={16} className="text-[#FBBF24]" />
+                  <span className="text-sm text-[#999999]">최고 생산성</span>
                 </div>
-                <span className="text-2xl font-bold text-gray-800">{stats.mostProductiveDay}</span>
+                <span className="text-2xl font-bold text-[#1A1A1A]">{stats.mostProductiveDay}</span>
               </div>
 
               {/* 연속 기록 */}
-              <div className="bg-white rounded-2xl p-4 shadow-sm">
+              <div className="bg-white rounded-xl p-4 shadow-card">
                 <div className="flex items-center gap-2 mb-2">
-                  <Award size={16} className="text-orange-500" />
-                  <span className="text-sm text-gray-500">연속 기록</span>
+                  <Award size={16} className="text-[#F97316]" />
+                  <span className="text-sm text-[#999999]">연속 기록</span>
                 </div>
                 <div className="flex items-end gap-1">
-                  <span className="text-3xl font-bold text-orange-500">{stats.streakDays}</span>
-                  <span className="text-sm text-gray-400 mb-1">일</span>
+                  <span className="text-3xl font-bold text-[#F97316]">{stats.streakDays}</span>
+                  <span className="text-sm text-[#999999] mb-1">일</span>
                 </div>
               </div>
             </div>
           )}
 
           {/* 컨디션 그래프 */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <h3 className="font-semibold mb-3 flex items-center gap-2">
-              <TrendingUp size={18} className="text-lavender-400" />
+          <div className="bg-white rounded-xl p-4 shadow-card">
+            <h3 className="font-semibold mb-3 flex items-center gap-2 text-[#1A1A1A]">
+              <TrendingUp size={18} className="text-[#A996FF]" />
               이번 주 컨디션
             </h3>
             
@@ -252,16 +255,16 @@ export default function Report() {
                 return (
                   <div key={idx} className="flex flex-col items-center gap-1">
                     <div 
-                      className="w-8 bg-lavender-200 rounded-t transition-all"
+                      className="w-8 bg-[#E5E0FF] rounded-t transition-all"
                       style={{ height: height + '%', minHeight: height > 0 ? 8 : 0 }}
                     >
                       {record && (
-                        <div className="w-full h-full bg-lavender-400 rounded-t flex items-start justify-center pt-1">
+                        <div className="w-full h-full bg-[#A996FF] rounded-t flex items-start justify-center pt-1">
                           <span className="text-xs">{conditionConfig[record.level].emoji}</span>
                         </div>
                       )}
                     </div>
-                    <span className="text-xs text-gray-400">{days[date.getDay()]}</span>
+                    <span className="text-xs text-[#999999]">{days[date.getDay()]}</span>
                   </div>
                 );
               })}
@@ -269,28 +272,28 @@ export default function Report() {
           </div>
 
           {/* 습관 완료율 */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <div className="bg-white rounded-xl p-4 shadow-card">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-xl">✨</span>
-                <span className="font-semibold">오늘 습관 달성률</span>
+                <span className="font-semibold text-[#1A1A1A]">오늘 습관 달성률</span>
               </div>
-              <span className="text-2xl font-bold text-lavender-500">
+              <span className="text-2xl font-bold text-[#A996FF]">
                 {stats?.habitCompletionRate || 0}%
               </span>
             </div>
           </div>
 
           {/* 다음 주 목표 */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <div className="bg-white rounded-xl p-4 shadow-card">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-semibold">다음 주 목표 설정</h3>
-                <p className="text-sm text-gray-400">알프레도와 함께 계획해보세요</p>
+                <h3 className="font-semibold text-[#1A1A1A]">다음 주 목표 설정</h3>
+                <p className="text-sm text-[#999999]">알프레도와 함께 계획해보세요</p>
               </div>
               <button 
                 onClick={function() { navigate('/chat'); }}
-                className="p-2 bg-lavender-100 rounded-full text-lavender-500"
+                className="p-2 bg-[#F0F0FF] rounded-full text-[#A996FF] min-w-[44px] min-h-[44px] flex items-center justify-center"
               >
                 <ChevronRight size={20} />
               </button>
