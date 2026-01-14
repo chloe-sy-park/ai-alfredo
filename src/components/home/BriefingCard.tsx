@@ -1,50 +1,43 @@
+import { AlfredoCard } from '../common/Card';
+import IntensityBadge from '../common/IntensityBadge';
+
+type IntensityLevel = 'light' | 'normal' | 'heavy' | 'overloaded';
+
 interface BriefingCardProps {
-  type?: 'default' | 'update' | 'postAction';
   headline: string;
   subline?: string;
-  hasMore?: boolean;
+  intensity?: IntensityLevel;
   onMore?: () => void;
 }
 
 export default function BriefingCard({
-  type = 'default',
   headline,
   subline,
-  hasMore = true,
-  onMore
+  intensity,
+  onMore,
 }: BriefingCardProps) {
-  const getTypeStyles = () => {
-    switch (type) {
-      case 'update':
-        return 'border-l-4 border-primary';
-      case 'postAction':
-        return 'bg-lavender-50';
-      default:
-        return '';
-    }
-  };
-
   return (
-    <div className={`bg-white rounded-card p-4 shadow-card ${getTypeStyles()}`}>
-      <div className="flex items-start gap-3">
-        <span className="text-2xl flex-shrink-0">🐧</span>
-        <div className="flex-1 min-w-0">
-          <p className="text-md font-medium text-neutral-800 leading-relaxed">
-            {headline}
+    <AlfredoCard onMore={onMore} className="animate-fade-in">
+      <div className="space-y-2">
+        {/* 강도 뱃지 */}
+        {intensity && (
+          <div className="mb-2">
+            <IntensityBadge level={intensity} size="sm" />
+          </div>
+        )}
+        
+        {/* 헤드라인 */}
+        <h2 className="font-semibold text-neutral-800 leading-relaxed">
+          {headline}
+        </h2>
+        
+        {/* 서브라인 */}
+        {subline && (
+          <p className="text-sm text-neutral-500 leading-relaxed">
+            {subline}
           </p>
-          {subline && (
-            <p className="text-sm text-neutral-500 mt-1">{subline}</p>
-          )}
-        </div>
+        )}
       </div>
-      {hasMore && onMore && (
-        <button
-          onClick={onMore}
-          className="text-sm text-primary mt-3 hover:underline transition-colors"
-        >
-          더 보기 →
-        </button>
-      )}
-    </div>
+    </AlfredoCard>
   );
 }
