@@ -100,9 +100,9 @@ export default function TodayTop3({ onFocusSelect }: TodayTop3Props) {
 
   // Priority 스타일 (1번은 골드)
   var priorityStyles = [
-    { border: 'border-l-[3px] border-l-accent', badge: 'bg-accent text-neutral-900', label: '1st' },
-    { border: 'border-l-[3px] border-l-neutral-300', badge: 'bg-neutral-200 text-neutral-600', label: '2nd' },
-    { border: 'border-l-[3px] border-l-neutral-200', badge: 'bg-neutral-100 text-neutral-500', label: '3rd' },
+    { border: 'border-l-[3px] border-l-[#FFD700]', badge: 'bg-[#FFD700] text-[#1A1A1A]', label: '1st' },
+    { border: 'border-l-[3px] border-l-[#D4D4D4]', badge: 'bg-[#E5E5E5] text-[#666666]', label: '2nd' },
+    { border: 'border-l-[3px] border-l-[#E5E5E5]', badge: 'bg-[#F5F5F5] text-[#999999]', label: '3rd' },
   ];
 
   return (
@@ -110,14 +110,14 @@ export default function TodayTop3({ onFocusSelect }: TodayTop3Props) {
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <h2 className="font-semibold text-base text-neutral-800">오늘의 Top 3</h2>
+          <h2 className="font-semibold text-base text-[#1A1A1A]">오늘의 Top 3</h2>
           {progress.total > 0 && (
             <RingProgress
               percent={progress.percent}
               size="sm"
               color={progress.percent === 100 ? 'success' : 'primary'}
               centerContent={
-                <span className="text-[10px] font-bold text-neutral-600">
+                <span className="text-[10px] font-bold text-[#666666]">
                   {progress.completed}/{progress.total}
                 </span>
               }
@@ -125,7 +125,7 @@ export default function TodayTop3({ onFocusSelect }: TodayTop3Props) {
           )}
         </div>
         {progress.percent === 100 && items.length > 0 && (
-          <span className="text-xs px-2 py-1 bg-success/10 text-success rounded-pill font-medium">
+          <span className="text-xs px-2 py-1 bg-[#4ADE80]/20 text-[#4ADE80] rounded-full font-medium">
             완료! 🎉
           </span>
         )}
@@ -144,17 +144,17 @@ export default function TodayTop3({ onFocusSelect }: TodayTop3Props) {
               onDragOver={function(e) { handleDragOver(e, idx); }}
               onDragEnd={handleDragEnd}
               className={[
-                'flex items-center gap-2 p-3 rounded-lg bg-white transition-all cursor-move',
+                'flex items-center gap-2 p-3 rounded-xl bg-white transition-all cursor-move',
                 style.border,
                 item.completed ? 'opacity-60' : 'hover:shadow-card-hover',
                 dragIndex === idx ? 'shadow-card-hover scale-[1.02]' : '',
               ].join(' ')}
             >
               {/* 드래그 핸들 */}
-              <GripVertical size={16} className="text-neutral-300 flex-shrink-0" />
+              <GripVertical size={16} className="text-[#D4D4D4] flex-shrink-0" />
               
               {/* 우선순위 뱃지 */}
-              <span className={'text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 ' + style.badge}>
+              <span className={'text-[10px] font-semibold px-3 py-1 rounded-full flex-shrink-0 ' + style.badge}>
                 {style.label}
               </span>
               
@@ -164,10 +164,10 @@ export default function TodayTop3({ onFocusSelect }: TodayTop3Props) {
                 className={[
                   'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all',
                   item.completed 
-                    ? 'bg-success border-success text-white' 
+                    ? 'bg-[#4ADE80] border-[#4ADE80] text-white' 
                     : idx === 0 
-                      ? 'border-accent hover:bg-accent/10'
-                      : 'border-neutral-300 hover:border-primary',
+                      ? 'border-[#FFD700] hover:bg-[#FFD700]/10'
+                      : 'border-[#D4D4D4] hover:border-[#A996FF]',
                 ].join(' ')}
               >
                 {item.completed && <Check size={12} />}
@@ -177,7 +177,7 @@ export default function TodayTop3({ onFocusSelect }: TodayTop3Props) {
               <span 
                 className={[
                   'flex-1 text-sm',
-                  item.completed ? 'text-neutral-400 line-through' : 'text-neutral-700',
+                  item.completed ? 'text-[#999999] line-through' : 'text-[#1A1A1A]',
                 ].join(' ')}
               >
                 {item.title}
@@ -189,7 +189,7 @@ export default function TodayTop3({ onFocusSelect }: TodayTop3Props) {
                   variant={idx === 0 ? 'primary' : 'ghost'}
                   size="sm"
                   onClick={function() { onFocusSelect(item); }}
-                  className={idx === 0 ? '' : 'text-xs text-neutral-500'}
+                  className={idx === 0 ? '' : 'text-xs text-[#999999]'}
                 >
                   집중
                 </Button>
@@ -198,7 +198,7 @@ export default function TodayTop3({ onFocusSelect }: TodayTop3Props) {
               {/* 삭제 버튼 */}
               <button
                 onClick={function() { handleDelete(item.id); }}
-                className="p-1 text-neutral-300 hover:text-error flex-shrink-0 transition-colors"
+                className="p-1 text-[#D4D4D4] hover:text-[#EF4444] flex-shrink-0 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
               >
                 <X size={14} />
               </button>
@@ -208,15 +208,15 @@ export default function TodayTop3({ onFocusSelect }: TodayTop3Props) {
 
         {/* 추가 입력 */}
         {isAdding ? (
-          <div className="flex items-center gap-2 p-3 rounded-lg border-2 border-dashed border-primary/50 bg-lavender-50">
-            <Plus size={16} className="text-primary flex-shrink-0" />
+          <div className="flex items-center gap-2 p-3 rounded-xl border-2 border-dashed border-[#A996FF]/50 bg-[#F0F0FF]">
+            <Plus size={16} className="text-[#A996FF] flex-shrink-0" />
             <input
               type="text"
               value={newTitle}
               onChange={function(e) { setNewTitle(e.target.value); }}
               onKeyDown={handleKeyDown}
               placeholder="할 일을 입력하세요"
-              className="flex-1 bg-transparent outline-none text-sm"
+              className="flex-1 bg-transparent outline-none text-sm text-[#1A1A1A]"
               autoFocus
             />
             <Button size="sm" onClick={handleAdd} disabled={!newTitle.trim()}>
@@ -224,7 +224,7 @@ export default function TodayTop3({ onFocusSelect }: TodayTop3Props) {
             </Button>
             <button
               onClick={function() { setIsAdding(false); setNewTitle(''); }}
-              className="p-1 text-neutral-400 hover:text-neutral-600"
+              className="p-1 text-[#999999] hover:text-[#666666] min-w-[44px] min-h-[44px] flex items-center justify-center"
             >
               <X size={14} />
             </button>
@@ -232,7 +232,7 @@ export default function TodayTop3({ onFocusSelect }: TodayTop3Props) {
         ) : remainingSlots > 0 ? (
           <button
             onClick={function() { setIsAdding(true); }}
-            className="w-full flex items-center justify-center gap-2 p-3 rounded-lg border-2 border-dashed border-neutral-200 text-neutral-400 hover:border-primary hover:text-primary transition-colors"
+            className="w-full flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-[#E5E5E5] text-[#999999] hover:border-[#A996FF] hover:text-[#A996FF] transition-colors min-h-[48px]"
           >
             <Plus size={16} />
             <span className="text-sm">추가하기 ({remainingSlots}개 남음)</span>
@@ -243,8 +243,8 @@ export default function TodayTop3({ onFocusSelect }: TodayTop3Props) {
       {/* 빈 상태 */}
       {items.length === 0 && !isAdding && (
         <div className="text-center py-6">
-          <p className="text-sm text-neutral-500 mb-1">오늘 꼭 해야 할 3가지를 정해보세요</p>
-          <p className="text-xs text-neutral-400">적을수록 집중하기 좋아요 🎯</p>
+          <p className="text-sm text-[#666666] mb-1">오늘 꼭 해야 할 3가지를 정해보세요</p>
+          <p className="text-xs text-[#999999]">적을수록 집중하기 좋아요 🎯</p>
         </div>
       )}
     </Card>
