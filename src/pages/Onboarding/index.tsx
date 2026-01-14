@@ -81,15 +81,6 @@ export default function Onboarding() {
 
   const handleSkip = () => {
     // Skip 시 기본값으로 완료 처리
-    const defaultData = {
-      userName: 'Boss',
-      context: 'unsure' as const,
-      boundary: 'balanced' as const,
-      calendarConnected: false,
-      notificationsEnabled: false,
-      notificationTimes: [],
-    };
-
     const user = {
       id: '1',
       name: 'Boss',
@@ -113,7 +104,7 @@ export default function Onboarding() {
   };
 
   return (
-    <OnboardingLayout>
+    <OnboardingLayout currentStep={currentStep} totalSteps={STEPS.length}>
       <ProgressIndicator currentStep={currentStep} totalSteps={STEPS.length} />
       
       <AnimatePresence mode="wait">

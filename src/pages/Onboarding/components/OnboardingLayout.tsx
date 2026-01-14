@@ -1,48 +1,43 @@
 import { ReactNode } from 'react';
-import ProgressIndicator from './ProgressIndicator';
+import { motion } from 'framer-motion';
+import { ChevronLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface OnboardingLayoutProps {
   children: ReactNode;
   currentStep: number;
   totalSteps: number;
-  showProgress?: boolean;
-  onSkip?: () => void;
 }
 
-export default function OnboardingLayout({
-  children,
-  currentStep,
-  totalSteps,
-  showProgress = true,
-  onSkip
-}: OnboardingLayoutProps) {
+export default function OnboardingLayout({ children, currentStep, totalSteps }: OnboardingLayoutProps) {
+  const navigate = useNavigate();
+  const showBackButton = currentStep > 0 && currentStep < totalSteps - 1;
+
+  const handleBack = () => {
+    navigate(-1);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#F0F0FF] to-white flex flex-col">
-      {/* 헤더 영역 */}
-      <div className="px-6 pt-12 pb-4">
-        {onSkip && (
-          <button
-            onClick={onSkip}
-            className="text-sm text-[#666666] hover:text-[#1A1A1A] transition-colors"
+    <div className="min-h-screen bg-gradient-to-br from-[#F0EBFF] via-white to-[#F8F8FF] flex flex-col">
+      {/* 헤더 */}
+      <div className="relative">
+        {showBackButton && (
+          <motion.button
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            onClick={handleBack}
+            className="absolute left-4 top-4 p-2 rounded-full hover:bg-white/50 transition-colors"
           >
-            Skip
-          </button>
+            <ChevronLeft size={24} className="text-[#666666]" />
+          </motion.button>
         )}
       </div>
 
-      {/* 진행 표시 */}
-      {showProgress && (
-        <div className="px-6 pb-8">
-          <ProgressIndicator 
-            currentStep={currentStep} 
-            totalSteps={totalSteps} 
-          />
+      {/* 메인 콘텐츠 */}
+      <div className="flex-1 flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-md">
+          {children}
         </div>
-      )}
-
-      {/* 컨텐츠 영역 */}
-      <div className="flex-1 px-6 pb-12">
-        {children}
       </div>
     </div>
   );
