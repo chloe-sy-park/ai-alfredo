@@ -13,6 +13,10 @@ export interface Task {
   createdAt: string;
 }
 
+export type TaskStatus = 'todo' | 'in_progress' | 'done';
+export type SortOption = 'priority' | 'dueDate' | 'created';
+export type FilterOption = 'all' | 'todo' | 'in_progress' | 'done';
+
 var STORAGE_KEY = 'alfredo_tasks';
 
 // 태스크 목록 가져오기
@@ -58,6 +62,17 @@ export function updateTask(id: string, updates: Partial<Task>): Task | null {
   tasks[index] = { ...tasks[index], ...updates };
   saveTasks(tasks);
   return tasks[index];
+}
+
+// 태스크 상태 변경
+export function changeTaskStatus(id: string, status: TaskStatus): Task | null {
+  var updates: Partial<Task> = { status: status };
+  if (status === 'done') {
+    updates.completedAt = new Date().toISOString();
+  } else {
+    updates.completedAt = undefined;
+  }
+  return updateTask(id, updates);
 }
 
 // 태스크 완료 토글
@@ -116,10 +131,72 @@ export function getPendingCount(category?: 'work' | 'life'): number {
   }).length;
 }
 
-// 우선순위순 정렬
-export function sortByPriority(tasks: Task[]): Task[] {
-  var priorityOrder = { high: 0, medium: 1, low: 2 };
-  return [...tasks].sort(function(a, b) {
-    return priorityOrder[a.priority] - priorityOrder[b.priority];
-  });
+// 정렬 함수
+export function sortTasks(tasks: Task[], sortBy: SortOption): Task[] {
+  var sorted = [...tasks];
+  
+  switch (sortBy) {
+    case 'priority':
+      var priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+      sorted.sort(function(a, b) {
+        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      });
+      break;
+    case 'dueDate':
+      sorted.sort(function(a, b) {
+        if (!a.dueDate && !b.dueDate) return 0;
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      });
+      break;
+    case 'created':
+      sorted.sort(function(a, b) {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+      break;
+  }
+  
+  return sorted;
+}
+
+// 필터 함수
+export function filterTasks(tasks: Task[], filterBy: FilterOption): Task[] {
+  if (filterBy === 'all') return tasks;
+  return tasks.filter(function(t) { return t.status === filterBy; });
+}
+
+// D-day 계산
+export function getDDay(dueDate: string): number {
+  var due = new Date(dueDate);
+  due.setHours(0, 0, 0, 0);
+  var today = new Date();
+  today.setHours(0, 0, 0, 0);
+  var diff = due.getTime() - today.getTime();
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
+
+// D-day 라벨
+export function getDDayLabel(dueDate: string): string {
+  var dday = getDDay(dueDate);
+  if (dday < 0) return 'D+' + Math.abs(dday);
+  if (dday === 0) return '오늘';
+  if (dday === 1) return '내일';
+  return 'D-' + dday;
+}
+
+// 총 예상 시간 계산
+export function getTotalEstimatedMinutes(tasks: Task[]): number {
+  return tasks.reduce(function(sum, t) {
+    return sum + (t.estimatedMinutes || 0);
+  }, 0);
+}
+
+// 시간 포맷 (분 -> 시간분)
+export function formatMinutes(minutes: number): string {
+  if (minutes < 60) return minutes + '분';
+  var hours = Math.floor(minutes / 60);
+  var mins = minutes % 60;
+  if (mins === 0) return hours + '시간';
+  return hours + '시간 ' + mins + '분';
 }
