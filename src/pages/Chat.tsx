@@ -207,23 +207,26 @@ export default function Chat() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full bg-[#F5F5F5]">
       {/* 헤더 */}
-      <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-100">
-        <button onClick={function() { navigate('/'); }} className="p-2 rounded-full hover:bg-gray-100">
-          <ArrowLeft size={20} className="text-gray-600" />
+      <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-[#E5E5E5]">
+        <button 
+          onClick={function() { navigate('/'); }} 
+          className="p-2 rounded-full hover:bg-[#F5F5F5] min-w-[44px] min-h-[44px] flex items-center justify-center"
+        >
+          <ArrowLeft size={20} className="text-[#666666]" />
         </button>
         <span className="text-2xl">🐧</span>
         <div className="flex-1">
-          <span className="font-semibold text-gray-800">알프레도</span>
+          <span className="font-semibold text-[#1A1A1A]">알프레도</span>
           {condition && (
-            <span className="ml-2 text-xs text-gray-400">
+            <span className="ml-2 text-xs text-[#999999]">
               {conditionConfig[condition.level].emoji} {conditionConfig[condition.level].label}
             </span>
           )}
         </div>
         {currentFocus && (
-          <div className="flex items-center gap-1 text-xs bg-lavender-100 text-lavender-600 px-2 py-1 rounded-full">
+          <div className="flex items-center gap-1 text-xs bg-[#F0F0FF] text-[#A996FF] px-2 py-1 rounded-full font-medium">
             <Sparkles size={12} />
             <span>집중 중</span>
           </div>
@@ -232,8 +235,8 @@ export default function Chat() {
 
       {/* 컨텍스트 표시 (첫 화면에서만) */}
       {messages.length === 0 && top3.length > 0 && (
-        <div className="px-4 py-2 bg-lavender-50 border-b border-lavender-100">
-          <p className="text-xs text-gray-500 mb-1">오늘의 탑3</p>
+        <div className="px-4 py-2 bg-[#F0F0FF] border-b border-[#E5E0FF]">
+          <p className="text-xs text-[#999999] mb-1">오늘의 탑3</p>
           <div className="flex flex-wrap gap-1">
             {top3.map(function(item: Top3Item, idx: number) {
               return (
@@ -241,8 +244,8 @@ export default function Chat() {
                   key={item.id}
                   className={'text-xs px-2 py-0.5 rounded-full ' +
                     (item.completed 
-                      ? 'bg-green-100 text-green-600 line-through' 
-                      : 'bg-white text-gray-600')
+                      ? 'bg-[#DCFCE7] text-[#22C55E] line-through' 
+                      : 'bg-white text-[#666666]')
                   }
                 >
                   {idx + 1}. {item.title}
@@ -258,8 +261,8 @@ export default function Chat() {
         {messages.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-6xl mb-4">🐧</div>
-            <p className="text-gray-600 font-medium">안녕하세요! 알프레도예요</p>
-            <p className="text-gray-400 text-sm mt-1">무엇이든 물어보세요</p>
+            <p className="text-[#1A1A1A] font-medium">안녕하세요! 알프레도예요</p>
+            <p className="text-[#999999] text-sm mt-1">무엇이든 물어보세요</p>
             
             {/* 퀵 액션 */}
             {showQuickActions && (
@@ -269,10 +272,10 @@ export default function Chat() {
                     <button
                       key={action.id}
                       onClick={function() { handleQuickAction(action); }}
-                      className="flex items-center gap-2 p-3 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow text-left"
+                      className="flex items-center gap-2 p-3 bg-white rounded-xl shadow-card hover:shadow-card-hover transition-shadow text-left min-h-[44px]"
                     >
-                      <span className="text-lavender-500">{action.icon}</span>
-                      <span className="text-sm text-gray-700">{action.label}</span>
+                      <span className="text-[#A996FF]">{action.icon}</span>
+                      <span className="text-sm text-[#1A1A1A]">{action.label}</span>
                     </button>
                   );
                 })}
@@ -283,10 +286,10 @@ export default function Chat() {
           messages.map(function(msg) {
             return (
               <div key={msg.id} className={'flex ' + (msg.role === 'user' ? 'justify-end' : 'justify-start')}>
-                <div className={'max-w-[80%] px-4 py-2 rounded-2xl ' +
+                <div className={'max-w-[80%] px-4 py-3 rounded-2xl ' +
                   (msg.role === 'user'
-                    ? 'bg-primary text-white rounded-br-sm'
-                    : 'bg-white text-gray-800 rounded-bl-sm shadow-sm')
+                    ? 'bg-[#A996FF] text-white rounded-br-md'
+                    : 'bg-white text-[#1A1A1A] rounded-bl-md shadow-card')
                 }>
                   {msg.content}
                 </div>
@@ -296,8 +299,8 @@ export default function Chat() {
         )}
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-white px-4 py-2 rounded-2xl rounded-bl-sm shadow-sm">
-              <span className="text-gray-400 flex items-center gap-2">
+            <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-md shadow-card">
+              <span className="text-[#999999] flex items-center gap-2">
                 <span className="animate-pulse">생각 중</span>
                 <span className="animate-bounce">...</span>
               </span>
@@ -308,7 +311,7 @@ export default function Chat() {
           <div className="flex justify-center">
             <button 
               onClick={handleRetry}
-              className="flex items-center gap-2 text-sm text-primary hover:underline"
+              className="flex items-center gap-2 text-sm text-[#A996FF] hover:underline min-h-[44px]"
             >
               <RefreshCw size={14} />
               다시 시도
@@ -319,7 +322,7 @@ export default function Chat() {
       </div>
 
       {/* 입력 영역 */}
-      <div className="p-4 bg-white border-t border-gray-100">
+      <div className="p-4 bg-white border-t border-[#E5E5E5]">
         {/* 퀵 액션 칩 (대화 중에도 표시) */}
         {messages.length > 0 && (
           <div className="flex gap-2 mb-3 overflow-x-auto pb-2">
@@ -328,7 +331,7 @@ export default function Chat() {
                 <button
                   key={action.id}
                   onClick={function() { handleQuickAction(action); }}
-                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-full text-xs text-gray-600 hover:bg-gray-200"
+                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-[#F5F5F5] rounded-full text-xs text-[#666666] hover:bg-[#EEEEEE] min-h-[36px]"
                 >
                   {action.icon}
                   <span>{action.label}</span>
@@ -345,16 +348,16 @@ export default function Chat() {
             onChange={function(e) { setInput(e.target.value); }}
             onKeyDown={function(e) { if (e.key === 'Enter') handleSend(); }}
             placeholder="메시지를 입력하세요..."
-            className="flex-1 px-4 py-3 bg-gray-100 rounded-full outline-none focus:ring-2 focus:ring-primary/30"
+            className="flex-1 px-4 py-3 bg-[#F5F5F5] rounded-full outline-none focus:ring-2 focus:ring-[#A996FF]/30 text-[#1A1A1A] placeholder:text-[#999999]"
             disabled={isLoading}
           />
           <button
             onClick={function() { handleSend(); }}
             disabled={!input.trim() || isLoading}
-            className={'p-3 rounded-full transition-colors ' +
+            className={'p-3 rounded-full transition-colors min-w-[48px] min-h-[48px] flex items-center justify-center ' +
               (input.trim() && !isLoading 
-                ? 'bg-primary text-white hover:bg-primary/90' 
-                : 'bg-gray-200 text-gray-400')
+                ? 'bg-[#A996FF] text-white hover:bg-[#8B7BE8]' 
+                : 'bg-[#E5E5E5] text-[#999999]')
             }
           >
             <Send size={20} />
