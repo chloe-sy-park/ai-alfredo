@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { PageHeader } from '../components/layout';
 import { 
   Briefcase, Plus, Play, Trash2, Target,
   ChevronDown, ChevronUp, ChevronRight, Filter, ArrowUpDown,
@@ -531,14 +532,15 @@ export default function Work() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] pb-24">
-      <div className="max-w-4xl mx-auto p-4 space-y-4">
+    <div className="min-h-screen bg-[#F5F5F5]">
+      <PageHeader />
+      <div className="max-w-4xl mx-auto px-4 py-2 space-y-4">
         
         {/* 헤더 */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Briefcase size={24} className="text-[#A996FF]" />
-            <h1 className="text-xl font-bold text-[#1A1A1A]">업무</h1>
+            <Briefcase size={20} className="text-[#A996FF]" />
+            <h1 className="text-lg font-bold text-[#1A1A1A]">업무</h1>
           </div>
           <div className="flex items-center gap-2">
             {/* 뷰 모드 토글 */}
