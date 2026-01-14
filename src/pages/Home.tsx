@@ -8,14 +8,17 @@ import { getWeather, WeatherData } from '../services/weather';
 
 // Components
 import { ModeSwitch, ChatLauncher, MoreSheet } from '../components/home';
+import BriefingCard from '../components/home/BriefingCard';
 import TodayTimeline from '../components/home/TodayTimeline';
 import ConditionQuick from '../components/home/ConditionQuick';
 import TodayTop3 from '../components/home/TodayTop3';
 import FocusNow from '../components/home/FocusNow';
 import WeatherCard from '../components/home/WeatherCard';
 import QuickMemoCard from '../components/home/QuickMemoCard';
+import { calculateIntensity } from '../components/common/IntensityBadge';
 
 type Mode = 'all' | 'work' | 'life';
+type IntensityLevel = 'light' | 'normal' | 'heavy' | 'overloaded';
 
 export default function Home() {
   var user = useAuthStore().user;
@@ -26,6 +29,7 @@ export default function Home() {
   var [currentCondition, setCurrentCondition] = useState<ConditionLevel | null>(null);
   var [currentFocus, setCurrentFocus] = useState<FocusItem | null>(null);
   var [weather, setWeather] = useState<WeatherData | null>(null);
+  var [intensity, setIntensity] = useState<IntensityLevel>('normal');
 
   // 데이터 로드
   useEffect(function() {
@@ -35,7 +39,12 @@ export default function Home() {
     
     if (connected) {
       getTodayEvents()
-        .then(function(events) { setCalendarEvents(events); })
+        .then(function(events) { 
+          setCalendarEvents(events);
+          // 강도 계산
+          var calculatedIntensity = calculateIntensity(events.length, currentCondition || undefined);
+          setIntensity(calculatedIntensity);
+        })
         .catch(function(err) { console.error('Calendar error:', err); });
     }
     
@@ -54,6 +63,12 @@ export default function Home() {
       setWeather(data);
     });
   }, []);
+
+  // 컨디션 변경 시 강도 재계산
+  useEffect(function() {
+    var calculatedIntensity = calculateIntensity(calendarEvents.length, currentCondition || undefined);
+    setIntensity(calculatedIntensity);
+  }, [currentCondition, calendarEvents.length]);
 
   // 컨디션 변경 핸들러
   function handleConditionChange(level: ConditionLevel) {
@@ -90,6 +105,21 @@ export default function Home() {
       return {
         headline: '오늘은 무리하지 않는 게 가장 생산적인 선택이에요',
         subline: '꼭 필요한 것만 하고 푹 쉬세요 🌙'
+      };
+    }
+    
+    // 강도 기반
+    if (intensity === 'overloaded') {
+      return {
+        headline: '오늘 일정이 많네요. 우선순위에 집중하세요',
+        subline: '모든 걸 다 할 필요 없어요. 중요한 것만 🎯'
+      };
+    }
+    
+    if (intensity === 'heavy') {
+      return {
+        headline: '바쁜 하루가 될 거예요. 페이스 조절이 중요해요',
+        subline: '중간중간 쉬는 것도 일의 일부예요 ☕'
       };
     }
     
@@ -148,6 +178,13 @@ export default function Home() {
         tradeOff: '급하지 않은 건 내일로. 건강이 먼저예요.'
       };
     }
+    if (intensity === 'overloaded' || intensity === 'heavy') {
+      return {
+        why: '오늘 일정이 ' + calendarEvents.length + '개나 있어요.',
+        whatChanged: '강도가 "' + intensity.toUpperCase() + '"로 판단되었어요.',
+        tradeOff: 'Top 3에 집중하고 나머지는 과감히 미루세요.'
+      };
+    }
     return {
       why: '오늘 하루를 효율적으로 보내기 위한 알프레도의 분석이에요.',
       whatChanged: '캘린더와 컨디션을 종합해서 판단했어요.',
@@ -162,20 +199,22 @@ export default function Home() {
       <div className="max-w-mobile mx-auto p-4 space-y-4">
         
         {/* 헤더 */}
-        <div className="flex justify-between items-center">
+        <header className="flex justify-between items-center animate-fade-in">
           <div>
-            <p className="text-sm text-gray-500">{getGreeting()}</p>
-            <h1 className="text-2xl font-bold text-gray-900">
+            <p className="text-sm text-neutral-500">{getGreeting()}</p>
+            <h1 className="text-2xl font-bold text-neutral-800">
               {user?.name || 'Boss'}님
             </h1>
           </div>
           <div className="flex items-center gap-2">
             {isGoogleConnected && (
-              <span className="text-xs text-green-500">● 캘린더 연동</span>
+              <span className="text-xs text-success">● 캘린더 연동</span>
             )}
-            <span className="text-3xl">🐧</span>
+            <div className="w-10 h-10 bg-white rounded-full shadow-card flex items-center justify-center">
+              <span className="text-xl">🐧</span>
+            </div>
           </div>
-        </div>
+        </header>
 
         {/* 모드 스위치 */}
         <ModeSwitch activeMode={mode} onChange={setMode} />
@@ -187,25 +226,14 @@ export default function Home() {
         <ConditionQuick onConditionChange={handleConditionChange} />
 
         {/* 알프레도 브리핑 */}
-        <div className="bg-gradient-to-r from-lavender-100 to-purple-100 rounded-2xl p-4">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
-              <span className="text-xl">🐧</span>
-            </div>
-            <div className="flex-1">
-              <h2 className="font-semibold text-gray-800">{briefing.headline}</h2>
-              <p className="text-sm text-gray-600 mt-1">{briefing.subline}</p>
-            </div>
-            <button
-              onClick={function() { setIsMoreSheetOpen(true); }}
-              className="text-xs text-lavender-600 hover:text-lavender-700"
-            >
-              더보기
-            </button>
-          </div>
-        </div>
+        <BriefingCard
+          headline={briefing.headline}
+          subline={briefing.subline}
+          intensity={intensity}
+          onMore={function() { setIsMoreSheetOpen(true); }}
+        />
 
-        {/* 지금 집중할거 */}
+        {/* 지금 집중할거 - 가장 강조 */}
         <FocusNow 
           externalFocus={currentFocus} 
           onFocusChange={handleFocusChange} 
