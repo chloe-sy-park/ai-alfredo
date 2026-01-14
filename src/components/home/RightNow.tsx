@@ -1,13 +1,14 @@
-import { Play, Check, Clock, Zap } from 'lucide-react';
+import { Play, Check, Zap } from 'lucide-react';
 import { FocusItem } from '../../services/focusNow';
 
 interface RightNowProps {
   focus: FocusItem | null;
+  isActive?: boolean;
   onStart?: () => void;
   onComplete?: () => void;
 }
 
-export default function RightNow({ focus, onStart, onComplete }: RightNowProps) {
+export default function RightNow({ focus, isActive = false, onStart, onComplete }: RightNowProps) {
   if (!focus) {
     return (
       <div className="bg-gradient-to-r from-[#A996FF] to-[#8B7BE8] rounded-2xl p-5 text-white">
@@ -25,8 +26,6 @@ export default function RightNow({ focus, onStart, onComplete }: RightNowProps) 
     );
   }
 
-  var isActive = focus.status === 'active';
-
   return (
     <div className={'rounded-2xl p-5 transition-all ' + 
       (isActive 
@@ -41,13 +40,6 @@ export default function RightNow({ focus, onStart, onComplete }: RightNowProps) 
             지금 집중할 것
           </span>
         </div>
-        
-        {focus.estimatedMinutes && (
-          <div className={'flex items-center gap-1 text-xs ' + (isActive ? 'opacity-80' : 'text-[#999999]')}>
-            <Clock size={12} />
-            <span>{focus.estimatedMinutes}분 예상</span>
-          </div>
-        )}
       </div>
       
       {/* 태스크 제목 */}
@@ -66,15 +58,13 @@ export default function RightNow({ focus, onStart, onComplete }: RightNowProps) 
             시작하기
           </button>
         ) : (
-          <>
-            <button
-              onClick={onComplete}
-              className="flex-1 flex items-center justify-center gap-2 py-3 bg-white/20 text-white rounded-xl font-medium hover:bg-white/30 transition-colors"
-            >
-              <Check size={18} />
-              완료
-            </button>
-          </>
+          <button
+            onClick={onComplete}
+            className="flex-1 flex items-center justify-center gap-2 py-3 bg-white/20 text-white rounded-xl font-medium hover:bg-white/30 transition-colors"
+          >
+            <Check size={18} />
+            완료
+          </button>
         )}
       </div>
     </div>
