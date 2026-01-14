@@ -1,6 +1,6 @@
 // Task Sync Service - Google Tasks 양방향 동기화
 
-import { Task, getTasks, addTask, updateTask, deleteTask } from './tasks';
+import { Task, getTasks, updateTask } from './tasks';
 
 var GOOGLE_TASKS_API = 'https://tasks.googleapis.com/tasks/v1';
 
@@ -27,7 +27,7 @@ function getAccessToken(): string | null {
     if (!authData) return null;
     var parsed = JSON.parse(authData);
     return parsed.access_token || null;
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -47,8 +47,8 @@ export async function getGoogleTaskLists(): Promise<GoogleTaskList[]> {
     if (!response.ok) return [];
     var data = await response.json();
     return data.items || [];
-  } catch (e) {
-    console.error('Failed to fetch Google Task Lists:', e);
+  } catch {
+    console.error('Failed to fetch Google Task Lists');
     return [];
   }
 }
@@ -71,8 +71,8 @@ export async function getGoogleTasks(taskListId: string): Promise<GoogleTask[]> 
     if (!response.ok) return [];
     var data = await response.json();
     return data.items || [];
-  } catch (e) {
-    console.error('Failed to fetch Google Tasks:', e);
+  } catch {
+    console.error('Failed to fetch Google Tasks');
     return [];
   }
 }
@@ -104,8 +104,8 @@ export async function createGoogleTask(
     
     if (!response.ok) return null;
     return await response.json();
-  } catch (e) {
-    console.error('Failed to create Google Task:', e);
+  } catch {
+    console.error('Failed to create Google Task');
     return null;
   }
 }
@@ -140,32 +140,9 @@ export async function updateGoogleTask(
     
     if (!response.ok) return null;
     return await response.json();
-  } catch (e) {
-    console.error('Failed to update Google Task:', e);
+  } catch {
+    console.error('Failed to update Google Task');
     return null;
-  }
-}
-
-// Google Task 삭제
-export async function deleteGoogleTask(taskListId: string, taskId: string): Promise<boolean> {
-  var token = getAccessToken();
-  if (!token) return false;
-  
-  try {
-    var response = await fetch(
-      GOOGLE_TASKS_API + '/lists/' + taskListId + '/tasks/' + taskId,
-      {
-        method: 'DELETE',
-        headers: {
-          'Authorization': 'Bearer ' + token
-        }
-      }
-    );
-    
-    return response.ok;
-  } catch (e) {
-    console.error('Failed to delete Google Task:', e);
-    return false;
   }
 }
 

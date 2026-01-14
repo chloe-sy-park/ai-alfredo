@@ -1,15 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Briefcase, Plus, Play, Trash2, Clock, Target,
+  Briefcase, Plus, Play, Trash2, Target,
   ChevronDown, ChevronUp, ChevronRight, Filter, ArrowUpDown,
-  Circle, Loader, CheckCircle2, Calendar, Timer,
-  FolderOpen, Tag, RefreshCw, Download, Upload,
-  LayoutList, LayoutGrid, Bell, Repeat, MoreVertical,
-  X, Check, Edit2, StopCircle
+  Circle, Loader, CheckCircle2, Timer,
+  FolderOpen, RefreshCw, Download, Upload,
+  LayoutList, LayoutGrid, Bell, Repeat,
+  X, Check, StopCircle
 } from 'lucide-react';
 import { 
-  getTasksByCategory, addTask, deleteTask, changeTaskStatus, updateTask,
+  getTasksByCategory, addTask, deleteTask, changeTaskStatus,
   sortTasks, filterTasks, getDDayLabel, getDDay, getSubtasks,
   getTotalEstimatedMinutes, getTotalActualMinutes, formatMinutes,
   getParentTasks, getAllTags, recordActualTime, createRecurringTask,
@@ -44,10 +44,8 @@ export default function Work() {
   var [showAddModal, setShowAddModal] = useState(false);
   var [showProjectModal, setShowProjectModal] = useState(false);
   var [showSyncModal, setShowSyncModal] = useState(false);
-  var [showImportModal, setShowImportModal] = useState(false);
   var [showAlfredo, setShowAlfredo] = useState(true);
   var [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
-  var [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   var [trackingTaskId, setTrackingTaskId] = useState<string | null>(null);
   var [trackingStartTime, setTrackingStartTime] = useState<number | null>(null);
   
@@ -93,7 +91,7 @@ export default function Work() {
     if (trackingTaskId && trackingStartTime) {
       interval = setInterval(function() {
         // 강제 리렌더링
-        setTasks([...tasks]);
+        setTasks(function(prev) { return [...prev]; });
       }, 60000); // 1분마다
     }
     return function() {
@@ -251,7 +249,7 @@ export default function Work() {
       var result = importTasksFromCSV(csv, 'work');
       alert('가져오기 완료: ' + result.success + '개 성공, ' + result.failed + '개 실패');
       loadData();
-    } catch (err) {
+    } catch {
       alert('파일 읽기 실패');
     }
     
@@ -337,12 +335,6 @@ export default function Work() {
     if (!projectId) return '#E5E7EB';
     var project = projects.find(function(p) { return p.id === projectId; });
     return project?.color || '#E5E7EB';
-  }
-
-  function getProjectName(projectId: string | undefined): string {
-    if (!projectId) return '';
-    var project = projects.find(function(p) { return p.id === projectId; });
-    return project?.name || '';
   }
 
   function getAlfredoMessage(): string {
@@ -514,7 +506,7 @@ export default function Work() {
   }
 
   // 칸반 컨테이너
-  function renderKanbanColumn(title: string, columnTasks: Task[], status: TaskStatus) {
+  function renderKanbanColumn(title: string, columnTasks: Task[]) {
     return (
       <div className="flex-1 min-w-[280px] bg-gray-100 rounded-xl p-3">
         <div className="flex items-center justify-between mb-3">
@@ -757,9 +749,9 @@ export default function Work() {
             {/* 컨텐츠 */}
             {viewMode === 'kanban' ? (
               <div className="flex gap-4 overflow-x-auto pb-4">
-                {renderKanbanColumn('할 일', todoTasks, 'todo')}
-                {renderKanbanColumn('진행중', inProgressTasks, 'in_progress')}
-                {renderKanbanColumn('완료', doneTasks, 'done')}
+                {renderKanbanColumn('할 일', todoTasks)}
+                {renderKanbanColumn('진행중', inProgressTasks)}
+                {renderKanbanColumn('완료', doneTasks)}
               </div>
             ) : (
               <div className="space-y-4">

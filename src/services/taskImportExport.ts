@@ -1,7 +1,7 @@
 // Task Import/Export Service - CSV 가져오기/내보내기
 
 import { Task, getTasks, addTask, getTasksByCategory } from './tasks';
-import { getProjects, Project } from './projects';
+import { getProjects } from './projects';
 
 export interface CSVRow {
   title: string;
