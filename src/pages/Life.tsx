@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { 
   Heart, 
   Plus,
@@ -28,7 +27,6 @@ import {
 } from '../services/relationships';
 
 export default function Life() {
-  var navigate = useNavigate();
   var [condition, setCondition] = useState<ConditionLevel | null>(null);
   var [habits, setHabits] = useState<Habit[]>([]);
   var [habitLogs, setHabitLogs] = useState<Record<string, HabitLog | null>>({});

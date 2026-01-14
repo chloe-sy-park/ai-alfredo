@@ -3,7 +3,7 @@ import { Send, ArrowLeft, RefreshCw, Zap, Brain, Calendar, Heart, Sparkles } fro
 import { useNavigate } from 'react-router-dom';
 import { getTodayCondition, conditionConfig } from '../services/condition';
 import { getTodayTop3, Top3Item } from '../services/top3';
-import { getCurrentFocus, FocusItem } from '../services/focusNow';
+import { getCurrentFocus } from '../services/focusNow';
 import { getAlfredoSettings, getToneLabel } from '../services/alfredoSettings';
 
 interface Message {

@@ -77,8 +77,7 @@ export default function Work() {
     addTask({
       title: newTaskTitle,
       category: 'work',
-      priority: newTaskPriority,
-      status: 'todo'
+      priority: newTaskPriority
     });
     
     setNewTaskTitle('');
