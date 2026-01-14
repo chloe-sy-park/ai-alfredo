@@ -1,6 +1,6 @@
-import { motion } from 'framer-motion';
-import { ArrowRight, Sparkles } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowRight, Zap, Calendar, BarChart3 } from 'lucide-react';
+import { useState } from 'react';
 
 interface EnterCoreProps {
   data: any;
@@ -10,132 +10,170 @@ interface EnterCoreProps {
 
 export default function EnterCore({ data, onNext }: EnterCoreProps) {
   const [isReady, setIsReady] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const userName = data?.userName || 'Boss';
 
-  useEffect(() => {
-    // 알프레도가 준비하는 시간
+  // 1.5초 후 준비 완료
+  useState(() => {
     const timer = setTimeout(() => {
       setIsReady(true);
+      setTimeout(() => setShowPreview(true), 300);
     }, 1500);
     return () => clearTimeout(timer);
-  }, []);
+  });
 
-  const userName = data.userName || 'Boss';
-  const context = data.context || 'unsure';
-  
-  const getContextMessage = () => {
-    switch(context) {
-      case 'work':
-        return '업무 중심으로 준비했어요';
-      case 'life':
-        return '일상과 균형을 중심으로 준비했어요';
-      default:
-        return '전체적으로 살펴볼게요';
-    }
+  const handleComplete = () => {
+    onNext();
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center">
-      {/* 펭귄 애니메이션 */}
-      <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        className="mb-8 relative"
-      >
-        <div className="w-32 h-32 bg-gradient-to-br from-[#A996FF] to-[#8B7ACC] rounded-full flex items-center justify-center shadow-lg">
-          <span className="text-6xl">🐧</span>
-        </div>
-        
-        {/* 반짝임 효과 */}
-        {isReady && (
-          <>
+    <div className="flex flex-col h-full">
+      <div className="flex-1">
+        {/* 처음 몇 초: 준비 메시지 */}
+        <AnimatePresence>
+          {!isReady && (
             <motion.div
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="absolute -top-2 -right-2"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="h-full flex items-center justify-center"
             >
-              <Sparkles className="w-6 h-6 text-[#A996FF]" />
+              <div className="text-center">
+                {/* 알프레도 확실 애니메이션 */}
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 1, repeat: Infinity }}
+                  className="mb-8"
+                >
+                  <div className="w-24 h-24 bg-[#A996FF] rounded-full flex items-center justify-center mx-auto">
+                    <span className="text-5xl">🐧</span>
+                  </div>
+                </motion.div>
+                
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.5 }}
+                >
+                  <p className="text-lg text-[#666666] mb-2">
+                    알프레도가 {userName}님을 위해
+                  </p>
+                  <p className="text-lg text-[#666666]">
+                    첫 브리핑을 준비하고 있어요
+                  </p>
+                </motion.div>
+              </div>
             </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* 준비 완료 후: 첫 브리핑 미리보기 */}
+        <AnimatePresence>
+          {isReady && showPreview && (
             <motion.div
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              className="absolute -bottom-1 -left-3"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
             >
-              <Sparkles className="w-5 h-5 text-[#8B7ACC]" />
+              {/* 헤더 */}
+              <div className="mb-8">
+                <h2 className="text-xl font-bold text-[#1A1A1A] mb-2">
+                  준비 완료! 첫 브리핑이에요
+                </h2>
+                <p className="text-[#666666]">
+                  매일 아침 {userName}님만의 브리핑을 준비해드려요
+                </p>
+              </div>
+
+              {/* 브리핑 미리보기 */}
+              <div className="bg-white rounded-2xl p-5 border border-[#E5E5E5] shadow-sm mb-8">
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="w-12 h-12 bg-[#F8F8FF] rounded-xl flex items-center justify-center flex-shrink-0">
+                    <span className="text-2xl">🎅</span>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-[#1A1A1A] mb-1">
+                      좋은 아침이에요, {userName}님!
+                    </h3>
+                    <p className="text-[#666666]">
+                      오늘은 {data?.context === 'work' ? '중요한 미팅' : '행복한 하루'}와 함께 시작해볼까요?
+                    </p>
+                  </div>
+                </div>
+
+                {/* 오늘의 하이라이트 */}
+                <div className="space-y-3">
+                  <motion.div
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="flex items-center gap-3 p-3 bg-[#F8F8FF] rounded-xl"
+                  >
+                    <Zap className="w-4 h-4 text-[#A996FF]" />
+                    <p className="text-sm text-[#666666]">
+                      오후 2-4시가 가장 생산적인 시간이에요
+                    </p>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4 }}
+                    className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl"
+                  >
+                    <Calendar className="w-4 h-4 text-blue-500" />
+                    <p className="text-sm text-[#666666]">
+                      {data?.calendarConnected 
+                        ? '일정 분석 완료! 3개의 태스크가 있어요' 
+                        : '캘린더 연동을 하면 더 똑똑해져요'
+                      }
+                    </p>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.5 }}
+                    className="flex items-center gap-3 p-3 bg-green-50 rounded-xl"
+                  >
+                    <BarChart3 className="w-4 h-4 text-green-500" />
+                    <p className="text-sm text-[#666666]">
+                      지난주보다 23% 더 효율적이셔요
+                    </p>
+                  </motion.div>
+                </div>
+              </div>
+
+              {/* 하단 메시지 */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6 }}
+                className="mb-8 text-center"
+              >
+                <p className="text-sm text-[#999999]">
+                  더 많은 기능들이 기다리고 있어요 🚀
+                </p>
+              </motion.div>
             </motion.div>
-          </>
-        )}
-      </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
-      {/* 준비 메시지 */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="mb-12 px-8"
-      >
-        {!isReady ? (
-          <>
-            <h2 className="text-xl font-bold text-[#1A1A1A] mb-3">
-              알프레도가 준비하고 있어요
-            </h2>
-            <div className="flex items-center justify-center gap-2">
-              <div className="w-2 h-2 bg-[#A996FF] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-              <div className="w-2 h-2 bg-[#A996FF] rounded-full animate-bounce" style={{ animationDelay: '200ms' }} />
-              <div className="w-2 h-2 bg-[#A996FF] rounded-full animate-bounce" style={{ animationDelay: '400ms' }} />
-            </div>
-          </>
-        ) : (
-          <>
-            <h2 className="text-xl font-bold text-[#1A1A1A] mb-3">
-              준비됐어요, {userName}님!
-            </h2>
-            <p className="text-[#666666] mb-2">
-              {getContextMessage()}
-            </p>
-            <p className="text-sm text-[#999999]">
-              이제 시작해볼까요?
-            </p>
-          </>
-        )}
-      </motion.div>
-
-      {/* 브리핑 미리보기 */}
-      {isReady && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-          className="w-full px-8 mb-12"
-        >
-          <div className="bg-white rounded-2xl p-4 border border-[#E5E5E5] shadow-sm text-left">
-            <p className="text-xs text-[#999999] mb-1">첫 브리핑</p>
-            <p className="text-[#1A1A1A] font-medium">
-              오늘은 가볍게 시작해요. 알프레도와 천천히 알아가는 시간이에요.
-            </p>
-          </div>
-        </motion.div>
-      )}
-
-      {/* 시작 버튼 */}
-      {isReady && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1 }}
-          className="w-full px-8"
-        >
-          <button
-            onClick={() => onNext()}
+      {/* 버튼 */}
+      <AnimatePresence>
+        {isReady && showPreview && (
+          <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+            onClick={handleComplete}
             className="w-full py-4 bg-[#1A1A1A] text-white rounded-2xl font-medium hover:bg-[#333333] transition-colors flex items-center justify-center gap-2 group"
           >
             <span>알프레도와 시작하기</span>
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-          </button>
-        </motion.div>
-      )}
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

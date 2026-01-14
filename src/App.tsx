@@ -14,6 +14,9 @@ import Login from './pages/Login';
 import Onboarding from './pages/Onboarding';
 import AuthCallback from './pages/AuthCallback';
 import Report from './pages/Report';
+import Entry from './pages/Entry';
+import WorkEntry from './pages/Entry/WorkEntry';
+import LifeEntry from './pages/Entry/LifeEntry';
 
 // Layout
 import AppShell from './components/layout/AppShell';
@@ -61,6 +64,12 @@ function App() {
   return (
     <ToastProvider>
       <Routes>
+        {/* Entry Routes - AppShell 없이 */}
+        <Route path="/entry" element={<Entry />} />
+        <Route path="/entry/work" element={<WorkEntry />} />
+        <Route path="/entry/life" element={<LifeEntry />} />
+        
+        {/* Main Routes - AppShell 포함 */}
         <Route element={<AppShell />}>
           <Route path="/" element={<Home />} />
           <Route path="/calendar" element={<Calendar />} />
