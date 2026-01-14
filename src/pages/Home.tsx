@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { getTodayEvents, isGoogleAuthenticated, CalendarEvent } from '../services/calendar';
 import { ConditionLevel, getTodayCondition } from '../services/condition';
@@ -23,19 +24,31 @@ import { calculateIntensity } from '../components/common/IntensityBadge';
 import { SkeletonCard, SkeletonBriefing } from '../components/common/Skeleton';
 
 type IntensityLevel = 'light' | 'normal' | 'heavy' | 'overloaded';
+type HomeMode = 'all' | 'work' | 'life';
 
 export default function Home() {
-  var user = useAuthStore().user;
-  var [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
-  var [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
-  var [currentCondition, setCurrentCondition] = useState<ConditionLevel | null>(null);
-  var [currentFocus, setCurrentFocus] = useState<FocusItem | null>(null);
-  var [weather, setWeather] = useState<WeatherData | null>(null);
-  var [intensity, setIntensity] = useState<IntensityLevel>('normal');
-  var [top3Items, setTop3Items] = useState<Top3Item[]>([]);
-  var [isLoading, setIsLoading] = useState(true);
-  var [showDailyEntry, setShowDailyEntry] = useState(false);
-  var [briefing, setBriefing] = useState({ headline: '', subline: '' });
+  const location = useLocation();
+  const user = useAuthStore().user;
+  const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [currentCondition, setCurrentCondition] = useState<ConditionLevel | null>(null);
+  const [currentFocus, setCurrentFocus] = useState<FocusItem | null>(null);
+  const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [intensity, setIntensity] = useState<IntensityLevel>('normal');
+  const [top3Items, setTop3Items] = useState<Top3Item[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showDailyEntry, setShowDailyEntry] = useState(false);
+  const [briefing, setBriefing] = useState({ headline: '', subline: '' });
+  const [homeMode, setHomeMode] = useState<HomeMode>('all');
+
+  // URL 쿼리 파라미터에서 mode 확인
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const mode = searchParams.get('mode');
+    if (mode === 'work' || mode === 'life') {
+      setHomeMode(mode);
+    }
+  }, [location]);
 
   // 방문 체크 및 Daily Entry 표시
   useEffect(function() {
@@ -89,11 +102,18 @@ export default function Home() {
       setWeather(data);
     });
 
-    // Top3 아이템
+    // Top3 아이템 (모드에 따라 필터링 가능)
     var items = getTop3();
+    if (homeMode === 'work') {
+      // Work 모드일 때는 업무 관련 항목만 표시
+      items = items.filter(item => !item.isPersonal);
+    } else if (homeMode === 'life') {
+      // Life 모드일 때는 개인 항목만 표시
+      items = items.filter(item => item.isPersonal);
+    }
     setTop3Items(items);
     
-    // 브리핑 생성
+    // 브리핑 생성 (모드에 따라 다른 메시지)
     var now = new Date();
     var days = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
     var briefingData = generateBriefing({
@@ -105,14 +125,27 @@ export default function Home() {
       condition: currentCondition || undefined
     });
     
-    setBriefing({
-      headline: briefingData.headline,
-      subline: briefingData.subline
-    });
+    // 모드에 따라 브리핑 메시지 조정
+    if (homeMode === 'work') {
+      setBriefing({
+        headline: '업무에 집중하는 하루를 만들어볼까요',
+        subline: briefingData.subline
+      });
+    } else if (homeMode === 'life') {
+      setBriefing({
+        headline: '오늘은 나를 위한 시간이에요',
+        subline: '일과 삶의 균형을 맞춰봐요'
+      });
+    } else {
+      setBriefing({
+        headline: briefingData.headline,
+        subline: briefingData.subline
+      });
+    }
     
     // 로딩 완료
     setTimeout(function() { setIsLoading(false); }, 500);
-  }, []);
+  }, [homeMode]);
 
   // 컨디션 변경 시 강도 재계산
   useEffect(function() {
@@ -147,6 +180,16 @@ export default function Home() {
   var hours = now.getHours();
   
   function getGreeting(): string {
+    if (homeMode === 'work') {
+      if (hours < 12) return '생산적인 아침이에요';
+      if (hours < 18) return '집중력이 높은 시간이에요';
+      return '마무리 시간이에요';
+    } else if (homeMode === 'life') {
+      if (hours < 12) return '여유로운 아침이에요';
+      if (hours < 18) return '충전하는 시간이에요';
+      return '편안한 저녁이에요';
+    }
+    
     if (hours < 6) return '아직 이른 시간이에요';
     if (hours < 12) return '좋은 아침이에요';
     if (hours < 18) return '오후도 힘내요';
@@ -181,7 +224,11 @@ export default function Home() {
 
   // Mode Cards 데이터 계산
   var workCount = top3Items.filter(function(item) { 
-    return !item.completed;
+    return !item.completed && !item.isPersonal;
+  }).length;
+  
+  var lifeCount = top3Items.filter(function(item) { 
+    return !item.completed && item.isPersonal;
   }).length;
   
   var conditionStatus = currentCondition ? {
@@ -190,6 +237,19 @@ export default function Home() {
     'normal': '보통',
     'bad': '좋지 않음'
   }[currentCondition] : '미설정';
+
+  // 모드 표시를 위한 배지
+  const ModeBadge = () => {
+    if (homeMode === 'all') return null;
+    
+    return (
+      <div className="inline-flex items-center gap-1 px-3 py-1 bg-primary-50 rounded-full mb-2">
+        <span className="text-xs font-medium text-primary-main uppercase">
+          {homeMode} MODE
+        </span>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-[#F5F5F5]">
@@ -211,6 +271,7 @@ export default function Home() {
         
         {/* 인사 */}
         <div className="animate-fade-in">
+          <ModeBadge />
           <p className="text-sm text-[#999999]">{getGreeting()}</p>
           <h1 className="text-xl font-bold text-[#1A1A1A]">
             {user?.name || 'Boss'}님
@@ -220,7 +281,7 @@ export default function Home() {
         {/* 모드 카드 - Work/Life 가로 2개 */}
         <ModeCards 
           workCount={workCount}
-          lifeCount={0}
+          lifeCount={lifeCount}
           workStatus={calendarEvents.length + '개 일정'}
           lifeStatus={'컨디션 ' + conditionStatus}
         />
