@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  ArrowLeft, 
   TrendingUp, 
   Target,
   Zap,
   Heart,
   Award,
-  ChevronRight
+  ChevronRight,
+  BarChart3
 } from 'lucide-react';
+import { PageHeader } from '../components/layout';
 import { getTasks } from '../services/tasks';
 import { getHabits, getTodayCompletionRate } from '../services/habits';
 import { getConditionHistory, ConditionRecord, conditionConfig } from '../services/condition';
@@ -148,156 +149,152 @@ export default function Report() {
   var completionRate = stats ? Math.round((stats.completedTasks / Math.max(stats.totalTasks, 1)) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] pb-24">
-      <div className="max-w-lg mx-auto">
+    <div className="min-h-screen bg-[#F5F5F5]">
+      <PageHeader />
+      
+      <div className="max-w-lg mx-auto px-4 py-2 space-y-4">
         
-        {/* 헤더 */}
-        <div className="sticky top-0 bg-[#F5F5F5] z-10 px-4 py-3 flex items-center gap-3">
-          <button 
-            onClick={function() { navigate(-1); }} 
-            className="p-2 rounded-full hover:bg-white min-w-[44px] min-h-[44px] flex items-center justify-center"
-          >
-            <ArrowLeft size={20} className="text-[#666666]" />
-          </button>
-          <h1 className="text-xl font-bold text-[#1A1A1A]">주간 리포트</h1>
-          <span className="ml-auto text-sm text-[#999999]">이번 주</span>
+        {/* 페이지 타이틀 */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <BarChart3 size={20} className="text-[#A996FF]" />
+            <h1 className="text-lg font-bold text-[#1A1A1A]">주간 리포트</h1>
+          </div>
+          <span className="text-sm text-[#999999]">이번 주</span>
         </div>
 
-        <div className="p-4 space-y-4">
-          
-          {/* 알프레도 인사이트 */}
-          <div className="bg-gradient-to-r from-[#F0F0FF] to-[#FCE7F3] rounded-xl p-4">
-            <div className="flex items-start gap-3">
-              <span className="text-3xl">🐧</span>
-              <div>
-                <p className="font-semibold text-[#1A1A1A]">알프레도의 한마디</p>
-                <p className="text-sm text-[#666666] mt-1">{getInsightMessage()}</p>
-              </div>
+        {/* 알프레도 인사이트 */}
+        <div className="bg-gradient-to-r from-[#F0F0FF] to-[#FCE7F3] rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <span className="text-3xl">🐧</span>
+            <div>
+              <p className="font-semibold text-[#1A1A1A]">알프레도의 한마디</p>
+              <p className="text-sm text-[#666666] mt-1">{getInsightMessage()}</p>
             </div>
           </div>
+        </div>
 
-          {/* 주요 지표 */}
-          {stats && (
-            <div className="grid grid-cols-2 gap-3">
-              
-              {/* 완료율 */}
-              <div className="bg-white rounded-xl p-4 shadow-card">
-                <div className="flex items-center gap-2 mb-2">
-                  <Target size={16} className="text-[#22C55E]" />
-                  <span className="text-sm text-[#999999]">완료율</span>
-                </div>
-                <div className="flex items-end gap-2">
-                  <span className="text-3xl font-bold text-[#22C55E]">{completionRate}%</span>
-                </div>
-                <p className="text-xs text-[#999999] mt-1">
-                  {stats.completedTasks}/{stats.totalTasks} 완료
-                </p>
-              </div>
-
-              {/* 평균 컨디션 */}
-              <div className="bg-white rounded-xl p-4 shadow-card">
-                <div className="flex items-center gap-2 mb-2">
-                  <Heart size={16} className="text-[#EC4899]" />
-                  <span className="text-sm text-[#999999]">평균 컨디션</span>
-                </div>
-                <div className="flex items-end gap-2">
-                  <span className="text-3xl">{getConditionEmoji(stats.avgCondition)}</span>
-                  <span className="text-lg font-bold text-[#666666]">{stats.avgCondition}/4</span>
-                </div>
-              </div>
-
-              {/* 최고 생산성 요일 */}
-              <div className="bg-white rounded-xl p-4 shadow-card">
-                <div className="flex items-center gap-2 mb-2">
-                  <Zap size={16} className="text-[#FBBF24]" />
-                  <span className="text-sm text-[#999999]">최고 생산성</span>
-                </div>
-                <span className="text-2xl font-bold text-[#1A1A1A]">{stats.mostProductiveDay}</span>
-              </div>
-
-              {/* 연속 기록 */}
-              <div className="bg-white rounded-xl p-4 shadow-card">
-                <div className="flex items-center gap-2 mb-2">
-                  <Award size={16} className="text-[#F97316]" />
-                  <span className="text-sm text-[#999999]">연속 기록</span>
-                </div>
-                <div className="flex items-end gap-1">
-                  <span className="text-3xl font-bold text-[#F97316]">{stats.streakDays}</span>
-                  <span className="text-sm text-[#999999] mb-1">일</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 컨디션 그래프 */}
-          <div className="bg-white rounded-xl p-4 shadow-card">
-            <h3 className="font-semibold mb-3 flex items-center gap-2 text-[#1A1A1A]">
-              <TrendingUp size={18} className="text-[#A996FF]" />
-              이번 주 컨디션
-            </h3>
+        {/* 주요 지표 */}
+        {stats && (
+          <div className="grid grid-cols-2 gap-3">
             
-            <div className="flex justify-between items-end h-24">
-              {Array.from({ length: 7 }).map(function(_, idx) {
-                var date = new Date();
-                date.setDate(date.getDate() - (6 - idx));
-                var dateStr = date.toISOString().split('T')[0];
-                var record = conditionHistory.find(function(h) { return h.date === dateStr; });
-                
-                var conditionValues: Record<string, number> = {
-                  great: 100,
-                  good: 75,
-                  normal: 50,
-                  bad: 25
-                };
-                var height = record ? conditionValues[record.level] : 0;
-                var days = ['일', '월', '화', '수', '목', '금', '토'];
-                
-                return (
-                  <div key={idx} className="flex flex-col items-center gap-1">
-                    <div 
-                      className="w-8 bg-[#E5E0FF] rounded-t transition-all"
-                      style={{ height: height + '%', minHeight: height > 0 ? 8 : 0 }}
-                    >
-                      {record && (
-                        <div className="w-full h-full bg-[#A996FF] rounded-t flex items-start justify-center pt-1">
-                          <span className="text-xs">{conditionConfig[record.level].emoji}</span>
-                        </div>
-                      )}
-                    </div>
-                    <span className="text-xs text-[#999999]">{days[date.getDay()]}</span>
+            {/* 완료율 */}
+            <div className="bg-white rounded-xl p-4 shadow-card">
+              <div className="flex items-center gap-2 mb-2">
+                <Target size={16} className="text-[#22C55E]" />
+                <span className="text-sm text-[#999999]">완료율</span>
+              </div>
+              <div className="flex items-end gap-2">
+                <span className="text-3xl font-bold text-[#22C55E]">{completionRate}%</span>
+              </div>
+              <p className="text-xs text-[#999999] mt-1">
+                {stats.completedTasks}/{stats.totalTasks} 완료
+              </p>
+            </div>
+
+            {/* 평균 컨디션 */}
+            <div className="bg-white rounded-xl p-4 shadow-card">
+              <div className="flex items-center gap-2 mb-2">
+                <Heart size={16} className="text-[#EC4899]" />
+                <span className="text-sm text-[#999999]">평균 컨디션</span>
+              </div>
+              <div className="flex items-end gap-2">
+                <span className="text-3xl">{getConditionEmoji(stats.avgCondition)}</span>
+                <span className="text-lg font-bold text-[#666666]">{stats.avgCondition}/4</span>
+              </div>
+            </div>
+
+            {/* 최고 생산성 요일 */}
+            <div className="bg-white rounded-xl p-4 shadow-card">
+              <div className="flex items-center gap-2 mb-2">
+                <Zap size={16} className="text-[#FBBF24]" />
+                <span className="text-sm text-[#999999]">최고 생산성</span>
+              </div>
+              <span className="text-2xl font-bold text-[#1A1A1A]">{stats.mostProductiveDay}</span>
+            </div>
+
+            {/* 연속 기록 */}
+            <div className="bg-white rounded-xl p-4 shadow-card">
+              <div className="flex items-center gap-2 mb-2">
+                <Award size={16} className="text-[#F97316]" />
+                <span className="text-sm text-[#999999]">연속 기록</span>
+              </div>
+              <div className="flex items-end gap-1">
+                <span className="text-3xl font-bold text-[#F97316]">{stats.streakDays}</span>
+                <span className="text-sm text-[#999999] mb-1">일</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 컨디션 그래프 */}
+        <div className="bg-white rounded-xl p-4 shadow-card">
+          <h3 className="font-semibold mb-3 flex items-center gap-2 text-[#1A1A1A]">
+            <TrendingUp size={18} className="text-[#A996FF]" />
+            이번 주 컨디션
+          </h3>
+          
+          <div className="flex justify-between items-end h-24">
+            {Array.from({ length: 7 }).map(function(_, idx) {
+              var date = new Date();
+              date.setDate(date.getDate() - (6 - idx));
+              var dateStr = date.toISOString().split('T')[0];
+              var record = conditionHistory.find(function(h) { return h.date === dateStr; });
+              
+              var conditionValues: Record<string, number> = {
+                great: 100,
+                good: 75,
+                normal: 50,
+                bad: 25
+              };
+              var height = record ? conditionValues[record.level] : 0;
+              var days = ['일', '월', '화', '수', '목', '금', '토'];
+              
+              return (
+                <div key={idx} className="flex flex-col items-center gap-1">
+                  <div 
+                    className="w-8 bg-[#E5E0FF] rounded-t transition-all"
+                    style={{ height: height + '%', minHeight: height > 0 ? 8 : 0 }}
+                  >
+                    {record && (
+                      <div className="w-full h-full bg-[#A996FF] rounded-t flex items-start justify-center pt-1">
+                        <span className="text-xs">{conditionConfig[record.level].emoji}</span>
+                      </div>
+                    )}
                   </div>
-                );
-              })}
-            </div>
+                  <span className="text-xs text-[#999999]">{days[date.getDay()]}</span>
+                </div>
+              );
+            })}
           </div>
+        </div>
 
-          {/* 습관 완료율 */}
-          <div className="bg-white rounded-xl p-4 shadow-card">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-xl">✨</span>
-                <span className="font-semibold text-[#1A1A1A]">오늘 습관 달성률</span>
-              </div>
-              <span className="text-2xl font-bold text-[#A996FF]">
-                {stats?.habitCompletionRate || 0}%
-              </span>
+        {/* 습관 완료율 */}
+        <div className="bg-white rounded-xl p-4 shadow-card">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">✨</span>
+              <span className="font-semibold text-[#1A1A1A]">오늘 습관 달성률</span>
             </div>
+            <span className="text-2xl font-bold text-[#A996FF]">
+              {stats?.habitCompletionRate || 0}%
+            </span>
           </div>
+        </div>
 
-          {/* 다음 주 목표 */}
-          <div className="bg-white rounded-xl p-4 shadow-card">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold text-[#1A1A1A]">다음 주 목표 설정</h3>
-                <p className="text-sm text-[#999999]">알프레도와 함께 계획해보세요</p>
-              </div>
-              <button 
-                onClick={function() { navigate('/chat'); }}
-                className="p-2 bg-[#F0F0FF] rounded-full text-[#A996FF] min-w-[44px] min-h-[44px] flex items-center justify-center"
-              >
-                <ChevronRight size={20} />
-              </button>
+        {/* 다음 주 목표 */}
+        <div className="bg-white rounded-xl p-4 shadow-card">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-[#1A1A1A]">다음 주 목표 설정</h3>
+              <p className="text-sm text-[#999999]">알프레도와 함께 계획해보세요</p>
             </div>
+            <button 
+              onClick={function() { navigate('/chat'); }}
+              className="p-2 bg-[#F0F0FF] rounded-full text-[#A996FF] min-w-[44px] min-h-[44px] flex items-center justify-center"
+            >
+              <ChevronRight size={20} />
+            </button>
           </div>
         </div>
       </div>
