@@ -19,54 +19,54 @@ export default function ActionCard({
   recommendedAction,
   onOpen
 }: ActionCardProps) {
-  const variantConfig = {
+  var variantConfig = {
     email: {
       icon: Mail,
-      color: 'text-blue-500',
-      bg: 'bg-blue-50',
+      color: 'text-[#60A5FA]',
+      bg: 'bg-[#EFF6FF]',
       label: '이메일'
     },
     meeting: {
       icon: Calendar,
-      color: 'text-purple-500',
-      bg: 'bg-purple-50',
+      color: 'text-[#A996FF]',
+      bg: 'bg-[#F0F0FF]',
       label: '회의'
     },
     doc: {
       icon: FileText,
-      color: 'text-green-500',
-      bg: 'bg-green-50',
+      color: 'text-[#4ADE80]',
+      bg: 'bg-[#F0FDF4]',
       label: '문서'
     }
   };
 
-  const config = variantConfig[variant];
-  const Icon = config.icon;
+  var config = variantConfig[variant];
+  var Icon = config.icon;
 
   return (
     <button
       onClick={onOpen}
-      className="w-full bg-white rounded-2xl p-4 shadow-sm text-left hover:shadow-md transition-shadow"
+      className="w-full bg-white rounded-xl p-4 shadow-card text-left hover:shadow-card-hover transition-shadow min-h-[44px]"
     >
       <div className="flex items-start gap-3">
-        <div className={`p-2 rounded-xl ${config.bg}`}>
-          <Icon className={`w-5 h-5 ${config.color}`} />
+        <div className={'p-2 rounded-xl ' + config.bg}>
+          <Icon className={'w-5 h-5 ' + config.color} />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs text-neutral-500">{config.label}</span>
+            <span className="text-xs text-[#999999]">{config.label}</span>
             {meta && (
-              <span className="text-xs text-orange-500 font-medium">{meta}</span>
+              <span className="text-xs text-[#F97316] font-medium">{meta}</span>
             )}
           </div>
-          <h4 className="text-sm font-semibold text-neutral-800 truncate">
+          <h4 className="text-sm font-semibold text-[#1A1A1A] truncate">
             {title}
           </h4>
-          <p className="text-xs text-neutral-500 mt-1 line-clamp-2">
+          <p className="text-xs text-[#666666] mt-1 line-clamp-2">
             {summary}
           </p>
           {recommendedAction && (
-            <p className="text-xs text-primary font-medium mt-2">
+            <p className="text-xs text-[#A996FF] font-medium mt-2">
               💡 {recommendedAction}
             </p>
           )}
