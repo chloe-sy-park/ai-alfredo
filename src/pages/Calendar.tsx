@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { getEvents, getSelectedCalendars, getCalendarList, addEvent, updateEvent, deleteEvent, CalendarEvent } from '../services/calendar';
 import { isGoogleConnected, startGoogleAuth } from '../services/auth';
+import { PageHeader } from '../components/layout';
 import EventModal from '../components/common/EventModal';
 import WeekView from '../components/calendar/WeekView';
 import EventSearch from '../components/calendar/EventSearch';
@@ -227,10 +228,12 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] pb-24">
-      <div className="max-w-mobile mx-auto px-4 pt-4">
+    <div className="min-h-screen bg-[#F5F5F5]">
+      <PageHeader />
+      
+      <div className="max-w-mobile mx-auto px-4 py-2">
         
-        {/* 미니멀 헤더 */}
+        {/* 년/월 네비게이션 */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
             <button 
@@ -239,9 +242,9 @@ export default function CalendarPage() {
             >
               <ChevronLeft size={20} className="text-[#666666]" />
             </button>
-            <h1 className="text-lg font-bold min-w-[100px] text-center text-[#1A1A1A]">
+            <h2 className="text-lg font-bold min-w-[100px] text-center text-[#1A1A1A]">
               {year}년 {monthNames[month]}
-            </h1>
+            </h2>
             <button 
               onClick={viewMode === 'month' ? nextMonth : nextWeek} 
               className="p-2 hover:bg-[#EEEEEE] rounded-full min-w-[44px] min-h-[44px] flex items-center justify-center"
