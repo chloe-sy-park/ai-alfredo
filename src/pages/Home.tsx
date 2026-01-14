@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { getTodayEvents, isGoogleAuthenticated, CalendarEvent } from '../services/calendar';
 import { ConditionLevel, getTodayCondition } from '../services/condition';
-import { Top3Item, getTop3Items } from '../services/top3';
+import { Top3Item, getTop3 } from '../services/top3';
 import { FocusItem, setFocusFromTop3, getCurrentFocus } from '../services/focusNow';
 import { getWeather, WeatherData } from '../services/weather';
 
@@ -62,7 +62,7 @@ export default function Home() {
     });
 
     // Top3 아이템
-    var items = getTop3Items();
+    var items = getTop3();
     setTop3Items(items);
   }, []);
 
@@ -197,8 +197,9 @@ export default function Home() {
   var moreContent = getMoreContent();
 
   // Mode Cards 데이터 계산
+  // Top3는 work/life 구분이 없으므로 전체를 업무로 표시
   var workCount = top3Items.filter(function(item) { 
-    return item.type === 'work'; 
+    return !item.completed; // 미완료 항목만
   }).length;
   
   var conditionStatus = currentCondition ? {
