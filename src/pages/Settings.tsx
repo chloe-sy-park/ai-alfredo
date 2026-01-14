@@ -9,8 +9,6 @@ import {
   XCircle, 
   ChevronDown, 
   ChevronUp,
-  Volume2,
-  Target,
   RotateCcw,
   Settings as SettingsIcon,
   Scale,
