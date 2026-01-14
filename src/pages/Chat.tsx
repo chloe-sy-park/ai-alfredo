@@ -1,369 +1,126 @@
-import { useState, useRef, useEffect } from 'react';
-import { Send, ArrowLeft, RefreshCw, Zap, Brain, Calendar, Heart, Sparkles } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getTodayCondition, conditionConfig } from '../services/condition';
-import { getTodayTop3, Top3Item } from '../services/top3';
-import { getCurrentFocus } from '../services/focusNow';
-import { getAlfredoSettings, getToneLabel } from '../services/alfredoSettings';
-
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-}
-
-interface QuickAction {
-  id: string;
-  icon: React.ReactNode;
-  label: string;
-  prompt: string;
-}
+import { ArrowLeft, Brain } from 'lucide-react';
+import { useChatStore } from '../stores/chatStore';
+import ChatMessageItem from '../components/chat/ChatMessageItem';
+import ChatInput from '../components/chat/ChatInput';
+import { LoadingDots } from '../components/common/Skeleton';
+import { CHAT_ENTRY_POINTS } from '../types/chat';
 
 export default function Chat() {
   var navigate = useNavigate();
-  var [input, setInput] = useState('');
-  var [messages, setMessages] = useState<Message[]>([]);
-  var [isLoading, setIsLoading] = useState(false);
-  var [error, setError] = useState<string | null>(null);
-  var [showQuickActions, setShowQuickActions] = useState(true);
   var messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // 컨텍스트 정보
-  var condition = getTodayCondition();
-  var top3Data = getTodayTop3();
-  var top3 = top3Data ? top3Data.items : [];
-  var currentFocus = getCurrentFocus();
-  var settings = getAlfredoSettings();
-
+  
+  var {
+    currentSession,
+    entryContext,
+    sendMessage,
+    closeChat,
+    loadInsights
+  } = useChatStore();
+  
+  var [isLoading, setIsLoading] = useState(false);
+  
+  // DNA 인사이트 로드
+  useEffect(function() {
+    loadInsights();
+  }, [loadInsights]);
+  
+  // 메시지 추가시 스크롤
   useEffect(function() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  // 퀵 액션 정의
-  var quickActions: QuickAction[] = [
-    {
-      id: 'braindump',
-      icon: <Brain size={18} />,
-      label: '브레인덤프',
-      prompt: '머릿속이 복잡해. 생각 정리 좀 도와줘.'
-    },
-    {
-      id: 'schedule',
-      icon: <Calendar size={18} />,
-      label: '일정 조율',
-      prompt: '오늘 일정 어떻게 진행하면 좋을까?'
-    },
-    {
-      id: 'energy',
-      icon: <Zap size={18} />,
-      label: '에너지 충전',
-      prompt: '지금 좀 지쳤어. 기분 전환할 방법 추천해줘.'
-    },
-    {
-      id: 'counsel',
-      icon: <Heart size={18} />,
-      label: '고민 상담',
-      prompt: '요즘 고민이 있어. 얘기 좀 들어줄래?'
-    }
-  ];
-
-  // 컨텍스트 빌드
-  function buildContext() {
-    var ctx: Record<string, unknown> = {
-      tone: getToneLabel(settings.tone),
-      motivation: settings.motivation
-    };
-
-    if (condition) {
-      ctx.condition = {
-        level: condition.level,
-        label: conditionConfig[condition.level].label,
-        energy: condition.energy
-      };
-    }
-
-    if (top3.length > 0) {
-      ctx.top3 = top3.map(function(t: Top3Item) {
-        return {
-          title: t.title,
-          completed: t.completed
-        };
-      });
-    }
-
-    if (currentFocus) {
-      ctx.currentFocus = {
-        title: currentFocus.title,
-        startedAt: currentFocus.startedAt
-      };
-    }
-
-    return ctx;
+  }, [currentSession?.messages]);
+  
+  // 진입 컨텍스트 확인
+  if (!entryContext) {
+    navigate('/');
+    return null;
   }
-
-  async function sendToAPI(allMessages: Message[]) {
-    try {
-      var response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: allMessages.map(function(m) {
-            return {
-              role: m.role,
-              content: m.content
-            };
-          }),
-          context: buildContext()
-        }),
-      });
-
-      if (!response.ok) {
-        var errorData = await response.json();
-        throw new Error(errorData.error || 'API 호출 실패');
-      }
-
-      var data = await response.json();
-      return data.text;
-    } catch (err) {
-      console.error('Chat API error:', err);
-      throw err;
-    }
-  }
-
-  async function handleSend(text?: string) {
-    var messageText = text || input.trim();
-    if (!messageText || isLoading) return;
-
-    var userMsg: Message = {
-      id: 'user-' + Date.now(),
-      role: 'user',
-      content: messageText
-    };
-
-    var updatedMessages = [...messages, userMsg];
-    setMessages(updatedMessages);
-    setInput('');
+  
+  var entryPoint = CHAT_ENTRY_POINTS[entryContext.entry];
+  
+  async function handleSendMessage(content: string) {
     setIsLoading(true);
-    setError(null);
-    setShowQuickActions(false);
-
-    try {
-      var responseText = await sendToAPI(updatedMessages);
-      
-      var botMsg: Message = {
-        id: 'bot-' + Date.now(),
-        role: 'assistant',
-        content: responseText
-      };
-      setMessages(function(prev) { return [...prev, botMsg]; });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '응답을 받지 못했어요');
-      var errorMsg: Message = {
-        id: 'error-' + Date.now(),
-        role: 'assistant',
-        content: '죄송해요, 지금 응답하기 어려워요. 잠시 후 다시 시도해주세요. 🐧'
-      };
-      setMessages(function(prev) { return [...prev, errorMsg]; });
-    } finally {
-      setIsLoading(false);
-    }
+    await sendMessage(content);
+    setIsLoading(false);
   }
-
-  function handleQuickAction(action: QuickAction) {
-    handleSend(action.prompt);
+  
+  function handleBack() {
+    closeChat();
+    navigate(-1);
   }
-
-  async function handleRetry() {
-    var lastUserMsgIndex = -1;
-    for (var i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === 'user') {
-        lastUserMsgIndex = i;
-        break;
-      }
-    }
-    if (lastUserMsgIndex === -1) return;
-    
-    var messagesUpToLastUser = messages.slice(0, lastUserMsgIndex + 1);
-    setMessages(messagesUpToLastUser);
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      var responseText = await sendToAPI(messagesUpToLastUser);
-      
-      var botMsg: Message = {
-        id: 'bot-' + Date.now(),
-        role: 'assistant',
-        content: responseText
-      };
-      setMessages(function(prev) { return [...prev, botMsg]; });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '응답을 받지 못했어요');
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
+  
   return (
-    <div className="flex flex-col h-full bg-[#F5F5F5]">
+    <div className="min-h-screen bg-[#F5F5F5] flex flex-col">
       {/* 헤더 */}
-      <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-[#E5E5E5]">
-        <button 
-          onClick={function() { navigate('/'); }} 
-          className="p-2 rounded-full hover:bg-[#F5F5F5] min-w-[44px] min-h-[44px] flex items-center justify-center"
-        >
-          <ArrowLeft size={20} className="text-[#666666]" />
-        </button>
-        <span className="text-2xl">🐧</span>
-        <div className="flex-1">
-          <span className="font-semibold text-[#1A1A1A]">알프레도</span>
-          {condition && (
-            <span className="ml-2 text-xs text-[#999999]">
-              {conditionConfig[condition.level].emoji} {conditionConfig[condition.level].label}
-            </span>
-          )}
-        </div>
-        {currentFocus && (
-          <div className="flex items-center gap-1 text-xs bg-[#F0F0FF] text-[#A996FF] px-2 py-1 rounded-full font-medium">
-            <Sparkles size={12} />
-            <span>집중 중</span>
-          </div>
-        )}
-      </div>
-
-      {/* 컨텍스트 표시 (첫 화면에서만) */}
-      {messages.length === 0 && top3.length > 0 && (
-        <div className="px-4 py-2 bg-[#F0F0FF] border-b border-[#E5E0FF]">
-          <p className="text-xs text-[#999999] mb-1">오늘의 탑3</p>
-          <div className="flex flex-wrap gap-1">
-            {top3.map(function(item: Top3Item, idx: number) {
-              return (
-                <span 
-                  key={item.id}
-                  className={'text-xs px-2 py-0.5 rounded-full ' +
-                    (item.completed 
-                      ? 'bg-[#DCFCE7] text-[#22C55E] line-through' 
-                      : 'bg-white text-[#666666]')
-                  }
-                >
-                  {idx + 1}. {item.title}
-                </span>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* 메시지 영역 */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {messages.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">🐧</div>
-            <p className="text-[#1A1A1A] font-medium">안녕하세요! 알프레도예요</p>
-            <p className="text-[#999999] text-sm mt-1">무엇이든 물어보세요</p>
-            
-            {/* 퀵 액션 */}
-            {showQuickActions && (
-              <div className="mt-8 grid grid-cols-2 gap-2 max-w-xs mx-auto">
-                {quickActions.map(function(action) {
-                  return (
-                    <button
-                      key={action.id}
-                      onClick={function() { handleQuickAction(action); }}
-                      className="flex items-center gap-2 p-3 bg-white rounded-xl shadow-card hover:shadow-card-hover transition-shadow text-left min-h-[44px]"
-                    >
-                      <span className="text-[#A996FF]">{action.icon}</span>
-                      <span className="text-sm text-[#1A1A1A]">{action.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        ) : (
-          messages.map(function(msg) {
-            return (
-              <div key={msg.id} className={'flex ' + (msg.role === 'user' ? 'justify-end' : 'justify-start')}>
-                <div className={'max-w-[80%] px-4 py-3 rounded-2xl ' +
-                  (msg.role === 'user'
-                    ? 'bg-[#A996FF] text-white rounded-br-md'
-                    : 'bg-white text-[#1A1A1A] rounded-bl-md shadow-card')
-                }>
-                  {msg.content}
-                </div>
-              </div>
-            );
-          })
-        )}
-        {isLoading && (
-          <div className="flex justify-start">
-            <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-md shadow-card">
-              <span className="text-[#999999] flex items-center gap-2">
-                <span className="animate-pulse">생각 중</span>
-                <span className="animate-bounce">...</span>
-              </span>
-            </div>
-          </div>
-        )}
-        {error && !isLoading && (
-          <div className="flex justify-center">
-            <button 
-              onClick={handleRetry}
-              className="flex items-center gap-2 text-sm text-[#A996FF] hover:underline min-h-[44px]"
-            >
-              <RefreshCw size={14} />
-              다시 시도
-            </button>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* 입력 영역 */}
-      <div className="p-4 bg-white border-t border-[#E5E5E5]">
-        {/* 퀵 액션 칩 (대화 중에도 표시) */}
-        {messages.length > 0 && (
-          <div className="flex gap-2 mb-3 overflow-x-auto pb-2">
-            {quickActions.map(function(action) {
-              return (
-                <button
-                  key={action.id}
-                  onClick={function() { handleQuickAction(action); }}
-                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-[#F5F5F5] rounded-full text-xs text-[#666666] hover:bg-[#EEEEEE] min-h-[36px]"
-                >
-                  {action.icon}
-                  <span>{action.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-        
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={function(e) { setInput(e.target.value); }}
-            onKeyDown={function(e) { if (e.key === 'Enter') handleSend(); }}
-            placeholder="메시지를 입력하세요..."
-            className="flex-1 px-4 py-3 bg-[#F5F5F5] rounded-full outline-none focus:ring-2 focus:ring-[#A996FF]/30 text-[#1A1A1A] placeholder:text-[#999999]"
-            disabled={isLoading}
-          />
+      <div className="bg-white border-b border-neutral-200 sticky top-0 z-10">
+        <div className="max-w-[640px] mx-auto px-4 py-3 flex items-center gap-3">
           <button
-            onClick={function() { handleSend(); }}
-            disabled={!input.trim() || isLoading}
-            className={'p-3 rounded-full transition-colors min-w-[48px] min-h-[48px] flex items-center justify-center ' +
-              (input.trim() && !isLoading 
-                ? 'bg-[#A996FF] text-white hover:bg-[#8B7BE8]' 
-                : 'bg-[#E5E5E5] text-[#999999]')
-            }
+            onClick={handleBack}
+            className="w-10 h-10 rounded-full hover:bg-neutral-100 flex items-center justify-center transition-colors"
           >
-            <Send size={20} />
+            <ArrowLeft size={20} />
           </button>
+          <div className="flex-1">
+            <h1 className="text-base font-semibold text-[#1A1A1A]">
+              {entryPoint.icon} {entryPoint.title}
+            </h1>
+            <p className="text-xs text-[#666666]">알프레도와 함께 판단 조정</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Brain size={16} className="text-primary" />
+            <span className="text-xs text-primary font-medium">DNA 분석중</span>
+          </div>
         </div>
       </div>
+      
+      {/* 메시지 영역 */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-[640px] mx-auto px-4 py-6">
+          {/* 진입 프롬프트 */}
+          <div className="mb-6 text-center animate-fade-in">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
+              <span className="text-2xl">🐧</span>
+            </div>
+            <p className="text-sm text-[#666666]">{entryPoint.prompt}</p>
+          </div>
+          
+          {/* 메시지 리스트 */}
+          {currentSession && (
+            <div className="space-y-6">
+              {currentSession.messages.map(function(message) {
+                return (
+                  <ChatMessageItem 
+                    key={message.id} 
+                    message={message} 
+                  />
+                );
+              })}
+              
+              {/* 로딩 인디케이터 */}
+              {isLoading && (
+                <div className="flex gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-lg">🐧</span>
+                  </div>
+                  <div className="bg-white rounded-2xl p-4 shadow-sm">
+                    <LoadingDots />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
+      
+      {/* 입력 영역 */}
+      <ChatInput 
+        onSend={handleSendMessage}
+        disabled={isLoading}
+        placeholder={entryPoint.prompt}
+      />
     </div>
   );
 }

@@ -1,4 +1,6 @@
-import { X } from 'lucide-react';
+import { X, MessageCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useChatStore } from '../../stores/chatStore';
 
 interface MoreSheetProps {
   isOpen: boolean;
@@ -17,7 +19,19 @@ export default function MoreSheet({
   whatChanged,
   tradeOff
 }: MoreSheetProps) {
+  var navigate = useNavigate();
+  var { openChat } = useChatStore();
+  
   if (title === undefined) title = '판단 근거';
+  
+  function handleAdjust() {
+    openChat({
+      entry: 'more',
+      triggerData: { why, whatChanged, tradeOff }
+    });
+    onClose();
+    navigate('/chat');
+  }
   
   if (!isOpen) return null;
 
@@ -69,6 +83,15 @@ export default function MoreSheet({
               <p className="text-sm text-[#666666] leading-relaxed">{tradeOff}</p>
             </div>
           )}
+          
+          {/* 같이 조정하기 CTA */}
+          <button
+            onClick={handleAdjust}
+            className="w-full flex items-center justify-center gap-2 py-3 bg-[#1A1A1A] text-white rounded-xl font-medium hover:bg-[#333333] transition-all active:scale-[0.98]"
+          >
+            <MessageCircle size={18} />
+            <span>같이 조정해볼까?</span>
+          </button>
         </div>
         
         {/* Safe area padding */}
