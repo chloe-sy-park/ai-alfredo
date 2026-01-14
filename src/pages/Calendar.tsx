@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Plus, RefreshCw } from 'lucide-react';
-import { getEvents, getSelectedCalendars, getCalendarList, addEvent, CalendarEvent } from '../services/calendar';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { ChevronLeft, ChevronRight, Plus, RefreshCw, Calendar as CalendarIcon } from 'lucide-react';
+import { getEvents, getSelectedCalendars, getCalendarList, addEvent, updateEvent, deleteEvent, CalendarEvent } from '../services/calendar';
 import { isGoogleConnected, startGoogleAuth } from '../services/auth';
 import EventModal from '../components/common/EventModal';
 
@@ -25,8 +25,14 @@ export default function CalendarPage() {
   var [modalMode, setModalMode] = useState<'view' | 'edit' | 'create'>('view');
   var [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
+  // Swipe state
+  var touchStartX = useRef(0);
+  var touchEndX = useRef(0);
+  var calendarRef = useRef<HTMLDivElement>(null);
+
   var year = currentDate.getFullYear();
   var month = currentDate.getMonth();
+  var today = new Date();
 
   // Fetch month events
   var fetchMonthEvents = useCallback(function() {
@@ -74,6 +80,30 @@ export default function CalendarPage() {
     };
   }, [fetchMonthEvents]);
 
+  // Swipe handlers
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX;
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    touchEndX.current = e.touches[0].clientX;
+  }
+
+  function handleTouchEnd() {
+    var diff = touchStartX.current - touchEndX.current;
+    var threshold = 50;
+    
+    if (Math.abs(diff) > threshold) {
+      if (diff > 0) {
+        // Swipe left -> next month
+        nextMonth();
+      } else {
+        // Swipe right -> prev month
+        prevMonth();
+      }
+    }
+  }
+
   // Get events for a specific date (로컬 날짜 기준)
   function getEventsForDate(date: Date): CalendarEvent[] {
     var dateStr = formatDateLocal(date);
@@ -101,8 +131,28 @@ export default function CalendarPage() {
     return colors.slice(0, 3); // 최대 3개 색상만 표시
   }
 
+  // Get next upcoming event for today
+  function getNextEvent(): { event: CalendarEvent; minutesUntil: number } | null {
+    var now = new Date();
+    var todayStr = formatDateLocal(now);
+    var todayEvents = monthEvents.filter(function(e) {
+      return e.start.split('T')[0] === todayStr && !e.allDay;
+    });
+
+    for (var i = 0; i < todayEvents.length; i++) {
+      var event = todayEvents[i];
+      var eventTime = new Date(event.start);
+      if (eventTime > now) {
+        var diff = Math.round((eventTime.getTime() - now.getTime()) / 60000);
+        return { event: event, minutesUntil: diff };
+      }
+    }
+    return null;
+  }
+
   // Get selected date events
   var selectedDateEvents = getEventsForDate(selectedDate);
+  var nextEvent = getNextEvent();
 
   // Get days in month
   function getDaysInMonth(y: number, m: number) {
@@ -114,9 +164,14 @@ export default function CalendarPage() {
     return new Date(y, m, 1).getDay();
   }
 
+  // Get days in previous month
+  function getDaysInPrevMonth(y: number, m: number) {
+    return new Date(y, m, 0).getDate();
+  }
+
   var daysInMonth = getDaysInMonth(year, month);
   var firstDay = getFirstDayOfMonth(year, month);
-  var today = new Date();
+  var prevMonthDays = getDaysInPrevMonth(year, month);
 
   // Navigate months
   function prevMonth() {
@@ -125,6 +180,12 @@ export default function CalendarPage() {
 
   function nextMonth() {
     setCurrentDate(new Date(year, month + 1, 1));
+  }
+
+  function goToToday() {
+    var now = new Date();
+    setCurrentDate(new Date(now.getFullYear(), now.getMonth(), 1));
+    setSelectedDate(now);
   }
 
   // Select date
@@ -146,19 +207,31 @@ export default function CalendarPage() {
     setModalOpen(true);
   }
 
-  // Save event
-  function handleSaveEvent(eventData: Omit<CalendarEvent, 'id'>) {
-    addEvent(eventData).then(function(newEvent) {
+  // Save event (create)
+  function handleSaveEvent(eventData: Omit<CalendarEvent, 'id'>, calendarId?: string) {
+    addEvent(eventData, calendarId).then(function(newEvent) {
       if (newEvent) {
         fetchMonthEvents();
       }
     });
   }
 
-  // Delete event (TODO: implement API)
-  function handleDeleteEvent(eventId: string) {
-    console.log('Delete event:', eventId);
-    // TODO: Call delete API
+  // Update event
+  function handleUpdateEvent(eventId: string, eventData: Omit<CalendarEvent, 'id'>, calendarId?: string) {
+    updateEvent(eventId, eventData, calendarId).then(function(updated) {
+      if (updated) {
+        fetchMonthEvents();
+      }
+    });
+  }
+
+  // Delete event
+  function handleDeleteEvent(eventId: string, calendarId?: string) {
+    deleteEvent(eventId, calendarId).then(function(success) {
+      if (success) {
+        fetchMonthEvents();
+      }
+    });
   }
 
   // Month name
@@ -167,20 +240,32 @@ export default function CalendarPage() {
   // Day names
   var dayNames = ['일', '월', '화', '수', '목', '금', '토'];
 
-  // Build calendar grid
+  // Check if current view is showing today's month
+  var isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+
+  // Build calendar grid with prev/next month days
   var calendarDays = [];
   
-  // Empty cells before first day
+  // Previous month days
   for (var i = 0; i < firstDay; i++) {
-    calendarDays.push({ day: null, key: 'empty-' + i });
+    var prevDay = prevMonthDays - firstDay + 1 + i;
+    calendarDays.push({ day: prevDay, isOtherMonth: true, key: 'prev-' + prevDay });
   }
   
-  // Days of month
+  // Current month days
   for (var d = 1; d <= daysInMonth; d++) {
     var isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === d;
     var isSelected = selectedDate.getFullYear() === year && selectedDate.getMonth() === month && selectedDate.getDate() === d;
     var colors = getCalendarColorsForDate(d);
-    calendarDays.push({ day: d, isToday: isToday, isSelected: isSelected, colors: colors, key: 'day-' + d });
+    calendarDays.push({ day: d, isToday: isToday, isSelected: isSelected, colors: colors, isOtherMonth: false, key: 'day-' + d });
+  }
+  
+  // Next month days (fill remaining cells)
+  var totalCells = Math.ceil(calendarDays.length / 7) * 7;
+  var nextDay = 1;
+  while (calendarDays.length < totalCells) {
+    calendarDays.push({ day: nextDay, isOtherMonth: true, key: 'next-' + nextDay });
+    nextDay++;
   }
 
   function handleConnectGoogle() {
@@ -207,6 +292,19 @@ export default function CalendarPage() {
     return m + '월 ' + d + '일 ' + dayOfWeek + '요일';
   }
 
+  // Format time until next event
+  function formatTimeUntil(minutes: number): string {
+    if (minutes < 60) {
+      return minutes + '분 후';
+    }
+    var hours = Math.floor(minutes / 60);
+    var mins = minutes % 60;
+    if (mins === 0) {
+      return hours + '시간 후';
+    }
+    return hours + '시간 ' + mins + '분 후';
+  }
+
   return (
     <div className="min-h-screen bg-background pb-20">
       <div className="max-w-mobile mx-auto p-4 space-y-4">
@@ -215,16 +313,49 @@ export default function CalendarPage() {
           <button onClick={prevMonth} className="p-2 hover:bg-gray-100 rounded-full">
             <ChevronLeft size={24} />
           </button>
-          <h1 className="text-xl font-bold">
-            {year}년 {monthNames[month]}
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold">
+              {year}년 {monthNames[month]}
+            </h1>
+            {!isCurrentMonth && (
+              <button 
+                onClick={goToToday}
+                className="px-2 py-1 text-xs bg-lavender-100 text-lavender-600 rounded-full hover:bg-lavender-200 transition-colors"
+              >
+                오늘
+              </button>
+            )}
+          </div>
           <button onClick={nextMonth} className="p-2 hover:bg-gray-100 rounded-full">
             <ChevronRight size={24} />
           </button>
         </div>
 
+        {/* Next Event Banner (ADHD friendly) */}
+        {nextEvent && isCurrentMonth && (
+          <div className="bg-gradient-to-r from-lavender-100 to-lavender-50 rounded-xl p-3 flex items-center gap-3">
+            <div 
+              className="w-1 h-10 rounded-full"
+              style={{ backgroundColor: nextEvent.event.backgroundColor || '#A996FF' }}
+            />
+            <div className="flex-1">
+              <p className="text-xs text-lavender-600 font-medium">
+                {formatTimeUntil(nextEvent.minutesUntil)}
+              </p>
+              <p className="font-medium text-sm">{nextEvent.event.title}</p>
+            </div>
+            <CalendarIcon size={20} className="text-lavender-400" />
+          </div>
+        )}
+
         {/* Calendar Grid */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <div 
+          ref={calendarRef}
+          className="bg-white rounded-2xl p-4 shadow-sm"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
           {/* Day headers */}
           <div className="grid grid-cols-7 mb-2">
             {dayNames.map(function(name, idx) {
@@ -240,8 +371,12 @@ export default function CalendarPage() {
           {/* Calendar days */}
           <div className="grid grid-cols-7 gap-1">
             {calendarDays.map(function(item) {
-              if (item.day === null) {
-                return <div key={item.key} className="h-12" />;
+              if (item.isOtherMonth) {
+                return (
+                  <div key={item.key} className="h-12 flex flex-col items-center justify-center">
+                    <span className="text-sm text-gray-300">{item.day}</span>
+                  </div>
+                );
               }
               
               var bgClass = '';
@@ -375,6 +510,7 @@ export default function CalendarPage() {
         selectedDate={selectedDate}
         mode={modalMode}
         onSave={handleSaveEvent}
+        onUpdate={handleUpdateEvent}
         onDelete={handleDeleteEvent}
       />
     </div>
