@@ -84,6 +84,11 @@ export default function FocusNow({ externalFocus, onFocusChange }: FocusNowProps
     });
     navigate('/chat');
   }
+  
+  function handleStartFocus() {
+    if (!focus) return;
+    startFocus(focus.id);
+  }
 
   // 비어있는 상태
   if (!focus) {
@@ -151,7 +156,7 @@ export default function FocusNow({ externalFocus, onFocusChange }: FocusNowProps
             <Button
               variant="primary"
               size="sm"
-              onClick={function() { startFocus(focus.id); }}
+              onClick={handleStartFocus}
               className="flex-1"
             >
               시작하기
