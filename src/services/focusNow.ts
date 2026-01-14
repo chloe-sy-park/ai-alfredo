@@ -6,6 +6,10 @@ export interface FocusItem {
   startedAt: string;
   sourceType: 'top3' | 'calendar' | 'manual';
   sourceId?: string;
+  // 추가 필드
+  startTime?: string; // 실제 시작 시간
+  estimatedMinutes?: number; // 예상 시간
+  pausedAt?: string; // 일시정지 시간
 }
 
 var STORAGE_KEY = 'alfredo_focus_now';
@@ -96,7 +100,7 @@ export function getFocusDuration(): number {
   var focus = getCurrentFocus();
   if (!focus) return 0;
   
-  var start = new Date(focus.startedAt);
+  var start = new Date(focus.startTime || focus.startedAt);
   var now = new Date();
   var diffMs = now.getTime() - start.getTime();
   
@@ -115,4 +119,32 @@ export function getFormattedDuration(): string {
   
   if (mins === 0) return hours + '시간째 집중 중';
   return hours + '시간 ' + mins + '분째 집중 중';
+}
+
+// 포커스 시작
+export function startFocus(id: string): void {
+  var focus = getCurrentFocus();
+  if (!focus || focus.id !== id) return;
+  
+  focus.startTime = new Date().toISOString();
+  delete focus.pausedAt;
+  setFocus(focus);
+}
+
+// 포커스 일시정지
+export function pauseFocus(): void {
+  var focus = getCurrentFocus();
+  if (!focus || focus.pausedAt) return;
+  
+  focus.pausedAt = new Date().toISOString();
+  setFocus(focus);
+}
+
+// 포커스 재개
+export function resumeFocus(): void {
+  var focus = getCurrentFocus();
+  if (!focus || !focus.pausedAt) return;
+  
+  delete focus.pausedAt;
+  setFocus(focus);
 }

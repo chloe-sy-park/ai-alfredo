@@ -276,6 +276,23 @@ export function formatMinutes(minutes: number): string {
   return hours + '시간 ' + mins + '분';
 }
 
+// 남은 시간 포맷 (초 -> 분/시간)
+export function formatRemainingTime(seconds: number): string {
+  if (seconds <= 0) return '시간 종료';
+  
+  var minutes = Math.floor(seconds / 60);
+  if (minutes < 60) {
+    return minutes + '분 남음';
+  }
+  
+  var hours = Math.floor(minutes / 60);
+  var remainingMinutes = minutes % 60;
+  if (remainingMinutes === 0) {
+    return hours + '시간 남음';
+  }
+  return hours + '시간 ' + remainingMinutes + '분 남음';
+}
+
 // 실제 시간 기록
 export function recordActualTime(id: string, minutes: number): Task | null {
   return updateTask(id, { actualMinutes: minutes });
