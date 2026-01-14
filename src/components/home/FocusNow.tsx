@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Play, Check, X, Target } from 'lucide-react';
+import { Check, X, Target } from 'lucide-react';
 import { 
   FocusItem, 
   getCurrentFocus, 
