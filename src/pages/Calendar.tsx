@@ -83,14 +83,26 @@ export default function CalendarPage() {
     });
   }
 
+  // Get unique calendar colors for a date
+  function getCalendarColorsForDate(d: number): string[] {
+    var date = new Date(year, month, d);
+    var events = getEventsForDate(date);
+    var colors: string[] = [];
+    var seen = new Set<string>();
+    
+    events.forEach(function(event) {
+      var color = event.backgroundColor || '#A996FF';
+      if (!seen.has(color)) {
+        seen.add(color);
+        colors.push(color);
+      }
+    });
+    
+    return colors.slice(0, 3); // 최대 3개 색상만 표시
+  }
+
   // Get selected date events
   var selectedDateEvents = getEventsForDate(selectedDate);
-
-  // Check if date has events
-  function hasEvents(d: number): boolean {
-    var date = new Date(year, month, d);
-    return getEventsForDate(date).length > 0;
-  }
 
   // Get days in month
   function getDaysInMonth(y: number, m: number) {
@@ -167,7 +179,8 @@ export default function CalendarPage() {
   for (var d = 1; d <= daysInMonth; d++) {
     var isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === d;
     var isSelected = selectedDate.getFullYear() === year && selectedDate.getMonth() === month && selectedDate.getDate() === d;
-    calendarDays.push({ day: d, isToday: isToday, isSelected: isSelected, hasEvents: hasEvents(d), key: 'day-' + d });
+    var colors = getCalendarColorsForDate(d);
+    calendarDays.push({ day: d, isToday: isToday, isSelected: isSelected, colors: colors, key: 'day-' + d });
   }
 
   function handleConnectGoogle() {
@@ -240,6 +253,8 @@ export default function CalendarPage() {
                 bgClass = 'hover:bg-lavender-50';
               }
               
+              var colors = item.colors || [];
+              
               return (
                 <button
                   key={item.key}
@@ -247,11 +262,20 @@ export default function CalendarPage() {
                   className={'h-12 rounded-xl flex flex-col items-center justify-center text-sm transition-colors ' + bgClass}
                 >
                   <span>{item.day}</span>
-                  {item.hasEvents && !item.isSelected && (
-                    <span className="w-1 h-1 bg-lavender-400 rounded-full mt-0.5" />
-                  )}
-                  {item.hasEvents && item.isSelected && (
-                    <span className="w-1 h-1 bg-white rounded-full mt-0.5" />
+                  {colors.length > 0 && (
+                    <div className="flex gap-0.5 mt-0.5">
+                      {colors.map(function(color, idx) {
+                        return (
+                          <span 
+                            key={idx}
+                            className="w-1.5 h-1.5 rounded-full"
+                            style={{ 
+                              backgroundColor: item.isSelected ? 'white' : color 
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
                   )}
                 </button>
               );
