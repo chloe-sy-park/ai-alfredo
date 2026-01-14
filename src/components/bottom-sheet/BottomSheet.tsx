@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, ReactNode } from 'react';
 import SheetBackdrop from './SheetBackdrop';
 import SheetHandle from './SheetHandle';
 
@@ -18,15 +18,24 @@ const heightClasses: Record<SheetHeight, string> = {
   full: 'max-h-[90vh]',
 };
 
-export default function BottomSheet({ 
-  isOpen, 
-  onClose, 
-  height = 'half', 
+export default function BottomSheet({
+  isOpen,
+  onClose,
+  height = 'half',
   children,
-  showHandle = true 
+  showHandle = true,
 }: BottomSheetProps) {
   
-  // 스크롤 잠금
+  // ESC 키로 닫기
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  // 열릴 때 스크롤 방지
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -36,29 +45,20 @@ export default function BottomSheet({
     return () => { document.body.style.overflow = ''; };
   }, [isOpen]);
 
-  // ESC 키
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    if (isOpen) window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [isOpen, onClose]);
-
   return (
     <>
       <SheetBackdrop isOpen={isOpen} onClose={onClose} />
       
       <div
         className={
-          'fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl z-50 ' +
+          'fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-xl ' +
           'transform transition-transform duration-300 ease-out ' +
           heightClasses[height] + ' ' +
           (isOpen ? 'translate-y-0' : 'translate-y-full')
         }
       >
         {showHandle && <SheetHandle />}
-        <div className="overflow-auto px-4 pb-6" style={{ maxHeight: 'calc(100% - 24px)' }}>
+        <div className="overflow-y-auto px-4 pb-6 safe-area-bottom">
           {children}
         </div>
       </div>
