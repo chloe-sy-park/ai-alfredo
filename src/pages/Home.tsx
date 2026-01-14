@@ -4,7 +4,7 @@ import { getTodayEvents, isGoogleAuthenticated, CalendarEvent } from '../service
 import { ConditionLevel, getTodayCondition } from '../services/condition';
 import { Top3Item } from '../services/top3';
 import { FocusItem, setFocusFromTop3, getCurrentFocus } from '../services/focusNow';
-import { getWeather, WeatherData, getWeatherBriefing } from '../services/weather';
+import { getWeather, WeatherData } from '../services/weather';
 
 // Components
 import { ModeSwitch, ChatLauncher, MoreSheet } from '../components/home';
