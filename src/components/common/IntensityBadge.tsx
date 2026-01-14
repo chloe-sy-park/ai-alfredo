@@ -6,27 +6,28 @@ interface IntensityBadgeProps {
   showLabel?: boolean;
 }
 
+// 라이트모드 색상 스펙
 var levelConfig = {
   light: {
-    bg: 'bg-intensity-light',
-    text: 'text-neutral-900',
+    bg: 'bg-[#4ADE80]',
+    text: 'text-white',
     label: 'LIGHT',
     labelKo: '여유',
   },
   normal: {
-    bg: 'bg-intensity-normal',
-    text: 'text-neutral-900',
+    bg: 'bg-[#FBBF24]',
+    text: 'text-[#1A1A1A]',
     label: 'NORMAL',
     labelKo: '보통',
   },
   heavy: {
-    bg: 'bg-intensity-heavy',
+    bg: 'bg-[#F97316]',
     text: 'text-white',
     label: 'HEAVY',
     labelKo: '바쁨',
   },
   overloaded: {
-    bg: 'bg-intensity-overloaded',
+    bg: 'bg-[#EF4444]',
     text: 'text-white',
     label: 'OVERLOADED',
     labelKo: '과부하',
@@ -41,14 +42,14 @@ export default function IntensityBadge({
   var config = levelConfig[level];
   
   var sizeStyles = {
-    sm: 'px-2 py-0.5 text-xs',
-    md: 'px-3 py-1 text-sm',
+    sm: 'px-2.5 py-1 text-[10px]',
+    md: 'px-3 py-1.5 text-xs',
   };
 
   return (
     <span
       className={[
-        'inline-flex items-center font-bold uppercase rounded-pill',
+        'inline-flex items-center font-bold uppercase rounded-full tracking-wide',
         config.bg,
         config.text,
         sizeStyles[size],
