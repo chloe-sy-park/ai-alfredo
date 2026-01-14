@@ -26,11 +26,9 @@ export default function Work() {
   }, []);
 
   function loadData() {
-    // 업무 태스크만 로드
     var workTasks = getTasksByCategory('work');
     setTasks(workTasks);
     
-    // 캘린더 이벤트
     if (isGoogleAuthenticated()) {
       getTodayEvents().then(function(evts) {
         setEvents(evts);
@@ -38,21 +36,19 @@ export default function Work() {
     }
   }
 
-  // 완료/미완료 분리
   var pendingTasks = tasks.filter(function(t) { return t.status !== 'done'; });
   var completedTasks = tasks.filter(function(t) { return t.status === 'done'; });
   
-  // 우선순위별 정렬
   var priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
   pendingTasks.sort(function(a, b) {
     return priorityOrder[a.priority] - priorityOrder[b.priority];
   });
   
-  // Top3 (높은 우선순위)
   var top3Tasks = pendingTasks.filter(function(t) { return t.priority === 'high'; }).slice(0, 3);
   var otherTasks = pendingTasks.filter(function(t) { return t.priority !== 'high' || !top3Tasks.includes(t); });
 
-  // 집중 시간 계산 (미팅 사이 gap)
+  var isEmpty = tasks.length === 0;
+
   function calculateFocusHours(): number {
     if (events.length === 0) return 8;
     
@@ -119,6 +115,20 @@ export default function Work() {
     }
   }
 
+  // 알프레도 한마디 (상황별)
+  function getAlfredoMessage(): string {
+    if (isEmpty) {
+      return '오늘 할 일을 정리해볼까요? 3개만 골라보는 것도 좋아요!';
+    }
+    if (pendingTasks.length === 0 && completedTasks.length > 0) {
+      return '와! 오늘 할 일을 다 끝냈어요! 정말 대단해요 🎉';
+    }
+    if (top3Tasks.length > 0) {
+      return '긴급한 일부터 하나씩 해결해봐요. 화이팅!';
+    }
+    return '오늘도 차근차근 해나가면 돼요. 응원할게요!';
+  }
+
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="max-w-lg mx-auto p-4 space-y-4">
@@ -129,150 +139,182 @@ export default function Work() {
             <Briefcase size={24} className="text-lavender-500" />
             <h1 className="text-xl font-bold">업무</h1>
           </div>
-          <button
-            onClick={function() { setShowAddModal(true); }}
-            className="p-2 bg-lavender-100 rounded-full text-lavender-600 hover:bg-lavender-200"
-          >
-            <Plus size={20} />
-          </button>
+          {!isEmpty && (
+            <button
+              onClick={function() { setShowAddModal(true); }}
+              className="p-2 bg-lavender-100 rounded-full text-lavender-600 hover:bg-lavender-200"
+            >
+              <Plus size={20} />
+            </button>
+          )}
         </div>
 
-        {/* 업무 현황 요약 */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <p className="text-2xl font-bold text-lavender-500">
-                {completedTasks.length}/{tasks.length}
-              </p>
-              <p className="text-xs text-gray-500">완료</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-blue-500">
-                {events.length}개
-              </p>
-              <p className="text-xs text-gray-500">미팅</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-green-500">
-                {calculateFocusHours().toFixed(1)}시간
-              </p>
-              <p className="text-xs text-gray-500">집중가능</p>
+        {/* 알프레도 한마디 */}
+        <div className="bg-gradient-to-r from-lavender-50 to-purple-50 rounded-2xl p-4">
+          <div className="flex items-start gap-3">
+            <span className="text-3xl">🐧</span>
+            <div className="flex-1">
+              <p className="text-sm text-gray-700">{getAlfredoMessage()}</p>
             </div>
           </div>
         </div>
 
-        {/* Work Top 3 */}
-        {top3Tasks.length > 0 && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <Target size={18} className="text-red-500" />
-              <h3 className="font-semibold">오늘 꼭 해야할 일</h3>
-            </div>
-            <div className="space-y-2">
-              {top3Tasks.map(function(task, idx) {
-                return (
-                  <div key={task.id} className="flex items-center gap-3 p-3 bg-red-50 rounded-xl">
-                    <span className="text-lg font-bold text-red-400">{idx + 1}</span>
-                    <span className="flex-1 font-medium">{task.title}</span>
-                    <button
-                      onClick={function() { handleStartFocus(task); }}
-                      className="p-2 bg-red-100 rounded-full text-red-500 hover:bg-red-200"
-                    >
-                      <Play size={16} />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
+        {/* Empty State */}
+        {isEmpty ? (
+          <div className="bg-white rounded-2xl p-8 shadow-sm text-center">
+            <div className="text-6xl mb-4">📋</div>
+            <h3 className="font-semibold text-gray-800 mb-2">아직 등록된 업무가 없어요</h3>
+            <p className="text-sm text-gray-500 mb-6">오늘 꼭 해야 할 일 3개만 정해볼까요?</p>
+            <button
+              onClick={function() { setShowAddModal(true); }}
+              className="w-full py-4 bg-lavender-400 text-white rounded-2xl font-semibold flex items-center justify-center gap-2 hover:bg-lavender-500 transition-colors"
+            >
+              <Plus size={20} />
+              업무 추가하기
+            </button>
           </div>
-        )}
-
-        {/* 기타 태스크 */}
-        {otherTasks.length > 0 && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <h3 className="font-semibold mb-3">다른 할 일</h3>
-            <div className="space-y-2">
-              {otherTasks.map(function(task) {
-                return (
-                  <div key={task.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                    <button
-                      onClick={function() { handleToggleComplete(task.id); }}
-                      className="w-6 h-6 rounded-full border-2 border-gray-300 flex items-center justify-center hover:border-lavender-400"
-                    >
-                      {task.status === 'done' && <Check size={14} className="text-lavender-500" />}
-                    </button>
-                    <span className="flex-1">{task.title}</span>
-                    <span className={'text-xs px-2 py-0.5 rounded-full ' + getPriorityColor(task.priority)}>
-                      {getPriorityLabel(task.priority)}
-                    </span>
-                    <button
-                      onClick={function() { handleDeleteTask(task.id); }}
-                      className="p-1.5 text-gray-400 hover:text-red-500"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                );
-              })}
+        ) : (
+          <>
+            {/* 업무 현황 요약 */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm">
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <p className="text-2xl font-bold text-lavender-500">
+                    {completedTasks.length}/{tasks.length}
+                  </p>
+                  <p className="text-xs text-gray-500">완료</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-blue-500">
+                    {events.length}개
+                  </p>
+                  <p className="text-xs text-gray-500">미팅</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-green-500">
+                    {calculateFocusHours().toFixed(1)}시간
+                  </p>
+                  <p className="text-xs text-gray-500">집중가능</p>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
 
-        {/* 완료된 태스크 */}
-        {completedTasks.length > 0 && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <h3 className="font-semibold mb-3 text-gray-400">완료됨</h3>
-            <div className="space-y-2">
-              {completedTasks.slice(0, 5).map(function(task) {
-                return (
-                  <div key={task.id} className="flex items-center gap-3 p-2 opacity-50">
-                    <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
-                      <Check size={14} className="text-green-500" />
-                    </div>
-                    <span className="flex-1 line-through text-gray-400">{task.title}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+            {/* Work Top 3 */}
+            {top3Tasks.length > 0 && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm">
+                <div className="flex items-center gap-2 mb-3">
+                  <Target size={18} className="text-red-500" />
+                  <h3 className="font-semibold">오늘 꼭 해야할 일</h3>
+                </div>
+                <div className="space-y-2">
+                  {top3Tasks.map(function(task, idx) {
+                    return (
+                      <div key={task.id} className="flex items-center gap-3 p-3 bg-red-50 rounded-xl">
+                        <span className="text-lg font-bold text-red-400">{idx + 1}</span>
+                        <span className="flex-1 font-medium">{task.title}</span>
+                        <button
+                          onClick={function() { handleStartFocus(task); }}
+                          className="p-2 bg-red-100 rounded-full text-red-500 hover:bg-red-200"
+                        >
+                          <Play size={16} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
-        {/* 오늘 일정 */}
-        {events.length > 0 && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <Clock size={18} className="text-blue-500" />
-              <h3 className="font-semibold">오늘 일정</h3>
-            </div>
-            <div className="space-y-2">
-              {events.slice(0, 5).map(function(event) {
-                var startTime = new Date(event.start).toLocaleTimeString('ko-KR', { 
-                  hour: '2-digit', 
-                  minute: '2-digit',
-                  hour12: false
-                });
-                return (
-                  <div key={event.id} className="flex items-center gap-3 p-2">
-                    <span className="text-sm text-gray-500 w-12">{startTime}</span>
-                    <div 
-                      className="w-1 h-8 rounded-full"
-                      style={{ backgroundColor: event.backgroundColor || '#A996FF' }}
-                    />
-                    <span className="flex-1 text-sm">{event.title}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+            {/* 기타 태스크 */}
+            {otherTasks.length > 0 && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm">
+                <h3 className="font-semibold mb-3">다른 할 일</h3>
+                <div className="space-y-2">
+                  {otherTasks.map(function(task) {
+                    return (
+                      <div key={task.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                        <button
+                          onClick={function() { handleToggleComplete(task.id); }}
+                          className="w-6 h-6 rounded-full border-2 border-gray-300 flex items-center justify-center hover:border-lavender-400"
+                        >
+                          {task.status === 'done' && <Check size={14} className="text-lavender-500" />}
+                        </button>
+                        <span className="flex-1">{task.title}</span>
+                        <span className={'text-xs px-2 py-0.5 rounded-full ' + getPriorityColor(task.priority)}>
+                          {getPriorityLabel(task.priority)}
+                        </span>
+                        <button
+                          onClick={function() { handleDeleteTask(task.id); }}
+                          className="p-1.5 text-gray-400 hover:text-red-500"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
-        {/* 집중 모드 시작 */}
-        <button
-          onClick={function() { navigate('/'); }}
-          className="w-full py-4 bg-gradient-to-r from-lavender-400 to-purple-400 text-white rounded-2xl font-semibold shadow-lg"
-        >
-          🎯 집중 모드 시작
-        </button>
+            {/* 완료된 태스크 */}
+            {completedTasks.length > 0 && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm">
+                <h3 className="font-semibold mb-3 text-gray-400">완료됨</h3>
+                <div className="space-y-2">
+                  {completedTasks.slice(0, 5).map(function(task) {
+                    return (
+                      <div key={task.id} className="flex items-center gap-3 p-2 opacity-50">
+                        <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
+                          <Check size={14} className="text-green-500" />
+                        </div>
+                        <span className="flex-1 line-through text-gray-400">{task.title}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 오늘 일정 */}
+            {events.length > 0 && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm">
+                <div className="flex items-center gap-2 mb-3">
+                  <Clock size={18} className="text-blue-500" />
+                  <h3 className="font-semibold">오늘 일정</h3>
+                </div>
+                <div className="space-y-2">
+                  {events.slice(0, 5).map(function(event) {
+                    var startTime = new Date(event.start).toLocaleTimeString('ko-KR', { 
+                      hour: '2-digit', 
+                      minute: '2-digit',
+                      hour12: false
+                    });
+                    return (
+                      <div key={event.id} className="flex items-center gap-3 p-2">
+                        <span className="text-sm text-gray-500 w-12">{startTime}</span>
+                        <div 
+                          className="w-1 h-8 rounded-full"
+                          style={{ backgroundColor: event.backgroundColor || '#A996FF' }}
+                        />
+                        <span className="flex-1 text-sm">{event.title}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 집중 모드 시작 - 태스크가 있을 때만 */}
+            {pendingTasks.length > 0 && (
+              <button
+                onClick={function() { navigate('/'); }}
+                className="w-full py-4 bg-gradient-to-r from-lavender-400 to-purple-400 text-white rounded-2xl font-semibold shadow-lg"
+              >
+                🎯 집중 모드 시작
+              </button>
+            )}
+          </>
+        )}
       </div>
 
       {/* 태스크 추가 모달 */}
