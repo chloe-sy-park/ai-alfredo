@@ -41,7 +41,7 @@ export type BriefingTone = 'encouraging' | 'supportive' | 'energetic' | 'gentle'
 
 export interface WeatherData {
   temp: number;
-  condition: 'sunny' | 'cloudy' | 'rainy' | 'snowy';
+  condition: 'sunny' | 'cloudy' | 'rainy' | 'snowy' | 'stormy';
   description: string;
   icon: string;
 }
@@ -51,11 +51,12 @@ var WEATHER_MESSAGES = {
   rainy: ['우산 잊지 마세요', '비 오는 날엔 실내 작업에 집중하기 좋죠'],
   snowy: ['미끄러운 길 조심하세요', '따뜻하게 입으세요'],
   sunny: ['날씨가 좋네요', '잠깐 산책하기 좋은 날이에요'],
-  cloudy: ['흐린 날이에요', '실내 조명을 밝게 해보세요']
+  cloudy: ['흐린 날이에요', '실내 조명을 밝게 해보세요'],
+  stormy: ['폭풍우 조심하세요', '외출을 삼가세요']
 };
 
 // 요일별 메시지
-var DAY_MESSAGES = {
+var DAY_MESSAGES: { [key: string]: string } = {
   월요일: '새로운 한 주',
   화요일: '본격적인 시작',
   수요일: '중간 지점',
@@ -70,9 +71,12 @@ export function assessDayIntensity(context: BriefingContext): DayIntensity {
   var factors: string[] = [];
   var score = 0;
   
-  // 일정 수
+  // 일정 수 (description이나 location에 특정 키워드가 있으면 미팅으로 간주)
   var meetingCount = context.todayCalendar.filter(function(e) {
-    return e.type === 'meeting' || e.attendees?.length > 1;
+    return e.title.includes('미팅') || 
+           e.title.includes('회의') || 
+           e.location?.includes('회의실') ||
+           e.description?.includes('미팅');
   }).length;
   
   if (meetingCount >= 5) {
@@ -99,7 +103,7 @@ export function assessDayIntensity(context: BriefingContext): DayIntensity {
   
   // 미완료 태스크
   var urgentTasks = context.incompleteTasks.filter(function(t) {
-    return t.priority === 'urgent' || isToday(t.dueDate);
+    return t.priority === 'high' || isToday(t.dueDate);
   }).length;
   
   if (urgentTasks >= 3) {
@@ -129,12 +133,12 @@ export function assessDayIntensity(context: BriefingContext): DayIntensity {
 // 연속 미팅 체크
 function checkBackToBackMeetings(calendar: CalendarEvent[]): boolean {
   var sorted = calendar.slice().sort(function(a, b) {
-    return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+    return new Date(a.start).getTime() - new Date(b.start).getTime();
   });
   
   for (var i = 0; i < sorted.length - 1; i++) {
-    var end = new Date(sorted[i].endTime);
-    var nextStart = new Date(sorted[i + 1].startTime);
+    var end = new Date(sorted[i].end);
+    var nextStart = new Date(sorted[i + 1].start);
     var gap = (nextStart.getTime() - end.getTime()) / 1000 / 60; // 분
     
     if (gap <= 15) return true;
@@ -151,8 +155,8 @@ function calculateFreeHours(calendar: CalendarEvent[]): number {
   
   var busyMinutes = 0;
   calendar.forEach(function(event) {
-    var start = new Date(event.startTime);
-    var end = new Date(event.endTime);
+    var start = new Date(event.start);
+    var end = new Date(event.end);
     var startHour = start.getHours() + start.getMinutes() / 60;
     var endHour = end.getHours() + end.getMinutes() / 60;
     
@@ -201,7 +205,6 @@ function decideTone(intensity: DayIntensity, context: BriefingContext): Briefing
 export function generateBriefing(context: BriefingContext): BriefingOutput {
   var intensity = assessDayIntensity(context);
   var tone = decideTone(intensity, context);
-  var hour = context.currentTime.getHours();
   
   // 헤드라인 생성
   var headline = generateHeadline(intensity, context, tone);
@@ -269,9 +272,7 @@ function generateHeadline(intensity: DayIntensity, context: BriefingContext, ton
 }
 
 // 서브라인 생성
-function generateSubline(intensity: DayIntensity, context: BriefingContext, tone: BriefingTone): string {
-  var hour = context.currentTime.getHours();
-  
+function generateSubline(intensity: DayIntensity, context: BriefingContext, _tone: BriefingTone): string {
   // 날씨 언급
   if (context.weather && (context.weather.condition === 'rainy' || context.weather.condition === 'snowy')) {
     var weatherMsg = WEATHER_MESSAGES[context.weather.condition];
@@ -296,7 +297,7 @@ function generateSubline(intensity: DayIntensity, context: BriefingContext, tone
 }
 
 // 판단 근거 생성
-function generateReasoning(intensity: DayIntensity, context: BriefingContext): string {
+function generateReasoning(intensity: DayIntensity, _context: BriefingContext): string {
   var reasons = [];
   
   // 주요 팩터 설명
@@ -322,7 +323,7 @@ function generateReasoning(intensity: DayIntensity, context: BriefingContext): s
 }
 
 // 사용자 패턴 학습 (추후 구현)
-export function learnUserPattern(history: any[]): UserPattern {
+export function learnUserPattern(_history: any[]): UserPattern {
   // TODO: 실제 구현 시 히스토리 분석
   return {
     peakHours: [10, 11, 14, 15],
