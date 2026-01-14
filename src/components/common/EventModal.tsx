@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, MapPin, AlignLeft, Clock, Calendar, Trash2 } from 'lucide-react';
 import { CalendarEvent } from '../../services/calendar';
 
@@ -31,6 +31,28 @@ export default function EventModal({
   var [description, setDescription] = useState(event?.description || '');
   var [location, setLocation] = useState(event?.location || '');
   var [isEditing, setIsEditing] = useState(mode === 'create' || mode === 'edit');
+
+  // Reset form when event changes
+  useEffect(function() {
+    if (event) {
+      setTitle(event.title || '');
+      setDate(event.start?.split('T')[0] || initialDate);
+      setStartTime(getTimeFromEvent(event.start) || '09:00');
+      setEndTime(getTimeFromEvent(event.end) || '10:00');
+      setIsAllDay(event.allDay || false);
+      setDescription(event.description || '');
+      setLocation(event.location || '');
+    } else {
+      setTitle('');
+      setDate(initialDate);
+      setStartTime('09:00');
+      setEndTime('10:00');
+      setIsAllDay(false);
+      setDescription('');
+      setLocation('');
+    }
+    setIsEditing(mode === 'create' || mode === 'edit');
+  }, [event, mode, initialDate]);
 
   function formatDateForInput(d: Date): string {
     var year = d.getFullYear();
@@ -95,12 +117,15 @@ export default function EventModal({
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/40"
+        className="absolute inset-0 bg-black/40 animate-fadeIn"
         onClick={onClose}
       />
       
       {/* Modal */}
-      <div className="relative w-full max-w-lg bg-white rounded-t-3xl p-5 pb-8 animate-slide-up">
+      <div className="relative w-full max-w-lg bg-white rounded-t-3xl p-5 pb-8 animate-slideUp safe-area-bottom">
+        {/* Handle */}
+        <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
+        
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold">
