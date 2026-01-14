@@ -207,7 +207,7 @@ function formatEvent(event) {
   return calendarEvent;
 }
 
-// 이벤트 목록 가져오기 (여러 캘린더 지원)
+// 이벤트 목록 가져오기 (여러 캘린더 지원 + 중복 제거)
 async function listEvents(accessToken, timeMin, timeMax, calendarIds) {
   const params = new URLSearchParams({
     timeMin: timeMin || new Date().toISOString(),
@@ -253,13 +253,25 @@ async function listEvents(accessToken, timeMin, timeMax, calendarIds) {
     })
   );
 
-  // 모든 이벤트 합치고 시간순 정렬
+  // 모든 이벤트 합치기
   const merged = allEvents.flat();
-  merged.sort((a, b) => {
+  
+  // 중복 제거 (event.id 기준, 첫 번째 것만 유지)
+  const seen = new Set();
+  const unique = merged.filter(event => {
+    if (seen.has(event.id)) {
+      return false;
+    }
+    seen.add(event.id);
+    return true;
+  });
+  
+  // 시간순 정렬
+  unique.sort((a, b) => {
     const aTime = a.start?.dateTime || a.start?.date || '';
     const bTime = b.start?.dateTime || b.start?.date || '';
     return aTime.localeCompare(bTime);
   });
 
-  return merged;
+  return unique;
 }
