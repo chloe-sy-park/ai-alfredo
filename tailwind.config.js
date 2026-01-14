@@ -180,6 +180,8 @@ export default {
         'scale-in': 'scaleIn 150ms ease-out',
         'pulse-soft': 'pulse 2s ease-in-out infinite',
         'glow': 'glow 2s ease-in-out infinite',
+        'float-up': 'floatUp 2s ease-out forwards',
+        'spin': 'spin 1s linear infinite',
       },
       
       keyframes: {
@@ -211,6 +213,24 @@ export default {
           '0%, 100%': { boxShadow: '0 0 5px rgba(255, 215, 0, 0.3)' },
           '50%': { boxShadow: '0 0 20px rgba(255, 215, 0, 0.6)' },
         },
+        floatUp: {
+          '0%': { 
+            transform: 'translateY(0) scale(0)', 
+            opacity: '0' 
+          },
+          '10%': { 
+            transform: 'translateY(-20px) scale(1)', 
+            opacity: '1' 
+          },
+          '100%': { 
+            transform: 'translateY(-150px) scale(0.5)', 
+            opacity: '0' 
+          },
+        },
+        spin: {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(360deg)' },
+        },
       },
       
       // Touch target (44px minimum)
@@ -229,5 +249,26 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    function({ addUtilities }) {
+      const newUtilities = {
+        '.animation-delay-100': {
+          animationDelay: '100ms',
+        },
+        '.animation-delay-150': {
+          animationDelay: '150ms',
+        },
+        '.animation-delay-200': {
+          animationDelay: '200ms',
+        },
+        '.animation-delay-300': {
+          animationDelay: '300ms',
+        },
+        '.animation-delay-500': {
+          animationDelay: '500ms',
+        },
+      }
+      addUtilities(newUtilities)
+    }
+  ],
 };
