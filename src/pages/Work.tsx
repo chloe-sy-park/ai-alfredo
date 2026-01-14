@@ -1,22 +1,51 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../components/layout';
-import { WorkBriefing, FocusTask, WorkTimeline, IncomingSignals } from '../components/work';
-import { getTasksByCategory, Task } from '../services/tasks';
+import { 
+  WorkBriefing, 
+  WorkTimeline, 
+  IncomingSignals,
+  ProjectTaskGroup,
+  FocusTimer,
+  TaskModal
+} from '../components/work';
+import { getTasksByCategory, Task, getTasks, updateProjectTaskCounts } from '../services/tasks';
 import { getTodayEvents, CalendarEvent } from '../services/calendar';
-import { MessageSquare, Plus } from 'lucide-react';
+import { getActiveProjects, Project } from '../services/projects';
+import { Briefcase, Plus, LayoutGrid, List } from 'lucide-react';
 
 export default function Work() {
   var navigate = useNavigate();
   var [tasks, setTasks] = useState<Task[]>([]);
+  var [projects, setProjects] = useState<Project[]>([]);
   var [events, setEvents] = useState<CalendarEvent[]>([]);
   var [focusTask, setFocusTask] = useState<Task | null>(null);
-  var [showChat, setShowChat] = useState(false);
+  var [viewMode, setViewMode] = useState<'project' | 'list'>('project');
+  var [showTaskModal, setShowTaskModal] = useState(false);
+  var [editingTask, setEditingTask] = useState<Task | null>(null);
+  var [defaultProjectId, setDefaultProjectId] = useState<string>('');
 
+  // 데이터 로드
   useEffect(function() {
-    // 데이터 로드
+    loadData();
+  }, []);
+
+  function loadData() {
+    // 태스크 로드
     var workTasks = getTasksByCategory('work');
     setTasks(workTasks);
+    
+    // 프로젝트 로드
+    var activeProjects = getActiveProjects();
+    setProjects(activeProjects);
+    
+    // 프로젝트별 태스크 수 업데이트
+    var taskCounts: Record<string, number> = {};
+    workTasks.forEach(function(task) {
+      var projectId = task.projectId || 'project_default';
+      taskCounts[projectId] = (taskCounts[projectId] || 0) + 1;
+    });
+    updateProjectTaskCounts(taskCounts);
     
     // 포커스 태스크 선택 (우선순위 높은 미완료 태스크)
     var pendingTasks = workTasks.filter(function(t) { return t.status !== 'done'; });
@@ -26,87 +55,153 @@ export default function Work() {
     
     // 캘린더 이벤트
     getTodayEvents().then(setEvents).catch(() => {});
-  }, []);
+  }
 
-  function handleLater() {
-    // 다음 태스크로 전환
-    var pendingTasks = tasks.filter(function(t) { 
-      return t.status !== 'done' && t.id !== focusTask?.id; 
+  // 프로젝트별 태스크 그룹핑
+  function getTasksByProjects(): Record<string, Task[]> {
+    var grouped: Record<string, Task[]> = {};
+    
+    // 모든 프로젝트에 빈 배열 초기화
+    projects.forEach(function(project) {
+      grouped[project.id] = [];
     });
-    setFocusTask(pendingTasks[0] || null);
+    
+    // 태스크 분배
+    tasks.forEach(function(task) {
+      var projectId = task.projectId || 'project_default';
+      if (!grouped[projectId]) {
+        grouped[projectId] = [];
+      }
+      grouped[projectId].push(task);
+    });
+    
+    return grouped;
+  }
+
+  function handleTaskClick(task: Task) {
+    setEditingTask(task);
+    setShowTaskModal(true);
+  }
+
+  function handleAddTask(projectId?: string) {
+    setDefaultProjectId(projectId || 'project_default');
+    setEditingTask(null);
+    setShowTaskModal(true);
+  }
+
+  function handleSaveTask(task: Task) {
+    loadData(); // 데이터 새로고침
+    setFocusTask(task); // 새로 추가/수정한 태스크를 포커스로
+  }
+
+  function handleProjectEdit(project: Project) {
+    // 프로젝트 편집 모달 (나중에 구현)
+    console.log('Edit project:', project);
   }
 
   return (
     <div className="min-h-screen bg-[#F5F5F5]">
       <PageHeader />
       
-      <div className="max-w-[640px] mx-auto px-4 py-4 space-y-4">
-        
-        {/* 상황 브리핑 */}
-        <WorkBriefing tasks={tasks} events={events} />
-        
-        {/* 지금 집중할 것 */}
-        <FocusTask task={focusTask} onLater={handleLater} />
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Work Timeline */}
-          <WorkTimeline />
+      <div className="max-w-[1200px] mx-auto px-4 py-4">
+        {/* 페이지 헤더 */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Briefcase size={24} className="text-[#A996FF]" />
+            <h1 className="text-xl font-bold text-[#1A1A1A]">Work</h1>
+          </div>
           
-          {/* Incoming Signals */}
-          <IncomingSignals />
-        </div>
-        
-        {/* 빠른 액션 */}
-        <div className="flex gap-2">
-          <button
-            onClick={function() { navigate('/'); }}
-            className="flex-1 py-3 bg-white rounded-xl text-[#666666] hover:bg-[#F5F5F5] transition-colors"
-          >
-            홈으로
-          </button>
-          <button
-            className="px-6 py-3 bg-[#A996FF] text-white rounded-xl hover:bg-[#8B7BE8] transition-colors flex items-center gap-2"
-          >
-            <Plus size={18} />
-            <span>태스크 추가</span>
-          </button>
-        </div>
-        
-        {/* 작업 맥락 챗 (간단한 버전) */}
-        <div className="fixed bottom-20 right-4 z-40">
-          <button
-            onClick={function() { setShowChat(!showChat); }}
-            className="w-14 h-14 bg-[#A996FF] text-white rounded-full shadow-lg hover:bg-[#8B7BE8] transition-colors flex items-center justify-center"
-          >
-            <MessageSquare size={24} />
-          </button>
-          
-          {showChat && (
-            <div className="absolute bottom-16 right-0 w-80 bg-white rounded-xl shadow-xl p-4 mb-2">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="font-semibold text-[#1A1A1A]">작업 맥락</h4>
-                <button
-                  onClick={function() { setShowChat(false); }}
-                  className="text-[#999999] hover:text-[#666666]"
-                >
-                  ×
-                </button>
-              </div>
-              <div className="bg-[#F5F5F5] rounded-lg p-3 mb-3">
-                <p className="text-sm text-[#666666]">
-                  🐧 현재 {focusTask ? `"${focusTask.title}"` : '작업'} 중이시군요! 
-                  집중 모드로 전환하면 방해받지 않고 작업할 수 있어요.
-                </p>
-              </div>
-              <input
-                type="text"
-                placeholder="알프레도에게 질문하기..."
-                className="w-full px-3 py-2 border border-[#E5E5E5] rounded-lg text-sm"
-              />
+          <div className="flex items-center gap-2">
+            {/* 보기 모드 전환 */}
+            <div className="bg-white rounded-lg p-1 flex">
+              <button
+                onClick={function() { setViewMode('project'); }}
+                className={`p-2 rounded ${
+                  viewMode === 'project' 
+                    ? 'bg-[#A996FF] text-white' 
+                    : 'text-[#666666] hover:bg-[#F5F5F5]'
+                }`}
+              >
+                <LayoutGrid size={18} />
+              </button>
+              <button
+                onClick={function() { setViewMode('list'); }}
+                className={`p-2 rounded ${
+                  viewMode === 'list' 
+                    ? 'bg-[#A996FF] text-white' 
+                    : 'text-[#666666] hover:bg-[#F5F5F5]'
+                }`}
+              >
+                <List size={18} />
+              </button>
             </div>
-          )}
+            
+            {/* 태스크 추가 버튼 */}
+            <button
+              onClick={function() { handleAddTask(); }}
+              className="px-4 py-2 bg-[#A996FF] text-white rounded-lg hover:bg-[#8B7BE8] flex items-center gap-2"
+            >
+              <Plus size={18} />
+              <span>태스크 추가</span>
+            </button>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* 메인 컨텐츠 (2열) */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* 상황 브리핑 */}
+            <WorkBriefing tasks={tasks} events={events} />
+            
+            {/* 프로젝트별 태스크 그룹 */}
+            {viewMode === 'project' ? (
+              <div className="space-y-4">
+                {projects.map(function(project) {
+                  var projectTasks = getTasksByProjects()[project.id] || [];
+                  return (
+                    <ProjectTaskGroup
+                      key={project.id}
+                      project={project}
+                      tasks={projectTasks}
+                      onTaskClick={handleTaskClick}
+                      onAddTask={handleAddTask}
+                      onProjectEdit={handleProjectEdit}
+                    />
+                  );
+                })}
+              </div>
+            ) : (
+              // 리스트 뷰 (나중에 구현)
+              <div className="bg-white rounded-xl p-4 shadow-card">
+                <p className="text-[#999999]">리스트 뷰는 준비중입니다</p>
+              </div>
+            )}
+          </div>
+          
+          {/* 사이드바 (1열) */}
+          <div className="space-y-4">
+            {/* 집중 타이머 */}
+            <FocusTimer currentTask={focusTask} />
+            
+            {/* 타임라인 & 시그널 */}
+            <WorkTimeline />
+            <IncomingSignals />
+          </div>
         </div>
       </div>
+      
+      {/* 태스크 모달 */}
+      <TaskModal
+        isOpen={showTaskModal}
+        onClose={function() { 
+          setShowTaskModal(false);
+          setEditingTask(null);
+          setDefaultProjectId('');
+        }}
+        onSave={handleSaveTask}
+        task={editingTask}
+        defaultProjectId={defaultProjectId}
+      />
     </div>
   );
 }
