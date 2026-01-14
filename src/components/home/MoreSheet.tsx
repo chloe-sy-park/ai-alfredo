@@ -12,11 +12,13 @@ interface MoreSheetProps {
 export default function MoreSheet({
   isOpen,
   onClose,
-  title = '판단 근거',
+  title,
   why,
   whatChanged,
   tradeOff
 }: MoreSheetProps) {
+  if (title === undefined) title = '판단 근거';
+  
   if (!isOpen) return null;
 
   return (
@@ -28,49 +30,49 @@ export default function MoreSheet({
       />
       
       {/* Sheet */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white rounded-t-card-lg shadow-sheet z-50 animate-slide-up max-h-[70vh] overflow-y-auto">
+      <div className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-lg z-50 animate-slide-up max-h-[70vh] overflow-y-auto">
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-2">
-          <div className="w-10 h-1 bg-neutral-200 rounded-full" />
+          <div className="w-10 h-1 bg-[#E5E5E5] rounded-full" />
         </div>
         
         {/* Header */}
-        <div className="flex items-center justify-between px-4 pb-3 border-b border-neutral-100">
-          <h3 className="text-lg font-bold text-neutral-800">{title}</h3>
+        <div className="flex items-center justify-between px-6 pb-3 border-b border-[#E5E5E5]">
+          <h3 className="text-lg font-bold text-[#1A1A1A]">{title}</h3>
           <button 
             onClick={onClose}
-            className="p-2 hover:bg-neutral-100 rounded-full transition-colors"
+            className="p-2 hover:bg-[#F5F5F5] rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
           >
-            <X className="w-5 h-5 text-neutral-500" />
+            <X className="w-5 h-5 text-[#666666]" />
           </button>
         </div>
         
         {/* Content */}
-        <div className="p-4 space-y-4">
+        <div className="p-6 space-y-5">
           {why && (
             <div>
-              <p className="text-sm font-medium text-primary mb-1">💡 Why this is #1</p>
-              <p className="text-sm text-neutral-600 leading-relaxed">{why}</p>
+              <p className="text-sm font-semibold text-[#A996FF] mb-2">💡 Why this is #1</p>
+              <p className="text-sm text-[#666666] leading-relaxed">{why}</p>
             </div>
           )}
           
           {whatChanged && (
             <div>
-              <p className="text-sm font-medium text-warning mb-1">🔄 What changed today</p>
-              <p className="text-sm text-neutral-600 leading-relaxed">{whatChanged}</p>
+              <p className="text-sm font-semibold text-[#FBBF24] mb-2">🔄 What changed today</p>
+              <p className="text-sm text-[#666666] leading-relaxed">{whatChanged}</p>
             </div>
           )}
           
           {tradeOff && (
             <div>
-              <p className="text-sm font-medium text-neutral-500 mb-1">⚖️ Trade-off</p>
-              <p className="text-sm text-neutral-600 leading-relaxed">{tradeOff}</p>
+              <p className="text-sm font-semibold text-[#999999] mb-2">⚖️ Trade-off</p>
+              <p className="text-sm text-[#666666] leading-relaxed">{tradeOff}</p>
             </div>
           )}
         </div>
         
         {/* Safe area padding */}
-        <div className="h-6" />
+        <div className="h-8" />
       </div>
     </>
   );
