@@ -7,7 +7,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Welcome from './steps/Welcome';
 import CapabilityReveal from './steps/CapabilityReveal';
 import LightContext from './steps/LightContext';
+import CalendarConnect from './steps/CalendarConnect';
+import IntegrationPreview from './steps/IntegrationPreview';
 import BoundaryPreview from './steps/BoundaryPreview';
+import NotificationSetup from './steps/NotificationSetup';
 import TrustMoment from './steps/TrustMoment';
 import EnterCore from './steps/EnterCore';
 
@@ -18,13 +21,19 @@ export type OnboardingData = {
   userName?: string;
   context?: 'work' | 'life' | 'unsure';
   boundary?: 'soft' | 'balanced' | 'firm';
+  calendarConnected?: boolean;
+  notificationsEnabled?: boolean;
+  notificationTimes?: string[];
 };
 
 const STEPS = [
   { component: Welcome, showProgress: false },
   { component: CapabilityReveal, showProgress: true },
   { component: LightContext, showProgress: true },
+  { component: CalendarConnect, showProgress: true },       // 새로 추가
+  { component: IntegrationPreview, showProgress: true },    // 새로 추가
   { component: BoundaryPreview, showProgress: true },
+  { component: NotificationSetup, showProgress: true },     // 새로 추가
   { component: TrustMoment, showProgress: true },
   { component: EnterCore, showProgress: false }
 ];
@@ -61,7 +70,12 @@ export default function Onboarding() {
       onboarded: true,
       preferences: {
         context: data.context || 'unsure',
-        boundary: data.boundary || 'balanced'
+        boundary: data.boundary || 'balanced',
+        calendarConnected: data.calendarConnected || false,
+        notifications: {
+          enabled: data.notificationsEnabled ?? true,
+          times: data.notificationTimes || ['morning', 'important']
+        }
       }
     };
 
