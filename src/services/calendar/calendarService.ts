@@ -5,6 +5,7 @@ import { getGoogleToken, isGoogleConnected } from '../auth';
 
 const CALENDAR_API_URL = '/api/calendar';
 const SELECTED_CALENDARS_KEY = 'selected_calendars';
+const CALENDARS_CACHE_KEY = 'calendars_cache';
 
 export interface CalendarInfo {
   id: string;
@@ -24,6 +25,7 @@ export interface CalendarEvent {
   description?: string;
   location?: string;
   calendarId?: string;
+  calendarName?: string;
   backgroundColor?: string;
 }
 
@@ -52,7 +54,6 @@ export function getSelectedCalendars(): string[] {
   if (!stored) return [];
   try {
     var parsed = JSON.parse(stored);
-    console.log('[Calendar] Selected calendars from storage:', parsed);
     return parsed;
   } catch {
     return [];
@@ -61,13 +62,36 @@ export function getSelectedCalendars(): string[] {
 
 // Save selected calendar IDs to localStorage
 export function setSelectedCalendars(calendarIds: string[]): void {
-  console.log('[Calendar] Saving selected calendars:', calendarIds);
   localStorage.setItem(SELECTED_CALENDARS_KEY, JSON.stringify(calendarIds));
 }
 
-// Transform Google Calendar event to our format
-function transformEvent(event: GoogleEvent): CalendarEvent {
+// Get cached calendars
+export function getCachedCalendars(): CalendarInfo[] {
+  var stored = localStorage.getItem(CALENDARS_CACHE_KEY);
+  if (!stored) return [];
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return [];
+  }
+}
+
+// Cache calendars
+function cacheCalendars(calendars: CalendarInfo[]): void {
+  localStorage.setItem(CALENDARS_CACHE_KEY, JSON.stringify(calendars));
+}
+
+// Get calendar info by ID
+export function getCalendarById(calendarId: string): CalendarInfo | undefined {
+  var calendars = getCachedCalendars();
+  return calendars.find(function(cal) { return cal.id === calendarId; });
+}
+
+// Transform Google Calendar event to our format (with calendar info)
+function transformEvent(event: GoogleEvent, calendars: CalendarInfo[]): CalendarEvent {
   var isAllDay = !event.start?.dateTime;
+  var calendarInfo = calendars.find(function(cal) { return cal.id === event.calendarId; });
+  
   return {
     id: event.id,
     title: event.summary || '(제목 없음)',
@@ -76,7 +100,9 @@ function transformEvent(event: GoogleEvent): CalendarEvent {
     allDay: isAllDay,
     description: event.description,
     location: event.location,
-    calendarId: event.calendarId
+    calendarId: event.calendarId,
+    calendarName: calendarInfo?.summary || '',
+    backgroundColor: calendarInfo?.backgroundColor || '#A996FF'
   };
 }
 
@@ -105,8 +131,12 @@ export async function getCalendarList(): Promise<CalendarInfo[]> {
     }
 
     var data = await response.json();
-    console.log('[Calendar] Fetched calendar list:', data.calendars);
-    return data.calendars || [];
+    var calendars = data.calendars || [];
+    
+    // Cache calendars
+    cacheCalendars(calendars);
+    
+    return calendars;
   } catch (error) {
     console.error('[Calendar] Calendar list API error:', error);
     return [];
@@ -127,6 +157,7 @@ export async function getTodayEvents(): Promise<CalendarEvent[]> {
   tomorrow.setDate(tomorrow.getDate() + 1);
 
   var selectedCalendars = getSelectedCalendars();
+  var cachedCalendars = getCachedCalendars();
 
   try {
     var requestBody = {
@@ -135,7 +166,6 @@ export async function getTodayEvents(): Promise<CalendarEvent[]> {
       timeMax: tomorrow.toISOString(),
       calendarIds: selectedCalendars.length > 0 ? selectedCalendars : undefined
     };
-    console.log('[Calendar] Fetching today events with:', requestBody);
 
     var response = await fetch(CALENDAR_API_URL, {
       method: 'POST',
@@ -154,8 +184,9 @@ export async function getTodayEvents(): Promise<CalendarEvent[]> {
     }
 
     var data = await response.json();
-    console.log('[Calendar] Today events response:', data.events?.length, 'events');
-    return (data.events || []).map(transformEvent);
+    return (data.events || []).map(function(e: GoogleEvent) { 
+      return transformEvent(e, cachedCalendars); 
+    });
   } catch (error) {
     console.error('[Calendar] API error:', error);
     return [];
@@ -171,6 +202,12 @@ export async function getEvents(startDate: Date, endDate: Date): Promise<Calenda
   }
 
   var selectedCalendars = getSelectedCalendars();
+  var cachedCalendars = getCachedCalendars();
+
+  // If no cached calendars, fetch them first
+  if (cachedCalendars.length === 0) {
+    cachedCalendars = await getCalendarList();
+  }
 
   try {
     var requestBody = {
@@ -179,7 +216,6 @@ export async function getEvents(startDate: Date, endDate: Date): Promise<Calenda
       timeMax: endDate.toISOString(),
       calendarIds: selectedCalendars.length > 0 ? selectedCalendars : undefined
     };
-    console.log('[Calendar] Fetching events with:', requestBody);
 
     var response = await fetch(CALENDAR_API_URL, {
       method: 'POST',
@@ -198,8 +234,9 @@ export async function getEvents(startDate: Date, endDate: Date): Promise<Calenda
     }
 
     var data = await response.json();
-    console.log('[Calendar] Events response:', data.events?.length, 'events');
-    return (data.events || []).map(transformEvent);
+    return (data.events || []).map(function(e: GoogleEvent) { 
+      return transformEvent(e, cachedCalendars); 
+    });
   } catch (error) {
     console.error('[Calendar] API error:', error);
     return [];
@@ -210,6 +247,8 @@ export async function getEvents(startDate: Date, endDate: Date): Promise<Calenda
 export async function addEvent(event: Omit<CalendarEvent, 'id'>): Promise<CalendarEvent | null> {
   var token = getGoogleToken();
   if (!token) return null;
+
+  var cachedCalendars = getCachedCalendars();
 
   try {
     var response = await fetch(CALENDAR_API_URL, {
@@ -235,7 +274,7 @@ export async function addEvent(event: Omit<CalendarEvent, 'id'>): Promise<Calend
     if (!response.ok) throw new Error('Failed to add event');
 
     var data = await response.json();
-    return transformEvent(data.event);
+    return transformEvent(data.event, cachedCalendars);
   } catch (error) {
     console.error('[Calendar] Failed to add event:', error);
     return null;
