@@ -33,7 +33,7 @@ export default async function handler(req, res) {
     }
     const accessToken = authHeader.split(' ')[1];
 
-    const { action, event, events, eventId, calendarIds } = req.body;
+    const { action, event, events, eventId, calendarId, calendarIds } = req.body;
 
     // 캘린더 목록 가져오기
     if (action === 'listCalendars') {
@@ -41,29 +41,33 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, calendars: result });
     }
 
-    // 단일 이벤트 추가
+    // 단일 이벤트 추가 (캘린더 ID 지정 가능)
     if (action === 'add' && event) {
-      const result = await addEvent(accessToken, event);
+      const targetCalendar = calendarId || 'primary';
+      const result = await addEvent(accessToken, event, targetCalendar);
       return res.status(200).json({ success: true, event: result });
     }
 
     // 여러 이벤트 추가
     if (action === 'addMultiple' && events) {
+      const targetCalendar = calendarId || 'primary';
       const results = await Promise.all(
-        events.map(e => addEvent(accessToken, e))
+        events.map(e => addEvent(accessToken, e, targetCalendar))
       );
       return res.status(200).json({ success: true, events: results });
     }
 
-    // 이벤트 수정
+    // 이벤트 수정 (캘린더 ID 지정 가능)
     if (action === 'update' && eventId && event) {
-      const result = await updateEvent(accessToken, eventId, event);
+      const targetCalendar = calendarId || 'primary';
+      const result = await updateEvent(accessToken, eventId, event, targetCalendar);
       return res.status(200).json({ success: true, event: result });
     }
 
-    // 이벤트 삭제
+    // 이벤트 삭제 (캘린더 ID 지정 가능)
     if (action === 'delete' && eventId) {
-      await deleteEvent(accessToken, eventId);
+      const targetCalendar = calendarId || 'primary';
+      await deleteEvent(accessToken, eventId, targetCalendar);
       return res.status(200).json({ success: true });
     }
 
@@ -100,7 +104,7 @@ async function listCalendars(accessToken) {
 
   const data = await response.json();
   
-  // 필요한 정보만 반환
+  // 필요한 정보만 반환 (writer/owner 권한만 추가 가능)
   return (data.items || []).map(cal => ({
     id: cal.id,
     summary: cal.summary,
@@ -109,15 +113,16 @@ async function listCalendars(accessToken) {
     foregroundColor: cal.foregroundColor,
     primary: cal.primary || false,
     accessRole: cal.accessRole,
+    canEdit: cal.accessRole === 'owner' || cal.accessRole === 'writer',
   }));
 }
 
-// 이벤트 추가
-async function addEvent(accessToken, event) {
+// 이벤트 추가 (캘린더 ID 지정)
+async function addEvent(accessToken, event, calendarId) {
   const calendarEvent = formatEvent(event);
 
   const response = await fetch(
-    'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`,
     {
       method: 'POST',
       headers: {
@@ -133,15 +138,16 @@ async function addEvent(accessToken, event) {
     throw new Error(error.error?.message || 'Failed to add event');
   }
 
-  return await response.json();
+  const result = await response.json();
+  return { ...result, calendarId };
 }
 
-// 이벤트 수정
-async function updateEvent(accessToken, eventId, event) {
+// 이벤트 수정 (캘린더 ID 지정)
+async function updateEvent(accessToken, eventId, event, calendarId) {
   const calendarEvent = formatEvent(event);
 
   const response = await fetch(
-    `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${eventId}`,
     {
       method: 'PUT',
       headers: {
@@ -157,13 +163,14 @@ async function updateEvent(accessToken, eventId, event) {
     throw new Error(error.error?.message || 'Failed to update event');
   }
 
-  return await response.json();
+  const result = await response.json();
+  return { ...result, calendarId };
 }
 
-// 이벤트 삭제
-async function deleteEvent(accessToken, eventId) {
+// 이벤트 삭제 (캘린더 ID 지정)
+async function deleteEvent(accessToken, eventId, calendarId) {
   const response = await fetch(
-    `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${eventId}`,
     {
       method: 'DELETE',
       headers: {
@@ -266,8 +273,16 @@ async function listEvents(accessToken, timeMin, timeMax, calendarIds) {
     return true;
   });
   
-  // 시간순 정렬
+  // 종일 일정 먼저, 그 다음 시간순 정렬
   unique.sort((a, b) => {
+    const aIsAllDay = !a.start?.dateTime;
+    const bIsAllDay = !b.start?.dateTime;
+    
+    // 종일 일정 먼저
+    if (aIsAllDay && !bIsAllDay) return -1;
+    if (!aIsAllDay && bIsAllDay) return 1;
+    
+    // 같은 타입이면 시간순
     const aTime = a.start?.dateTime || a.start?.date || '';
     const bTime = b.start?.dateTime || b.start?.date || '';
     return aTime.localeCompare(bTime);
