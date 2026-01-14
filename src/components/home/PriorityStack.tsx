@@ -13,56 +13,59 @@ interface PriorityStackProps {
 }
 
 export default function PriorityStack({
-  count = 3,
+  count,
   items,
   onMore
 }: PriorityStackProps) {
-  const displayItems = items.slice(0, count);
+  if (count === undefined) count = 3;
+  
+  var displayItems = items.slice(0, count);
 
-  const getTagStyles = (tag: 'WORK' | 'LIFE') => {
+  function getTagStyles(tag: 'WORK' | 'LIFE'): string {
     if (tag === 'WORK') {
-      return 'bg-work-bg text-work-text';
+      return 'bg-[#F0F0FF] text-[#A996FF]';
     }
-    return 'bg-life-bg text-life-text';
-  };
+    return 'bg-[#FEF3C7] text-[#F97316]';
+  }
 
   return (
-    <div className="bg-white rounded-card p-4 shadow-card">
-      <p className="text-sm text-neutral-500 mb-3">오늘의 우선순위</p>
+    <div className="bg-white rounded-xl p-4 shadow-card">
+      <p className="text-sm text-[#999999] mb-3">오늘의 우선순위</p>
       <div className="space-y-3">
-        {displayItems.map((item, index) => (
-          <div key={item.id} className="flex items-center gap-3">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                index === 0
-                  ? 'bg-lavender-100 text-primary'
-                  : 'bg-neutral-100 text-neutral-500'
-              }`}
-            >
-              {index + 1}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-neutral-800 truncate">{item.title}</p>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span
-                  className={`text-xs px-2 py-0.5 rounded-full ${getTagStyles(
-                    item.sourceTag
-                  )}`}
-                >
-                  {item.sourceTag}
-                </span>
-                {item.meta && (
-                  <span className="text-xs text-neutral-400">{item.meta}</span>
-                )}
+        {displayItems.map(function(item, index) {
+          return (
+            <div key={item.id} className="flex items-center gap-3">
+              <div
+                className={
+                  'w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ' +
+                  (index === 0
+                    ? 'bg-[#FFD700]/20 text-[#1A1A1A]'
+                    : 'bg-[#F5F5F5] text-[#999999]')
+                }
+              >
+                {index + 1}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-[#1A1A1A] truncate">{item.title}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span
+                    className={'text-xs px-2 py-0.5 rounded-full font-medium ' + getTagStyles(item.sourceTag)}
+                  >
+                    {item.sourceTag}
+                  </span>
+                  {item.meta && (
+                    <span className="text-xs text-[#999999]">{item.meta}</span>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       {items.length > count && onMore && (
         <button
           onClick={onMore}
-          className="text-sm text-neutral-400 mt-3 hover:text-neutral-600"
+          className="text-sm text-[#999999] mt-3 hover:text-[#666666] min-h-[44px]"
         >
           더 보기 →
         </button>
