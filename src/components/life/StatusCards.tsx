@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Battery, Moon, Heart, Activity, CheckCircle2, Target } from 'lucide-react';
+import { Battery, Moon, Activity, CheckCircle2 } from 'lucide-react';
 import { getTodayCompletionRate, getHabits, getTodayLogs } from '../../services/habits';
 
 interface StatusData {
