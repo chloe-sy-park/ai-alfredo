@@ -11,8 +11,10 @@ import {
   ChevronUp,
   Volume2,
   Target,
-  RotateCcw
+  RotateCcw,
+  Settings as SettingsIcon
 } from 'lucide-react';
+import { PageHeader } from '../components/layout';
 import { 
   isGoogleConnected, 
   getGoogleUser, 
@@ -54,7 +56,7 @@ export default function Settings() {
   var [loadingCalendars, setLoadingCalendars] = useState(false);
 
   // 알프레도 설정
-  var [alfredoSettings, setAlfredoSettings] = useState<AlfredoSettings>(getAlfredoSettings());
+  var [alfredoSettings, setAlfredoSettingsState] = useState<AlfredoSettings>(getAlfredoSettings());
   var [showAlfredoSettings, setShowAlfredoSettings] = useState(false);
 
   useEffect(function checkGoogleConnection() {
@@ -131,20 +133,28 @@ export default function Settings() {
   // 알프레도 설정 변경
   function handleAlfredoSettingChange(key: keyof AlfredoSettings, value: number | string | boolean) {
     var updated = saveAlfredoSettings({ [key]: value });
-    setAlfredoSettings(updated);
+    setAlfredoSettingsState(updated);
   }
 
   function handleResetAlfredoSettings() {
     if (confirm('알프레도 설정을 초기화할까요?')) {
       var reset = resetAlfredoSettings();
-      setAlfredoSettings(reset);
+      setAlfredoSettingsState(reset);
     }
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] pb-24">
-      <div className="max-w-lg mx-auto p-4 space-y-4">
+    <div className="min-h-screen bg-[#F5F5F5]">
+      <PageHeader />
+      
+      <div className="max-w-lg mx-auto px-4 py-2 space-y-4">
         
+        {/* 페이지 타이틀 */}
+        <div className="flex items-center gap-2">
+          <SettingsIcon size={20} className="text-[#A996FF]" />
+          <h1 className="text-lg font-bold text-[#1A1A1A]">설정</h1>
+        </div>
+
         {/* 프로필 */}
         <div className="bg-white rounded-xl p-4 shadow-card">
           <div className="flex items-center gap-4">
