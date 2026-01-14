@@ -1,270 +1,171 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { getTodayEvents, isGoogleAuthenticated, CalendarEvent } from '../services/calendar';
-import {
-  ModeSwitch,
-  BriefingCard,
-  PriorityStack,
-  BalanceHint,
-  Timeline,
-  ChatLauncher,
-  MoreSheet,
-  ProjectPulse,
-  ActionCard,
-  LifeFactors,
-  RelationshipReminder
-} from '../components/home';
+import { ConditionLevel, getTodayCondition } from '../services/condition';
+import { Top3Item } from '../services/top3';
+import { FocusItem, setFocusFromTop3, getCurrentFocus } from '../services/focusNow';
+import { getWeather, WeatherData, getWeatherBriefing } from '../services/weather';
+
+// Components
+import { ModeSwitch, ChatLauncher, MoreSheet } from '../components/home';
 import TodayTimeline from '../components/home/TodayTimeline';
 import ConditionQuick from '../components/home/ConditionQuick';
-import { ConditionLevel, getTodayCondition, getConditionAdvice } from '../services/condition';
+import TodayTop3 from '../components/home/TodayTop3';
+import FocusNow from '../components/home/FocusNow';
+import WeatherCard from '../components/home/WeatherCard';
+import QuickMemoCard from '../components/home/QuickMemoCard';
 
 type Mode = 'all' | 'work' | 'life';
 
-// Dummy data (fallback when not connected to Google)
-const DUMMY_PRIORITIES = [
-  { id: '1', title: '프로젝트 리뷰 준비', sourceTag: 'WORK' as const, meta: '오후 2시' },
-  { id: '2', title: '엄마 전화', sourceTag: 'LIFE' as const, meta: '오늘 중' },
-  { id: '3', title: '이메일 정리', sourceTag: 'WORK' as const },
-  { id: '4', title: '운동 30분', sourceTag: 'LIFE' as const },
-  { id: '5', title: '독서 시간', sourceTag: 'LIFE' as const }
-];
-
-const DUMMY_TIMELINE = [
-  { id: '1', timeRange: '10:00', title: '팀 스탠드업', importance: 'mid' as const, sourceTag: 'WORK' as const },
-  { id: '2', timeRange: '14:00', title: '프로젝트 리뷰', importance: 'high' as const, sourceTag: 'WORK' as const },
-  { id: '3', timeRange: '16:30', title: '1:1 미팅', importance: 'mid' as const, sourceTag: 'WORK' as const },
-  { id: '4', timeRange: '18:00', title: '퇴근', importance: 'low' as const, sourceTag: 'LIFE' as const },
-  { id: '5', timeRange: '19:30', title: '저녁 약속', importance: 'high' as const, sourceTag: 'LIFE' as const }
-];
-
-// WORK mode data
-const DUMMY_PROJECTS = [
-  { id: '1', name: 'Q1 마케팅 캠페인', signal: 'green' as const },
-  { id: '2', name: '신규 기능 개발', signal: 'yellow' as const },
-  { id: '3', name: '고객 피드백 분석', signal: 'red' as const }
-];
-
-const DUMMY_ACTIONS = [
-  {
-    id: '1',
-    variant: 'email' as const,
-    title: '팀장님 피드백 요청',
-    summary: '프로젝트 진행 상황에 대한 피드백을 요청하셨어요.',
-    meta: 'Action Needed',
-    recommendedAction: '오늘 중 답장하면 좋겠어요'
-  },
-  {
-    id: '2',
-    variant: 'meeting' as const,
-    title: '클라이언트 미팅',
-    summary: '내일 10시, 회의실 A',
-    recommendedAction: '자료 준비하세요'
-  }
-];
-
-// LIFE mode data
-const DUMMY_LIFE_FACTORS = [
-  { id: '1', label: '수면', statusText: '6시간 30분', signal: 'down' as const },
-  { id: '2', label: '운동', statusText: '오늘 아직', signal: 'steady' as const },
-  { id: '3', label: '감정', statusText: '보통', signal: 'steady' as const },
-  { id: '4', label: '에너지', statusText: '높은 편', signal: 'up' as const }
-];
-
-const DUMMY_RELATIONSHIPS = [
-  { id: '1', name: '김민지', reason: '마지막 연락 3주 전' },
-  { id: '2', name: '이준호', reason: '생일 D-5' }
-];
-
-// Transform Calendar event to Timeline format
-const transformToTimelineItem = (event: CalendarEvent) => {
-  const startDate = new Date(event.start);
-  const timeRange = startDate.toLocaleTimeString('ko-KR', { 
-    hour: '2-digit', 
-    minute: '2-digit',
-    hour12: false 
-  });
-  
-  const title = event.title.toLowerCase();
-  let importance: 'low' | 'mid' | 'high' = 'mid';
-  if (title.includes('중요') || title.includes('마감') || title.includes('리뷰')) {
-    importance = 'high';
-  } else if (title.includes('점심') || title.includes('휴식')) {
-    importance = 'low';
-  }
-
-  let sourceTag: 'WORK' | 'LIFE' = 'WORK';
-  if (title.includes('점심') || title.includes('저녁') || title.includes('운동') || 
-      title.includes('약속') || title.includes('개인')) {
-    sourceTag = 'LIFE';
-  }
-
-  return {
-    id: event.id,
-    timeRange,
-    title: event.title,
-    importance,
-    sourceTag
-  };
-};
-
 export default function Home() {
-  const { user } = useAuthStore();
-  const [mode, setMode] = useState<Mode>('all');
-  const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
-  const [isLoadingCalendar, setIsLoadingCalendar] = useState(false);
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
-  const [isGoogleConnected, setIsGoogleConnected] = useState(false);
-  const [currentCondition, setCurrentCondition] = useState<ConditionLevel | null>(null);
+  var user = useAuthStore().user;
+  var [mode, setMode] = useState<Mode>('all');
+  var [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
+  var [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  var [isGoogleConnected, setIsGoogleConnected] = useState(false);
+  var [currentCondition, setCurrentCondition] = useState<ConditionLevel | null>(null);
+  var [currentFocus, setCurrentFocus] = useState<FocusItem | null>(null);
+  var [weather, setWeather] = useState<WeatherData | null>(null);
 
-  // Check Google connection and fetch events
-  useEffect(() => {
-    const fetchCalendarData = async () => {
-      const connected = isGoogleAuthenticated();
-      setIsGoogleConnected(connected);
-      
-      if (connected) {
-        setIsLoadingCalendar(true);
-        try {
-          const events = await getTodayEvents();
-          setCalendarEvents(events);
-        } catch (error) {
-          console.error('Failed to fetch calendar:', error);
-        } finally {
-          setIsLoadingCalendar(false);
-        }
-      }
-    };
-
-    fetchCalendarData();
+  // 데이터 로드
+  useEffect(function() {
+    // Google 캘린더
+    var connected = isGoogleAuthenticated();
+    setIsGoogleConnected(connected);
     
-    // Load condition
-    const todayCondition = getTodayCondition();
+    if (connected) {
+      getTodayEvents()
+        .then(function(events) { setCalendarEvents(events); })
+        .catch(function(err) { console.error('Calendar error:', err); });
+    }
+    
+    // 컨디션
+    var todayCondition = getTodayCondition();
     if (todayCondition) {
       setCurrentCondition(todayCondition.level);
     }
+    
+    // 집중 항목
+    var focus = getCurrentFocus();
+    setCurrentFocus(focus);
+    
+    // 날씨
+    getWeather().then(function(data) {
+      setWeather(data);
+    });
   }, []);
 
-  // Handle condition change
+  // 컨디션 변경 핸들러
   function handleConditionChange(level: ConditionLevel) {
     setCurrentCondition(level);
   }
 
-  // Use real calendar data if available, otherwise fallback to dummy
-  const timelineItems = calendarEvents.length > 0 
-    ? calendarEvents.map(transformToTimelineItem)
-    : DUMMY_TIMELINE;
+  // Top3에서 집중 선택
+  function handleFocusSelect(item: Top3Item) {
+    var focusItem = setFocusFromTop3(item.id, item.title);
+    setCurrentFocus(focusItem);
+  }
 
-  const now = new Date();
-  const hours = now.getHours();
+  // 집중 변경
+  function handleFocusChange(focus: FocusItem | null) {
+    setCurrentFocus(focus);
+  }
+
+  // 시간 기반 인사
+  var now = new Date();
+  var hours = now.getHours();
   
-  // Time-based greeting
-  const getGreeting = () => {
+  function getGreeting(): string {
+    if (hours < 6) return '아직 이른 시간이에요';
     if (hours < 12) return '좋은 아침이에요';
     if (hours < 18) return '오후도 힘내요';
-    return '오늘 하루 수고했어요';
-  };
+    if (hours < 22) return '저녁 시간이에요';
+    return '늦은 밤이에요';
+  }
 
-  // Mode & Condition-specific briefing
-  const getBriefing = () => {
-    // 컨디션 기반 브리핑 (우선순위 높음)
+  // 알프레도 브리핑 생성
+  function getBriefing(): { headline: string; subline: string } {
+    // 컨디션 우선
     if (currentCondition === 'tired') {
       return {
         headline: '오늘은 무리하지 않는 게 가장 생산적인 선택이에요',
-        subline: '꼭 필요한 것만 하고 푹 쉬세요'
+        subline: '꼭 필요한 것만 하고 푹 쉬세요 🌙'
       };
     }
     
-    if (mode === 'work') {
+    // 날씨 기반
+    if (weather && (weather.condition === 'rainy' || weather.condition === 'snowy')) {
       return {
-        headline: '오늘은 실행보다 결정이 중요한 날이에요',
-        subline: '프로젝트 리뷰에 집중하세요'
+        headline: weather.icon + ' 오늘은 ' + weather.description,
+        subline: '우산 챙기세요! 실내 작업에 집중하기 좋은 날이에요'
       };
     }
-    if (mode === 'life') {
+    
+    // 시간대 기반
+    if (hours < 10) {
+      var eventCount = calendarEvents.length;
       return {
-        headline: '오늘은 나를 돌보는 시간이에요',
-        subline: '작은 것부터 천천히'
+        headline: '오늘 일정 ' + eventCount + '개, 에너지 있을 때 중요한 것부터!',
+        subline: '오전에 집중하면 오후가 편해져요 ☀️'
       };
     }
-    // ALL mode
-    if (currentCondition === 'great') {
+    
+    if (hours < 14) {
       return {
-        headline: '컨디션 좋을 때 중요한 일 먼저!',
-        subline: `오늘 일정 ${timelineItems.length}개, 에너지 있을 때 해치우세요 💪`
+        headline: '지금 가장 중요한 것 하나에 집중하세요',
+        subline: '한 번에 하나씩, ADHD 친화적으로 🎯'
       };
     }
-    if (hours < 12) {
-      return {
-        headline: '오전에 집중하고, 오후는 미팅에 맡기세요',
-        subline: `일정 ${timelineItems.length}개 중 ${timelineItems.filter(t => parseInt(t.timeRange) >= 12).length}개가 오후에 몰려있어요`
-      };
-    }
+    
     if (hours < 18) {
       return {
-        headline: '지금 가장 중요한 건 집중이에요',
-        subline: '한 번에 하나씩, 천천히'
+        headline: '오후 슬럼프를 이겨내세요!',
+        subline: '잠깐 쉬거나 간단한 일부터 시작해보세요 ☕'
       };
     }
+    
+    if (currentCondition === 'great') {
+      return {
+        headline: '컨디션이 좋네요! 💪',
+        subline: '내일을 위해 정리하고 일찍 쉬세요'
+      };
+    }
+    
     return {
-      headline: `${user?.name || 'Boss'}님, 오늘 하루 수고했어요`,
+      headline: (user?.name || 'Boss') + '님, 오늘 하루 수고했어요',
       subline: '이제 푹 쉬세요. 내일도 함께할게요 ✨'
     };
-  };
+  }
 
-  const briefing = getBriefing();
+  var briefing = getBriefing();
 
-  // Filter priorities by mode
-  const filteredPriorities = mode === 'all' 
-    ? DUMMY_PRIORITIES 
-    : DUMMY_PRIORITIES.filter(p => p.sourceTag.toLowerCase() === mode);
-
-  // Work/Life ratio calculation
-  const workCount = timelineItems.filter(t => t.sourceTag === 'WORK').length;
-  const lifeCount = timelineItems.filter(t => t.sourceTag === 'LIFE').length;
-  const total = workCount + lifeCount || 1;
-  const workPercent = Math.round((workCount / total) * 100);
-  const lifePercent = 100 - workPercent;
-
-  // Mode-specific more sheet content
-  const getMoreSheetContent = () => {
+  // MoreSheet 콘텐츠
+  function getMoreContent() {
     if (currentCondition === 'tired') {
       return {
-        why: '컨디션이 좋지 않을 때는 무리하면 역효과예요. 오늘은 최소한만 하고 회복에 집중하세요.',
+        why: '컨디션이 좋지 않을 때 무리하면 오히려 역효과예요.',
         whatChanged: '컨디션이 "힘듦"으로 설정되었어요.',
-        tradeOff: '급하지 않은 일은 내일로 미뤄도 괜찮아요. 건강이 먼저예요.'
-      };
-    }
-    if (mode === 'work') {
-      return {
-        why: '프로젝트 리뷰가 내일 마감이에요. 오늘 준비하면 여유가 생겨요.',
-        whatChanged: '클라이언트에서 새로운 요청이 왔어요.',
-        tradeOff: '이메일 정리는 내일로 미뤄도 괜찮아요.'
-      };
-    }
-    if (mode === 'life') {
-      return {
-        why: '수면이 부족해서 에너지 관리가 필요해요.',
-        whatChanged: '저녁 약속이 잡혀서 휴식 시간이 줄었어요.',
-        tradeOff: '운동은 가벼게 하고 저녁 약속을 즐기세요.'
+        tradeOff: '급하지 않은 건 내일로. 건강이 먼저예요.'
       };
     }
     return {
-      why: '오후 2시 프로젝트 리뷰가 가장 중요한 일정이에요. 준비가 필요하니 오전 시간을 활용하세요.',
-      whatChanged: '어제 추가된 저녁 약속 때문에 퇴근 후 시간이 빠듯해요.',
-      tradeOff: '이메일 정리는 내일로 미뤄도 괜찮아요. 급한 건 없어 보여요.'
+      why: '오늘 하루를 효율적으로 보내기 위한 알프레도의 분석이에요.',
+      whatChanged: '캘린더와 컨디션을 종합해서 판단했어요.',
+      tradeOff: '모든 걸 다 할 필요 없어요. 중요한 것에 집중하세요.'
     };
-  };
+  }
 
-  const moreContent = getMoreSheetContent();
+  var moreContent = getMoreContent();
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-24">
       <div className="max-w-mobile mx-auto p-4 space-y-4">
-        {/* Header */}
+        
+        {/* 헤더 */}
         <div className="flex justify-between items-center">
           <div>
-            <p className="text-sm text-neutral-500">{getGreeting()}</p>
-            <h1 className="text-2xl font-bold text-neutral-900">
+            <p className="text-sm text-gray-500">{getGreeting()}</p>
+            <h1 className="text-2xl font-bold text-gray-900">
               {user?.name || 'Boss'}님
             </h1>
           </div>
@@ -276,92 +177,58 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ModeSwitch */}
+        {/* 모드 스위치 */}
         <ModeSwitch activeMode={mode} onChange={setMode} />
 
-        {/* ConditionQuick - 컨디션 퀵변경 */}
+        {/* 날씨 카드 */}
+        <WeatherCard />
+
+        {/* 컨디션 퀵변경 */}
         <ConditionQuick onConditionChange={handleConditionChange} />
 
-        {/* BriefingCard */}
-        <BriefingCard
-          type="default"
-          headline={briefing.headline}
-          subline={briefing.subline}
-          hasMore={true}
-          onMore={() => setIsMoreSheetOpen(true)}
-        />
-
-        {/* PriorityStack */}
-        <PriorityStack
-          count={3}
-          items={filteredPriorities}
-          onMore={() => console.log('더 보기')}
-        />
-
-        {/* Mode-specific components */}
-        {mode === 'all' && (
-          <>
-            <BalanceHint workPercent={workPercent} lifePercent={lifePercent} />
-            {/* New TodayTimeline - ADHD friendly visual timeline */}
-            <TodayTimeline />
-          </>
-        )}
-
-        {mode === 'work' && (
-          <>
-            <ProjectPulse 
-              projects={DUMMY_PROJECTS} 
-              onOpen={(id) => console.log('Open project:', id)} 
-            />
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-neutral-700">
-                중요한 액션
-              </h3>
-              {DUMMY_ACTIONS.map((action) => (
-                <ActionCard
-                  key={action.id}
-                  variant={action.variant}
-                  title={action.title}
-                  summary={action.summary}
-                  meta={action.meta}
-                  recommendedAction={action.recommendedAction}
-                />
-              ))}
+        {/* 알프레도 브리핑 */}
+        <div className="bg-gradient-to-r from-lavender-100 to-purple-100 rounded-2xl p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
+              <span className="text-xl">🐧</span>
             </div>
-          </>
-        )}
-
-        {mode === 'life' && (
-          <>
-            <LifeFactors items={DUMMY_LIFE_FACTORS} />
-            <RelationshipReminder 
-              items={DUMMY_RELATIONSHIPS}
-              onOpen={(id) => console.log('Open relationship:', id)}
-            />
-          </>
-        )}
-
-        {/* Legacy Timeline (for work/life modes) */}
-        {mode !== 'all' && (
-          <div className="relative">
-            {isLoadingCalendar && (
-              <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10 rounded-2xl">
-                <span className="text-sm text-neutral-500">일정 로딩 중...</span>
-              </div>
-            )}
-            <Timeline mode={mode} items={timelineItems} />
+            <div className="flex-1">
+              <h2 className="font-semibold text-gray-800">{briefing.headline}</h2>
+              <p className="text-sm text-gray-600 mt-1">{briefing.subline}</p>
+            </div>
+            <button
+              onClick={function() { setIsMoreSheetOpen(true); }}
+              className="text-xs text-lavender-600 hover:text-lavender-700"
+            >
+              더보기
+            </button>
           </div>
-        )}
+        </div>
+
+        {/* 지금 집중할거 */}
+        <FocusNow 
+          externalFocus={currentFocus} 
+          onFocusChange={handleFocusChange} 
+        />
+
+        {/* 오늘의 Top 3 */}
+        <TodayTop3 onFocusSelect={handleFocusSelect} />
+
+        {/* 기억해야할거 */}
+        <QuickMemoCard />
+
+        {/* 오늘 타임라인 */}
+        <TodayTimeline />
       </div>
 
-      {/* Floating ChatLauncher */}
+      {/* 채팅 런처 */}
       <ChatLauncher variant="floating" />
 
-      {/* MoreSheet */}
+      {/* 더보기 시트 */}
       <MoreSheet
         isOpen={isMoreSheetOpen}
-        onClose={() => setIsMoreSheetOpen(false)}
-        title={mode === 'all' ? '오늘의 판단 근거' : mode === 'work' ? '업무 판단 근거' : '라이프 판단 근거'}
+        onClose={function() { setIsMoreSheetOpen(false); }}
+        title="알프레도의 판단 근거"
         why={moreContent.why}
         whatChanged={moreContent.whatChanged}
         tradeOff={moreContent.tradeOff}
