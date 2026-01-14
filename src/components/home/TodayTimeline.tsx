@@ -81,15 +81,15 @@ export default function TodayTimeline() {
   }
 
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm">
+    <div className="bg-white rounded-xl p-4 shadow-card">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Clock size={18} className="text-lavender-400" />
-          <h3 className="font-semibold">오늘 타임라인</h3>
+          <Clock size={18} className="text-[#A996FF]" />
+          <h3 className="font-semibold text-[#1A1A1A]">오늘 타임라인</h3>
         </div>
         <button 
           onClick={function() { navigate('/calendar'); }}
-          className="flex items-center text-sm text-lavender-500 hover:text-lavender-600"
+          className="flex items-center text-sm text-[#A996FF] hover:text-[#8B7BE8] min-h-[44px]"
         >
           캘린더
           <ChevronRight size={16} />
@@ -97,16 +97,16 @@ export default function TodayTimeline() {
       </div>
 
       {isLoading ? (
-        <div className="text-center py-4 text-gray-400 text-sm">불러오는 중...</div>
+        <div className="text-center py-4 text-[#999999] text-sm">불러오는 중...</div>
       ) : events.length === 0 ? (
-        <div className="text-center py-4 text-gray-400 text-sm">
+        <div className="text-center py-4 text-[#999999] text-sm">
           오늘 일정이 없어요 ✨
         </div>
       ) : (
         <div className="space-y-1">
           {/* All-day events */}
           {allDayEvents.length > 0 && (
-            <div className="mb-3 pb-3 border-b border-gray-100">
+            <div className="mb-3 pb-3 border-b border-[#E5E5E5]">
               {allDayEvents.map(function(event) {
                 return (
                   <div 
@@ -117,8 +117,8 @@ export default function TodayTimeline() {
                       className="w-2 h-2 rounded-full"
                       style={{ backgroundColor: event.backgroundColor || '#A996FF' }}
                     />
-                    <span className="text-sm font-medium">{event.title}</span>
-                    <span className="text-xs text-gray-400">종일</span>
+                    <span className="text-sm font-medium text-[#1A1A1A]">{event.title}</span>
+                    <span className="text-xs text-[#999999]">종일</span>
                   </div>
                 );
               })}
@@ -138,15 +138,15 @@ export default function TodayTimeline() {
                   className={'flex gap-3 py-1.5 ' + (isPast ? 'opacity-40' : '')}
                 >
                   {/* Time label */}
-                  <div className={'w-14 text-xs flex-shrink-0 ' + (isCurrent ? 'text-lavender-500 font-bold' : 'text-gray-400')}>
+                  <div className={'w-14 text-xs flex-shrink-0 ' + (isCurrent ? 'text-[#A996FF] font-bold' : 'text-[#999999]')}>
                     {formatHour(hour)}
                   </div>
 
                   {/* Events or empty line */}
-                  <div className="flex-1 min-h-[24px] border-l-2 border-gray-100 pl-3 relative">
+                  <div className="flex-1 min-h-[24px] border-l-2 border-[#E5E5E5] pl-3 relative">
                     {/* Current time indicator */}
                     {isCurrent && (
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1.5 w-2 h-2 bg-lavender-400 rounded-full" />
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1.5 w-2 h-2 bg-[#A996FF] rounded-full" />
                     )}
 
                     {hourEvents.length > 0 ? (
@@ -161,8 +161,8 @@ export default function TodayTimeline() {
                                 className="w-1.5 h-4 rounded-full"
                                 style={{ backgroundColor: event.backgroundColor || '#A996FF' }}
                               />
-                              <span className="text-sm truncate">{event.title}</span>
-                              <span className="text-xs text-gray-400 flex-shrink-0">
+                              <span className="text-sm truncate text-[#1A1A1A]">{event.title}</span>
+                              <span className="text-xs text-[#999999] flex-shrink-0">
                                 {formatEventTime(event.start)}
                               </span>
                             </div>
