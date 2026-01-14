@@ -7,7 +7,7 @@ interface WelcomeProps {
   onSkip: () => void;
 }
 
-export default function Welcome({ data, onNext, onSkip }: WelcomeProps) {
+export default function Welcome({ onNext, onSkip }: WelcomeProps) {
   return (
     <div className="flex flex-col items-center justify-center h-full text-center">
       {/* 펭귄 아이콘 */}

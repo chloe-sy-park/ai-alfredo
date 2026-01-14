@@ -8,7 +8,7 @@ interface LightContextProps {
   onSkip: () => void;
 }
 
-export default function LightContext({ data, onNext }: LightContextProps) {
+export default function LightContext({ onNext }: LightContextProps) {
   const [selected, setSelected] = useState<string | null>(null);
 
   const contexts = [

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Calendar, Brain, BarChart3, Clock } from 'lucide-react';
+import { Calendar, Brain, BarChart3 } from 'lucide-react';
 
 interface CapabilityRevealProps {
   data: any;
@@ -7,7 +7,7 @@ interface CapabilityRevealProps {
   onSkip: () => void;
 }
 
-export default function CapabilityReveal({ data, onNext, onSkip }: CapabilityRevealProps) {
+export default function CapabilityReveal({ onNext }: CapabilityRevealProps) {
   const capabilities = [
     {
       icon: Calendar,

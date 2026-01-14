@@ -8,7 +8,7 @@ interface TrustMomentProps {
   onSkip: () => void;
 }
 
-export default function TrustMoment({ data, onNext }: TrustMomentProps) {
+export default function TrustMoment({ onNext }: TrustMomentProps) {
   const [progress, setProgress] = useState(0);
   const [userName, setUserName] = useState('');
 
