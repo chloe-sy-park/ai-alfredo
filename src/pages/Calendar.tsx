@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Plus, RefreshCw } from 'lucide-react';
-import { getEvents, getSelectedCalendars, CalendarEvent } from '../services/calendar';
+import { getEvents, getSelectedCalendars, getCalendarList, addEvent, CalendarEvent } from '../services/calendar';
 import { isGoogleConnected, startGoogleAuth } from '../services/auth';
+import EventModal from '../components/common/EventModal';
 
 // 로컬 날짜를 YYYY-MM-DD 형식으로 변환 (타임존 문제 해결)
 function formatDateLocal(date: Date): string {
@@ -18,6 +19,11 @@ export default function CalendarPage() {
   var [isLoading, setIsLoading] = useState(false);
   var [googleConnected, setGoogleConnected] = useState(false);
   var [selectedCount, setSelectedCount] = useState(0);
+  
+  // Modal state
+  var [modalOpen, setModalOpen] = useState(false);
+  var [modalMode, setModalMode] = useState<'view' | 'edit' | 'create'>('view');
+  var [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
   var year = currentDate.getFullYear();
   var month = currentDate.getMonth();
@@ -31,13 +37,15 @@ export default function CalendarPage() {
     if (connected) {
       setIsLoading(true);
       
-      // 월의 시작과 끝 (로컬 타임존 기준)
-      var startOfMonth = new Date(year, month, 1, 0, 0, 0);
-      var endOfMonth = new Date(year, month + 1, 0, 23, 59, 59);
-      
-      getEvents(startOfMonth, endOfMonth)
+      // 캘린더 목록 먼저 캐싱
+      getCalendarList().then(function() {
+        // 월의 시작과 끝 (로컬 타임존 기준)
+        var startOfMonth = new Date(year, month, 1, 0, 0, 0);
+        var endOfMonth = new Date(year, month + 1, 0, 23, 59, 59);
+        
+        return getEvents(startOfMonth, endOfMonth);
+      })
         .then(function(data) {
-          console.log('[Calendar] Received events:', data);
           setMonthEvents(data);
         })
         .catch(function(err) {
@@ -70,7 +78,6 @@ export default function CalendarPage() {
   function getEventsForDate(date: Date): CalendarEvent[] {
     var dateStr = formatDateLocal(date);
     return monthEvents.filter(function(event) {
-      // 종일 이벤트는 date 형식 (2026-01-14), 시간 이벤트는 dateTime 형식
       var eventDateStr = event.start.split('T')[0];
       return eventDateStr === dateStr;
     });
@@ -111,6 +118,35 @@ export default function CalendarPage() {
   // Select date
   function handleSelectDate(day: number) {
     setSelectedDate(new Date(year, month, day));
+  }
+
+  // Event click
+  function handleEventClick(event: CalendarEvent) {
+    setSelectedEvent(event);
+    setModalMode('view');
+    setModalOpen(true);
+  }
+
+  // Add event
+  function handleAddEvent() {
+    setSelectedEvent(null);
+    setModalMode('create');
+    setModalOpen(true);
+  }
+
+  // Save event
+  function handleSaveEvent(eventData: Omit<CalendarEvent, 'id'>) {
+    addEvent(eventData).then(function(newEvent) {
+      if (newEvent) {
+        fetchMonthEvents();
+      }
+    });
+  }
+
+  // Delete event (TODO: implement API)
+  function handleDeleteEvent(eventId: string) {
+    console.log('Delete event:', eventId);
+    // TODO: Call delete API
   }
 
   // Month name
@@ -242,7 +278,10 @@ export default function CalendarPage() {
                   <RefreshCw size={18} className={'text-gray-400 ' + (isLoading ? 'animate-spin' : '')} />
                 </button>
               )}
-              <button className="p-1 hover:bg-gray-100 rounded-full">
+              <button 
+                onClick={handleAddEvent}
+                className="p-1 hover:bg-gray-100 rounded-full"
+              >
                 <Plus size={20} className="text-lavender-400" />
               </button>
             </div>
@@ -275,19 +314,45 @@ export default function CalendarPage() {
                   ? '종일' 
                   : new Date(event.start).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
                 return (
-                  <div key={event.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50">
-                    <div className="w-1 h-8 bg-lavender-400 rounded-full" />
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">{event.title}</p>
-                      <p className="text-xs text-gray-400">{time}</p>
+                  <button
+                    key={event.id}
+                    onClick={function() { handleEventClick(event); }}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 text-left transition-colors"
+                  >
+                    <div 
+                      className="w-1 h-10 rounded-full"
+                      style={{ backgroundColor: event.backgroundColor || '#A996FF' }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{event.title}</p>
+                      <div className="flex items-center gap-2 text-xs text-gray-400">
+                        <span>{time}</span>
+                        {event.calendarName && (
+                          <>
+                            <span>·</span>
+                            <span className="truncate">{event.calendarName}</span>
+                          </>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
           )}
         </div>
       </div>
+
+      {/* Event Modal */}
+      <EventModal
+        isOpen={modalOpen}
+        onClose={function() { setModalOpen(false); }}
+        event={selectedEvent}
+        selectedDate={selectedDate}
+        mode={modalMode}
+        onSave={handleSaveEvent}
+        onDelete={handleDeleteEvent}
+      />
     </div>
   );
 }
