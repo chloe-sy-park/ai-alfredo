@@ -5,6 +5,7 @@ import {
   Phone,
   Sparkles
 } from 'lucide-react';
+import { PageHeader } from '../components/layout';
 import { ConditionLevel, conditionConfig, getTodayCondition, setTodayCondition } from '../services/condition';
 import { 
   getHabits, 
@@ -132,15 +133,15 @@ export default function Life() {
   var habitIcons = ['✨', '💪', '📚', '🎯', '🧘', '🏃', '💧', '😴'];
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] pb-24">
-      <div className="max-w-lg mx-auto p-4 space-y-4">
+    <div className="min-h-screen bg-[#F5F5F5]">
+      <PageHeader />
+      
+      <div className="max-w-lg mx-auto px-4 py-2 space-y-4">
         
-        {/* 헤더 */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Heart size={24} className="text-[#EC4899]" />
-            <h1 className="text-xl font-bold text-[#1A1A1A]">라이프</h1>
-          </div>
+        {/* 페이지 타이틀 */}
+        <div className="flex items-center gap-2">
+          <Heart size={20} className="text-[#EC4899]" />
+          <h1 className="text-lg font-bold text-[#1A1A1A]">라이프</h1>
         </div>
 
         {/* 컨디션 상세 */}
