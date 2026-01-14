@@ -1,13 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Play, Pause, Check, X, Target } from 'lucide-react';
+import { Play, Check, X, Target } from 'lucide-react';
 import { 
   FocusItem, 
   getCurrentFocus, 
   setManualFocus, 
-  completeFocus, 
   clearFocus,
-  pauseFocus,
-  resumeFocus
 } from '../../services/focusNow';
 import Button from '../common/Button';
 import RingProgress from '../common/RingProgress';
@@ -35,13 +32,18 @@ export default function FocusNow({ externalFocus, onFocusChange }: FocusNowProps
 
   // 타이머
   useEffect(function() {
-    if (!focus || focus.status === 'paused') {
+    if (!focus) {
       return;
     }
 
+    // 초기 경과 시간 계산
+    var start = new Date(focus.startedAt).getTime();
+    var initialElapsed = Math.floor((Date.now() - start) / 1000);
+    setElapsedTime(initialElapsed);
+
     var interval = setInterval(function() {
       var now = Date.now();
-      var elapsed = Math.floor((now - focus.startedAt) / 1000);
+      var elapsed = Math.floor((now - start) / 1000);
       setElapsedTime(elapsed);
     }, 1000);
 
@@ -62,7 +64,7 @@ export default function FocusNow({ externalFocus, onFocusChange }: FocusNowProps
   }
 
   function handleComplete() {
-    completeFocus();
+    clearFocus();
     setFocus(null);
     setElapsedTime(0);
     
@@ -78,18 +80,6 @@ export default function FocusNow({ externalFocus, onFocusChange }: FocusNowProps
     
     if (onFocusChange) {
       onFocusChange(null);
-    }
-  }
-
-  function handlePauseResume() {
-    if (!focus) return;
-    
-    if (focus.status === 'paused') {
-      var resumed = resumeFocus();
-      setFocus(resumed);
-    } else {
-      var paused = pauseFocus();
-      setFocus(paused);
     }
   }
 
@@ -137,21 +127,12 @@ export default function FocusNow({ externalFocus, onFocusChange }: FocusNowProps
               {focus.title}
             </h3>
             <p className="text-xs text-neutral-500 mt-0.5">
-              {focus.status === 'paused' ? '일시정지됨' : '집중 중...'}
+              집중 중...
             </p>
           </div>
           
           {/* 액션 버튼들 */}
           <div className="flex items-center gap-2">
-            <Button
-              variant="icon"
-              size="sm"
-              onClick={handlePauseResume}
-              aria-label={focus.status === 'paused' ? '재개' : '일시정지'}
-            >
-              {focus.status === 'paused' ? <Play size={16} /> : <Pause size={16} />}
-            </Button>
-            
             <Button
               variant="icon"
               size="sm"
