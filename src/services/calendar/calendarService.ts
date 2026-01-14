@@ -14,6 +14,7 @@ export interface CalendarInfo {
   backgroundColor?: string;
   foregroundColor?: string;
   primary: boolean;
+  canEdit?: boolean;
 }
 
 export interface CalendarEvent {
@@ -85,6 +86,12 @@ function cacheCalendars(calendars: CalendarInfo[]): void {
 export function getCalendarById(calendarId: string): CalendarInfo | undefined {
   var calendars = getCachedCalendars();
   return calendars.find(function(cal) { return cal.id === calendarId; });
+}
+
+// Get editable calendars (owner or writer)
+export function getEditableCalendars(): CalendarInfo[] {
+  var calendars = getCachedCalendars();
+  return calendars.filter(function(cal) { return cal.canEdit; });
 }
 
 // Transform Google Calendar event to our format (with calendar info)
@@ -244,7 +251,7 @@ export async function getEvents(startDate: Date, endDate: Date): Promise<Calenda
 }
 
 // Add a new event
-export async function addEvent(event: Omit<CalendarEvent, 'id'>): Promise<CalendarEvent | null> {
+export async function addEvent(event: Omit<CalendarEvent, 'id'>, calendarId?: string): Promise<CalendarEvent | null> {
   var token = getGoogleToken();
   if (!token) return null;
 
@@ -259,6 +266,7 @@ export async function addEvent(event: Omit<CalendarEvent, 'id'>): Promise<Calend
       },
       body: JSON.stringify({
         action: 'add',
+        calendarId: calendarId || 'primary',
         event: {
           title: event.title,
           date: event.start.split('T')[0],
@@ -274,9 +282,77 @@ export async function addEvent(event: Omit<CalendarEvent, 'id'>): Promise<Calend
     if (!response.ok) throw new Error('Failed to add event');
 
     var data = await response.json();
-    return transformEvent(data.event, cachedCalendars);
+    return transformEvent({ ...data.event, calendarId: calendarId || 'primary' }, cachedCalendars);
   } catch (error) {
     console.error('[Calendar] Failed to add event:', error);
     return null;
+  }
+}
+
+// Update an event
+export async function updateEvent(eventId: string, event: Omit<CalendarEvent, 'id'>, calendarId?: string): Promise<CalendarEvent | null> {
+  var token = getGoogleToken();
+  if (!token) return null;
+
+  var cachedCalendars = getCachedCalendars();
+
+  try {
+    var response = await fetch(CALENDAR_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({
+        action: 'update',
+        eventId: eventId,
+        calendarId: calendarId || 'primary',
+        event: {
+          title: event.title,
+          date: event.start.split('T')[0],
+          time: event.start.includes('T') ? event.start.split('T')[1].substring(0, 5) : undefined,
+          endTime: event.end.includes('T') ? event.end.split('T')[1].substring(0, 5) : undefined,
+          allDay: event.allDay,
+          description: event.description,
+          location: event.location
+        }
+      })
+    });
+
+    if (!response.ok) throw new Error('Failed to update event');
+
+    var data = await response.json();
+    return transformEvent({ ...data.event, calendarId: calendarId || 'primary' }, cachedCalendars);
+  } catch (error) {
+    console.error('[Calendar] Failed to update event:', error);
+    return null;
+  }
+}
+
+// Delete an event
+export async function deleteEvent(eventId: string, calendarId?: string): Promise<boolean> {
+  var token = getGoogleToken();
+  if (!token) return false;
+
+  try {
+    var response = await fetch(CALENDAR_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({
+        action: 'delete',
+        eventId: eventId,
+        calendarId: calendarId || 'primary'
+      })
+    });
+
+    if (!response.ok) throw new Error('Failed to delete event');
+
+    return true;
+  } catch (error) {
+    console.error('[Calendar] Failed to delete event:', error);
+    return false;
   }
 }
