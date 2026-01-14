@@ -184,8 +184,6 @@ export async function getWeather(): Promise<WeatherData> {
 
 // 날씨 기반 브리핑 메시지
 export function getWeatherBriefing(weather: WeatherData): string {
-  var tempAdvice = getTempAdvice(weather.temp);
   var conditionMsg = weatherInfo[weather.condition].message;
-  
   return weather.icon + ' ' + weather.temp + '°, ' + conditionMsg;
 }
