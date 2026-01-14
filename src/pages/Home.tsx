@@ -14,6 +14,7 @@ import {
   LifeFactors,
   RelationshipReminder
 } from '../components/home';
+import TodayTimeline from '../components/home/TodayTimeline';
 
 type Mode = 'all' | 'work' | 'life';
 
@@ -263,7 +264,11 @@ export default function Home() {
 
         {/* Mode-specific components */}
         {mode === 'all' && (
-          <BalanceHint workPercent={workPercent} lifePercent={lifePercent} />
+          <>
+            <BalanceHint workPercent={workPercent} lifePercent={lifePercent} />
+            {/* New TodayTimeline - ADHD friendly visual timeline */}
+            <TodayTimeline />
+          </>
         )}
 
         {mode === 'work' && (
@@ -300,15 +305,17 @@ export default function Home() {
           </>
         )}
 
-        {/* Timeline */}
-        <div className="relative">
-          {isLoadingCalendar && (
-            <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10 rounded-2xl">
-              <span className="text-sm text-neutral-500">일정 로딩 중...</span>
-            </div>
-          )}
-          <Timeline mode={mode} items={timelineItems} />
-        </div>
+        {/* Legacy Timeline (for work/life modes) */}
+        {mode !== 'all' && (
+          <div className="relative">
+            {isLoadingCalendar && (
+              <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10 rounded-2xl">
+                <span className="text-sm text-neutral-500">일정 로딩 중...</span>
+              </div>
+            )}
+            <Timeline mode={mode} items={timelineItems} />
+          </div>
+        )}
       </div>
 
       {/* Floating ChatLauncher */}
