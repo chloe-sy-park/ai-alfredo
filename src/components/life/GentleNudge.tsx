@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Feather, Coffee, Footprints, Flower2, ChevronRight } from 'lucide-react';
 
 interface Nudge {

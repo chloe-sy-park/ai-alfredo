@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Battery, Moon, Heart, Activity } from 'lucide-react';
 
 interface StatusData {

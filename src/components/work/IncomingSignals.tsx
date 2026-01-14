@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Bell, Mail, MessageSquare, AtSign, AlertCircle } from 'lucide-react';
 
 interface Signal {

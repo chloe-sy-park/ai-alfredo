@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getTodayEvents, CalendarEvent } from '../../services/calendar';
-import { Play, Calendar, Clock } from 'lucide-react';
+import { Play } from 'lucide-react';
 
 interface TimelineItem {
   id: string;

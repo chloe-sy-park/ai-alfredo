@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Task } from '../../services/tasks';
 import { setFocusFromTop3 } from '../../services/focusNow';
-import { Play, Clock, Calendar, ChevronRight } from 'lucide-react';
+import { Play, Clock, Calendar } from 'lucide-react';
 import { formatMinutes, getDDayLabel } from '../../services/tasks';
 
 interface FocusTaskProps {
@@ -24,6 +24,7 @@ export default function FocusTask({ task, onLater }: FocusTaskProps) {
   }
 
   function handleStart() {
+    if (!task) return;
     setIsStarting(true);
     setFocusFromTop3(task.id, task.title);
     setTimeout(function() {

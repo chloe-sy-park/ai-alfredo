@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { TrendingUp, Calendar, BarChart3 } from 'lucide-react';
+import { TrendingUp, BarChart3 } from 'lucide-react';
 
 interface TrendData {
   label: string;
