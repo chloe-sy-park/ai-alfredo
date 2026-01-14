@@ -26,7 +26,6 @@ export default function Home() {
   var [mode, setMode] = useState<Mode>('all');
   var [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
   var [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
-  var [isGoogleConnected, setIsGoogleConnected] = useState(false);
   var [currentCondition, setCurrentCondition] = useState<ConditionLevel | null>(null);
   var [currentFocus, setCurrentFocus] = useState<FocusItem | null>(null);
   var [weather, setWeather] = useState<WeatherData | null>(null);
@@ -36,7 +35,6 @@ export default function Home() {
   useEffect(function() {
     // Google 캘린더
     var connected = isGoogleAuthenticated();
-    setIsGoogleConnected(connected);
     
     if (connected) {
       getTodayEvents()
