@@ -195,24 +195,24 @@ export default function Home() {
   var moreContent = getMoreContent();
 
   return (
-    <div className="min-h-screen bg-background pb-[96px]">
-      {/* 메인 컨텐츠 - 24px 패딩, 16px 카드 간격 */}
-      <div className="max-w-mobile mx-auto px-[24px] py-[24px] space-y-[16px]">
+    <div className="min-h-screen bg-[#F5F5F5] pb-24">
+      {/* 메인 컨텐츠 - px-6 (24px), py-6 (24px), space-y-4 (16px) */}
+      <div className="max-w-[640px] mx-auto px-6 py-6 space-y-4">
         
         {/* 헤더 */}
         <header className="flex justify-between items-center animate-fade-in">
           <div>
-            <p className="text-sm text-neutral-500">{getGreeting()}</p>
-            <h1 className="text-2xl font-bold text-neutral-800">
+            <p className="text-sm text-[#999999]">{getGreeting()}</p>
+            <h1 className="text-2xl font-bold text-[#1A1A1A]">
               {user?.name || 'Boss'}님
             </h1>
           </div>
-          <div className="flex items-center gap-[16px]">
+          <div className="flex items-center gap-4">
             {isGoogleConnected && (
-              <span className="text-xs text-success">● 캘린더 연동</span>
+              <span className="text-xs text-[#4ADE80]">● 캘린더 연동</span>
             )}
             {/* 아바타 - 48x48 */}
-            <div className="w-[48px] h-[48px] bg-white rounded-full shadow-card flex items-center justify-center">
+            <div className="w-12 h-12 bg-white rounded-full shadow-card flex items-center justify-center">
               <span className="text-2xl">🐧</span>
             </div>
           </div>
