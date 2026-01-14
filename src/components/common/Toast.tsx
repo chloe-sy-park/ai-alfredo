@@ -15,10 +15,10 @@ var ToastContext = createContext<ToastContextType | null>(null);
 export function ToastProvider({ children }: { children: ReactNode }) {
   var [toasts, setToasts] = useState<Toast[]>([]);
 
-  function showToast(message: string, type: Toast['type']) {
-    if (type === undefined) type = 'info';
+  function showToast(message: string, type?: Toast['type']) {
+    var toastType = type || 'info';
     var id = Date.now();
-    setToasts(function(prev) { return prev.concat([{ id: id, message: message, type: type }]); });
+    setToasts(function(prev) { return prev.concat([{ id: id, message: message, type: toastType }]); });
     setTimeout(function() {
       setToasts(function(prev) { return prev.filter(function(t) { return t.id !== id; }); });
     }, 3000);
