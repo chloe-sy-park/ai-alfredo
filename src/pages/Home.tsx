@@ -7,7 +7,8 @@ import { FocusItem, setFocusFromTop3, getCurrentFocus } from '../services/focusN
 import { getWeather, WeatherData } from '../services/weather';
 
 // Components
-import { ModeSwitch, ChatLauncher, MoreSheet } from '../components/home';
+import { PageHeader } from '../components/layout';
+import { ModeSwitch, MoreSheet } from '../components/home';
 import BriefingCard from '../components/home/BriefingCard';
 import TodayTimeline from '../components/home/TodayTimeline';
 import ConditionQuick from '../components/home/ConditionQuick';
@@ -195,28 +196,20 @@ export default function Home() {
   var moreContent = getMoreContent();
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] pb-24">
-      {/* 메인 컨텐츠 - px-6 (24px), py-6 (24px), space-y-4 (16px) */}
-      <div className="max-w-[640px] mx-auto px-6 py-6 space-y-4">
+    <div className="min-h-screen bg-[#F5F5F5]">
+      {/* 헤더 */}
+      <PageHeader />
+
+      {/* 메인 컨텐츠 */}
+      <div className="max-w-[640px] mx-auto px-6 py-4 space-y-4">
         
-        {/* 헤더 */}
-        <header className="flex justify-between items-center animate-fade-in">
-          <div>
-            <p className="text-sm text-[#999999]">{getGreeting()}</p>
-            <h1 className="text-2xl font-bold text-[#1A1A1A]">
-              {user?.name || 'Boss'}님
-            </h1>
-          </div>
-          <div className="flex items-center gap-4">
-            {isGoogleConnected && (
-              <span className="text-xs text-[#4ADE80]">● 캘린더 연동</span>
-            )}
-            {/* 아바타 - 48x48 */}
-            <div className="w-12 h-12 bg-white rounded-full shadow-card flex items-center justify-center">
-              <span className="text-2xl">🐧</span>
-            </div>
-          </div>
-        </header>
+        {/* 인사 */}
+        <div className="animate-fade-in">
+          <p className="text-sm text-[#999999]">{getGreeting()}</p>
+          <h1 className="text-xl font-bold text-[#1A1A1A]">
+            {user?.name || 'Boss'}님
+          </h1>
+        </div>
 
         {/* 모드 스위치 */}
         <ModeSwitch activeMode={mode} onChange={setMode} />
@@ -250,9 +243,6 @@ export default function Home() {
         {/* 오늘 타임라인 */}
         <TodayTimeline />
       </div>
-
-      {/* 채팅 런처 */}
-      <ChatLauncher variant="floating" />
 
       {/* 더보기 시트 */}
       <MoreSheet
