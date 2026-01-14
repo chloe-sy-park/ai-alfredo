@@ -8,7 +8,7 @@ interface BoundaryPreviewProps {
   onSkip: () => void;
 }
 
-export default function BoundaryPreview({ data, onNext }: BoundaryPreviewProps) {
+export default function BoundaryPreview({ onNext }: BoundaryPreviewProps) {
   const [selected, setSelected] = useState<string>('balanced');
 
   const boundaries = [

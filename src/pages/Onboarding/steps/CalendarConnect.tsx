@@ -8,7 +8,7 @@ interface CalendarConnectProps {
   onSkip: () => void;
 }
 
-export default function CalendarConnect({ data, onNext }: CalendarConnectProps) {
+export default function CalendarConnect({ onNext }: CalendarConnectProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
 
