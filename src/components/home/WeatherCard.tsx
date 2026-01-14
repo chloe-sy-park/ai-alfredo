@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { WeatherData, getWeather, getTempAdvice, weatherInfo } from '../../services/weather';
+import { WeatherData, getWeather, getTempAdvice } from '../../services/weather';
 
 export default function WeatherCard() {
   var [weather, setWeather] = useState<WeatherData | null>(null);
@@ -45,7 +45,6 @@ export default function WeatherCard() {
     return null;
   }
 
-  var info = weatherInfo[weather.condition];
   var tempAdvice = getTempAdvice(weather.temp);
 
   return (
