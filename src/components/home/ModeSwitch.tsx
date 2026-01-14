@@ -13,17 +13,17 @@ export default function ModeSwitch({ activeMode, onChange }: ModeSwitchProps) {
   ];
 
   return (
-    <div className="flex bg-white rounded-full p-[4px] shadow-card">
+    <div className="flex bg-white rounded-full p-1 shadow-card">
       {modes.map(function(mode) {
         return (
           <button
             key={mode.key}
             onClick={function() { onChange(mode.key); }}
             className={
-              'flex-1 py-[12px] px-[16px] text-sm font-medium rounded-full transition-all duration-200 min-h-[44px] ' +
+              'flex-1 py-3 px-4 text-sm font-semibold rounded-full transition-all duration-200 min-h-[44px] ' +
               (activeMode === mode.key
-                ? 'bg-primary text-white shadow-sm'
-                : 'text-neutral-500 hover:text-neutral-700')
+                ? 'bg-[#A996FF] text-white shadow-sm'
+                : 'text-[#999999] hover:text-[#666666]')
             }
           >
             {mode.label}
