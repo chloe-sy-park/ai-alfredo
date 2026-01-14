@@ -3,6 +3,14 @@ import { ChevronLeft, ChevronRight, Plus, RefreshCw } from 'lucide-react';
 import { getEvents, getSelectedCalendars, CalendarEvent } from '../services/calendar';
 import { isGoogleConnected, startGoogleAuth } from '../services/auth';
 
+// 로컬 날짜를 YYYY-MM-DD 형식으로 변환 (타임존 문제 해결)
+function formatDateLocal(date: Date): string {
+  var year = date.getFullYear();
+  var month = String(date.getMonth() + 1).padStart(2, '0');
+  var day = String(date.getDate()).padStart(2, '0');
+  return year + '-' + month + '-' + day;
+}
+
 export default function CalendarPage() {
   var [currentDate, setCurrentDate] = useState(new Date());
   var [selectedDate, setSelectedDate] = useState(new Date());
@@ -23,12 +31,13 @@ export default function CalendarPage() {
     if (connected) {
       setIsLoading(true);
       
-      // 월의 시작과 끝
-      var startOfMonth = new Date(year, month, 1);
+      // 월의 시작과 끝 (로컬 타임존 기준)
+      var startOfMonth = new Date(year, month, 1, 0, 0, 0);
       var endOfMonth = new Date(year, month + 1, 0, 23, 59, 59);
       
       getEvents(startOfMonth, endOfMonth)
         .then(function(data) {
+          console.log('[Calendar] Received events:', data);
           setMonthEvents(data);
         })
         .catch(function(err) {
@@ -57,12 +66,13 @@ export default function CalendarPage() {
     };
   }, [fetchMonthEvents]);
 
-  // Get events for a specific date
+  // Get events for a specific date (로컬 날짜 기준)
   function getEventsForDate(date: Date): CalendarEvent[] {
-    var dateStr = date.toISOString().split('T')[0];
+    var dateStr = formatDateLocal(date);
     return monthEvents.filter(function(event) {
-      var eventDate = event.start.split('T')[0];
-      return eventDate === dateStr;
+      // 종일 이벤트는 date 형식 (2026-01-14), 시간 이벤트는 dateTime 형식
+      var eventDateStr = event.start.split('T')[0];
+      return eventDateStr === dateStr;
     });
   }
 
