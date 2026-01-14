@@ -15,6 +15,8 @@ import {
   RelationshipReminder
 } from '../components/home';
 import TodayTimeline from '../components/home/TodayTimeline';
+import ConditionQuick from '../components/home/ConditionQuick';
+import { ConditionLevel, getTodayCondition, getConditionAdvice } from '../services/condition';
 
 type Mode = 'all' | 'work' | 'life';
 
@@ -82,7 +84,6 @@ const transformToTimelineItem = (event: CalendarEvent) => {
     hour12: false 
   });
   
-  // Simple heuristic for importance
   const title = event.title.toLowerCase();
   let importance: 'low' | 'mid' | 'high' = 'mid';
   if (title.includes('중요') || title.includes('마감') || title.includes('리뷰')) {
@@ -91,7 +92,6 @@ const transformToTimelineItem = (event: CalendarEvent) => {
     importance = 'low';
   }
 
-  // Simple heuristic for work/life
   let sourceTag: 'WORK' | 'LIFE' = 'WORK';
   if (title.includes('점심') || title.includes('저녁') || title.includes('운동') || 
       title.includes('약속') || title.includes('개인')) {
@@ -114,6 +114,7 @@ export default function Home() {
   const [isLoadingCalendar, setIsLoadingCalendar] = useState(false);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [isGoogleConnected, setIsGoogleConnected] = useState(false);
+  const [currentCondition, setCurrentCondition] = useState<ConditionLevel | null>(null);
 
   // Check Google connection and fetch events
   useEffect(() => {
@@ -135,7 +136,18 @@ export default function Home() {
     };
 
     fetchCalendarData();
+    
+    // Load condition
+    const todayCondition = getTodayCondition();
+    if (todayCondition) {
+      setCurrentCondition(todayCondition.level);
+    }
   }, []);
+
+  // Handle condition change
+  function handleConditionChange(level: ConditionLevel) {
+    setCurrentCondition(level);
+  }
 
   // Use real calendar data if available, otherwise fallback to dummy
   const timelineItems = calendarEvents.length > 0 
@@ -152,8 +164,16 @@ export default function Home() {
     return '오늘 하루 수고했어요';
   };
 
-  // Mode-specific briefing
+  // Mode & Condition-specific briefing
   const getBriefing = () => {
+    // 컨디션 기반 브리핑 (우선순위 높음)
+    if (currentCondition === 'tired') {
+      return {
+        headline: '오늘은 무리하지 않는 게 가장 생산적인 선택이에요',
+        subline: '꼭 필요한 것만 하고 푹 쉬세요'
+      };
+    }
+    
     if (mode === 'work') {
       return {
         headline: '오늘은 실행보다 결정이 중요한 날이에요',
@@ -162,11 +182,17 @@ export default function Home() {
     }
     if (mode === 'life') {
       return {
-        headline: '오늘은 무리하지 않는 게 가장 생산적인 선택이에요',
-        subline: '수면이 부족하니 가벼운 활동으로'
+        headline: '오늘은 나를 돌보는 시간이에요',
+        subline: '작은 것부터 천천히'
       };
     }
     // ALL mode
+    if (currentCondition === 'great') {
+      return {
+        headline: '컨디션 좋을 때 중요한 일 먼저!',
+        subline: `오늘 일정 ${timelineItems.length}개, 에너지 있을 때 해치우세요 💪`
+      };
+    }
     if (hours < 12) {
       return {
         headline: '오전에 집중하고, 오후는 미팅에 맡기세요',
@@ -175,13 +201,13 @@ export default function Home() {
     }
     if (hours < 18) {
       return {
-        headline: '지금 가장 중요한 건 프로젝트 리뷰예요',
-        subline: '2시간 후 미팅이 시작돼요'
+        headline: '지금 가장 중요한 건 집중이에요',
+        subline: '한 번에 하나씩, 천천히'
       };
     }
     return {
-      headline: `${user?.name || 'Boss'}, 오늘 하루 수고했어요`,
-      subline: '이제 푸 쉬세요. 내일도 함께할게요 ✨'
+      headline: `${user?.name || 'Boss'}님, 오늘 하루 수고했어요`,
+      subline: '이제 푹 쉬세요. 내일도 함께할게요 ✨'
     };
   };
 
@@ -201,6 +227,13 @@ export default function Home() {
 
   // Mode-specific more sheet content
   const getMoreSheetContent = () => {
+    if (currentCondition === 'tired') {
+      return {
+        why: '컨디션이 좋지 않을 때는 무리하면 역효과예요. 오늘은 최소한만 하고 회복에 집중하세요.',
+        whatChanged: '컨디션이 "힘듦"으로 설정되었어요.',
+        tradeOff: '급하지 않은 일은 내일로 미뤄도 괜찮아요. 건강이 먼저예요.'
+      };
+    }
     if (mode === 'work') {
       return {
         why: '프로젝트 리뷰가 내일 마감이에요. 오늘 준비하면 여유가 생겨요.',
@@ -245,6 +278,9 @@ export default function Home() {
 
         {/* ModeSwitch */}
         <ModeSwitch activeMode={mode} onChange={setMode} />
+
+        {/* ConditionQuick - 컨디션 퀵변경 */}
+        <ConditionQuick onConditionChange={handleConditionChange} />
 
         {/* BriefingCard */}
         <BriefingCard
