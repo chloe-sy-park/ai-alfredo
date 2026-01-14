@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { getTodayEvents, isGoogleAuthenticated, CalendarEvent } from '../services/calendar';
 import { ConditionLevel, getTodayCondition } from '../services/condition';
-import { Top3Item } from '../services/top3';
+import { Top3Item, getTop3Items } from '../services/top3';
 import { FocusItem, setFocusFromTop3, getCurrentFocus } from '../services/focusNow';
 import { getWeather, WeatherData } from '../services/weather';
 
 // Components
 import { PageHeader } from '../components/layout';
-import { ModeSwitch, MoreSheet } from '../components/home';
+import { ModeCards, MoreSheet } from '../components/home';
 import BriefingCard from '../components/home/BriefingCard';
 import TodayTimeline from '../components/home/TodayTimeline';
 import ConditionQuick from '../components/home/ConditionQuick';
@@ -18,18 +18,17 @@ import WeatherCard from '../components/home/WeatherCard';
 import QuickMemoCard from '../components/home/QuickMemoCard';
 import { calculateIntensity } from '../components/common/IntensityBadge';
 
-type Mode = 'all' | 'work' | 'life';
 type IntensityLevel = 'light' | 'normal' | 'heavy' | 'overloaded';
 
 export default function Home() {
   var user = useAuthStore().user;
-  var [mode, setMode] = useState<Mode>('all');
   var [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
   var [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   var [currentCondition, setCurrentCondition] = useState<ConditionLevel | null>(null);
   var [currentFocus, setCurrentFocus] = useState<FocusItem | null>(null);
   var [weather, setWeather] = useState<WeatherData | null>(null);
   var [intensity, setIntensity] = useState<IntensityLevel>('normal');
+  var [top3Items, setTop3Items] = useState<Top3Item[]>([]);
 
   // 데이터 로드
   useEffect(function() {
@@ -61,6 +60,10 @@ export default function Home() {
     getWeather().then(function(data) {
       setWeather(data);
     });
+
+    // Top3 아이템
+    var items = getTop3Items();
+    setTop3Items(items);
   }, []);
 
   // 컨디션 변경 시 강도 재계산
@@ -193,6 +196,18 @@ export default function Home() {
 
   var moreContent = getMoreContent();
 
+  // Mode Cards 데이터 계산
+  var workCount = top3Items.filter(function(item) { 
+    return item.type === 'work'; 
+  }).length;
+  
+  var conditionStatus = currentCondition ? {
+    'great': '아주 좋음',
+    'good': '좋음',
+    'normal': '보통',
+    'bad': '좋지 않음'
+  }[currentCondition] : '미설정';
+
   return (
     <div className="min-h-screen bg-[#F5F5F5]">
       {/* 헤더 */}
@@ -209,8 +224,13 @@ export default function Home() {
           </h1>
         </div>
 
-        {/* 모드 스위치 */}
-        <ModeSwitch activeMode={mode} onChange={setMode} />
+        {/* 모드 카드 - Work/Life 가로 2개 */}
+        <ModeCards 
+          workCount={workCount}
+          lifeCount={0}
+          workStatus={calendarEvents.length + '개 일정'}
+          lifeStatus={'컨디션 ' + conditionStatus}
+        />
 
         {/* 날씨 카드 */}
         <WeatherCard />
