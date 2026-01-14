@@ -62,14 +62,14 @@ export default function QuickMemoCard() {
   var displayMemos = showCompleted ? memos : activeMemos;
 
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm">
+    <div className="bg-white rounded-xl p-4 shadow-card">
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Lightbulb size={18} className="text-amber-400" />
-          <h2 className="font-semibold text-base">기억해야 할 것</h2>
+          <Lightbulb size={18} className="text-[#FFD700]" />
+          <h2 className="font-semibold text-base text-[#1A1A1A]">기억해야 할 것</h2>
           {activeMemos.length > 0 && (
-            <span className="text-xs bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded-full">
+            <span className="text-[10px] font-bold bg-[#FFD700]/20 text-[#1A1A1A] px-2 py-0.5 rounded-full">
               {activeMemos.length}
             </span>
           )}
@@ -77,7 +77,7 @@ export default function QuickMemoCard() {
         {completedMemos.length > 0 && (
           <button
             onClick={function() { setShowCompleted(!showCompleted); }}
-            className="text-xs text-gray-400 hover:text-gray-600"
+            className="text-xs text-[#999999] hover:text-[#666666]"
           >
             {showCompleted ? '미완료만' : '완료 포함 (' + completedMemos.length + ')'}
           </button>
@@ -91,12 +91,12 @@ export default function QuickMemoCard() {
             <div
               key={memo.id}
               className={
-                'flex items-start gap-2 p-2.5 rounded-xl transition-all ' +
+                'flex items-start gap-2 p-3 rounded-xl transition-all ' +
                 (memo.completed 
-                  ? 'bg-gray-50' 
+                  ? 'bg-[#F5F5F5]' 
                   : memo.pinned 
-                    ? 'bg-amber-50 border border-amber-100' 
-                    : 'bg-gray-50')
+                    ? 'bg-[#FFFBEB] border border-[#FFD700]/30' 
+                    : 'bg-[#F5F5F5]')
               }
             >
               {/* 체크박스 */}
@@ -105,8 +105,8 @@ export default function QuickMemoCard() {
                 className={
                   'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ' +
                   (memo.completed 
-                    ? 'bg-green-500 border-green-500 text-white' 
-                    : 'border-gray-300 hover:border-amber-400')
+                    ? 'bg-[#4ADE80] border-[#4ADE80] text-white' 
+                    : 'border-[#E5E5E5] hover:border-[#FFD700]')
                 }
               >
                 {memo.completed && <Check size={12} />}
@@ -115,7 +115,7 @@ export default function QuickMemoCard() {
               {/* 내용 */}
               <p className={
                 'flex-1 text-sm leading-relaxed ' + 
-                (memo.completed ? 'text-gray-400 line-through' : 'text-gray-700')
+                (memo.completed ? 'text-[#999999] line-through' : 'text-[#1A1A1A]')
               }>
                 {memo.content}
               </p>
@@ -126,10 +126,10 @@ export default function QuickMemoCard() {
                   <button
                     onClick={function() { handleTogglePin(memo.id); }}
                     className={
-                      'p-1 rounded transition-colors ' +
+                      'p-1.5 rounded-lg transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center ' +
                       (memo.pinned 
-                        ? 'text-amber-500 hover:text-amber-600' 
-                        : 'text-gray-300 hover:text-amber-400')
+                        ? 'text-[#FFD700] hover:bg-[#FFD700]/10' 
+                        : 'text-[#999999] hover:text-[#FFD700] hover:bg-[#F5F5F5]')
                     }
                   >
                     <Pin size={14} className={memo.pinned ? 'fill-current' : ''} />
@@ -137,7 +137,7 @@ export default function QuickMemoCard() {
                 )}
                 <button
                   onClick={function() { handleDelete(memo.id); }}
-                  className="p-1 text-gray-300 hover:text-red-400"
+                  className="p-1.5 text-[#999999] hover:text-[#EF4444] hover:bg-[#F5F5F5] rounded-lg min-w-[32px] min-h-[32px] flex items-center justify-center"
                 >
                   <X size={14} />
                 </button>
@@ -148,26 +148,26 @@ export default function QuickMemoCard() {
 
         {/* 추가 입력 */}
         {isAdding ? (
-          <div className="flex items-center gap-2 p-2.5 rounded-xl border border-amber-200 bg-amber-50">
+          <div className="flex items-center gap-2 p-3 rounded-xl border border-[#FFD700]/50 bg-[#FFFBEB]">
             <input
               type="text"
               value={newContent}
               onChange={function(e) { setNewContent(e.target.value); }}
               onKeyDown={handleKeyDown}
               placeholder="기억할 것을 입력하세요"
-              className="flex-1 bg-transparent outline-none text-sm"
+              className="flex-1 bg-transparent outline-none text-sm text-[#1A1A1A] placeholder:text-[#999999]"
               autoFocus
             />
             <button
               onClick={handleAdd}
               disabled={!newContent.trim()}
-              className="text-xs px-2 py-1 bg-amber-400 text-white rounded-lg hover:bg-amber-500 disabled:opacity-50"
+              className="text-xs px-3 py-1.5 bg-[#FFD700] text-[#1A1A1A] font-medium rounded-lg hover:brightness-110 disabled:opacity-50 min-h-[32px]"
             >
               추가
             </button>
             <button
               onClick={function() { setIsAdding(false); setNewContent(''); }}
-              className="p-1 text-gray-400 hover:text-gray-600"
+              className="p-1.5 text-[#999999] hover:text-[#666666] min-w-[32px] min-h-[32px] flex items-center justify-center"
             >
               <X size={14} />
             </button>
@@ -175,7 +175,7 @@ export default function QuickMemoCard() {
         ) : (
           <button
             onClick={function() { setIsAdding(true); }}
-            className="w-full flex items-center justify-center gap-2 py-2.5 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-3 text-[#999999] hover:text-[#FFD700] hover:bg-[#FFFBEB] rounded-xl transition-colors border border-dashed border-[#E5E5E5] hover:border-[#FFD700] min-h-[44px]"
           >
             <Plus size={16} />
             <span className="text-sm">메모 추가</span>
@@ -186,8 +186,8 @@ export default function QuickMemoCard() {
       {/* 빈 상태 */}
       {displayMemos.length === 0 && !isAdding && (
         <div className="text-center py-4">
-          <p className="text-sm text-gray-400">기억해야 할 것을 적어두세요</p>
-          <p className="text-xs text-gray-300 mt-1">중요한 건 📌 고정해서 항상 위에!</p>
+          <p className="text-sm text-[#999999]">기억해야 할 것을 적어두세요</p>
+          <p className="text-xs text-[#CCCCCC] mt-1">중요한 건 📌 고정해서 항상 위에!</p>
         </div>
       )}
     </div>
