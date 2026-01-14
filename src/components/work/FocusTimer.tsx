@@ -13,7 +13,6 @@ import {
   getTodayStats,
   getFocusSettings
 } from '../../services/focus';
-import { formatRemainingTime } from '../../services/tasks';
 
 interface FocusTimerProps {
   currentTask?: { id: string; title: string } | null;
@@ -34,13 +33,20 @@ export function FocusTimer({ currentTask }: FocusTimerProps) {
     var interval: number;
     if (currentSession && !currentSession.isPaused && !currentSession.completedAt) {
       interval = window.setInterval(function() {
-        var remaining = getRemainingTime(currentSession);
+        var latestSession = getCurrentSession();
+        if (!latestSession) {
+          clearInterval(interval);
+          setSession(null);
+          return;
+        }
+        
+        var remaining = getRemainingTime(latestSession);
         setRemainingTime(remaining);
-        setProgress(getProgress(currentSession));
+        setProgress(getProgress(latestSession));
         
         // 시간 종료 체크
         if (remaining <= 0) {
-          completeSession(currentSession.id);
+          completeSession(latestSession.id);
           setSession(null);
           setTodayStats(getTodayStats());
           
