@@ -7,7 +7,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        // ===== AlFredo Design System v2 =====
+        // ===== AlFredo Design System v2 (Light Mode) =====
         
         // Primary - 메인 강조 (라벤더)
         primary: '#A996FF',
@@ -22,8 +22,8 @@ export default {
         // Secondary - 보조 강조
         secondary: '#C8BFD9',
         
-        // Background & Surface (디자인 시스템 v1 기준)
-        background: '#F0EBFF', // 기본 배경
+        // Background & Surface (라이트모드 기준)
+        background: '#F5F5F5',
         surface: {
           DEFAULT: '#FFFFFF',
           elevated: '#F0F0FF', // 알프레도 메시지 배경
@@ -39,8 +39,8 @@ export default {
         },
         
         // Status Colors
-        success: '#10B981',
-        warning: '#F59E0B',
+        success: '#4ADE80',
+        warning: '#FBBF24',
         error: '#EF4444',
         info: '#60A5FA',
         
@@ -56,6 +56,16 @@ export default {
           border: '#FBCFE8',
         },
         
+        // Text Colors
+        text: {
+          primary: '#1A1A1A',
+          secondary: '#666666',
+          muted: '#999999',
+        },
+        
+        // Border
+        border: '#E5E5E5',
+        
         // Neutral Scale
         neutral: {
           50: '#FAFAFA',
@@ -70,10 +80,7 @@ export default {
           900: '#171717',
         },
         
-        // Border
-        border: '#E5E5E5',
-        
-        // Lavender Scale (Legacy + Extended)
+        // Lavender Scale
         lavender: {
           50: '#F5F3FF',
           100: '#EDE9FE',
@@ -88,7 +95,7 @@ export default {
         },
       },
       
-      // Typography Scale (디자인 시스템 v1)
+      // Typography Scale
       fontSize: {
         'xs': ['10px', { lineHeight: '14px' }],
         'sm': ['12px', { lineHeight: '16px' }],
@@ -111,46 +118,37 @@ export default {
         ],
       },
       
-      // Spacing Scale (8px base - 디자인 시스템 v1)
-      // 허용값: 4 / 8 / 16 / 24 / 32 / 48
+      // Spacing Scale (8px base)
       spacing: {
         '0': '0px',
-        '0.5': '4px',   // 4px
-        '1': '8px',     // 8px
-        '2': '16px',    // 16px
-        '3': '24px',    // 24px
-        '4': '32px',    // 32px
-        '6': '48px',    // 48px
-        // 추가 유틸리티
-        '12': '12px',   // 예외적 사용
-        '20': '20px',   // 예외적 사용
+        '1': '4px',
+        '2': '8px',
+        '3': '12px',
+        '4': '16px',
+        '5': '20px',
+        '6': '24px',
+        '8': '32px',
+        '10': '40px',
+        '12': '48px',
       },
       
-      // Gap/Margin/Padding 확장
-      gap: {
-        '0.5': '4px',
-        '1': '8px',
-        '2': '16px',
-        '3': '24px',
-        '4': '32px',
-        '6': '48px',
-      },
-      
-      // Border Radius (디자인 시스템 v1)
+      // Border Radius
       borderRadius: {
         'none': '0px',
         'sm': '4px',
         'DEFAULT': '8px',
         'md': '8px',
-        'lg': '16px',     // Card default
-        'xl': '20px',     // Card emphasized
-        '2xl': '24px',
+        'lg': '12px',
+        'xl': '16px',     // Card default
+        '2xl': '20px',
+        '3xl': '24px',
         'full': '9999px', // Pill buttons
       },
       
       // Shadows
       boxShadow: {
         'none': 'none',
+        'sm': '0 1px 2px rgba(0, 0, 0, 0.05)',
         'card': '0 2px 8px rgba(0, 0, 0, 0.04)',
         'card-hover': '0 4px 12px rgba(0, 0, 0, 0.08)',
         'card-focus': '0 0 0 3px rgba(169, 150, 255, 0.3)',
@@ -159,7 +157,7 @@ export default {
         'button': '0 2px 4px rgba(0, 0, 0, 0.1)',
       },
       
-      // Motion (200ms 이내 - 디자인 시스템 v1)
+      // Motion (200ms 이내)
       transitionDuration: {
         'instant': '100ms',
         'fast': '150ms',
@@ -215,7 +213,7 @@ export default {
         },
       },
       
-      // Touch target (44px minimum - 디자인 시스템 v1)
+      // Touch target (44px minimum)
       minHeight: {
         'touch': '44px',
         'button': '48px',
@@ -228,22 +226,6 @@ export default {
       // Max width
       maxWidth: {
         'mobile': '640px',
-      },
-      
-      // Width/Height for icons
-      width: {
-        'icon-sm': '16px',
-        'icon': '20px',
-        'icon-lg': '24px',
-        'avatar': '40px',
-        'avatar-lg': '48px',
-      },
-      height: {
-        'icon-sm': '16px',
-        'icon': '20px',
-        'icon-lg': '24px',
-        'avatar': '40px',
-        'avatar-lg': '48px',
       },
     },
   },
