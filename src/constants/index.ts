@@ -5,7 +5,3 @@ export * from './quickActions';
 
 // Design
 export * from './colors';
-
-// Config
-export * from './timeConfig';
-export * from './gamification';
