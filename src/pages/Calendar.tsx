@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Plus, RefreshCw, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, RefreshCw, Calendar as CalendarIcon, Search, Grid3X3, List } from 'lucide-react';
 import { getEvents, getSelectedCalendars, getCalendarList, addEvent, updateEvent, deleteEvent, CalendarEvent } from '../services/calendar';
 import { isGoogleConnected, startGoogleAuth } from '../services/auth';
 import EventModal from '../components/common/EventModal';
+import WeekView from '../components/calendar/WeekView';
+import EventSearch from '../components/calendar/EventSearch';
 
 // 로컬 날짜를 YYYY-MM-DD 형식으로 변환 (타임존 문제 해결)
 function formatDateLocal(date: Date): string {
@@ -12,6 +14,8 @@ function formatDateLocal(date: Date): string {
   return year + '-' + month + '-' + day;
 }
 
+type ViewMode = 'month' | 'week';
+
 export default function CalendarPage() {
   var [currentDate, setCurrentDate] = useState(new Date());
   var [selectedDate, setSelectedDate] = useState(new Date());
@@ -19,6 +23,10 @@ export default function CalendarPage() {
   var [isLoading, setIsLoading] = useState(false);
   var [googleConnected, setGoogleConnected] = useState(false);
   var [selectedCount, setSelectedCount] = useState(0);
+  
+  // View mode
+  var [viewMode, setViewMode] = useState<ViewMode>('month');
+  var [showSearch, setShowSearch] = useState(false);
   
   // Modal state
   var [modalOpen, setModalOpen] = useState(false);
@@ -95,11 +103,17 @@ export default function CalendarPage() {
     
     if (Math.abs(diff) > threshold) {
       if (diff > 0) {
-        // Swipe left -> next month
-        nextMonth();
+        if (viewMode === 'month') {
+          nextMonth();
+        } else {
+          nextWeek();
+        }
       } else {
-        // Swipe right -> prev month
-        prevMonth();
+        if (viewMode === 'month') {
+          prevMonth();
+        } else {
+          prevWeek();
+        }
       }
     }
   }
@@ -128,7 +142,7 @@ export default function CalendarPage() {
       }
     });
     
-    return colors.slice(0, 3); // 최대 3개 색상만 표시
+    return colors.slice(0, 3);
   }
 
   // Get next upcoming event for today
@@ -182,6 +196,27 @@ export default function CalendarPage() {
     setCurrentDate(new Date(year, month + 1, 1));
   }
 
+  // Navigate weeks
+  function prevWeek() {
+    var newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() - 7);
+    setSelectedDate(newDate);
+    // Update current month if needed
+    if (newDate.getMonth() !== month) {
+      setCurrentDate(new Date(newDate.getFullYear(), newDate.getMonth(), 1));
+    }
+  }
+
+  function nextWeek() {
+    var newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() + 7);
+    setSelectedDate(newDate);
+    // Update current month if needed
+    if (newDate.getMonth() !== month) {
+      setCurrentDate(new Date(newDate.getFullYear(), newDate.getMonth(), 1));
+    }
+  }
+
   function goToToday() {
     var now = new Date();
     setCurrentDate(new Date(now.getFullYear(), now.getMonth(), 1));
@@ -189,8 +224,15 @@ export default function CalendarPage() {
   }
 
   // Select date
-  function handleSelectDate(day: number) {
-    setSelectedDate(new Date(year, month, day));
+  function handleSelectDate(day: number | Date) {
+    if (typeof day === 'number') {
+      setSelectedDate(new Date(year, month, day));
+    } else {
+      setSelectedDate(day);
+      if (day.getMonth() !== month) {
+        setCurrentDate(new Date(day.getFullYear(), day.getMonth(), 1));
+      }
+    }
   }
 
   // Event click
@@ -198,6 +240,7 @@ export default function CalendarPage() {
     setSelectedEvent(event);
     setModalMode('view');
     setModalOpen(true);
+    setShowSearch(false);
   }
 
   // Add event
@@ -305,17 +348,36 @@ export default function CalendarPage() {
     return hours + '시간 ' + mins + '분 후';
   }
 
+  // Get header title based on view mode
+  function getHeaderTitle(): string {
+    if (viewMode === 'week') {
+      var weekStart = new Date(selectedDate);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      var weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      
+      if (weekStart.getMonth() === weekEnd.getMonth()) {
+        return year + '년 ' + monthNames[weekStart.getMonth()];
+      }
+      return (weekStart.getMonth() + 1) + '월 - ' + (weekEnd.getMonth() + 1) + '월';
+    }
+    return year + '년 ' + monthNames[month];
+  }
+
   return (
     <div className="min-h-screen bg-background pb-20">
       <div className="max-w-mobile mx-auto p-4 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <button onClick={prevMonth} className="p-2 hover:bg-gray-100 rounded-full">
+          <button 
+            onClick={viewMode === 'month' ? prevMonth : prevWeek} 
+            className="p-2 hover:bg-gray-100 rounded-full"
+          >
             <ChevronLeft size={24} />
           </button>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold">
-              {year}년 {monthNames[month]}
+              {getHeaderTitle()}
             </h1>
             {!isCurrentMonth && (
               <button 
@@ -326,8 +388,38 @@ export default function CalendarPage() {
               </button>
             )}
           </div>
-          <button onClick={nextMonth} className="p-2 hover:bg-gray-100 rounded-full">
+          <button 
+            onClick={viewMode === 'month' ? nextMonth : nextWeek} 
+            className="p-2 hover:bg-gray-100 rounded-full"
+          >
             <ChevronRight size={24} />
+          </button>
+        </div>
+
+        {/* View mode toggle & Search */}
+        <div className="flex items-center justify-between">
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={function() { setViewMode('month'); }}
+              className={'px-3 py-1.5 rounded-md text-sm font-medium transition-colors ' + 
+                (viewMode === 'month' ? 'bg-white shadow-sm text-lavender-600' : 'text-gray-500')}
+            >
+              <Grid3X3 size={16} />
+            </button>
+            <button
+              onClick={function() { setViewMode('week'); }}
+              className={'px-3 py-1.5 rounded-md text-sm font-medium transition-colors ' + 
+                (viewMode === 'week' ? 'bg-white shadow-sm text-lavender-600' : 'text-gray-500')}
+            >
+              <List size={16} />
+            </button>
+          </div>
+          
+          <button
+            onClick={function() { setShowSearch(true); }}
+            className="p-2 hover:bg-gray-100 rounded-full"
+          >
+            <Search size={20} className="text-gray-500" />
           </button>
         </div>
 
@@ -348,158 +440,188 @@ export default function CalendarPage() {
           </div>
         )}
 
-        {/* Calendar Grid */}
-        <div 
-          ref={calendarRef}
-          className="bg-white rounded-2xl p-4 shadow-sm"
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
-          {/* Day headers */}
-          <div className="grid grid-cols-7 mb-2">
-            {dayNames.map(function(name, idx) {
-              var color = idx === 0 ? 'text-red-400' : idx === 6 ? 'text-blue-400' : 'text-gray-500';
-              return (
-                <div key={name} className={'text-center text-sm font-medium ' + color}>
-                  {name}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Calendar days */}
-          <div className="grid grid-cols-7 gap-1">
-            {calendarDays.map(function(item) {
-              if (item.isOtherMonth) {
-                return (
-                  <div key={item.key} className="h-12 flex flex-col items-center justify-center">
-                    <span className="text-sm text-gray-300">{item.day}</span>
-                  </div>
-                );
-              }
-              
-              var bgClass = '';
-              if (item.isSelected) {
-                bgClass = 'bg-lavender-400 text-white font-bold';
-              } else if (item.isToday) {
-                bgClass = 'bg-lavender-100 text-lavender-600 font-bold';
-              } else {
-                bgClass = 'hover:bg-lavender-50';
-              }
-              
-              var colors = item.colors || [];
-              
-              return (
-                <button
-                  key={item.key}
-                  onClick={function() { handleSelectDate(item.day as number); }}
-                  className={'h-12 rounded-xl flex flex-col items-center justify-center text-sm transition-colors ' + bgClass}
-                >
-                  <span>{item.day}</span>
-                  {colors.length > 0 && (
-                    <div className="flex gap-0.5 mt-0.5">
-                      {colors.map(function(color, idx) {
-                        return (
-                          <span 
-                            key={idx}
-                            className="w-1.5 h-1.5 rounded-full"
-                            style={{ 
-                              backgroundColor: item.isSelected ? 'white' : color 
-                            }}
-                          />
-                        );
-                      })}
+        {/* Calendar View */}
+        {viewMode === 'month' ? (
+          <>
+            {/* Month Grid */}
+            <div 
+              ref={calendarRef}
+              className="bg-white rounded-2xl p-4 shadow-sm"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              {/* Day headers */}
+              <div className="grid grid-cols-7 mb-2">
+                {dayNames.map(function(name, idx) {
+                  var color = idx === 0 ? 'text-red-400' : idx === 6 ? 'text-blue-400' : 'text-gray-500';
+                  return (
+                    <div key={name} className={'text-center text-sm font-medium ' + color}>
+                      {name}
                     </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+                  );
+                })}
+              </div>
 
-        {/* Selected Date Events */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h2 className="font-semibold">{formatSelectedDate()}</h2>
-              {googleConnected && selectedCount > 0 && (
-                <p className="text-xs text-gray-400">{selectedCount}개 캘린더</p>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              {googleConnected && (
-                <button 
-                  onClick={handleRefresh}
-                  disabled={isLoading}
-                  className="p-1 hover:bg-gray-100 rounded-full disabled:opacity-50"
-                >
-                  <RefreshCw size={18} className={'text-gray-400 ' + (isLoading ? 'animate-spin' : '')} />
-                </button>
-              )}
-              <button 
-                onClick={handleAddEvent}
-                className="p-1 hover:bg-gray-100 rounded-full"
-              >
-                <Plus size={20} className="text-lavender-400" />
-              </button>
-            </div>
-          </div>
-
-          {!googleConnected ? (
-            <div className="text-center py-6">
-              <p className="text-sm text-gray-500 mb-3">
-                Google 캘린더를 연결하면 일정을 볼 수 있어요
-              </p>
-              <button
-                onClick={handleConnectGoogle}
-                className="px-4 py-2 bg-lavender-400 text-white rounded-xl text-sm hover:bg-lavender-500 transition-colors"
-              >
-                Google 캘린더 연결
-              </button>
-            </div>
-          ) : isLoading ? (
-            <div className="text-center py-6 text-gray-400">
-              일정 불러오는 중...
-            </div>
-          ) : selectedDateEvents.length === 0 ? (
-            <div className="text-center py-6 text-gray-400">
-              일정이 없어요 🎉
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {selectedDateEvents.map(function(event) {
-                var time = event.allDay 
-                  ? '종일' 
-                  : new Date(event.start).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
-                return (
-                  <button
-                    key={event.id}
-                    onClick={function() { handleEventClick(event); }}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 text-left transition-colors"
-                  >
-                    <div 
-                      className="w-1 h-10 rounded-full"
-                      style={{ backgroundColor: event.backgroundColor || '#A996FF' }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{event.title}</p>
-                      <div className="flex items-center gap-2 text-xs text-gray-400">
-                        <span>{time}</span>
-                        {event.calendarName && (
-                          <>
-                            <span>·</span>
-                            <span className="truncate">{event.calendarName}</span>
-                          </>
-                        )}
+              {/* Calendar days */}
+              <div className="grid grid-cols-7 gap-1">
+                {calendarDays.map(function(item) {
+                  if (item.isOtherMonth) {
+                    return (
+                      <div key={item.key} className="h-12 flex flex-col items-center justify-center">
+                        <span className="text-sm text-gray-300">{item.day}</span>
                       </div>
-                    </div>
-                  </button>
-                );
-              })}
+                    );
+                  }
+                  
+                  var bgClass = '';
+                  if (item.isSelected) {
+                    bgClass = 'bg-lavender-400 text-white font-bold';
+                  } else if (item.isToday) {
+                    bgClass = 'bg-lavender-100 text-lavender-600 font-bold';
+                  } else {
+                    bgClass = 'hover:bg-lavender-50';
+                  }
+                  
+                  var colors = item.colors || [];
+                  
+                  return (
+                    <button
+                      key={item.key}
+                      onClick={function() { handleSelectDate(item.day as number); }}
+                      className={'h-12 rounded-xl flex flex-col items-center justify-center text-sm transition-colors ' + bgClass}
+                    >
+                      <span>{item.day}</span>
+                      {colors.length > 0 && (
+                        <div className="flex gap-0.5 mt-0.5">
+                          {colors.map(function(color, idx) {
+                            return (
+                              <span 
+                                key={idx}
+                                className="w-1.5 h-1.5 rounded-full"
+                                style={{ 
+                                  backgroundColor: item.isSelected ? 'white' : color 
+                                }}
+                              />
+                            );
+                          })}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          )}
-        </div>
+
+            {/* Selected Date Events */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h2 className="font-semibold">{formatSelectedDate()}</h2>
+                  {googleConnected && selectedCount > 0 && (
+                    <p className="text-xs text-gray-400">{selectedCount}개 캘린더</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {googleConnected && (
+                    <button 
+                      onClick={handleRefresh}
+                      disabled={isLoading}
+                      className="p-1 hover:bg-gray-100 rounded-full disabled:opacity-50"
+                    >
+                      <RefreshCw size={18} className={'text-gray-400 ' + (isLoading ? 'animate-spin' : '')} />
+                    </button>
+                  )}
+                  <button 
+                    onClick={handleAddEvent}
+                    className="p-1 hover:bg-gray-100 rounded-full"
+                  >
+                    <Plus size={20} className="text-lavender-400" />
+                  </button>
+                </div>
+              </div>
+
+              {!googleConnected ? (
+                <div className="text-center py-6">
+                  <p className="text-sm text-gray-500 mb-3">
+                    Google 캘린더를 연결하면 일정을 볼 수 있어요
+                  </p>
+                  <button
+                    onClick={handleConnectGoogle}
+                    className="px-4 py-2 bg-lavender-400 text-white rounded-xl text-sm hover:bg-lavender-500 transition-colors"
+                  >
+                    Google 캘린더 연결
+                  </button>
+                </div>
+              ) : isLoading ? (
+                <div className="text-center py-6 text-gray-400">
+                  일정 불러오는 중...
+                </div>
+              ) : selectedDateEvents.length === 0 ? (
+                <div className="text-center py-6 text-gray-400">
+                  일정이 없어요 🎉
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {selectedDateEvents.map(function(event) {
+                    var time = event.allDay 
+                      ? '종일' 
+                      : new Date(event.start).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+                    return (
+                      <button
+                        key={event.id}
+                        onClick={function() { handleEventClick(event); }}
+                        className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 text-left transition-colors"
+                      >
+                        <div 
+                          className="w-1 h-10 rounded-full"
+                          style={{ backgroundColor: event.backgroundColor || '#A996FF' }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{event.title}</p>
+                          <div className="flex items-center gap-2 text-xs text-gray-400">
+                            <span>{time}</span>
+                            {event.calendarName && (
+                              <>
+                                <span>·</span>
+                                <span className="truncate">{event.calendarName}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          /* Week View */
+          <div
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            <WeekView
+              selectedDate={selectedDate}
+              events={monthEvents}
+              onSelectDate={handleSelectDate}
+              onEventClick={handleEventClick}
+            />
+            
+            {/* Add button for week view */}
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={handleAddEvent}
+                className="flex items-center gap-2 px-4 py-2 bg-lavender-400 text-white rounded-xl text-sm hover:bg-lavender-500 transition-colors"
+              >
+                <Plus size={18} />
+                일정 추가
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Event Modal */}
@@ -513,6 +635,15 @@ export default function CalendarPage() {
         onUpdate={handleUpdateEvent}
         onDelete={handleDeleteEvent}
       />
+
+      {/* Search */}
+      {showSearch && (
+        <EventSearch
+          events={monthEvents}
+          onEventClick={handleEventClick}
+          onClose={function() { setShowSearch(false); }}
+        />
+      )}
     </div>
   );
 }
