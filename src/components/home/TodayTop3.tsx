@@ -12,6 +12,7 @@ import {
 import Card from '../common/Card';
 import Button from '../common/Button';
 import RingProgress from '../common/RingProgress';
+import { SuccessCheckmark, CelebrationParticles } from '../common/SuccessFeedback';
 
 interface TodayTop3Props {
   onFocusSelect?: (item: Top3Item) => void;
@@ -22,10 +23,27 @@ export default function TodayTop3({ onFocusSelect }: TodayTop3Props) {
   var [isAdding, setIsAdding] = useState(false);
   var [newTitle, setNewTitle] = useState('');
   var [dragIndex, setDragIndex] = useState<number | null>(null);
+  var [showSuccess, setShowSuccess] = useState(false);
+  var [justCompletedAll, setJustCompletedAll] = useState(false);
+  var [previousProgress, setPreviousProgress] = useState(0);
 
   useEffect(function() {
     loadItems();
   }, []);
+
+  // 진도 추적 및 100% 달성 감지
+  useEffect(function() {
+    var progress = getTop3Progress();
+    
+    // 방금 100% 달성했을 때
+    if (previousProgress < 100 && progress.percent === 100 && progress.total > 0) {
+      setJustCompletedAll(true);
+      var timer = setTimeout(function() { setJustCompletedAll(false); }, 3000);
+      return function() { clearTimeout(timer); };
+    }
+    
+    setPreviousProgress(progress.percent);
+  }, [items, previousProgress]);
 
   function loadItems() {
     var data = getTodayTop3();
@@ -48,8 +66,16 @@ export default function TodayTop3({ onFocusSelect }: TodayTop3Props) {
   }
 
   function handleToggle(id: string) {
+    var item = items.find(function(i) { return i.id === id; });
+    var wasIncomplete = item && !item.completed;
+    
     toggleTop3Complete(id);
     loadItems();
+    
+    // 완료 하는 경우 성공 피드백
+    if (wasIncomplete) {
+      setShowSuccess(true);
+    }
   }
 
   function handleDelete(id: string) {
@@ -106,147 +132,163 @@ export default function TodayTop3({ onFocusSelect }: TodayTop3Props) {
   ];
 
   return (
-    <Card className="animate-fade-in">
-      {/* 헤더 */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <h2 className="font-semibold text-base text-[#1A1A1A]">오늘의 Top 3</h2>
-          {progress.total > 0 && (
-            <RingProgress
-              percent={progress.percent}
-              size="sm"
-              color={progress.percent === 100 ? 'success' : 'primary'}
-              centerContent={
-                <span className="text-[10px] font-bold text-[#666666]">
-                  {progress.completed}/{progress.total}
-                </span>
-              }
-            />
+    <>
+      <Card className="animate-slide-up">
+        {/* 헤더 */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <h2 className="font-semibold text-base text-[#1A1A1A]">오늘의 Top 3</h2>
+            {progress.total > 0 && (
+              <RingProgress
+                percent={progress.percent}
+                size="sm"
+                color={progress.percent === 100 ? 'success' : 'primary'}
+                centerContent={
+                  <span className="text-[10px] font-bold text-[#666666]">
+                    {progress.completed}/{progress.total}
+                  </span>
+                }
+              />
+            )}
+          </div>
+          {progress.percent === 100 && items.length > 0 && (
+            <span className="text-xs px-2 py-1 bg-[#4ADE80]/20 text-[#4ADE80] rounded-full font-medium animate-scale-in">
+              완료! 🎉
+            </span>
           )}
         </div>
-        {progress.percent === 100 && items.length > 0 && (
-          <span className="text-xs px-2 py-1 bg-[#4ADE80]/20 text-[#4ADE80] rounded-full font-medium">
-            완료! 🎉
-          </span>
-        )}
-      </div>
 
-      {/* 아이템 리스트 */}
-      <div className="space-y-2">
-        {items.map(function(item, idx) {
-          var style = priorityStyles[idx];
-          
-          return (
-            <div
-              key={item.id}
-              draggable
-              onDragStart={function() { handleDragStart(idx); }}
-              onDragOver={function(e) { handleDragOver(e, idx); }}
-              onDragEnd={handleDragEnd}
-              className={[
-                'flex items-center gap-2 p-3 rounded-xl bg-white transition-all cursor-move',
-                style.border,
-                item.completed ? 'opacity-60' : 'hover:shadow-card-hover',
-                dragIndex === idx ? 'shadow-card-hover scale-[1.02]' : '',
-              ].join(' ')}
-            >
-              {/* 드래그 핸들 */}
-              <GripVertical size={16} className="text-[#D4D4D4] flex-shrink-0" />
-              
-              {/* 우선순위 뱃지 */}
-              <span className={'text-[10px] font-semibold px-3 py-1 rounded-full flex-shrink-0 ' + style.badge}>
-                {style.label}
-              </span>
-              
-              {/* 체크박스 */}
-              <button
-                onClick={function() { handleToggle(item.id); }}
+        {/* 아이템 리스트 */}
+        <div className="space-y-2">
+          {items.map(function(item, idx) {
+            var style = priorityStyles[idx];
+            
+            return (
+              <div
+                key={item.id}
+                draggable
+                onDragStart={function() { handleDragStart(idx); }}
+                onDragOver={function(e) { handleDragOver(e, idx); }}
+                onDragEnd={handleDragEnd}
                 className={[
-                  'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all',
-                  item.completed 
-                    ? 'bg-[#4ADE80] border-[#4ADE80] text-white' 
-                    : idx === 0 
-                      ? 'border-[#FFD700] hover:bg-[#FFD700]/10'
-                      : 'border-[#D4D4D4] hover:border-[#A996FF]',
+                  'flex items-center gap-2 p-3 rounded-xl bg-white transition-all cursor-move',
+                  style.border,
+                  item.completed ? 'opacity-60' : 'hover:shadow-card-hover',
+                  dragIndex === idx ? 'shadow-card-hover scale-[1.02]' : '',
                 ].join(' ')}
+                style={{ animationDelay: (idx * 50) + 'ms' }}
               >
-                {item.completed && <Check size={12} />}
-              </button>
-              
-              {/* 제목 */}
-              <span 
-                className={[
-                  'flex-1 text-sm',
-                  item.completed ? 'text-[#999999] line-through' : 'text-[#1A1A1A]',
-                ].join(' ')}
-              >
-                {item.title}
-              </span>
-              
-              {/* 집중 버튼 (1순위만 골드) */}
-              {!item.completed && onFocusSelect && (
-                <Button
-                  variant={idx === 0 ? 'primary' : 'ghost'}
-                  size="sm"
-                  onClick={function() { onFocusSelect(item); }}
-                  className={idx === 0 ? '' : 'text-xs text-[#999999]'}
+                {/* 드래그 핸들 */}
+                <GripVertical size={16} className="text-[#D4D4D4] flex-shrink-0" />
+                
+                {/* 우선순위 뱃지 */}
+                <span className={'text-[10px] font-semibold px-3 py-1 rounded-full flex-shrink-0 ' + style.badge}>
+                  {style.label}
+                </span>
+                
+                {/* 체크박스 */}
+                <button
+                  onClick={function() { handleToggle(item.id); }}
+                  className={[
+                    'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all',
+                    item.completed 
+                      ? 'bg-[#4ADE80] border-[#4ADE80] text-white scale-110' 
+                      : idx === 0 
+                        ? 'border-[#FFD700] hover:bg-[#FFD700]/10 active:scale-95'
+                        : 'border-[#D4D4D4] hover:border-[#A996FF] active:scale-95',
+                  ].join(' ')}
                 >
-                  집중
-                </Button>
-              )}
-              
-              {/* 삭제 버튼 */}
+                  {item.completed && <Check size={12} className="animate-scale-in" />}
+                </button>
+                
+                {/* 제목 */}
+                <span 
+                  className={[
+                    'flex-1 text-sm transition-all',
+                    item.completed ? 'text-[#999999] line-through' : 'text-[#1A1A1A]',
+                  ].join(' ')}
+                >
+                  {item.title}
+                </span>
+                
+                {/* 집중 버튼 (1순위만 골드) */}
+                {!item.completed && onFocusSelect && (
+                  <Button
+                    variant={idx === 0 ? 'primary' : 'ghost'}
+                    size="sm"
+                    onClick={function() { onFocusSelect(item); }}
+                    className={idx === 0 ? '' : 'text-xs text-[#999999]'}
+                  >
+                    집중
+                  </Button>
+                )}
+                
+                {/* 삭제 버튼 */}
+                <button
+                  onClick={function() { handleDelete(item.id); }}
+                  className="p-1 text-[#D4D4D4] hover:text-[#EF4444] flex-shrink-0 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center active:scale-95"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            );
+          })}
+
+          {/* 추가 입력 */}
+          {isAdding ? (
+            <div className="flex items-center gap-2 p-3 rounded-xl border-2 border-dashed border-[#A996FF]/50 bg-[#F0F0FF] animate-fade-in">
+              <Plus size={16} className="text-[#A996FF] flex-shrink-0" />
+              <input
+                type="text"
+                value={newTitle}
+                onChange={function(e) { setNewTitle(e.target.value); }}
+                onKeyDown={handleKeyDown}
+                placeholder="할 일을 입력하세요"
+                className="flex-1 bg-transparent outline-none text-sm text-[#1A1A1A]"
+                autoFocus
+              />
+              <Button size="sm" onClick={handleAdd} disabled={!newTitle.trim()}>
+                추가
+              </Button>
               <button
-                onClick={function() { handleDelete(item.id); }}
-                className="p-1 text-[#D4D4D4] hover:text-[#EF4444] flex-shrink-0 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                onClick={function() { setIsAdding(false); setNewTitle(''); }}
+                className="p-1 text-[#999999] hover:text-[#666666] min-w-[44px] min-h-[44px] flex items-center justify-center"
               >
                 <X size={14} />
               </button>
             </div>
-          );
-        })}
-
-        {/* 추가 입력 */}
-        {isAdding ? (
-          <div className="flex items-center gap-2 p-3 rounded-xl border-2 border-dashed border-[#A996FF]/50 bg-[#F0F0FF]">
-            <Plus size={16} className="text-[#A996FF] flex-shrink-0" />
-            <input
-              type="text"
-              value={newTitle}
-              onChange={function(e) { setNewTitle(e.target.value); }}
-              onKeyDown={handleKeyDown}
-              placeholder="할 일을 입력하세요"
-              className="flex-1 bg-transparent outline-none text-sm text-[#1A1A1A]"
-              autoFocus
-            />
-            <Button size="sm" onClick={handleAdd} disabled={!newTitle.trim()}>
-              추가
-            </Button>
+          ) : remainingSlots > 0 ? (
             <button
-              onClick={function() { setIsAdding(false); setNewTitle(''); }}
-              className="p-1 text-[#999999] hover:text-[#666666] min-w-[44px] min-h-[44px] flex items-center justify-center"
+              onClick={function() { setIsAdding(true); }}
+              className="w-full flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-[#E5E5E5] text-[#999999] hover:border-[#A996FF] hover:text-[#A996FF] transition-all duration-fast min-h-[48px] active:scale-[0.98]"
             >
-              <X size={14} />
+              <Plus size={16} />
+              <span className="text-sm">추가하기 ({remainingSlots}개 남음)</span>
             </button>
-          </div>
-        ) : remainingSlots > 0 ? (
-          <button
-            onClick={function() { setIsAdding(true); }}
-            className="w-full flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-dashed border-[#E5E5E5] text-[#999999] hover:border-[#A996FF] hover:text-[#A996FF] transition-colors min-h-[48px]"
-          >
-            <Plus size={16} />
-            <span className="text-sm">추가하기 ({remainingSlots}개 남음)</span>
-          </button>
-        ) : null}
-      </div>
-
-      {/* 빈 상태 */}
-      {items.length === 0 && !isAdding && (
-        <div className="text-center py-6">
-          <p className="text-sm text-[#666666] mb-1">오늘 꼭 해야 할 3가지를 정해보세요</p>
-          <p className="text-xs text-[#999999]">적을수록 집중하기 좋아요 🎯</p>
+          ) : null}
         </div>
-      )}
-    </Card>
+
+        {/* 빈 상태 */}
+        {items.length === 0 && !isAdding && (
+          <div className="text-center py-6 animate-fade-in">
+            <div className="w-12 h-12 bg-neutral-100 rounded-full mx-auto mb-3 flex items-center justify-center">
+              <Plus size={20} className="text-neutral-400" />
+            </div>
+            <p className="text-sm text-[#666666] mb-1">오늘 꼭 해야 할 3가지를 정해보세요</p>
+            <p className="text-xs text-[#999999]">적을수록 집중하기 좋아요 🎯</p>
+          </div>
+        )}
+      </Card>
+
+      {/* 성공 피드백 */}
+      <SuccessCheckmark 
+        show={showSuccess} 
+        onComplete={function() { setShowSuccess(false); }}
+        message="잘하셨어요!"
+      />
+      
+      {/* 100% 달성 축하 */}
+      <CelebrationParticles trigger={justCompletedAll} />
+    </>
   );
 }

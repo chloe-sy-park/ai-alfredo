@@ -17,6 +17,7 @@ import FocusNow from '../components/home/FocusNow';
 import WeatherCard from '../components/home/WeatherCard';
 import QuickMemoCard from '../components/home/QuickMemoCard';
 import { calculateIntensity } from '../components/common/IntensityBadge';
+import { SkeletonCard, SkeletonBriefing } from '../components/common/Skeleton';
 
 type IntensityLevel = 'light' | 'normal' | 'heavy' | 'overloaded';
 
@@ -29,6 +30,7 @@ export default function Home() {
   var [weather, setWeather] = useState<WeatherData | null>(null);
   var [intensity, setIntensity] = useState<IntensityLevel>('normal');
   var [top3Items, setTop3Items] = useState<Top3Item[]>([]);
+  var [isLoading, setIsLoading] = useState(true);
 
   // 데이터 로드
   useEffect(function() {
@@ -64,6 +66,9 @@ export default function Home() {
     // Top3 아이템
     var items = getTop3();
     setTop3Items(items);
+    
+    // 로딩 완료
+    setTimeout(function() { setIsLoading(false); }, 500);
   }, []);
 
   // 컨디션 변경 시 강도 재계산
@@ -176,7 +181,7 @@ export default function Home() {
     if (currentCondition === 'bad') {
       return {
         why: '컨디션이 좋지 않을 때 무리하면 오히려 역효과예요.',
-        whatChanged: '컨디션이 "힘듦"으로 설정되었어요.',
+        whatChanged: '컨디션이 "힘듬"으로 설정되었어요.',
         tradeOff: '급하지 않은 건 내일로. 건강이 먼저예요.'
       };
     }
@@ -234,18 +239,22 @@ export default function Home() {
         />
 
         {/* 날씨 카드 */}
-        <WeatherCard />
+        {isLoading ? <SkeletonCard /> : <WeatherCard />}
 
         {/* 컨디션 퀵변경 */}
         <ConditionQuick onConditionChange={handleConditionChange} />
 
         {/* 알프레도 브리핑 */}
-        <BriefingCard
-          headline={briefing.headline}
-          subline={briefing.subline}
-          intensity={intensity}
-          onMore={function() { setIsMoreSheetOpen(true); }}
-        />
+        {isLoading ? (
+          <SkeletonBriefing />
+        ) : (
+          <BriefingCard
+            headline={briefing.headline}
+            subline={briefing.subline}
+            intensity={intensity}
+            onMore={function() { setIsMoreSheetOpen(true); }}
+          />
+        )}
 
         {/* 지금 집중할거 - 가장 강조 */}
         <FocusNow 
