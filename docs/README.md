@@ -7,10 +7,11 @@
 | 항목 | 상태 |
 |------|------|
 | W1-W4 로드맵 | ✅ 100% 완료 |
+| W7 리디자인 | 🚧 진행 중 (목업 기반) |
 | 알프레도 육성 시스템 | 🚧 Phase 1 구현 완료 |
 | 프로덕션 URL | https://ai-alfredo.vercel.app |
 | GitHub | https://github.com/chloe-sy-park/ai-alfredo |
-| 최종 업데이트 | 2025-01-12 |
+| 최종 업데이트 | 2025-01-14 |
 
 ### 🐧 알프레도 육성 시스템 진행 상황
 
@@ -47,7 +48,8 @@
 |------|------|------|
 | 10 | [client-architecture.md](./10-client-architecture.md) | 클라이언트 아키텍처 |
 | 13 | [user-journey-map.md](./13-user-journey-map.md) | 사용자 여정 맵 |
-| 14 | [information-architecture.md](./14-information-architecture.md) | 정보 구조 |
+| 14 | [information-architecture.md](./14-information-architecture.md) | 정보 구조 (v1 - 하단 탭) |
+| **20** | [**onboarding-ia-design-v2.md**](./20-onboarding-ia-design-v2.md) | **🆕 온보딩 + IA 설계 v2 (목업 기반)** |
 
 ### 🐧 AI & 알프레도
 | 번호 | 문서 | 설명 |
@@ -112,8 +114,9 @@ src/
 💄 style: UI/스타일
 ♻️ refactor: 리팩토링
 🐧 alfredo: 알프레도 관련
+📐 design: 설계/IA 관련
 ```
 
 ---
 
-*마지막 업데이트: 2025-01-12*
+*마지막 업데이트: 2025-01-14*
