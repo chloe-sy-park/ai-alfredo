@@ -20,29 +20,29 @@ export default function Card({
   className = '',
   ...props
 }: CardProps) {
-  // Base styles
-  var baseStyles = 'rounded-card transition-all duration-fast';
+  // Base styles - 디자인 시스템: radius 16px
+  var baseStyles = 'rounded-[16px] transition-all duration-200';
   
   // Variant styles
   var variantStyles = {
-    default: 'bg-surface-card shadow-card',
-    elevated: 'bg-surface-elevated shadow-card',
-    priority: 'bg-surface-card shadow-card border-l-[3px]',
-    alfredo: 'bg-lavender-50 shadow-card',
+    default: 'bg-white shadow-card',
+    elevated: 'bg-[#F0F0FF] shadow-card', // 알프레도 메시지 배경
+    priority: 'bg-white shadow-card border-l-[3px]',
+    alfredo: 'bg-[#F0F0FF] shadow-card', // 알프레도 메시지 배경
   };
   
   // Priority border colors
   var priorityBorderColors = {
-    1: 'border-l-accent', // 골드
+    1: 'border-l-[#FFD700]', // 골드
     2: 'border-l-neutral-300',
     3: 'border-l-neutral-200',
   };
   
   // Hover styles
-  var hoverStyles = hoverable ? 'hover:shadow-card-hover hover:-translate-y-0.5 cursor-pointer' : '';
+  var hoverStyles = hoverable ? 'hover:shadow-card-hover cursor-pointer' : '';
   
-  // Padding
-  var paddingStyles = noPadding ? '' : 'p-4';
+  // Padding - 디자인 시스템: 16px
+  var paddingStyles = noPadding ? '' : 'p-[16px]';
   
   // Build final className
   var finalClassName = [
@@ -77,9 +77,10 @@ export function AlfredoCard({
 }: AlfredoCardProps) {
   return (
     <Card variant="alfredo" className={className} {...props}>
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-[12px]">
+        {/* 아바타 - 40x40 */}
         {showAvatar && (
-          <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm flex-shrink-0">
+          <div className="w-[40px] h-[40px] bg-white rounded-full flex items-center justify-center shadow-sm flex-shrink-0">
             <span className="text-xl">🐧</span>
           </div>
         )}
@@ -89,7 +90,7 @@ export function AlfredoCard({
         {onMore && (
           <button
             onClick={onMore}
-            className="text-xs text-lavender-600 hover:text-lavender-700 flex-shrink-0"
+            className="text-sm text-lavender-600 hover:text-lavender-700 flex-shrink-0 min-h-[44px] flex items-center"
           >
             더보기
           </button>
