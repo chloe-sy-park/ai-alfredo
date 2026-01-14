@@ -292,10 +292,10 @@ export default function Work() {
 
   function getPriorityColor(priority: string): string {
     switch (priority) {
-      case 'high': return 'text-red-500 bg-red-50';
-      case 'medium': return 'text-orange-500 bg-orange-50';
-      case 'low': return 'text-gray-500 bg-gray-50';
-      default: return 'text-gray-500 bg-gray-50';
+      case 'high': return 'text-[#EF4444] bg-[#FEF2F2]';
+      case 'medium': return 'text-[#F97316] bg-[#FFF7ED]';
+      case 'low': return 'text-[#999999] bg-[#F5F5F5]';
+      default: return 'text-[#999999] bg-[#F5F5F5]';
     }
   }
 
@@ -310,9 +310,9 @@ export default function Work() {
 
   function getStatusIcon(status: TaskStatus) {
     switch (status) {
-      case 'todo': return <Circle size={18} className="text-gray-300" />;
-      case 'in_progress': return <Loader size={18} className="text-blue-500" />;
-      case 'done': return <CheckCircle2 size={18} className="text-green-500" />;
+      case 'todo': return <Circle size={18} className="text-[#CCCCCC]" />;
+      case 'in_progress': return <Loader size={18} className="text-[#60A5FA]" />;
+      case 'done': return <CheckCircle2 size={18} className="text-[#22C55E]" />;
     }
   }
 
@@ -326,16 +326,16 @@ export default function Work() {
 
   function getDueDateColor(dueDate: string): string {
     var dday = getDDay(dueDate);
-    if (dday < 0) return 'text-red-600 bg-red-100';
-    if (dday === 0) return 'text-orange-600 bg-orange-100';
-    if (dday === 1) return 'text-yellow-600 bg-yellow-100';
-    return 'text-gray-600 bg-gray-100';
+    if (dday < 0) return 'text-[#DC2626] bg-[#FEE2E2]';
+    if (dday === 0) return 'text-[#EA580C] bg-[#FFEDD5]';
+    if (dday === 1) return 'text-[#CA8A04] bg-[#FEF9C3]';
+    return 'text-[#666666] bg-[#F5F5F5]';
   }
 
   function getProjectColor(projectId: string | undefined): string {
-    if (!projectId) return '#E5E7EB';
+    if (!projectId) return '#E5E5E5';
     var project = projects.find(function(p) { return p.id === projectId; });
-    return project?.color || '#E5E7EB';
+    return project?.color || '#E5E5E5';
   }
 
   function getAlfredoMessage(): string {
@@ -353,14 +353,14 @@ export default function Work() {
     var isTracking = trackingTaskId === task.id;
     
     return (
-      <div key={task.id} className={isSubtask ? 'ml-6 border-l-2 border-gray-200 pl-3' : ''}>
-        <div className={'flex items-start gap-2 p-3 rounded-xl transition-colors ' + 
-          (isTracking ? 'bg-blue-50 ring-2 ring-blue-300' : 'bg-gray-50 hover:bg-gray-100')}>
+      <div key={task.id} className={isSubtask ? 'ml-6 border-l-2 border-[#E5E5E5] pl-3' : ''}>
+        <div className={'flex items-start gap-2 p-3 rounded-xl transition-colors min-h-[56px] ' + 
+          (isTracking ? 'bg-[#EFF6FF] ring-2 ring-[#60A5FA]' : 'bg-[#F5F5F5] hover:bg-[#EEEEEE]')}>
           
           {/* 상태 버튼 */}
           <button
             onClick={function() { handleStatusChange(task.id, getNextStatus(task.status)); }}
-            className="mt-0.5 hover:scale-110 transition-transform"
+            className="mt-0.5 hover:scale-110 transition-transform min-w-[24px] min-h-[24px]"
           >
             {getStatusIcon(task.status)}
           </button>
@@ -377,7 +377,7 @@ export default function Work() {
               )}
               
               {/* 제목 */}
-              <span className={'font-medium ' + (task.status === 'done' ? 'line-through text-gray-400' : '')}>
+              <span className={'font-medium text-[#1A1A1A] ' + (task.status === 'done' ? 'line-through text-[#999999]' : '')}>
                 {task.title}
               </span>
               
@@ -388,12 +388,12 @@ export default function Work() {
               
               {/* 반복 아이콘 */}
               {task.recurrence && (
-                <Repeat size={12} className="text-purple-500" />
+                <Repeat size={12} className="text-[#A996FF]" />
               )}
               
               {/* 알림 아이콘 */}
               {task.reminder?.enabled && (
-                <Bell size={12} className="text-yellow-500" />
+                <Bell size={12} className="text-[#FBBF24]" />
               )}
             </div>
             
@@ -405,17 +405,17 @@ export default function Work() {
                 </span>
               )}
               {task.estimatedMinutes && (
-                <span className="text-xs text-gray-500 flex items-center gap-0.5">
+                <span className="text-xs text-[#999999] flex items-center gap-0.5">
                   <Timer size={10} />{formatMinutes(task.estimatedMinutes)}
                 </span>
               )}
               {task.actualMinutes && (
-                <span className="text-xs text-blue-500 flex items-center gap-0.5">
+                <span className="text-xs text-[#60A5FA] flex items-center gap-0.5">
                   ✓{formatMinutes(task.actualMinutes)}
                 </span>
               )}
               {isTracking && (
-                <span className="text-xs text-blue-600 font-medium animate-pulse">
+                <span className="text-xs text-[#2563EB] font-medium animate-pulse">
                   ⏱ {getTrackingTime()}
                 </span>
               )}
@@ -426,7 +426,7 @@ export default function Work() {
               <div className="flex gap-1 mt-1 flex-wrap">
                 {task.tags.map(function(tag) {
                   return (
-                    <span key={tag} className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-600 rounded">
+                    <span key={tag} className="text-xs px-1.5 py-0.5 bg-[#F0F0FF] text-[#A996FF] rounded">
                       #{tag}
                     </span>
                   );
@@ -436,7 +436,7 @@ export default function Work() {
             
             {/* 설명 */}
             {task.description && (
-              <p className="text-xs text-gray-400 mt-1 truncate">{task.description}</p>
+              <p className="text-xs text-[#999999] mt-1 truncate">{task.description}</p>
             )}
           </div>
           
@@ -446,7 +446,7 @@ export default function Work() {
             {hasSubtasks && (
               <button
                 onClick={function() { toggleTaskExpand(task.id); }}
-                className="p-1 text-gray-400 hover:text-gray-600"
+                className="p-1.5 text-[#999999] hover:text-[#666666] min-w-[32px] min-h-[32px] flex items-center justify-center"
               >
                 {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
               </button>
@@ -457,7 +457,7 @@ export default function Work() {
               isTracking ? (
                 <button
                   onClick={stopTimeTracking}
-                  className="p-1.5 text-red-500 hover:bg-red-100 rounded-full"
+                  className="p-1.5 text-[#EF4444] hover:bg-[#FEF2F2] rounded-full min-w-[32px] min-h-[32px] flex items-center justify-center"
                   title="시간 추적 중지"
                 >
                   <StopCircle size={16} />
@@ -465,7 +465,7 @@ export default function Work() {
               ) : (
                 <button
                   onClick={function() { startTimeTracking(task.id); }}
-                  className="p-1.5 text-blue-500 hover:bg-blue-100 rounded-full"
+                  className="p-1.5 text-[#60A5FA] hover:bg-[#EFF6FF] rounded-full min-w-[32px] min-h-[32px] flex items-center justify-center"
                   title="시간 추적 시작"
                 >
                   <Timer size={16} />
@@ -477,7 +477,7 @@ export default function Work() {
             {task.status !== 'done' && !isTracking && (
               <button
                 onClick={function() { handleStartFocus(task); }}
-                className="p-1.5 text-lavender-500 hover:bg-lavender-100 rounded-full"
+                className="p-1.5 text-[#A996FF] hover:bg-[#F0F0FF] rounded-full min-w-[32px] min-h-[32px] flex items-center justify-center"
                 title="집중 모드"
               >
                 <Play size={16} />
@@ -487,7 +487,7 @@ export default function Work() {
             {/* 삭제 */}
             <button
               onClick={function() { handleDeleteTask(task.id); }}
-              className="p-1.5 text-gray-400 hover:text-red-500 rounded-full"
+              className="p-1.5 text-[#999999] hover:text-[#EF4444] rounded-full min-w-[32px] min-h-[32px] flex items-center justify-center"
             >
               <Trash2 size={16} />
             </button>
@@ -509,10 +509,10 @@ export default function Work() {
   // 칸반 컨테이너
   function renderKanbanColumn(title: string, columnTasks: Task[]) {
     return (
-      <div className="flex-1 min-w-[280px] bg-gray-100 rounded-xl p-3">
+      <div className="flex-1 min-w-[280px] bg-[#F5F5F5] rounded-xl p-3">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-sm">{title}</h3>
-          <span className="text-xs text-gray-500 bg-white px-2 py-0.5 rounded-full">
+          <h3 className="font-semibold text-sm text-[#1A1A1A]">{title}</h3>
+          <span className="text-xs text-[#999999] bg-white px-2 py-0.5 rounded-full">
             {columnTasks.length}
           </span>
         </div>
@@ -521,7 +521,7 @@ export default function Work() {
             return renderTaskCard(task);
           })}
           {columnTasks.length === 0 && (
-            <div className="text-center text-gray-400 text-sm py-8">
+            <div className="text-center text-[#999999] text-sm py-8">
               태스크 없음
             </div>
           )}
@@ -531,39 +531,39 @@ export default function Work() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-[#F5F5F5] pb-24">
       <div className="max-w-4xl mx-auto p-4 space-y-4">
         
         {/* 헤더 */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Briefcase size={24} className="text-lavender-500" />
-            <h1 className="text-xl font-bold">업무</h1>
+            <Briefcase size={24} className="text-[#A996FF]" />
+            <h1 className="text-xl font-bold text-[#1A1A1A]">업무</h1>
           </div>
           <div className="flex items-center gap-2">
             {/* 뷰 모드 토글 */}
             <button
               onClick={function() { setViewMode(viewMode === 'list' ? 'kanban' : 'list'); }}
-              className="p-2 bg-white rounded-lg shadow-sm"
+              className="p-2 bg-white rounded-lg shadow-card min-w-[40px] min-h-[40px] flex items-center justify-center"
               title={viewMode === 'list' ? '칸반 뷰' : '리스트 뷰'}
             >
-              {viewMode === 'list' ? <LayoutGrid size={18} /> : <LayoutList size={18} />}
+              {viewMode === 'list' ? <LayoutGrid size={18} className="text-[#666666]" /> : <LayoutList size={18} className="text-[#666666]" />}
             </button>
             
             {/* Import/Export */}
             <button
               onClick={handleExport}
-              className="p-2 bg-white rounded-lg shadow-sm"
+              className="p-2 bg-white rounded-lg shadow-card min-w-[40px] min-h-[40px] flex items-center justify-center"
               title="CSV 내보내기"
             >
-              <Download size={18} />
+              <Download size={18} className="text-[#666666]" />
             </button>
             <button
               onClick={function() { fileInputRef.current?.click(); }}
-              className="p-2 bg-white rounded-lg shadow-sm"
+              className="p-2 bg-white rounded-lg shadow-card min-w-[40px] min-h-[40px] flex items-center justify-center"
               title="CSV 가져오기"
             >
-              <Upload size={18} />
+              <Upload size={18} className="text-[#666666]" />
             </button>
             <input
               ref={fileInputRef}
@@ -577,26 +577,26 @@ export default function Work() {
             {isGoogleAuthenticated() && (
               <button
                 onClick={function() { setShowSyncModal(true); }}
-                className="p-2 bg-white rounded-lg shadow-sm"
+                className="p-2 bg-white rounded-lg shadow-card min-w-[40px] min-h-[40px] flex items-center justify-center"
                 title="Google Tasks 동기화"
               >
-                <RefreshCw size={18} />
+                <RefreshCw size={18} className="text-[#666666]" />
               </button>
             )}
             
             {/* 프로젝트 관리 */}
             <button
               onClick={function() { setShowProjectModal(true); }}
-              className="p-2 bg-white rounded-lg shadow-sm"
+              className="p-2 bg-white rounded-lg shadow-card min-w-[40px] min-h-[40px] flex items-center justify-center"
               title="프로젝트 관리"
             >
-              <FolderOpen size={18} />
+              <FolderOpen size={18} className="text-[#666666]" />
             </button>
             
             {/* 추가 */}
             <button
               onClick={function() { setShowAddModal(true); }}
-              className="p-2 bg-lavender-100 rounded-lg text-lavender-600"
+              className="p-2 bg-[#F0F0FF] rounded-lg text-[#A996FF] min-w-[40px] min-h-[40px] flex items-center justify-center"
             >
               <Plus size={20} />
             </button>
@@ -604,20 +604,20 @@ export default function Work() {
         </div>
 
         {/* 알프레도 */}
-        <div className="bg-gradient-to-r from-lavender-50 to-purple-50 rounded-xl overflow-hidden">
+        <div className="bg-gradient-to-r from-[#F0F0FF] to-[#FCE7F3] rounded-xl overflow-hidden">
           <button 
             onClick={function() { setShowAlfredo(!showAlfredo); }}
-            className="w-full flex items-center justify-between p-3"
+            className="w-full flex items-center justify-between p-3 min-h-[48px]"
           >
             <div className="flex items-center gap-2">
               <span className="text-xl">🐧</span>
-              <span className="text-sm font-medium">알프레도</span>
+              <span className="text-sm font-medium text-[#1A1A1A]">알프레도</span>
             </div>
-            {showAlfredo ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            {showAlfredo ? <ChevronUp size={16} className="text-[#999999]" /> : <ChevronDown size={16} className="text-[#999999]" />}
           </button>
           {showAlfredo && (
             <div className="px-4 pb-3">
-              <p className="text-sm text-gray-600">{getAlfredoMessage()}</p>
+              <p className="text-sm text-[#666666]">{getAlfredoMessage()}</p>
             </div>
           )}
         </div>
@@ -628,7 +628,7 @@ export default function Work() {
           <select
             value={selectedProjectId || ''}
             onChange={function(e) { setSelectedProjectId(e.target.value || null); }}
-            className="px-3 py-1.5 bg-white rounded-full text-sm shadow-sm"
+            className="px-3 py-2 bg-white rounded-full text-sm shadow-card min-h-[36px] text-[#1A1A1A]"
           >
             <option value="">모든 프로젝트</option>
             {projects.map(function(p) {
@@ -641,7 +641,7 @@ export default function Work() {
             <select
               value={selectedTag || ''}
               onChange={function(e) { setSelectedTag(e.target.value || null); }}
-              className="px-3 py-1.5 bg-white rounded-full text-sm shadow-sm"
+              className="px-3 py-2 bg-white rounded-full text-sm shadow-card min-h-[36px] text-[#1A1A1A]"
             >
               <option value="">모든 태그</option>
               {allTags.map(function(tag) {
@@ -653,7 +653,7 @@ export default function Work() {
           {/* 상태 필터 */}
           <button
             onClick={function() { setShowFilterMenu(!showFilterMenu); }}
-            className="flex items-center gap-1 px-3 py-1.5 bg-white rounded-full text-sm shadow-sm"
+            className="flex items-center gap-1 px-3 py-2 bg-white rounded-full text-sm shadow-card min-h-[36px] text-[#1A1A1A]"
           >
             <Filter size={14} />
             {filterBy === 'all' ? '전체' : filterBy === 'todo' ? '할 일' : filterBy === 'in_progress' ? '진행중' : '완료'}
@@ -666,13 +666,13 @@ export default function Work() {
               var idx = options.indexOf(sortBy);
               setSortBy(options[(idx + 1) % options.length]);
             }}
-            className="flex items-center gap-1 px-3 py-1.5 bg-white rounded-full text-sm shadow-sm"
+            className="flex items-center gap-1 px-3 py-2 bg-white rounded-full text-sm shadow-card min-h-[36px] text-[#1A1A1A]"
           >
             <ArrowUpDown size={14} />
             {sortBy === 'priority' ? '우선순위' : sortBy === 'dueDate' ? '마감일' : sortBy === 'created' ? '최신순' : '프로젝트'}
           </button>
           
-          <span className="text-xs text-gray-400 ml-auto">{parentTasks.length}개</span>
+          <span className="text-xs text-[#999999] ml-auto">{parentTasks.length}개</span>
         </div>
 
         {/* 필터 드롭다운 */}
@@ -684,8 +684,8 @@ export default function Work() {
                 <button
                   key={opt}
                   onClick={function() { setFilterBy(opt); setShowFilterMenu(false); }}
-                  className={'w-full text-left px-3 py-2 rounded-lg text-sm ' +
-                    (filterBy === opt ? 'bg-lavender-100 text-lavender-600' : 'hover:bg-gray-100')}
+                  className={'w-full text-left px-3 py-2 rounded-lg text-sm min-h-[40px] ' +
+                    (filterBy === opt ? 'bg-[#F0F0FF] text-[#A996FF]' : 'hover:bg-[#F5F5F5] text-[#1A1A1A]')}
                 >
                   {labels[opt]}
                 </button>
@@ -696,20 +696,20 @@ export default function Work() {
 
         {/* Empty State */}
         {isEmpty ? (
-          <div className="bg-white rounded-2xl p-8 shadow-sm text-center">
+          <div className="bg-white rounded-xl p-8 shadow-card text-center">
             <div className="text-5xl mb-4">📋</div>
-            <h3 className="font-semibold mb-2">아직 등록된 업무가 없어요</h3>
-            <p className="text-sm text-gray-500 mb-4">CSV를 가져오거나 새 업무를 추가해보세요</p>
+            <h3 className="font-semibold mb-2 text-[#1A1A1A]">아직 등록된 업무가 없어요</h3>
+            <p className="text-sm text-[#999999] mb-4">CSV를 가져오거나 새 업무를 추가해보세요</p>
             <div className="flex gap-2 justify-center">
               <button
                 onClick={function() { fileInputRef.current?.click(); }}
-                className="px-4 py-2 bg-gray-100 rounded-xl text-sm"
+                className="px-4 py-2 bg-[#F5F5F5] rounded-xl text-sm text-[#666666] min-h-[44px]"
               >
                 CSV 가져오기
               </button>
               <button
                 onClick={function() { setShowAddModal(true); }}
-                className="px-4 py-2 bg-lavender-400 text-white rounded-xl text-sm"
+                className="px-4 py-2 bg-[#A996FF] text-white rounded-xl text-sm min-h-[44px] hover:bg-[#8B7BE8]"
               >
                 업무 추가
               </button>
@@ -718,31 +718,31 @@ export default function Work() {
         ) : (
           <>
             {/* 현황 */}
-            <div className="bg-white rounded-xl p-4 shadow-sm">
+            <div className="bg-white rounded-xl p-4 shadow-card">
               <div className="grid grid-cols-5 gap-2 text-center">
                 <div>
-                  <p className="text-lg font-bold text-lavender-500">{doneTasks.length}/{parentTasks.length}</p>
-                  <p className="text-xs text-gray-500">완료</p>
+                  <p className="text-lg font-bold text-[#A996FF]">{doneTasks.length}/{parentTasks.length}</p>
+                  <p className="text-xs text-[#999999]">완료</p>
                 </div>
                 <div>
-                  <p className="text-lg font-bold text-blue-500">{inProgressTasks.length}</p>
-                  <p className="text-xs text-gray-500">진행중</p>
+                  <p className="text-lg font-bold text-[#60A5FA]">{inProgressTasks.length}</p>
+                  <p className="text-xs text-[#999999]">진행중</p>
                 </div>
                 <div>
-                  <p className="text-lg font-bold text-green-500">{calculateFocusHours().toFixed(1)}h</p>
-                  <p className="text-xs text-gray-500">집중가능</p>
+                  <p className="text-lg font-bold text-[#22C55E]">{calculateFocusHours().toFixed(1)}h</p>
+                  <p className="text-xs text-[#999999]">집중가능</p>
                 </div>
                 <div>
-                  <p className="text-lg font-bold text-orange-500">
+                  <p className="text-lg font-bold text-[#F97316]">
                     {totalEstimate > 0 ? formatMinutes(totalEstimate) : '-'}
                   </p>
-                  <p className="text-xs text-gray-500">예상</p>
+                  <p className="text-xs text-[#999999]">예상</p>
                 </div>
                 <div>
-                  <p className="text-lg font-bold text-purple-500">
+                  <p className="text-lg font-bold text-[#A996FF]">
                     {totalActual > 0 ? formatMinutes(totalActual) : '-'}
                   </p>
-                  <p className="text-xs text-gray-500">실제</p>
+                  <p className="text-xs text-[#999999]">실제</p>
                 </div>
               </div>
             </div>
@@ -758,11 +758,11 @@ export default function Work() {
               <div className="space-y-4">
                 {/* 진행중 */}
                 {inProgressTasks.length > 0 && (
-                  <div className="bg-white rounded-xl p-4 shadow-sm">
+                  <div className="bg-white rounded-xl p-4 shadow-card">
                     <div className="flex items-center gap-2 mb-3">
-                      <Loader size={16} className="text-blue-500" />
-                      <h3 className="font-semibold text-sm">진행중</h3>
-                      <span className="text-xs text-gray-400">{inProgressTasks.length}</span>
+                      <Loader size={16} className="text-[#60A5FA]" />
+                      <h3 className="font-semibold text-sm text-[#1A1A1A]">진행중</h3>
+                      <span className="text-xs text-[#999999]">{inProgressTasks.length}</span>
                     </div>
                     <div className="space-y-2">
                       {inProgressTasks.map(function(t) { return renderTaskCard(t); })}
@@ -772,11 +772,11 @@ export default function Work() {
 
                 {/* 할 일 */}
                 {todoTasks.length > 0 && (
-                  <div className="bg-white rounded-xl p-4 shadow-sm">
+                  <div className="bg-white rounded-xl p-4 shadow-card">
                     <div className="flex items-center gap-2 mb-3">
-                      <Target size={16} className="text-gray-500" />
-                      <h3 className="font-semibold text-sm">할 일</h3>
-                      <span className="text-xs text-gray-400">{todoTasks.length}</span>
+                      <Target size={16} className="text-[#999999]" />
+                      <h3 className="font-semibold text-sm text-[#1A1A1A]">할 일</h3>
+                      <span className="text-xs text-[#999999]">{todoTasks.length}</span>
                     </div>
                     <div className="space-y-2">
                       {todoTasks.map(function(t) { return renderTaskCard(t); })}
@@ -786,16 +786,16 @@ export default function Work() {
 
                 {/* 완료 */}
                 {doneTasks.length > 0 && filterBy !== 'todo' && filterBy !== 'in_progress' && (
-                  <div className="bg-white rounded-xl p-4 shadow-sm">
+                  <div className="bg-white rounded-xl p-4 shadow-card">
                     <div className="flex items-center gap-2 mb-3">
-                      <Check size={16} className="text-green-500" />
-                      <h3 className="font-semibold text-sm text-gray-400">완료</h3>
-                      <span className="text-xs text-gray-400">{doneTasks.length}</span>
+                      <Check size={16} className="text-[#22C55E]" />
+                      <h3 className="font-semibold text-sm text-[#999999]">완료</h3>
+                      <span className="text-xs text-[#999999]">{doneTasks.length}</span>
                     </div>
                     <div className="space-y-2">
                       {doneTasks.slice(0, 5).map(function(t) { return renderTaskCard(t); })}
                       {doneTasks.length > 5 && (
-                        <p className="text-xs text-gray-400 text-center py-2">+{doneTasks.length - 5}개 더</p>
+                        <p className="text-xs text-[#999999] text-center py-2">+{doneTasks.length - 5}개 더</p>
                       )}
                     </div>
                   </div>
@@ -809,11 +809,11 @@ export default function Work() {
       {/* 태스크 추가 모달 */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center">
-          <div className="bg-white w-full max-w-lg rounded-t-2xl p-4 max-h-[85vh] overflow-y-auto">
+          <div className="bg-white w-full max-w-lg rounded-t-3xl p-4 max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-lg">새 업무</h3>
-              <button onClick={function() { setShowAddModal(false); resetNewTask(); }}>
-                <X size={20} />
+              <h3 className="font-semibold text-lg text-[#1A1A1A]">새 업무</h3>
+              <button onClick={function() { setShowAddModal(false); resetNewTask(); }} className="min-w-[44px] min-h-[44px] flex items-center justify-center">
+                <X size={20} className="text-[#999999]" />
               </button>
             </div>
             
@@ -823,18 +823,18 @@ export default function Work() {
               value={newTask.title}
               onChange={function(e) { setNewTask({...newTask, title: e.target.value}); }}
               placeholder="무엇을 해야 하나요?"
-              className="w-full p-3 border rounded-xl mb-3"
+              className="w-full p-3 border border-[#E5E5E5] rounded-xl mb-3 text-[#1A1A1A] placeholder:text-[#999999] focus:outline-none focus:ring-2 focus:ring-[#A996FF]/30"
               autoFocus
             />
             
             <div className="grid grid-cols-2 gap-3 mb-3">
               {/* 프로젝트 */}
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">프로젝트</label>
+                <label className="text-xs text-[#999999] mb-1 block">프로젝트</label>
                 <select
                   value={newTask.projectId}
                   onChange={function(e) { setNewTask({...newTask, projectId: e.target.value}); }}
-                  className="w-full p-2 border rounded-lg text-sm"
+                  className="w-full p-2 border border-[#E5E5E5] rounded-lg text-sm text-[#1A1A1A] min-h-[44px]"
                 >
                   <option value="">없음</option>
                   {projects.map(function(p) {
@@ -845,27 +845,27 @@ export default function Work() {
               
               {/* 마감일 */}
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">마감일</label>
+                <label className="text-xs text-[#999999] mb-1 block">마감일</label>
                 <input
                   type="date"
                   value={newTask.dueDate}
                   onChange={function(e) { setNewTask({...newTask, dueDate: e.target.value}); }}
-                  className="w-full p-2 border rounded-lg text-sm"
+                  className="w-full p-2 border border-[#E5E5E5] rounded-lg text-sm text-[#1A1A1A] min-h-[44px]"
                 />
               </div>
             </div>
             
             {/* 우선순위 */}
             <div className="mb-3">
-              <label className="text-xs text-gray-500 mb-1 block">우선순위</label>
+              <label className="text-xs text-[#999999] mb-1 block">우선순위</label>
               <div className="flex gap-2">
                 {(['high', 'medium', 'low'] as const).map(function(p) {
                   return (
                     <button
                       key={p}
                       onClick={function() { setNewTask({...newTask, priority: p}); }}
-                      className={'flex-1 py-2 rounded-lg text-sm ' +
-                        (newTask.priority === p ? getPriorityColor(p) : 'bg-gray-100')}
+                      className={'flex-1 py-2 rounded-lg text-sm min-h-[44px] ' +
+                        (newTask.priority === p ? getPriorityColor(p) : 'bg-[#F5F5F5] text-[#666666]')}
                     >
                       {getPriorityLabel(p)}
                     </button>
@@ -876,15 +876,15 @@ export default function Work() {
             
             {/* 예상 시간 */}
             <div className="mb-3">
-              <label className="text-xs text-gray-500 mb-1 block">예상 시간</label>
+              <label className="text-xs text-[#999999] mb-1 block">예상 시간</label>
               <div className="flex gap-2">
                 {[15, 30, 60, 120].map(function(m) {
                   return (
                     <button
                       key={m}
                       onClick={function() { setNewTask({...newTask, estimatedMinutes: String(m)}); }}
-                      className={'flex-1 py-2 rounded-lg text-sm ' +
-                        (newTask.estimatedMinutes === String(m) ? 'bg-lavender-100 text-lavender-600' : 'bg-gray-100')}
+                      className={'flex-1 py-2 rounded-lg text-sm min-h-[44px] ' +
+                        (newTask.estimatedMinutes === String(m) ? 'bg-[#F0F0FF] text-[#A996FF]' : 'bg-[#F5F5F5] text-[#666666]')}
                     >
                       {formatMinutes(m)}
                     </button>
@@ -895,23 +895,23 @@ export default function Work() {
             
             {/* 태그 */}
             <div className="mb-3">
-              <label className="text-xs text-gray-500 mb-1 block">태그 (쉼표로 구분)</label>
+              <label className="text-xs text-[#999999] mb-1 block">태그 (쉼표로 구분)</label>
               <input
                 type="text"
                 value={newTask.tags}
                 onChange={function(e) { setNewTask({...newTask, tags: e.target.value}); }}
                 placeholder="예: 회의, 리뷰, 기획"
-                className="w-full p-2 border rounded-lg text-sm"
+                className="w-full p-2 border border-[#E5E5E5] rounded-lg text-sm text-[#1A1A1A] placeholder:text-[#999999]"
               />
             </div>
             
             {/* 반복 */}
             <div className="mb-3">
-              <label className="text-xs text-gray-500 mb-1 block">반복</label>
+              <label className="text-xs text-[#999999] mb-1 block">반복</label>
               <select
                 value={newTask.recurrenceType}
                 onChange={function(e) { setNewTask({...newTask, recurrenceType: e.target.value as '' | 'daily' | 'weekly' | 'monthly'}); }}
-                className="w-full p-2 border rounded-lg text-sm"
+                className="w-full p-2 border border-[#E5E5E5] rounded-lg text-sm text-[#1A1A1A] min-h-[44px]"
               >
                 <option value="">반복 안함</option>
                 <option value="daily">매일</option>
@@ -923,11 +923,12 @@ export default function Work() {
             {/* 알림 */}
             {newTask.dueDate && (
               <div className="mb-3 flex items-center gap-3">
-                <label className="flex items-center gap-2 text-sm">
+                <label className="flex items-center gap-2 text-sm text-[#666666]">
                   <input
                     type="checkbox"
                     checked={newTask.reminderEnabled}
                     onChange={function(e) { setNewTask({...newTask, reminderEnabled: e.target.checked}); }}
+                    className="accent-[#A996FF]"
                   />
                   알림
                 </label>
@@ -935,7 +936,7 @@ export default function Work() {
                   <select
                     value={newTask.reminderMinutes}
                     onChange={function(e) { setNewTask({...newTask, reminderMinutes: e.target.value}); }}
-                    className="p-1 border rounded text-sm"
+                    className="p-1 border border-[#E5E5E5] rounded text-sm text-[#1A1A1A]"
                   >
                     <option value="15">15분 전</option>
                     <option value="30">30분 전</option>
@@ -948,13 +949,13 @@ export default function Work() {
             
             {/* 메모 */}
             <div className="mb-4">
-              <label className="text-xs text-gray-500 mb-1 block">메모</label>
+              <label className="text-xs text-[#999999] mb-1 block">메모</label>
               <textarea
                 value={newTask.description}
                 onChange={function(e) { setNewTask({...newTask, description: e.target.value}); }}
                 placeholder="추가 정보"
                 rows={2}
-                className="w-full p-2 border rounded-lg text-sm resize-none"
+                className="w-full p-2 border border-[#E5E5E5] rounded-lg text-sm resize-none text-[#1A1A1A] placeholder:text-[#999999]"
               />
             </div>
             
@@ -962,15 +963,15 @@ export default function Work() {
             <div className="flex gap-2">
               <button
                 onClick={function() { setShowAddModal(false); resetNewTask(); }}
-                className="flex-1 py-3 bg-gray-100 rounded-xl"
+                className="flex-1 py-3 bg-[#F5F5F5] rounded-xl text-[#666666] min-h-[48px]"
               >
                 취소
               </button>
               <button
                 onClick={handleAddTask}
                 disabled={!newTask.title.trim()}
-                className={'flex-1 py-3 rounded-xl ' +
-                  (newTask.title.trim() ? 'bg-lavender-400 text-white' : 'bg-gray-200 text-gray-400')}
+                className={'flex-1 py-3 rounded-xl min-h-[48px] ' +
+                  (newTask.title.trim() ? 'bg-[#A996FF] text-white hover:bg-[#8B7BE8]' : 'bg-[#E5E5E5] text-[#999999]')}
               >
                 추가
               </button>
@@ -982,11 +983,11 @@ export default function Work() {
       {/* 프로젝트 모달 */}
       {showProjectModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-sm rounded-2xl p-4">
+          <div className="bg-white w-full max-w-sm rounded-xl p-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold">프로젝트 관리</h3>
-              <button onClick={function() { setShowProjectModal(false); }}>
-                <X size={20} />
+              <h3 className="font-semibold text-[#1A1A1A]">프로젝트 관리</h3>
+              <button onClick={function() { setShowProjectModal(false); }} className="min-w-[44px] min-h-[44px] flex items-center justify-center">
+                <X size={20} className="text-[#999999]" />
               </button>
             </div>
             
@@ -994,27 +995,27 @@ export default function Work() {
             <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
               {projects.map(function(p) {
                 return (
-                  <div key={p.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                  <div key={p.id} className="flex items-center gap-2 p-2 bg-[#F5F5F5] rounded-lg">
                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: p.color }} />
-                    <span className="flex-1 text-sm">{p.name}</span>
+                    <span className="flex-1 text-sm text-[#1A1A1A]">{p.name}</span>
                   </div>
                 );
               })}
               {projects.length === 0 && (
-                <p className="text-sm text-gray-400 text-center py-4">프로젝트가 없어요</p>
+                <p className="text-sm text-[#999999] text-center py-4">프로젝트가 없어요</p>
               )}
             </div>
             
             {/* 새 프로젝트 */}
-            <div className="border-t pt-4">
-              <p className="text-xs text-gray-500 mb-2">새 프로젝트</p>
+            <div className="border-t border-[#E5E5E5] pt-4">
+              <p className="text-xs text-[#999999] mb-2">새 프로젝트</p>
               <div className="flex gap-2 mb-2">
                 <input
                   type="text"
                   value={newProject.name}
                   onChange={function(e) { setNewProject({...newProject, name: e.target.value}); }}
                   placeholder="프로젝트 이름"
-                  className="flex-1 p-2 border rounded-lg text-sm"
+                  className="flex-1 p-2 border border-[#E5E5E5] rounded-lg text-sm text-[#1A1A1A] placeholder:text-[#999999]"
                 />
               </div>
               <div className="flex gap-2 mb-3">
@@ -1023,7 +1024,7 @@ export default function Work() {
                     <button
                       key={c}
                       onClick={function() { setNewProject({...newProject, color: c}); }}
-                      className={'w-6 h-6 rounded-full ' + (newProject.color === c ? 'ring-2 ring-offset-2 ring-gray-400' : '')}
+                      className={'w-6 h-6 rounded-full ' + (newProject.color === c ? 'ring-2 ring-offset-2 ring-[#666666]' : '')}
                       style={{ backgroundColor: c }}
                     />
                   );
@@ -1032,8 +1033,8 @@ export default function Work() {
               <button
                 onClick={handleAddProject}
                 disabled={!newProject.name.trim()}
-                className={'w-full py-2 rounded-lg text-sm ' +
-                  (newProject.name.trim() ? 'bg-lavender-400 text-white' : 'bg-gray-200 text-gray-400')}
+                className={'w-full py-2 rounded-lg text-sm min-h-[44px] ' +
+                  (newProject.name.trim() ? 'bg-[#A996FF] text-white hover:bg-[#8B7BE8]' : 'bg-[#E5E5E5] text-[#999999]')}
               >
                 프로젝트 추가
               </button>
@@ -1045,38 +1046,38 @@ export default function Work() {
       {/* Google Tasks 동기화 모달 */}
       {showSyncModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-sm rounded-2xl p-4">
+          <div className="bg-white w-full max-w-sm rounded-xl p-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold">Google Tasks 동기화</h3>
-              <button onClick={function() { setShowSyncModal(false); setSyncResult(null); }}>
-                <X size={20} />
+              <h3 className="font-semibold text-[#1A1A1A]">Google Tasks 동기화</h3>
+              <button onClick={function() { setShowSyncModal(false); setSyncResult(null); }} className="min-w-[44px] min-h-[44px] flex items-center justify-center">
+                <X size={20} className="text-[#999999]" />
               </button>
             </div>
             
             {syncResult ? (
               <div className="text-center py-4">
-                <CheckCircle2 size={48} className="text-green-500 mx-auto mb-3" />
-                <p className="font-medium mb-2">동기화 완료!</p>
-                <p className="text-sm text-gray-500">
+                <CheckCircle2 size={48} className="text-[#22C55E] mx-auto mb-3" />
+                <p className="font-medium mb-2 text-[#1A1A1A]">동기화 완료!</p>
+                <p className="text-sm text-[#999999]">
                   가져옴: {syncResult.imported}개 / 내보냄: {syncResult.exported}개 / 업데이트: {syncResult.updated}개
                 </p>
                 <button
                   onClick={function() { setShowSyncModal(false); setSyncResult(null); }}
-                  className="mt-4 px-4 py-2 bg-lavender-400 text-white rounded-lg"
+                  className="mt-4 px-4 py-2 bg-[#A996FF] text-white rounded-lg min-h-[44px] hover:bg-[#8B7BE8]"
                 >
                   확인
                 </button>
               </div>
             ) : (
               <>
-                <p className="text-sm text-gray-600 mb-4">
+                <p className="text-sm text-[#666666] mb-4">
                   Google Tasks와 양방향 동기화합니다.
                 </p>
                 
                 <select
                   value={selectedTaskListId}
                   onChange={function(e) { setSelectedTaskListId(e.target.value); }}
-                  className="w-full p-2 border rounded-lg text-sm mb-4"
+                  className="w-full p-2 border border-[#E5E5E5] rounded-lg text-sm mb-4 text-[#1A1A1A] min-h-[44px]"
                 >
                   <option value="">태스크 리스트 선택</option>
                   {googleTaskLists.map(function(list) {
@@ -1087,8 +1088,8 @@ export default function Work() {
                 <button
                   onClick={handleSync}
                   disabled={!selectedTaskListId || syncing}
-                  className={'w-full py-3 rounded-xl flex items-center justify-center gap-2 ' +
-                    (selectedTaskListId && !syncing ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-400')}
+                  className={'w-full py-3 rounded-xl flex items-center justify-center gap-2 min-h-[48px] ' +
+                    (selectedTaskListId && !syncing ? 'bg-[#60A5FA] text-white hover:bg-[#3B82F6]' : 'bg-[#E5E5E5] text-[#999999]')}
                 >
                   {syncing ? (
                     <><RefreshCw size={18} className="animate-spin" /> 동기화 중...</>
