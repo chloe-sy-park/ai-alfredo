@@ -165,7 +165,7 @@ export class DNAExpansionEngine {
   // 스트레스 신호 감지
   static detectStressSignals(
     events: CalendarEvent[], 
-    previousEvents?: CalendarEvent[]
+    _previousEvents?: CalendarEvent[]
   ): DNAInsight[] {
     var insights: DNAInsight[] = [];
     

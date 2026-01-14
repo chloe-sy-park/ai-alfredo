@@ -35,8 +35,9 @@ export default function FocusNow({ externalFocus, onFocusChange }: FocusNowProps
     if (!focus || !focus.startTime) return;
 
     var interval = setInterval(function() {
+      if (!focus || !focus.startTime) return;
       var now = new Date();
-      var elapsed = Math.floor((now.getTime() - new Date(focus.startTime!).getTime()) / 1000);
+      var elapsed = Math.floor((now.getTime() - new Date(focus.startTime).getTime()) / 1000);
       setElapsedMinutes(Math.floor(elapsed / 60));
       
       if (focus.estimatedMinutes) {
