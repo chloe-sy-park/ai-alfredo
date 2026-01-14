@@ -190,7 +190,8 @@ export function completeSession(sessionId?: string): FocusSession | null {
   
   // 세션 목록 업데이트
   var sessions = getFocusSessions();
-  var index = sessions.findIndex(function(s) { return s.id === session.id; });
+  var targetSession = session; // 로컬 변수로 저장
+  var index = sessions.findIndex(function(s) { return s.id === targetSession.id; });
   if (index >= 0) {
     sessions[index] = session;
     saveFocusSessions(sessions);
@@ -212,7 +213,8 @@ export function cancelSession(): boolean {
   
   // 세션 목록에서 제거
   var sessions = getFocusSessions();
-  var filtered = sessions.filter(function(s) { return s.id !== session.id; });
+  var targetSessionId = session.id; // 로컬 변수로 저장
+  var filtered = sessions.filter(function(s) { return s.id !== targetSessionId; });
   saveFocusSessions(filtered);
   
   // 현재 세션 제거
