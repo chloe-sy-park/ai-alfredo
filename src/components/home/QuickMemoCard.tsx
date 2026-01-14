@@ -6,8 +6,7 @@ import {
   addMemo, 
   toggleMemoComplete, 
   toggleMemoPin,
-  deleteMemo,
-  getActiveMemoCount
+  deleteMemo
 } from '../../services/quickMemo';
 
 export default function QuickMemoCard() {
