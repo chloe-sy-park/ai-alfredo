@@ -25,7 +25,6 @@ export default function WeekView({ selectedDate, events, onSelectDate, onEventCl
     var current = new Date(date);
     var dayOfWeek = current.getDay();
     
-    // Go to Sunday
     current.setDate(current.getDate() - dayOfWeek);
     
     for (var i = 0; i < 7; i++) {
@@ -60,22 +59,21 @@ export default function WeekView({ selectedDate, events, onSelectDate, onEventCl
       .sort(function(a, b) { return a.startHour - b.startHour; });
 
     var freeSlots: { start: number; duration: number }[] = [];
-    var workStart = 9; // 9 AM
-    var workEnd = 18; // 6 PM
+    var workStart = 9;
+    var workEnd = 18;
     var lastEnd = workStart;
 
     timedEvents.forEach(function(event) {
       if (event.startHour > lastEnd && event.startHour >= workStart) {
         var gapStart = Math.max(lastEnd, workStart);
         var gapEnd = Math.min(event.startHour, workEnd);
-        if (gapEnd - gapStart >= 0.5) { // 30분 이상만 표시
+        if (gapEnd - gapStart >= 0.5) {
           freeSlots.push({ start: gapStart, duration: gapEnd - gapStart });
         }
       }
       lastEnd = Math.max(lastEnd, event.endHour);
     });
 
-    // Check remaining time until work end
     if (lastEnd < workEnd) {
       var remaining = workEnd - lastEnd;
       if (remaining >= 0.5) {
@@ -90,8 +88,10 @@ export default function WeekView({ selectedDate, events, onSelectDate, onEventCl
   function formatHour(hour: number): string {
     var h = Math.floor(hour);
     var m = Math.round((hour - h) * 60);
-    if (m === 0) return h + '시';
-    return h + ':' + String(m).padStart(2, '0');
+    var period = h < 12 ? '오전' : '오후';
+    var displayHour = h > 12 ? h - 12 : h === 0 ? 12 : h;
+    if (m === 0) return period + ' ' + displayHour + '시';
+    return period + ' ' + displayHour + ':' + String(m).padStart(2, '0');
   }
 
   // Format duration
@@ -108,54 +108,58 @@ export default function WeekView({ selectedDate, events, onSelectDate, onEventCl
   var weekDates = getWeekDates(selectedDate);
 
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm">
+    <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
       {/* Week header */}
-      <div className="grid grid-cols-7 gap-1 mb-3">
+      <div className="grid grid-cols-7 gap-1 p-3 bg-gray-50">
         {weekDates.map(function(date, idx) {
           var isToday = formatDateLocal(date) === formatDateLocal(today);
           var isSelected = formatDateLocal(date) === formatDateLocal(selectedDate);
           var dayEvents = getEventsForDate(date);
           var hasEvents = dayEvents.length > 0;
           
-          var dayColor = idx === 0 ? 'text-red-400' : idx === 6 ? 'text-blue-400' : 'text-gray-600';
+          var dayColor = idx === 0 ? 'text-red-400' : idx === 6 ? 'text-blue-400' : 'text-gray-500';
           
           return (
             <button
               key={idx}
               onClick={function() { onSelectDate(date); }}
-              className="flex flex-col items-center py-2"
+              className="flex flex-col items-center py-1"
             >
-              <span className={'text-xs ' + dayColor}>{dayNames[idx]}</span>
+              <span className={'text-xs font-medium ' + dayColor}>{dayNames[idx]}</span>
               <span className={
-                'w-8 h-8 flex items-center justify-center rounded-full text-sm mt-1 ' +
+                'w-9 h-9 flex items-center justify-center rounded-full text-sm mt-1 transition-colors ' +
                 (isSelected ? 'bg-lavender-400 text-white font-bold' : 
-                 isToday ? 'bg-lavender-100 text-lavender-600 font-bold' : '')
+                 isToday ? 'bg-lavender-100 text-lavender-600 font-bold' : 'hover:bg-gray-100')
               }>
                 {date.getDate()}
               </span>
               {hasEvents && (
-                <div className="flex gap-0.5 mt-1">
+                <div className="flex gap-0.5 mt-1 h-1.5">
                   {dayEvents.slice(0, 3).map(function(e, i) {
                     return (
                       <span
                         key={i}
-                        className="w-1 h-1 rounded-full"
-                        style={{ backgroundColor: e.backgroundColor || '#A996FF' }}
+                        className="w-1.5 h-1.5 rounded-full"
+                        style={{ backgroundColor: isSelected ? '#A996FF' : (e.backgroundColor || '#A996FF') }}
                       />
                     );
                   })}
                 </div>
               )}
+              {!hasEvents && <div className="h-1.5 mt-1" />}
             </button>
           );
         })}
       </div>
 
-      {/* Selected day events */}
-      <div className="border-t border-gray-100 pt-3">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="font-medium text-sm">
+      {/* Selected day detail */}
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold">
             {selectedDate.getMonth() + 1}월 {selectedDate.getDate()}일
+            {formatDateLocal(selectedDate) === formatDateLocal(today) && (
+              <span className="ml-2 text-xs text-lavender-500 font-normal">오늘</span>
+            )}
           </h3>
           <span className="text-xs text-gray-400">
             {getEventsForDate(selectedDate).length}개 일정
@@ -167,14 +171,14 @@ export default function WeekView({ selectedDate, events, onSelectDate, onEventCl
           var dayEvents = getEventsForDate(selectedDate);
           var freeSlots = getFreeTimeSlots(dayEvents);
           
-          if (freeSlots.length > 0) {
+          if (freeSlots.length > 0 && dayEvents.length > 0) {
             return (
-              <div className="mb-3 p-2 bg-green-50 rounded-lg">
-                <p className="text-xs text-green-600 font-medium mb-1">💚 여유 시간</p>
+              <div className="mb-4 p-3 bg-green-50 rounded-xl">
+                <p className="text-xs text-green-600 font-medium mb-2">💚 여유 시간</p>
                 <div className="flex flex-wrap gap-2">
                   {freeSlots.map(function(slot, idx) {
                     return (
-                      <span key={idx} className="text-xs text-green-700 bg-green-100 px-2 py-1 rounded-full">
+                      <span key={idx} className="text-xs text-green-700 bg-green-100 px-2.5 py-1 rounded-full">
                         {formatHour(slot.start)} · {formatDuration(slot.duration)}
                       </span>
                     );
@@ -187,15 +191,17 @@ export default function WeekView({ selectedDate, events, onSelectDate, onEventCl
         })()}
 
         {/* Events list */}
-        <div className="space-y-2 max-h-48 overflow-y-auto">
+        <div className="space-y-2 max-h-56 overflow-y-auto">
           {(function() {
             var dayEvents = getEventsForDate(selectedDate);
             
             if (dayEvents.length === 0) {
               return (
-                <p className="text-center text-gray-400 text-sm py-4">
-                  일정이 없어요 ✨
-                </p>
+                <div className="text-center py-8">
+                  <div className="text-3xl mb-2">✨</div>
+                  <p className="text-gray-400 text-sm">일정이 없는 날이에요</p>
+                  <p className="text-gray-300 text-xs mt-1">+ 버튼을 눌러 일정을 추가해보세요</p>
+                </div>
               );
             }
             
@@ -208,15 +214,23 @@ export default function WeekView({ selectedDate, events, onSelectDate, onEventCl
                 <button
                   key={event.id}
                   onClick={function() { onEventClick(event); }}
-                  className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 text-left"
+                  className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 text-left transition-colors"
                 >
                   <div 
-                    className="w-1 h-8 rounded-full flex-shrink-0"
+                    className="w-1 h-10 rounded-full flex-shrink-0"
                     style={{ backgroundColor: event.backgroundColor || '#A996FF' }}
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{event.title}</p>
-                    <p className="text-xs text-gray-400">{time}</p>
+                    <div className="flex items-center gap-2 text-xs text-gray-400">
+                      <span>{time}</span>
+                      {event.calendarName && (
+                        <>
+                          <span>·</span>
+                          <span className="truncate">{event.calendarName}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </button>
               );
