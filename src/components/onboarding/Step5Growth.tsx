@@ -1,12 +1,15 @@
 import { useOnboardingStore } from '../../stores/onboardingStore';
+import { useAuthStore } from '../../stores/authStore';
 import { useNavigate } from 'react-router-dom';
 
 export default function Step5Growth() {
   var { complete } = useOnboardingStore();
+  var { completeOnboarding } = useAuthStore();
   var navigate = useNavigate();
 
   function handleComplete() {
-    complete();
+    complete(); // onboardingStore 업데이트
+    completeOnboarding(); // authStore 업데이트 (App.tsx에서 사용)
     navigate('/');
   }
 
