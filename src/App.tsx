@@ -15,6 +15,7 @@ import ReflectButton from './components/common/ReflectButton';
 // Pages - Lazy Loaded
 const Login = lazy(() => import('./pages/Login'));
 const Home = lazy(() => import('./pages/Home'));
+const Calendar = lazy(() => import('./pages/Calendar'));
 const WorkOS = lazy(() => import('./pages/WorkOS'));
 const LifeOS = lazy(() => import('./pages/LifeOS'));
 const Chat = lazy(() => import('./pages/Chat'));
@@ -74,6 +75,7 @@ function App() {
         <div className="flex-1 pb-24">
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/calendar" element={<Calendar />} />
             <Route path="/work" element={<WorkOS />} />
             <Route path="/life" element={<LifeOS />} />
             <Route path="/chat" element={<Chat />} />
