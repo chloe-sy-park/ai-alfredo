@@ -1,10 +1,17 @@
 import { ChatMessage } from '../../types/chat';
 import { CheckCircle2, AlertCircle, Lightbulb } from 'lucide-react';
 
+// Date 안전 변환 헬퍼
+const toDate = (value: Date | string | undefined): Date => {
+  if (!value) return new Date();
+  if (value instanceof Date) return value;
+  return new Date(value);
+};
+
 interface ChatMessageItemProps {
   message: ChatMessage;
   showAvatar?: boolean; // 연속 메시지일 때 아바타 숨김
-  previousMessageTime?: Date; // 이전 메시지 시간 (날짜 구분선용)
+  previousMessageTime?: Date | string; // 이전 메시지 시간 (날짜 구분선용)
 }
 
 export default function ChatMessageItem({ 
@@ -12,25 +19,25 @@ export default function ChatMessageItem({
   showAvatar = true,
   previousMessageTime 
 }: ChatMessageItemProps) {
-  var isAlfredo = message.role === 'alfredo';
-  var messageTime = new Date(message.timestamp);
+  const isAlfredo = message.role === 'alfredo';
+  const messageTime = toDate(message.timestamp);
   
   // 타임스탬프 포맷
-  var timeString = messageTime.toLocaleTimeString('ko-KR', {
+  const timeString = messageTime.toLocaleTimeString('ko-KR', {
     hour: '2-digit',
     minute: '2-digit'
   });
   
   // 날짜 구분선 필요 여부 체크
-  var showDateDivider = false;
+  let showDateDivider = false;
   if (previousMessageTime) {
-    var prevDate = previousMessageTime.toDateString();
-    var currentDate = messageTime.toDateString();
+    const prevDate = toDate(previousMessageTime).toDateString();
+    const currentDate = messageTime.toDateString();
     showDateDivider = prevDate !== currentDate;
   }
   
   // 날짜 포맷
-  var dateString = messageTime.toLocaleDateString('ko-KR', {
+  const dateString = messageTime.toLocaleDateString('ko-KR', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
