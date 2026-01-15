@@ -1,20 +1,27 @@
 // Chat message types and interfaces
 // 알프레도 챗 시스템의 핵심 타입 정의
 
+import type { SafetyLevel, CrisisResource } from '../services/safety';
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'alfredo';
   content: string;
   timestamp: Date;
-  
+
   // 알프레도 응답 구조
   understanding?: string; // R1: 이해 선언
   summary?: string; // R2: 구조화 요약
   judgement?: JudgementReflection; // R3: 판단 반영
-  
+
   // 메타데이터
   context?: ChatContext;
   dnaInsights?: DNAInsight[];
+
+  // 안전 시스템 관련
+  safetyLevel?: SafetyLevel;
+  isSafetyMessage?: boolean;
+  crisisResources?: CrisisResource[];
 }
 
 export interface JudgementReflection {

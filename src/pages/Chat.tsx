@@ -1,11 +1,12 @@
 // Chat.tsx - 메신저 스타일 채팅 화면
 import React, { useEffect, useRef } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useChatStore } from '../stores/chatStore';
 import { ChatContext, CHAT_ENTRY_POINTS } from '../types/chat';
 import ChatMessageItem from '../components/chat/ChatMessageItem';
 import ChatInput from '../components/chat/ChatInput';
+import SafetyMessage from '../components/chat/SafetyMessage';
 
 // Date 안전 변환 헬퍼
 const toDate = (value: Date | string | undefined): Date => {
@@ -16,20 +17,27 @@ const toDate = (value: Date | string | undefined): Date => {
 
 const Chat: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+
   const {
     currentSession,
     isOpen,
     entryContext,
     openChat,
     closeChat,
-    sendMessage
+    sendMessage,
+    // 안전 상태 (향후 지속적 알림에 사용)
+    activeSafetyLevel: _activeSafetyLevel,
+    activeCrisisResources: _activeCrisisResources,
+    clearSafetyAlert: _clearSafetyAlert
   } = useChatStore();
-  
+
   const entry = searchParams.get('entry') || 'manual';
-  const initialMessage = searchParams.get('message');
+  // location.state와 searchParams 모두 지원
+  const locationState = location.state as { initialMessage?: string } | null;
+  const initialMessage = locationState?.initialMessage || searchParams.get('message');
   
   // 메시지 timestamp를 안전하게 Date로 변환
   const messages = (currentSession?.messages || []).map(msg => ({
@@ -165,12 +173,25 @@ const Chat: React.FC = () => {
               {/* 메시지들 */}
               {group.messages.map(({ message, index }) => {
                 const prevMessage = index > 0 ? messages[index - 1] : null;
-                
+
                 // 연속 메시지 체크 - 안전한 Date 비교
-                const showAvatar = !prevMessage || 
-                  prevMessage.role !== message.role || 
+                const showAvatar = !prevMessage ||
+                  prevMessage.role !== message.role ||
                   (message.timestamp.getTime() - prevMessage.timestamp.getTime()) > 60000; // 1분 이상 차이
-                
+
+                // 안전 메시지인 경우 SafetyMessage 컴포넌트 사용
+                if (message.role === 'alfredo' && message.isSafetyMessage && message.safetyLevel) {
+                  return (
+                    <div key={message.id} className="my-3">
+                      <SafetyMessage
+                        level={message.safetyLevel}
+                        message={message.content}
+                        resources={message.crisisResources}
+                      />
+                    </div>
+                  );
+                }
+
                 return (
                   <ChatMessageItem
                     key={message.id}

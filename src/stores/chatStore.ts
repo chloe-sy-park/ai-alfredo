@@ -3,6 +3,13 @@ import { persist } from 'zustand/middleware';
 import { ChatMessage, ChatSession, ChatContext, DNAInsight, JudgementReflection } from '../types/chat';
 import { DNAExpansionEngine } from '../services/dnaEngine';
 import { getTodayEvents } from '../services/calendar';
+import {
+  performSafetyCheck,
+  updateConversationContext,
+  SafetyLevel,
+  CrisisResource,
+  ConversationContext
+} from '../services/safety';
 
 // Date 객체 안전 변환 헬퍼 (persist 후 string -> Date 변환)
 const toDate = (value: Date | string | undefined): Date => {
@@ -14,25 +21,31 @@ const toDate = (value: Date | string | undefined): Date => {
 interface ChatStore {
   // 현재 세션
   currentSession: ChatSession | null;
-  
+
   // 모든 세션 (히스토리)
   sessions: ChatSession[];
-  
+
   // DNA 인사이트 (누적)
   accumulatedInsights: DNAInsight[];
-  
+
   // 챗 열림 상태
   isOpen: boolean;
-  
+
   // 진입 컨텍스트
   entryContext: ChatContext | null;
-  
+
+  // 안전 시스템 상태
+  safetyContext: ConversationContext | null;
+  activeSafetyLevel: SafetyLevel;
+  activeCrisisResources: CrisisResource[] | null;
+
   // Actions
   openChat: (context: ChatContext) => void;
   closeChat: () => void;
   sendMessage: (content: string) => Promise<void>;
   startNewSession: (context: ChatContext) => void;
   loadInsights: () => Promise<void>;
+  clearSafetyAlert: () => void;
 }
 
 export const useChatStore = create<ChatStore>()(
@@ -43,6 +56,10 @@ export const useChatStore = create<ChatStore>()(
       accumulatedInsights: [],
       isOpen: false,
       entryContext: null,
+      // 안전 시스템 초기 상태
+      safetyContext: null,
+      activeSafetyLevel: 'normal' as SafetyLevel,
+      activeCrisisResources: null,
       
       openChat: (context) => {
         const { currentSession, sessions } = get();
@@ -111,21 +128,53 @@ export const useChatStore = create<ChatStore>()(
       },
       
       sendMessage: async (content) => {
-        const { currentSession, entryContext } = get();
+        const { currentSession, entryContext, safetyContext } = get();
         if (!currentSession || !entryContext) return;
-        
-        // 사용자 메시지 추가
+
+        // 1. 안전 체크 수행
+        const safetyResult = performSafetyCheck(content, safetyContext || undefined);
+
+        // 2. 대화 컨텍스트 업데이트 (연속 부정 카운트 등)
+        const newSafetyContext = updateConversationContext(
+          safetyContext,
+          content,
+          safetyResult.emotion
+        );
+
+        // 3. 사용자 메시지 추가 (안전 레벨 포함)
         const userMessage: ChatMessage = {
           id: Date.now().toString(),
           role: 'user',
           content,
           timestamp: new Date(),
-          context: entryContext
+          context: entryContext,
+          safetyLevel: safetyResult.emotion.level
         };
-        
-        // 알프레도 응답 생성 (임시 로직)
-        const alfredoResponse = await generateAlfredoResponse(content, entryContext);
-        
+
+        // 4. 알프레도 응답 생성
+        let alfredoResponse;
+
+        // 위기 상황이면 안전 응답을 우선
+        if (safetyResult.emotion.level === 'crisis' || safetyResult.emotion.level === 'care') {
+          alfredoResponse = {
+            full: safetyResult.safetyResponse || '',
+            understanding: safetyResult.emotion.level === 'crisis'
+              ? '지금 많이 힘드시군요.'
+              : '요즘 많이 지치셨나봐요.',
+            summary: '',
+            judgement: {
+              type: 'consider' as const,
+              message: safetyResult.safetyResponse || '',
+              confidence: 0.95
+            },
+            insights: [],
+            isSafetyResponse: true
+          };
+        } else {
+          // 일반 응답 생성 (임시 로직)
+          alfredoResponse = await generateAlfredoResponse(content, entryContext, safetyResult);
+        }
+
         const alfredoMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
           role: 'alfredo',
@@ -134,15 +183,19 @@ export const useChatStore = create<ChatStore>()(
           understanding: alfredoResponse.understanding,
           summary: alfredoResponse.summary,
           judgement: alfredoResponse.judgement,
-          dnaInsights: alfredoResponse.insights
+          dnaInsights: alfredoResponse.insights,
+          // 안전 메시지 여부
+          safetyLevel: safetyResult.emotion.level,
+          isSafetyMessage: safetyResult.emotion.level !== 'normal',
+          crisisResources: safetyResult.crisisResources
         };
-        
+
         // 기존 메시지들의 timestamp도 Date 객체로 변환
         const existingMessages = currentSession.messages.map(msg => ({
           ...msg,
           timestamp: toDate(msg.timestamp)
         }));
-        
+
         // 세션 업데이트
         const updatedSession: ChatSession = {
           ...currentSession,
@@ -154,16 +207,20 @@ export const useChatStore = create<ChatStore>()(
             ...(alfredoResponse.insights || [])
           ]
         };
-        
+
         set({
           currentSession: updatedSession,
-          sessions: get().sessions.map(s => 
+          sessions: get().sessions.map(s =>
             s.id === updatedSession.id ? updatedSession : s
           ),
           accumulatedInsights: [
             ...get().accumulatedInsights,
             ...(alfredoResponse.insights || [])
-          ]
+          ],
+          // 안전 상태 업데이트
+          safetyContext: newSafetyContext,
+          activeSafetyLevel: safetyResult.emotion.level,
+          activeCrisisResources: safetyResult.crisisResources || null
         });
       },
       
@@ -189,13 +246,20 @@ export const useChatStore = create<ChatStore>()(
         try {
           const events = await getTodayEvents();
           const insights = DNAExpansionEngine.analyzeCalendar(events);
-          
+
           set({
             accumulatedInsights: insights
           });
         } catch (error) {
           console.error('Failed to load DNA insights:', error);
         }
+      },
+
+      clearSafetyAlert: () => {
+        set({
+          activeSafetyLevel: 'normal',
+          activeCrisisResources: null
+        });
       }
     }),
     {
@@ -235,9 +299,13 @@ export const useChatStore = create<ChatStore>()(
 );
 
 // 알프레도 응답 생성 (임시 구현)
-async function generateAlfredoResponse(userInput: string, context: ChatContext) {
+async function generateAlfredoResponse(
+  userInput: string,
+  context: ChatContext,
+  safetyResult?: { emotion: { level: SafetyLevel }; safetyResponse?: string; boundary: { type: string; alternativeResponse?: string } }
+) {
   // 실제로는 Claude API 호출하겠지만, 지금은 패턴 기반 응답
-  
+
   let understanding = '네, 이해했어요. ';
   let summary = '';
   let judgement: JudgementReflection = {
@@ -246,13 +314,43 @@ async function generateAlfredoResponse(userInput: string, context: ChatContext) 
     confidence: 0.8
   };
   const insights: DNAInsight[] = [];
-  
+
+  // 경계 주제 감지 시 대체 응답 사용
+  if (safetyResult?.boundary.type !== 'safe' && safetyResult?.boundary.alternativeResponse) {
+    understanding = '음, 그런 고민이 있으시군요.';
+    summary = '';
+    judgement = {
+      type: 'consider',
+      message: safetyResult.boundary.alternativeResponse,
+      confidence: 0.9
+    };
+
+    const full = `${understanding}\n\n${judgement.message}`;
+    return { full, understanding, summary, judgement, insights };
+  }
+
+  // Watch 레벨일 때 더 부드러운 톤
+  if (safetyResult?.emotion.level === 'watch') {
+    if (safetyResult.safetyResponse) {
+      understanding = safetyResult.safetyResponse.split('\n')[0] || '요즘 좀 힘드시죠.';
+      summary = '';
+      judgement = {
+        type: 'consider',
+        message: '필요하시면 언제든 말씀해주세요. 옆에 있을게요.',
+        confidence: 0.9
+      };
+
+      const full = `${understanding}\n\n${judgement.message}`;
+      return { full, understanding, summary, judgement, insights };
+    }
+  }
+
   // 컨텍스트별 응답
   if (context.entry === 'priority') {
-    understanding += userInput.includes('중요') ? 
+    understanding += userInput.includes('중요') ?
       '우선순위에 대한 생각을 공유해주셨네요.' :
       '지금 상황을 설명해주셨네요.';
-    
+
     if (userInput.includes('미팅') || userInput.includes('회의')) {
       summary = '미팅 준비와 관련된 우선순위 조정이 필요하신 것 같아요.';
       judgement = {
@@ -264,12 +362,12 @@ async function generateAlfredoResponse(userInput: string, context: ChatContext) 
     }
   } else if (context.entry === 'manual') {
     understanding += '무엇을 도와드릴까요?';
-    
+
     if (userInput.includes('안녕') || userInput.includes('하이')) {
       summary = '반가워요! 오늘 하루도 함께해요.';
       judgement = {
         type: 'maintain',
-        message: '오늘도 좋은 하루 보내세요! 🐧',
+        message: '오늘도 좋은 하루 보내세요!',
         confidence: 1.0
       };
     } else if (userInput.includes('피곤') || userInput.includes('힘들')) {
@@ -281,9 +379,9 @@ async function generateAlfredoResponse(userInput: string, context: ChatContext) 
       };
     }
   }
-  
+
   const full = `${understanding}\n\n${summary}\n\n${judgement.message}`;
-  
+
   return {
     full,
     understanding,

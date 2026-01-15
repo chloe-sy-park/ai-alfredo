@@ -42,7 +42,9 @@ const PageLoader = () => (
 );
 
 function App() {
-  const isAuthenticated = useAuthStore(state => state.checkAuthStatus());
+  // checkAuthStatus는 함수이므로 selector에서 직접 호출하면 안됨
+  // isAuthenticated와 accessToken 상태를 직접 가져와서 판단
+  const isAuthenticated = useAuthStore(state => state.isAuthenticated && !!state.accessToken);
   const isOnboarded = useAuthStore(state => state.isOnboarded);
   const { isOpen: isDrawerOpen, close: closeDrawer } = useDrawerStore();
 
