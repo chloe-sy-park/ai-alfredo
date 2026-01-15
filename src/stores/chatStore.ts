@@ -45,27 +45,62 @@ export const useChatStore = create<ChatStore>()(
       entryContext: null,
       
       openChat: (context) => {
-        const { currentSession } = get();
+        const { currentSession, sessions } = get();
+        const now = new Date().getTime();
+        const oneHour = 60 * 60 * 1000;
         
-        // 기존 세션이 있고 1시간 이내면 계속 사용
-        if (currentSession) {
+        // 1. 현재 세션이 있고 메시지가 있으며 1시간 이내면 사용
+        if (currentSession && currentSession.messages.length > 0) {
           const lastActivity = toDate(currentSession.lastActivity);
-          const timeDiff = new Date().getTime() - lastActivity.getTime();
-          
-          if (timeDiff < 60 * 60 * 1000) {
+          if (now - lastActivity.getTime() < oneHour) {
             set({
               isOpen: true,
               entryContext: context,
               currentSession: {
                 ...currentSession,
-                lastActivity: new Date()
+                lastActivity: new Date(),
+                // Date 복원
+                startedAt: toDate(currentSession.startedAt),
+                messages: currentSession.messages.map(msg => ({
+                  ...msg,
+                  timestamp: toDate(msg.timestamp)
+                }))
               }
             });
             return;
           }
         }
         
-        // 새 세션 시작
+        // 2. 세션 목록에서 메시지가 있고 1시간 이내인 가장 최근 세션 찾기
+        const recentSessionWithMessages = [...sessions]
+          .filter(s => s.messages.length > 0)
+          .sort((a, b) => toDate(b.lastActivity).getTime() - toDate(a.lastActivity).getTime())
+          .find(s => now - toDate(s.lastActivity).getTime() < oneHour);
+        
+        if (recentSessionWithMessages) {
+          const restoredSession = {
+            ...recentSessionWithMessages,
+            lastActivity: new Date(),
+            startedAt: toDate(recentSessionWithMessages.startedAt),
+            messages: recentSessionWithMessages.messages.map(msg => ({
+              ...msg,
+              timestamp: toDate(msg.timestamp)
+            }))
+          };
+          
+          set({
+            isOpen: true,
+            entryContext: context,
+            currentSession: restoredSession,
+            // sessions 배열도 업데이트
+            sessions: sessions.map(s => 
+              s.id === restoredSession.id ? restoredSession : s
+            )
+          });
+          return;
+        }
+        
+        // 3. 그 외의 경우 새 세션 시작
         get().startNewSession(context);
       },
       
