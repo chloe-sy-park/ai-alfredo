@@ -47,12 +47,14 @@ export const useChatStore = create<ChatStore>()(
       openChat: (context) => {
         const { currentSession, sessions } = get();
         const now = new Date().getTime();
-        const oneHour = 60 * 60 * 1000;
+        const sixHours = 6 * 60 * 60 * 1000; // 6시간으로 확장
         
-        // 1. 현재 세션이 있고 메시지가 있으며 1시간 이내면 사용
-        if (currentSession && currentSession.messages.length > 0) {
+        // 1. currentSession이 있으면 우선 사용 (persist에서 복원된 경우)
+        if (currentSession) {
           const lastActivity = toDate(currentSession.lastActivity);
-          if (now - lastActivity.getTime() < oneHour) {
+          
+          // 메시지가 있는 세션은 시간 제한을 넉넉하게
+          if (currentSession.messages.length > 0 && now - lastActivity.getTime() < sixHours) {
             set({
               isOpen: true,
               entryContext: context,
@@ -71,11 +73,11 @@ export const useChatStore = create<ChatStore>()(
           }
         }
         
-        // 2. 세션 목록에서 메시지가 있고 1시간 이내인 가장 최근 세션 찾기
+        // 2. 세션 목록에서 메시지가 있는 가장 최근 세션 찾기
         const recentSessionWithMessages = [...sessions]
           .filter(s => s.messages.length > 0)
           .sort((a, b) => toDate(b.lastActivity).getTime() - toDate(a.lastActivity).getTime())
-          .find(s => now - toDate(s.lastActivity).getTime() < oneHour);
+          .find(s => now - toDate(s.lastActivity).getTime() < sixHours);
         
         if (recentSessionWithMessages) {
           const restoredSession = {
