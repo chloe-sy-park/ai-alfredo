@@ -145,7 +145,6 @@ const Chat: React.FC = () => {
               {/* 메시지들 */}
               {group.messages.map(({ message, index }) => {
                 const prevMessage = index > 0 ? messages[index - 1] : null;
-                const nextMessage = index < messages.length - 1 ? messages[index + 1] : null;
                 
                 // 연속 메시지 체크
                 const showAvatar = !prevMessage || 
