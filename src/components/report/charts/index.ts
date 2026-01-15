@@ -1,4 +1,5 @@
-export { default as LineChart } from './LineChart';
-export { default as BarChart } from './BarChart';
-export { default as DonutChart } from './DonutChart';
-export { default as TimelineChart } from './TimelineChart';
+// Export all chart components
+export { LineChart } from './LineChart';
+export { BarChart } from './BarChart';
+export { DonutChart } from './DonutChart';
+export { TimelineChart } from './TimelineChart';

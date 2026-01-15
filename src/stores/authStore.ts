@@ -1,75 +1,106 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
-interface User {
-  id: string;
-  name: string;
+export type User = {
   email: string;
-  avatar_url?: string;
-  onboarded?: boolean;
-  preferences?: {
-    context: 'work' | 'life' | 'unsure';
-    boundary: 'soft' | 'balanced' | 'firm';
-    calendarConnected: boolean;
-    notifications: {
-      enabled: boolean;
-      times: string[];
-    };
-  };
-}
+  name?: string;
+  picture?: string;
+};
 
-interface AuthState {
-  user: User | null;
+export type AuthState = {
   isAuthenticated: boolean;
+  user: User | null;
+  accessToken: string | null;
+  refreshToken: string | null;
+  googleAccessToken: string | null;
   isLoading: boolean;
   isOnboarded: boolean;
-  login: () => void;
-  logout: () => void;
+  onboardingStep: number | null;
+  
+  // Actions
+  setAuth: (user: User, tokens: { access: string; refresh: string; googleAccess?: string }) => void;
   setUser: (user: User) => void;
-  completeOnboarding: () => void;
+  setGoogleAccessToken: (token: string) => void;
+  clearAuth: () => void;
+  signOut: () => void;
   setLoading: (loading: boolean) => void;
-}
+  setOnboarded: (onboarded: boolean) => void;
+  setOnboardingStep: (step: number | null) => void;
+  checkAuthStatus: () => boolean;
+  getAuthHeader: () => { Authorization: string } | {};
+};
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
-      user: null,
+    (set, get) => ({
       isAuthenticated: false,
+      user: null,
+      accessToken: null,
+      refreshToken: null,
+      googleAccessToken: null,
       isLoading: false,
       isOnboarded: false,
+      onboardingStep: null,
       
-      login: () => {
+      setAuth: (user, tokens) => {
         set({
-          user: { id: '1', name: 'Boss', email: 'boss@example.com' },
           isAuthenticated: true,
-          isLoading: false
-        });
-      },
-      
-      logout: () => {
-        set({
-          user: null,
-          isAuthenticated: false,
-          isOnboarded: false
-        });
-      },
-
-      setUser: (user: User) => {
-        set({
           user,
-          isAuthenticated: true,
-          isOnboarded: user.onboarded || false
+          accessToken: tokens.access,
+          refreshToken: tokens.refresh,
+          googleAccessToken: tokens.googleAccess || null,
         });
       },
       
-      completeOnboarding: () => {
-        set({ isOnboarded: true });
+      setUser: (user) => {
+        set({ user });
+      },
+      
+      setGoogleAccessToken: (token) => {
+        set({ googleAccessToken: token });
+      },
+      
+      clearAuth: () => {
+        set({
+          isAuthenticated: false,
+          user: null,
+          accessToken: null,
+          refreshToken: null,
+          googleAccessToken: null,
+          isOnboarded: false,
+          onboardingStep: null,
+        });
+      },
+      
+      signOut: () => {
+        get().clearAuth();
       },
       
       setLoading: (loading) => {
         set({ isLoading: loading });
-      }
+      },
+      
+      setOnboarded: (onboarded) => {
+        set({ isOnboarded: onboarded });
+      },
+      
+      setOnboardingStep: (step) => {
+        set({ onboardingStep: step });
+      },
+      
+      checkAuthStatus: () => {
+        const state = get();
+        return state.isAuthenticated && !!state.accessToken;
+      },
+      
+      getAuthHeader: () => {
+        const token = get().accessToken;
+        return token ? { Authorization: `Bearer ${token}` } : {};
+      },
     }),
-    { name: 'alfredo-auth' }
+    {
+      name: 'auth-storage',
+      storage: createJSONStorage(() => localStorage),
+    }
   )
 );

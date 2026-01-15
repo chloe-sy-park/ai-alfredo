@@ -61,7 +61,7 @@ export const BarChart: React.FC<BarChartProps> = ({
           }}
         />
         <Bar dataKey={dataKey} radius={[4, 4, 0, 0]}>
-          {data.map((entry, index) => (
+          {data.map((_entry, index) => (
             <Cell key={`cell-${index}`} fill="#A996FF" />
           ))}
         </Bar>

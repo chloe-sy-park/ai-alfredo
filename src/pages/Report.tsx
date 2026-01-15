@@ -1,6 +1,6 @@
 // Report.tsx - Weekly Report 페이지
 import React, { useState } from 'react';
-import { ArrowLeft, Calendar } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import WeeklyReport from '../components/report/WeeklyReport';
 import MonthlyReport from '../components/report/MonthlyReport';
