@@ -29,7 +29,7 @@ export const DonutChart: React.FC<DonutChartProps> = ({
           endAngle={-270}
           dataKey="value"
         >
-          {data.map((_entry, index) => (
+          {data.map((_, index) => (
             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
           ))}
         </Pie>

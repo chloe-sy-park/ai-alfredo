@@ -255,6 +255,28 @@ const Settings: React.FC = () => {
           로그아웃
         </button>
       </div>
+      
+      <style>
+        {`
+          input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #A996FF;
+            border-radius: 50%;
+            cursor: pointer;
+          }
+          
+          input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #A996FF;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+          }
+        `}
+      </style>
     </div>
   );
 };
