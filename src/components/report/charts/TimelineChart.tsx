@@ -1,75 +1,73 @@
-interface TimelinePoint {
-  date: string;
-  time?: string;
-  intensity?: 'low' | 'mid' | 'high';
-  label?: string;
-}
+// TimelineChart.tsx - 타임라인 차트 컴포넌트
+import React from 'react';
+import { ScatterChart, Scatter, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { LiftRecord } from '../../../stores/liftStore';
 
 interface TimelineChartProps {
-  points: TimelinePoint[];
-  minimal?: boolean;
+  lifts: LiftRecord[];
+  height?: number;
 }
 
-export default function TimelineChart({ points, minimal = true }: TimelineChartProps) {
-  const days = ['월', '화', '수', '목', '금', '토', '일'];
+export const TimelineChart: React.FC<TimelineChartProps> = ({ lifts, height = 200 }) => {
+  // Lift 데이터를 차트용 데이터로 변환
+  const chartData = lifts.map(lift => {
+    const date = new Date(lift.timestamp);
+    const dayOfWeek = date.getDay();
+    const hour = date.getHours() + date.getMinutes() / 60;
+    
+    return {
+      x: dayOfWeek,
+      y: hour,
+      size: lift.impact === 'high' ? 12 : lift.impact === 'medium' ? 8 : 5,
+      type: lift.type,
+      reason: lift.reason
+    };
+  });
   
-  // 점 크기 매핑
-  const getSizeClass = (intensity?: string) => {
-    switch (intensity) {
-      case 'high': return 'w-4 h-4';
-      case 'mid': return 'w-3 h-3';
-      default: return 'w-2 h-2';
+  // 요일 레이블
+  const dayLabels = ['일', '월', '화', '수', '목', '금', '토'];
+  
+  // 커스텀 툴팁
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-white p-2 shadow-lg rounded-lg border border-gray-200">
+          <p className="text-xs text-gray-600">{data.reason}</p>
+        </div>
+      );
     }
+    return null;
   };
   
   return (
-    <div className="relative">
-      {/* Timeline Line */}
-      <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-200 dark:bg-gray-700 transform -translate-y-1/2" />
-      
-      {/* Day Labels */}
-      <div className="flex justify-between mb-8">
-        {days.map((day) => (
-          <div key={day} className="text-xs text-gray-500 dark:text-gray-400">
-            {day}
-          </div>
-        ))}
-      </div>
-      
-      {/* Points */}
-      <div className="relative h-16">
-        {points.map((point, index) => {
-          // 날짜에서 요일 계산 (간단한 예시)
-          const dayIndex = index % 7; // 실제로는 date를 파싱해야 함
-          const leftPosition = `${(dayIndex / 6) * 100}%`;
-          
-          return (
-            <div
-              key={index}
-              className="absolute transform -translate-x-1/2 -translate-y-1/2"
-              style={{ left: leftPosition, top: '50%' }}
-            >
-              <div className="relative">
-                <div 
-                  className={`bg-primary rounded-full ${getSizeClass(point.intensity)}`}
-                />
-                {!minimal && point.label && (
-                  <div className="absolute top-6 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
-                    <p className="text-xs text-gray-600 dark:text-gray-400">
-                      {point.label}
-                    </p>
-                    {point.time && (
-                      <p className="text-xs text-gray-500 dark:text-gray-500">
-                        {point.time}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+    <ResponsiveContainer width="100%" height={height}>
+      <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 40 }}>
+        <XAxis 
+          type="number" 
+          dataKey="x" 
+          domain={[0, 6]}
+          ticks={[0, 1, 2, 3, 4, 5, 6]}
+          tickFormatter={(value) => dayLabels[value]}
+          axisLine={false}
+          tickLine={false}
+        />
+        <YAxis 
+          type="number" 
+          dataKey="y" 
+          domain={[0, 24]}
+          ticks={[6, 12, 18, 24]}
+          tickFormatter={(value) => `${value}:00`}
+          axisLine={false}
+          tickLine={false}
+        />
+        <Tooltip content={<CustomTooltip />} />
+        <Scatter 
+          data={chartData} 
+          fill="#A996FF"
+          fillOpacity={0.6}
+        />
+      </ScatterChart>
+    </ResponsiveContainer>
   );
-}
+};
