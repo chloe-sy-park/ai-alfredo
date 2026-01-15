@@ -1,5 +1,5 @@
 import './App.css';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
 import { lazy, Suspense } from 'react';
 
@@ -46,65 +46,59 @@ function App() {
   // 온보딩 여부를 체크하여 라우팅
   if (!isAuthenticated) {
     return (
-      <Router>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </Routes>
-        </Suspense>
-      </Router>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </Suspense>
     );
   }
 
   if (!isOnboarded) {
     return (
-      <Router>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="*" element={<Navigate to="/onboarding" replace />} />
-          </Routes>
-        </Suspense>
-      </Router>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="*" element={<Navigate to="/onboarding" replace />} />
+        </Routes>
+      </Suspense>
     );
   }
 
   return (
-    <Router>
-      <div className="flex flex-col min-h-screen bg-gray-50">
-        <Suspense fallback={<PageLoader />}>
-          <div className="flex-1 pb-20">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/work" element={<WorkOS />} />
-              <Route path="/life" element={<LifeOS />} />
-              <Route path="/chat" element={<Chat />} />
-              <Route path="/report" element={<Report />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/body-doubling" element={<BodyDoubling />} />
-              
-              {/* Entry Routes */}
-              <Route path="/entry" element={<Entry />} />
-              <Route path="/entry/work" element={<WorkEntry />} />
-              <Route path="/entry/life" element={<LifeEntry />} />
-              
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </div>
-        </Suspense>
-        
-        {/* 네비게이션 바 */}
-        <BottomNav />
-        
-        {/* 플로팅 요소들 */}
-        <FloatingBar />
-        <BodyDoublingButton />
-        <NudgeBubble />
-        <NudgeManager />
-        <ReflectButton />
-      </div>
-    </Router>
+    <div className="flex flex-col min-h-screen bg-gray-50">
+      <Suspense fallback={<PageLoader />}>
+        <div className="flex-1 pb-20">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/work" element={<WorkOS />} />
+            <Route path="/life" element={<LifeOS />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/report" element={<Report />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/body-doubling" element={<BodyDoubling />} />
+            
+            {/* Entry Routes */}
+            <Route path="/entry" element={<Entry />} />
+            <Route path="/entry/work" element={<WorkEntry />} />
+            <Route path="/entry/life" element={<LifeEntry />} />
+            
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </div>
+      </Suspense>
+      
+      {/* 네비게이션 바 */}
+      <BottomNav />
+      
+      {/* 플로팅 요소들 */}
+      <FloatingBar />
+      <BodyDoublingButton />
+      <NudgeBubble />
+      <NudgeManager />
+      <ReflectButton />
+    </div>
   );
 }
 
