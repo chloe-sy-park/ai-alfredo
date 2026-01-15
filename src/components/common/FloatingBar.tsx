@@ -1,10 +1,27 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { 
+  Zap, 
+  MessageCircle, 
+  Plus, 
+  Smile, 
+  FileText, 
+  Timer, 
+  Calendar,
+  X
+} from 'lucide-react';
+
+interface QuickAction {
+  icon: React.ElementType;
+  label: string;
+  action: () => void;
+}
 
 const FloatingBar: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [inputValue, setInputValue] = useState('');
   
   // 특정 페이지에서는 플로팅 바 숨기기
   const hiddenPaths = ['/onboarding', '/login', '/body-doubling', '/entry', '/chat'];
@@ -13,34 +30,138 @@ const FloatingBar: React.FC = () => {
   });
   
   if (shouldHide) return null;
-  
-  const handleAddClick = function() {
-    // 현재 페이지에 따라 다른 액션 실행
-    if (location.pathname === '/work') {
-      navigate('/entry/work');
-    } else if (location.pathname === '/life') {
-      navigate('/entry/life');
-    } else {
-      navigate('/entry');
+
+  const quickActions: QuickAction[] = [
+    { 
+      icon: MessageCircle, 
+      label: '채팅', 
+      action: () => {
+        setIsExpanded(false);
+      }
+    },
+    { 
+      icon: Plus, 
+      label: '태스크', 
+      action: () => {
+        setIsExpanded(false);
+        navigate('/entry');
+      }
+    },
+    { 
+      icon: Smile, 
+      label: '컨디션', 
+      action: () => {
+        setIsExpanded(false);
+        // TODO: 컨디션 변경 모달
+      }
+    },
+    { 
+      icon: FileText, 
+      label: '메모', 
+      action: () => {
+        setIsExpanded(false);
+        // TODO: 메모 바텀시트
+      }
+    },
+    { 
+      icon: Timer, 
+      label: '타이머', 
+      action: () => {
+        setIsExpanded(false);
+        navigate('/body-doubling');
+      }
+    },
+    { 
+      icon: Calendar, 
+      label: '일정', 
+      action: () => {
+        setIsExpanded(false);
+        // TODO: 일정 추가 바텀시트
+      }
+    },
+  ];
+
+  const handleSubmit = () => {
+    if (inputValue.trim()) {
+      navigate('/chat', { state: { initialMessage: inputValue } });
+      setInputValue('');
     }
   };
-  
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
   return (
-    <button
-      onClick={handleAddClick}
-      className="
-        fixed bottom-20 right-4 z-40
-        w-14 h-14 rounded-full
-        bg-[#A996FF] text-white
-        shadow-lg shadow-[#A996FF]/30
-        flex items-center justify-center
-        hover:bg-[#9785EE] active:scale-95
-        transition-all duration-200
-      "
-      aria-label="새로 추가"
-    >
-      <Plus className="w-6 h-6" />
-    </button>
+    <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-2 bg-gradient-to-t from-gray-50 via-gray-50 to-transparent">
+      <div className="max-w-md mx-auto">
+        {/* 퀵액션 확장 상태 */}
+        {isExpanded && (
+          <div className="mb-3 animate-in slide-in-from-bottom-2 duration-300">
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-3">
+              <div className="flex justify-around">
+                {quickActions.map((action, index) => {
+                  const Icon = action.icon;
+                  return (
+                    <button
+                      key={index}
+                      onClick={action.action}
+                      className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-gray-50 active:scale-95 transition-all"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-[#F5F3FF] flex items-center justify-center">
+                        <Icon className="w-5 h-5 text-[#A996FF]" />
+                      </div>
+                      <span className="text-xs text-gray-600">{action.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 메인 입력 바 */}
+        <div className="flex items-center gap-2">
+          <div className="flex-1 bg-white rounded-full shadow-lg border border-gray-100 flex items-center overflow-hidden">
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="AlFredo에게 물어보세요..."
+              className="flex-1 px-5 py-3.5 text-sm bg-transparent outline-none placeholder:text-gray-400"
+            />
+            {inputValue && (
+              <button
+                onClick={handleSubmit}
+                className="pr-4 text-[#A996FF] hover:text-[#8B7BE8] transition-colors"
+              >
+                <MessageCircle className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+          
+          {/* 퀵액션 토글 버튼 */}
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className={`
+              w-12 h-12 rounded-full shadow-lg
+              flex items-center justify-center
+              transition-all duration-300
+              ${isExpanded 
+                ? 'bg-gray-200 text-gray-600 rotate-45' 
+                : 'bg-[#A996FF] text-white shadow-[#A996FF]/30'
+              }
+            `}
+          >
+            {isExpanded ? <X className="w-5 h-5" /> : <Zap className="w-5 h-5" />}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 
