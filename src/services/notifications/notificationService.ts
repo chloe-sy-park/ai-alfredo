@@ -292,6 +292,122 @@ class NotificationService {
     }
     this.swRegistration.active.postMessage(message);
   }
+
+  /**
+   * 서버에 푸시 구독 등록 (Supabase Edge Function)
+   */
+  async subscribeToPush(deviceName?: string): Promise<{ success: boolean; error?: string }> {
+    if (!this.swRegistration) {
+      return { success: false, error: 'Service worker not registered' };
+    }
+
+    try {
+      // VAPID 공개키 (환경 변수 또는 설정에서 가져옴)
+      const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+      if (!vapidPublicKey) {
+        return { success: false, error: 'VAPID public key not configured' };
+      }
+
+      // Base64 URL을 Uint8Array로 변환
+      const urlBase64ToUint8Array = (base64String: string) => {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+          outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+      };
+
+      // Push Manager 구독
+      const subscription = await this.swRegistration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+      });
+
+      // 서버에 구독 정보 저장
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        return { success: false, error: 'Not authenticated' };
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/push-subscribe`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            subscription: subscription.toJSON(),
+            deviceName,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        return { success: false, error: error.message || 'Failed to register subscription' };
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Push subscription error:', error);
+      return { success: false, error: String(error) };
+    }
+  }
+
+  /**
+   * 서버에서 푸시 구독 해제
+   */
+  async unsubscribeFromPush(): Promise<{ success: boolean; error?: string }> {
+    try {
+      // 로컬 구독 해제
+      const subscription = await this.swRegistration?.pushManager.getSubscription();
+      if (subscription) {
+        await subscription.unsubscribe();
+      }
+
+      // 서버에 알림
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/push-subscribe`,
+          {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              endpoint: subscription?.endpoint,
+            }),
+          }
+        );
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Push unsubscription error:', error);
+      return { success: false, error: String(error) };
+    }
+  }
+
+  /**
+   * 현재 푸시 구독 상태 확인
+   */
+  async isPushSubscribed(): Promise<boolean> {
+    if (!this.swRegistration) return false;
+
+    try {
+      const subscription = await this.swRegistration.pushManager.getSubscription();
+      return subscription !== null;
+    } catch {
+      return false;
+    }
+  }
 }
 
 // 싱글톤 인스턴스
