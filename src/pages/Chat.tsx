@@ -6,6 +6,7 @@ import { useChatStore } from '../stores/chatStore';
 import { ChatContext, CHAT_ENTRY_POINTS } from '../types/chat';
 import ChatMessageItem from '../components/chat/ChatMessageItem';
 import ChatInput from '../components/chat/ChatInput';
+import SafetyMessage from '../components/chat/SafetyMessage';
 
 // Date 안전 변환 헬퍼
 const toDate = (value: Date | string | undefined): Date => {
@@ -26,7 +27,11 @@ const Chat: React.FC = () => {
     entryContext,
     openChat,
     closeChat,
-    sendMessage
+    sendMessage,
+    // 안전 상태 (향후 지속적 알림에 사용)
+    activeSafetyLevel: _activeSafetyLevel,
+    activeCrisisResources: _activeCrisisResources,
+    clearSafetyAlert: _clearSafetyAlert
   } = useChatStore();
 
   const entry = searchParams.get('entry') || 'manual';
@@ -168,12 +173,25 @@ const Chat: React.FC = () => {
               {/* 메시지들 */}
               {group.messages.map(({ message, index }) => {
                 const prevMessage = index > 0 ? messages[index - 1] : null;
-                
+
                 // 연속 메시지 체크 - 안전한 Date 비교
-                const showAvatar = !prevMessage || 
-                  prevMessage.role !== message.role || 
+                const showAvatar = !prevMessage ||
+                  prevMessage.role !== message.role ||
                   (message.timestamp.getTime() - prevMessage.timestamp.getTime()) > 60000; // 1분 이상 차이
-                
+
+                // 안전 메시지인 경우 SafetyMessage 컴포넌트 사용
+                if (message.role === 'alfredo' && message.isSafetyMessage && message.safetyLevel) {
+                  return (
+                    <div key={message.id} className="my-3">
+                      <SafetyMessage
+                        level={message.safetyLevel}
+                        message={message.content}
+                        resources={message.crisisResources}
+                      />
+                    </div>
+                  );
+                }
+
                 return (
                   <ChatMessageItem
                     key={message.id}
