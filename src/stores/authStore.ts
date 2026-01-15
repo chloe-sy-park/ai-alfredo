@@ -5,6 +5,15 @@ export type User = {
   email: string;
   name?: string;
   picture?: string;
+  preferences?: {
+    context?: 'work' | 'life' | 'unsure';
+    boundary?: 'soft' | 'balanced' | 'firm';
+    calendarConnected?: boolean;
+    notifications?: {
+      enabled: boolean;
+      times: string[];
+    };
+  };
 };
 
 export type AuthState = {
@@ -28,6 +37,8 @@ export type AuthState = {
   setOnboardingStep: (step: number | null) => void;
   checkAuthStatus: () => boolean;
   getAuthHeader: () => { Authorization: string } | {};
+  completeOnboarding: () => void;
+  login: () => void;
 };
 
 export const useAuthStore = create<AuthState>()(
@@ -96,6 +107,25 @@ export const useAuthStore = create<AuthState>()(
       getAuthHeader: () => {
         const token = get().accessToken;
         return token ? { Authorization: `Bearer ${token}` } : {};
+      },
+      
+      completeOnboarding: () => {
+        set({ isOnboarded: true });
+      },
+      
+      login: () => {
+        // 임시 로그인 처리 (실제로는 Google OAuth 등을 사용)
+        const mockUser: User = {
+          email: 'user@example.com',
+          name: 'User',
+        };
+        
+        set({
+          isAuthenticated: true,
+          user: mockUser,
+          accessToken: 'mock-token',
+          refreshToken: 'mock-refresh-token',
+        });
       },
     }),
     {
