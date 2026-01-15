@@ -8,13 +8,12 @@ export const NudgeManager: React.FC = () => {
   const { interventionLevel } = useUserPreferencesStore();
   const { isActive, getElapsedTime } = useBodyDoublingStore();
   
-  useEffect(() => {
+  useEffect(function() {
     // 개입 수준이 낮으면 nudge 빈도 감소
     const checkInterval = interventionLevel > 50 ? 60000 : 300000; // 1분 vs 5분
     
-    const interval = setInterval(() => {
+    const interval = setInterval(function() {
       const now = new Date();
-      const hour = now.getHours();
       
       // 컨텍스트 수집
       const context = {
@@ -31,11 +30,11 @@ export const NudgeManager: React.FC = () => {
       }
     }, checkInterval);
     
-    return () => clearInterval(interval);
+    return function() { clearInterval(interval); };
   }, [interventionLevel, showNudge, isActive, getElapsedTime]);
   
   // 특별한 이벤트 기반 nudge
-  useEffect(() => {
+  useEffect(function() {
     if (!isActive) return;
     
     const focusTime = getElapsedTime();
@@ -48,7 +47,7 @@ export const NudgeManager: React.FC = () => {
         priority: 'high',
         action: {
           label: '휴식하기',
-          handler: () => console.log('Taking a break')
+          handler: function() { console.log('Taking a break'); }
         }
       });
     }

@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play, Pause, StopCircle, Clock } from 'lucide-react';
+import { ArrowLeft, Play, StopCircle } from 'lucide-react';
 import { useBodyDoublingStore } from '../stores/bodyDoublingStore';
 
-const BodyDoubling: React.FC = () => {
+const BodyDoubling: React.FC = function() {
   const navigate = useNavigate();
   const {
     isActive,
     currentSession,
     startSession,
     endSession,
-    getElapsedTime,
     getRemainingTime
   } = useBodyDoublingStore();
   
@@ -19,10 +18,10 @@ const BodyDoubling: React.FC = () => {
   const [remainingTime, setRemainingTime] = useState(0);
   
   // 타이머 업데이트
-  useEffect(() => {
+  useEffect(function() {
     if (!isActive) return;
     
-    const interval = setInterval(() => {
+    const interval = setInterval(function() {
       const remaining = getRemainingTime();
       setRemainingTime(remaining);
       
@@ -32,17 +31,17 @@ const BodyDoubling: React.FC = () => {
       }
     }, 1000);
     
-    return () => clearInterval(interval);
+    return function() { clearInterval(interval); };
   }, [isActive, getRemainingTime, endSession]);
   
   // 시간 포맷팅
-  const formatTime = (seconds: number) => {
+  const formatTime = function(seconds: number) {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return mins + ':' + secs.toString().padStart(2, '0');
   };
   
-  const handleStart = () => {
+  const handleStart = function() {
     if (!task.trim()) {
       alert('무엇을 하실 건지 알려주세요!');
       return;
@@ -50,7 +49,7 @@ const BodyDoubling: React.FC = () => {
     startSession(task, duration);
   };
   
-  const handleStop = () => {
+  const handleStop = function() {
     if (window.confirm('정말 세션을 종료하시겠습니까?')) {
       endSession(false);
       setTask('');
@@ -62,7 +61,7 @@ const BodyDoubling: React.FC = () => {
       {/* Header */}
       <header className="bg-white border-b px-4 py-3 flex items-center gap-3">
         <button
-          onClick={() => navigate(-1)}
+          onClick={function() { navigate(-1); }}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -95,7 +94,7 @@ const BodyDoubling: React.FC = () => {
                 <input
                   type="text"
                   value={task}
-                  onChange={(e) => setTask(e.target.value)}
+                  onChange={function(e) { setTask(e.target.value); }}
                   placeholder="예: 이메일 정리하기"
                   className="
                     w-full px-4 py-3 rounded-xl border border-gray-200
@@ -109,22 +108,22 @@ const BodyDoubling: React.FC = () => {
                   얼마나 집중할까요?
                 </label>
                 <div className="grid grid-cols-3 gap-2">
-                  {[15, 25, 45].map((min) => (
-                    <button
-                      key={min}
-                      onClick={() => setDuration(min)}
-                      className={`
-                        py-3 rounded-lg font-medium transition-colors
-                        ${
+                  {[15, 25, 45].map(function(min) {
+                    return (
+                      <button
+                        key={min}
+                        onClick={function() { setDuration(min); }}
+                        className={[
+                          'py-3 rounded-lg font-medium transition-colors',
                           duration === min
                             ? 'bg-[#A996FF] text-white'
                             : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
-                        }
-                      `}
-                    >
-                      {min}분
-                    </button>
-                  ))}
+                        ].join(' ')}
+                      >
+                        {min}분
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -173,13 +172,11 @@ const BodyDoubling: React.FC = () => {
                 <div
                   className="h-full bg-[#A996FF] transition-all duration-1000"
                   style={{
-                    width: `${
-                      currentSession
+                    width: (currentSession
                         ? ((currentSession.duration * 60 - remainingTime) /
                             (currentSession.duration * 60)) *
                           100
-                        : 0
-                    }%`
+                        : 0) + '%'
                   }}
                 />
               </div>
