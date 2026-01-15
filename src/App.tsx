@@ -1,11 +1,11 @@
 import './App.css';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
 
 // Common Components
-import BottomNav from './components/common/BottomNav';
 import FloatingBar from './components/common/FloatingBar';
+import Drawer from './components/common/Drawer';
 import { BodyDoublingButton } from './components/body-doubling/BodyDoublingButton';
 import { NudgeBubble } from './components/nudge/NudgeBubble';
 import { NudgeManager } from './components/nudge/NudgeManager';
@@ -42,6 +42,7 @@ const PageLoader = () => (
 function App() {
   const isAuthenticated = useAuthStore(state => state.checkAuthStatus());
   const isOnboarded = useAuthStore(state => state.isOnboarded);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // 온보딩 여부를 체크하여 라우팅
   if (!isAuthenticated) {
@@ -69,13 +70,13 @@ function App() {
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       <Suspense fallback={<PageLoader />}>
-        <div className="flex-1 pb-20">
+        <div className="flex-1 pb-24">
           <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/work" element={<WorkOS />} />
-            <Route path="/life" element={<LifeOS />} />
+            <Route path="/" element={<Home onMenuClick={() => setIsDrawerOpen(true)} />} />
+            <Route path="/work" element={<WorkOS onMenuClick={() => setIsDrawerOpen(true)} />} />
+            <Route path="/life" element={<LifeOS onMenuClick={() => setIsDrawerOpen(true)} />} />
             <Route path="/chat" element={<Chat />} />
-            <Route path="/report" element={<Report />} />
+            <Route path="/report" element={<Report onMenuClick={() => setIsDrawerOpen(true)} />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/body-doubling" element={<BodyDoubling />} />
             
@@ -89,11 +90,13 @@ function App() {
         </div>
       </Suspense>
       
-      {/* 네비게이션 바 */}
-      <BottomNav />
-      
-      {/* 플로팅 요소들 */}
+      {/* 플로팅 바 (채팅 입력 + 퀵액션) */}
       <FloatingBar />
+      
+      {/* 드로어 메뉴 */}
+      <Drawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} />
+      
+      {/* 기타 플로팅 요소들 */}
       <BodyDoublingButton />
       <NudgeBubble />
       <NudgeManager />
