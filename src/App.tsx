@@ -5,6 +5,7 @@ import BottomNav from './components/common/BottomNav';
 import FloatingBar from './components/common/FloatingBar';
 import { BodyDoublingButton } from './components/body-doubling/BodyDoublingButton';
 import { NudgeBubble } from './components/nudge/NudgeBubble';
+import { NudgeManager } from './components/nudge/NudgeManager';
 
 // Pages
 import Login from './pages/Login';
@@ -83,6 +84,7 @@ function App() {
         <FloatingBar />
         <BodyDoublingButton />
         <NudgeBubble />
+        <NudgeManager />
         <ReflectButton />
       </div>
     </Router>
