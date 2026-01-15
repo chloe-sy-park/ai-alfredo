@@ -292,7 +292,6 @@ class NotificationService {
     }
     this.swRegistration.active.postMessage(message);
   }
-}
 
   /**
    * 서버에 푸시 구독 등록 (Supabase Edge Function)
