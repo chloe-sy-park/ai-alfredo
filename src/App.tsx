@@ -1,91 +1,91 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import './App.css';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
-import { ToastProvider } from './components/common/Toast';
-import LoadingSpinner from './components/common/LoadingSpinner';
-import ReflectButton from './components/common/ReflectButton';
+import BottomNav from './components/common/BottomNav';
+import FloatingBar from './components/common/FloatingBar';
+import { BodyDoublingButton } from './components/body-doubling/BodyDoublingButton';
+import { NudgeBubble } from './components/nudge/NudgeBubble';
 
 // Pages
-import Home from './pages/Home';
-import Calendar from './pages/Calendar';
-import Work from './pages/Work';
-import Life from './pages/Life';
-import Chat from './pages/Chat';
-import Settings from './pages/Settings';
 import Login from './pages/Login';
-import Onboarding from './pages/Onboarding';
-import AuthCallback from './pages/AuthCallback';
+import Home from './pages/Home';
+import WorkOS from './pages/WorkOS';
+import LifeOS from './pages/LifeOS';
+import Chat from './pages/Chat';
 import Report from './pages/Report';
+import Settings from './pages/Settings';
+import BodyDoubling from './pages/BodyDoubling';
+
+// Entry Pages  
 import Entry from './pages/Entry';
 import WorkEntry from './pages/Entry/WorkEntry';
 import LifeEntry from './pages/Entry/LifeEntry';
 
-// Layout
-import AppShell from './components/layout/AppShell';
+// Onboarding
+import Onboarding from './pages/Onboarding';
+
+// Reflect 버튼
+import ReflectButton from './components/common/ReflectButton';
 
 function App() {
-  const { isAuthenticated, isLoading, isOnboarded } = useAuthStore();
+  const isAuthenticated = useAuthStore(state => state.checkAuthStatus());
+  const isOnboarded = useAuthStore(state => state.isOnboarded);
 
-  // OAuth 콜백은 항상 접근 가능해야 함
-  if (window.location.pathname === '/auth/callback') {
-    return (
-      <Routes>
-        <Route path="/auth/callback" element={<AuthCallback />} />
-      </Routes>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-lavender-50 flex items-center justify-center">
-        <LoadingSpinner size="lg" message="알프레도 깨우는 중..." />
-      </div>
-    );
-  }
-
+  // 온보딩 여부를 체크하여 라우팅
   if (!isAuthenticated) {
     return (
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/auth/callback" element={<AuthCallback />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </Router>
     );
   }
 
-  // 로그인 됐지만 온보딩 미완료
   if (!isOnboarded) {
     return (
-      <Routes>
-        <Route path="/onboarding" element={<Onboarding />} />
-        <Route path="*" element={<Navigate to="/onboarding" replace />} />
-      </Routes>
+      <Router>
+        <Routes>
+          <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="*" element={<Navigate to="/onboarding" replace />} />
+        </Routes>
+      </Router>
     );
   }
 
   return (
-    <ToastProvider>
-      <Routes>
-        {/* Entry Routes - AppShell 없이 */}
-        <Route path="/entry" element={<Entry />} />
-        <Route path="/entry/work" element={<WorkEntry />} />
-        <Route path="/entry/life" element={<LifeEntry />} />
+    <Router>
+      <div className="flex flex-col min-h-screen bg-gray-50">
+        <div className="flex-1 pb-20">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/work" element={<WorkOS />} />
+            <Route path="/life" element={<LifeOS />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/report" element={<Report />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/body-doubling" element={<BodyDoubling />} />
+            
+            {/* Entry Routes */}
+            <Route path="/entry" element={<Entry />} />
+            <Route path="/entry/work" element={<WorkEntry />} />
+            <Route path="/entry/life" element={<LifeEntry />} />
+            
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </div>
         
-        {/* Main Routes - AppShell 포함 */}
-        <Route element={<AppShell />}>
-          <Route path="/" element={<Home />} />
-          <Route path="/calendar" element={<Calendar />} />
-          <Route path="/work" element={<Work />} />
-          <Route path="/life" element={<Life />} />
-          <Route path="/chat" element={<Chat />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/report" element={<Report />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-      
-      {/* Reflect 플로팅 버튼 - 모든 페이지에서 표시 (온보딩, Entry 제외) */}
-      <ReflectButton />
-    </ToastProvider>
+        {/* 네비게이션 바 */}
+        <BottomNav />
+        
+        {/* 플로팅 요소들 */}
+        <FloatingBar />
+        <BodyDoublingButton />
+        <NudgeBubble />
+        <ReflectButton />
+      </div>
+    </Router>
   );
 }
 
