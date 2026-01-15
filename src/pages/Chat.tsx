@@ -1,7 +1,7 @@
 // Chat.tsx - 메신저 스타일 채팅 화면
 import React, { useEffect, useRef } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useChatStore } from '../stores/chatStore';
 import { ChatContext, CHAT_ENTRY_POINTS } from '../types/chat';
 import ChatMessageItem from '../components/chat/ChatMessageItem';
@@ -16,9 +16,10 @@ const toDate = (value: Date | string | undefined): Date => {
 
 const Chat: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+
   const {
     currentSession,
     isOpen,
@@ -27,9 +28,11 @@ const Chat: React.FC = () => {
     closeChat,
     sendMessage
   } = useChatStore();
-  
+
   const entry = searchParams.get('entry') || 'manual';
-  const initialMessage = searchParams.get('message');
+  // location.state와 searchParams 모두 지원
+  const locationState = location.state as { initialMessage?: string } | null;
+  const initialMessage = locationState?.initialMessage || searchParams.get('message');
   
   // 메시지 timestamp를 안전하게 Date로 변환
   const messages = (currentSession?.messages || []).map(msg => ({
