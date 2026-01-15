@@ -1,7 +1,8 @@
 import './App.css';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
-import { lazy, Suspense, useState } from 'react';
+import { useDrawerStore } from './stores/drawerStore';
+import { lazy, Suspense } from 'react';
 
 // Common Components
 import FloatingBar from './components/common/FloatingBar';
@@ -42,7 +43,7 @@ const PageLoader = () => (
 function App() {
   const isAuthenticated = useAuthStore(state => state.checkAuthStatus());
   const isOnboarded = useAuthStore(state => state.isOnboarded);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const { isOpen: isDrawerOpen, close: closeDrawer } = useDrawerStore();
 
   // 온보딩 여부를 체크하여 라우팅
   if (!isAuthenticated) {
@@ -72,11 +73,11 @@ function App() {
       <Suspense fallback={<PageLoader />}>
         <div className="flex-1 pb-24">
           <Routes>
-            <Route path="/" element={<Home onMenuClick={() => setIsDrawerOpen(true)} />} />
-            <Route path="/work" element={<WorkOS onMenuClick={() => setIsDrawerOpen(true)} />} />
-            <Route path="/life" element={<LifeOS onMenuClick={() => setIsDrawerOpen(true)} />} />
+            <Route path="/" element={<Home />} />
+            <Route path="/work" element={<WorkOS />} />
+            <Route path="/life" element={<LifeOS />} />
             <Route path="/chat" element={<Chat />} />
-            <Route path="/report" element={<Report onMenuClick={() => setIsDrawerOpen(true)} />} />
+            <Route path="/report" element={<Report />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/body-doubling" element={<BodyDoubling />} />
             
@@ -94,7 +95,7 @@ function App() {
       <FloatingBar />
       
       {/* 드로어 메뉴 */}
-      <Drawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} />
+      <Drawer isOpen={isDrawerOpen} onClose={closeDrawer} />
       
       {/* 기타 플로팅 요소들 */}
       <BodyDoublingButton />
