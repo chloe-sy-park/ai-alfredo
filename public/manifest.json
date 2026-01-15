@@ -1,0 +1,74 @@
+{
+  "short_name": "알프레도",
+  "name": "알프레도 - AI 라이프 버틀러",
+  "description": "ADHD 친화적 AI 집사가 당신의 하루를 관리해드립니다",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#A996FF",
+  "background_color": "#ffffff",
+  "orientation": "portrait",
+  "categories": ["productivity", "lifestyle"],
+  "lang": "ko-KR",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "scope": "/",
+  "shortcuts": [
+    {
+      "name": "챗 시작",
+      "short_name": "챗",
+      "description": "알프레도와 대화 시작",
+      "url": "/chat",
+      "icons": [
+        {
+          "src": "chat-icon.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "함께 일하기",
+      "short_name": "집중",
+      "description": "Body Doubling 세션 시작",
+      "url": "/body-doubling",
+      "icons": [
+        {
+          "src": "focus-icon.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "screenshot1.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "label": "홈 화면"
+    },
+    {
+      "src": "screenshot2.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "label": "챗 화면"
+    }
+  ]
+}
