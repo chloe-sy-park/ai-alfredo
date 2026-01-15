@@ -1,74 +1,91 @@
-import { useState } from 'react';
+// Report.tsx - Weekly Report 페이지
+import React, { useState } from 'react';
+import { ArrowLeft, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Share2 } from 'lucide-react';
 import WeeklyReport from '../components/report/WeeklyReport';
+import MonthlyReport from '../components/report/MonthlyReport';
+import { useLiftStore } from '../stores/liftStore';
 
-export default function Report() {
+const Report: React.FC = () => {
   const navigate = useNavigate();
-  const [selectedPeriod, setSelectedPeriod] = useState('week'); // week, month
-
+  const [reportType, setReportType] = useState<'weekly' | 'monthly'>('weekly');
+  const { getWeeklyLifts, getMonthlyLifts } = useLiftStore();
+  
+  // 현재 주 날짜 범위
+  const getCurrentWeekRange = () => {
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    
+    return {
+      start: weekStart.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }),
+      end: weekEnd.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })
+    };
+  };
+  
+  const weekRange = getCurrentWeekRange();
+  
   return (
-    <div className="relative min-h-screen bg-primary-bg dark:bg-primary-surface">
+    <div className="flex flex-col h-screen bg-gray-50">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-primary-bg dark:bg-primary-surface">
-        <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-gray-600 dark:text-gray-400"
-          >
-            <ChevronLeft size={24} />
-            <span>뒤로</span>
-          </button>
+      <header className="bg-white border-b px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate(-1)}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-lg font-semibold">리포트</h1>
+              <p className="text-xs text-gray-500">
+                {reportType === 'weekly' 
+                  ? `${weekRange.start} - ${weekRange.end}`
+                  : new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long' })
+                }
+              </p>
+            </div>
+          </div>
           
-          <h1 className="font-bold text-lg">리포트</h1>
-          
-          <button className="text-gray-600 dark:text-gray-400">
-            <Share2 size={20} />
-          </button>
+          {/* Report Type Toggle */}
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setReportType('weekly')}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                reportType === 'weekly'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              주간
+            </button>
+            <button
+              onClick={() => setReportType('monthly')}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                reportType === 'monthly'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              월간
+            </button>
+          </div>
         </div>
-        
-        {/* Period Selector */}
-        <div className="flex gap-2 p-4">
-          <button
-            onClick={() => setSelectedPeriod('week')}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-              selectedPeriod === 'week'
-                ? 'bg-primary text-white'
-                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
-            }`}
-          >
-            주간
-          </button>
-          <button
-            onClick={() => setSelectedPeriod('month')}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-              selectedPeriod === 'month'
-                ? 'bg-primary text-white'
-                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
-            }`}
-          >
-            월간
-          </button>
-        </div>
-      </div>
-
+      </header>
+      
       {/* Content */}
-      <div className="px-4 pb-20">
-        {selectedPeriod === 'week' ? (
-          <WeeklyReport />
+      <div className="flex-1 overflow-y-auto">
+        {reportType === 'weekly' ? (
+          <WeeklyReport lifts={getWeeklyLifts()} />
         ) : (
-          <MonthlyReport />
+          <MonthlyReport lifts={getMonthlyLifts()} />
         )}
       </div>
     </div>
   );
-}
+};
 
-// Monthly Report Component (placeholder)
-function MonthlyReport() {
-  return (
-    <div className="py-8">
-      <p className="text-center text-gray-500">월간 리포트 준비 중...</p>
-    </div>
-  );
-}
+export default Report;
