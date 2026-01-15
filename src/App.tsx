@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
 import { ToastProvider } from './components/common/Toast';
 import LoadingSpinner from './components/common/LoadingSpinner';
+import ReflectButton from './components/common/ReflectButton';
 
 // Pages
 import Home from './pages/Home';
@@ -81,6 +82,9 @@ function App() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      
+      {/* Reflect 플로팅 버튼 - 모든 페이지에서 표시 (온보딩, Entry 제외) */}
+      <ReflectButton />
     </ToastProvider>
   );
 }
