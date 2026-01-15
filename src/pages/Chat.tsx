@@ -7,6 +7,13 @@ import { ChatContext, CHAT_ENTRY_POINTS } from '../types/chat';
 import ChatMessageItem from '../components/chat/ChatMessageItem';
 import ChatInput from '../components/chat/ChatInput';
 
+// Date 안전 변환 헬퍼
+const toDate = (value: Date | string | undefined): Date => {
+  if (!value) return new Date();
+  if (value instanceof Date) return value;
+  return new Date(value);
+};
+
 const Chat: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -22,7 +29,13 @@ const Chat: React.FC = () => {
   } = useChatStore();
   
   const entry = searchParams.get('entry') || 'manual';
-  const messages = currentSession?.messages || [];
+  const initialMessage = searchParams.get('message');
+  
+  // 메시지 timestamp를 안전하게 Date로 변환
+  const messages = (currentSession?.messages || []).map(msg => ({
+    ...msg,
+    timestamp: toDate(msg.timestamp)
+  }));
   
   // 채팅 열기 초기화
   useEffect(() => {
@@ -39,6 +52,13 @@ const Chat: React.FC = () => {
       openChat(context);
     }
   }, [entry, isOpen, openChat]);
+  
+  // FloatingBar에서 전달된 초기 메시지 처리
+  useEffect(() => {
+    if (initialMessage && isOpen && messages.length === 0) {
+      sendMessage(decodeURIComponent(initialMessage));
+    }
+  }, [initialMessage, isOpen, messages.length, sendMessage]);
   
   // 메시지 전송 핸들러
   const handleSend = async (content: string) => {
@@ -96,7 +116,7 @@ const Chat: React.FC = () => {
     }
     
     return groups;
-  }, [] as Array<{ date: string; messages: Array<{ message: any; index: number }> }>);
+  }, [] as Array<{ date: string; messages: Array<{ message: typeof messages[0]; index: number }> }>);
   
   const entryInfo = entryContext ? CHAT_ENTRY_POINTS[entryContext.entry] : CHAT_ENTRY_POINTS.manual;
   
@@ -146,7 +166,7 @@ const Chat: React.FC = () => {
               {group.messages.map(({ message, index }) => {
                 const prevMessage = index > 0 ? messages[index - 1] : null;
                 
-                // 연속 메시지 체크
+                // 연속 메시지 체크 - 안전한 Date 비교
                 const showAvatar = !prevMessage || 
                   prevMessage.role !== message.role || 
                   (message.timestamp.getTime() - prevMessage.timestamp.getTime()) > 60000; // 1분 이상 차이
