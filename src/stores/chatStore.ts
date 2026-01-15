@@ -4,6 +4,13 @@ import { ChatMessage, ChatSession, ChatContext, DNAInsight, JudgementReflection 
 import { DNAExpansionEngine } from '../services/dnaEngine';
 import { getTodayEvents } from '../services/calendar';
 
+// Date 객체 안전 변환 헬퍼 (persist 후 string -> Date 변환)
+const toDate = (value: Date | string | undefined): Date => {
+  if (!value) return new Date();
+  if (value instanceof Date) return value;
+  return new Date(value);
+};
+
 interface ChatStore {
   // 현재 세션
   currentSession: ChatSession | null;
@@ -38,23 +45,28 @@ export const useChatStore = create<ChatStore>()(
       entryContext: null,
       
       openChat: (context) => {
-        var { currentSession } = get();
+        const { currentSession } = get();
         
         // 기존 세션이 있고 1시간 이내면 계속 사용
-        if (currentSession && 
-            new Date().getTime() - currentSession.lastActivity.getTime() < 60 * 60 * 1000) {
-          set({
-            isOpen: true,
-            entryContext: context,
-            currentSession: {
-              ...currentSession,
-              lastActivity: new Date()
-            }
-          });
-        } else {
-          // 새 세션 시작
-          get().startNewSession(context);
+        if (currentSession) {
+          const lastActivity = toDate(currentSession.lastActivity);
+          const timeDiff = new Date().getTime() - lastActivity.getTime();
+          
+          if (timeDiff < 60 * 60 * 1000) {
+            set({
+              isOpen: true,
+              entryContext: context,
+              currentSession: {
+                ...currentSession,
+                lastActivity: new Date()
+              }
+            });
+            return;
+          }
         }
+        
+        // 새 세션 시작
+        get().startNewSession(context);
       },
       
       closeChat: () => {
@@ -62,11 +74,11 @@ export const useChatStore = create<ChatStore>()(
       },
       
       sendMessage: async (content) => {
-        var { currentSession, entryContext } = get();
+        const { currentSession, entryContext } = get();
         if (!currentSession || !entryContext) return;
         
         // 사용자 메시지 추가
-        var userMessage: ChatMessage = {
+        const userMessage: ChatMessage = {
           id: Date.now().toString(),
           role: 'user',
           content,
@@ -75,9 +87,9 @@ export const useChatStore = create<ChatStore>()(
         };
         
         // 알프레도 응답 생성 (임시 로직)
-        var alfredoResponse = await generateAlfredoResponse(content, entryContext);
+        const alfredoResponse = await generateAlfredoResponse(content, entryContext);
         
-        var alfredoMessage: ChatMessage = {
+        const alfredoMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
           role: 'alfredo',
           content: alfredoResponse.full,
@@ -88,11 +100,18 @@ export const useChatStore = create<ChatStore>()(
           dnaInsights: alfredoResponse.insights
         };
         
+        // 기존 메시지들의 timestamp도 Date 객체로 변환
+        const existingMessages = currentSession.messages.map(msg => ({
+          ...msg,
+          timestamp: toDate(msg.timestamp)
+        }));
+        
         // 세션 업데이트
-        var updatedSession: ChatSession = {
+        const updatedSession: ChatSession = {
           ...currentSession,
-          messages: [...currentSession.messages, userMessage, alfredoMessage],
+          messages: [...existingMessages, userMessage, alfredoMessage],
           lastActivity: new Date(),
+          startedAt: toDate(currentSession.startedAt),
           insights: [
             ...currentSession.insights,
             ...(alfredoResponse.insights || [])
@@ -112,7 +131,7 @@ export const useChatStore = create<ChatStore>()(
       },
       
       startNewSession: (context) => {
-        var newSession: ChatSession = {
+        const newSession: ChatSession = {
           id: Date.now().toString(),
           messages: [],
           startedAt: new Date(),
@@ -131,8 +150,8 @@ export const useChatStore = create<ChatStore>()(
       
       loadInsights: async () => {
         try {
-          var events = await getTodayEvents();
-          var insights = DNAExpansionEngine.analyzeCalendar(events);
+          const events = await getTodayEvents();
+          const insights = DNAExpansionEngine.analyzeCalendar(events);
           
           set({
             accumulatedInsights: insights
@@ -146,8 +165,34 @@ export const useChatStore = create<ChatStore>()(
       name: 'alfredo-chat-storage',
       partialize: (state) => ({
         sessions: state.sessions,
-        accumulatedInsights: state.accumulatedInsights
-      })
+        accumulatedInsights: state.accumulatedInsights,
+        currentSession: state.currentSession
+      }),
+      // persist 후 Date 객체 복원
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          // currentSession의 Date 복원
+          if (state.currentSession) {
+            state.currentSession.startedAt = toDate(state.currentSession.startedAt);
+            state.currentSession.lastActivity = toDate(state.currentSession.lastActivity);
+            state.currentSession.messages = state.currentSession.messages.map(msg => ({
+              ...msg,
+              timestamp: toDate(msg.timestamp)
+            }));
+          }
+          
+          // sessions의 Date 복원
+          state.sessions = state.sessions.map(session => ({
+            ...session,
+            startedAt: toDate(session.startedAt),
+            lastActivity: toDate(session.lastActivity),
+            messages: session.messages.map(msg => ({
+              ...msg,
+              timestamp: toDate(msg.timestamp)
+            }))
+          }));
+        }
+      }
     }
   )
 );
@@ -156,14 +201,14 @@ export const useChatStore = create<ChatStore>()(
 async function generateAlfredoResponse(userInput: string, context: ChatContext) {
   // 실제로는 Claude API 호출하겠지만, 지금은 패턴 기반 응답
   
-  var understanding = '네, 이해했어요. ';
-  var summary = '';
-  var judgement: JudgementReflection = {
+  let understanding = '네, 이해했어요. ';
+  let summary = '';
+  let judgement: JudgementReflection = {
     type: 'maintain',
     message: '지금 기준은 유지할게요.',
     confidence: 0.8
   };
-  var insights: DNAInsight[] = [];
+  const insights: DNAInsight[] = [];
   
   // 컨텍스트별 응답
   if (context.entry === 'priority') {
@@ -180,9 +225,27 @@ async function generateAlfredoResponse(userInput: string, context: ChatContext) 
         confidence: 0.9
       };
     }
+  } else if (context.entry === 'manual') {
+    understanding += '무엇을 도와드릴까요?';
+    
+    if (userInput.includes('안녕') || userInput.includes('하이')) {
+      summary = '반가워요! 오늘 하루도 함께해요.';
+      judgement = {
+        type: 'maintain',
+        message: '오늘도 좋은 하루 보내세요! 🐧',
+        confidence: 1.0
+      };
+    } else if (userInput.includes('피곤') || userInput.includes('힘들')) {
+      summary = '오늘 좀 힘드시군요.';
+      judgement = {
+        type: 'consider',
+        message: '오늘은 무리하지 마시고, 가장 중요한 것만 집중해보는 건 어떨까요?',
+        confidence: 0.85
+      };
+    }
   }
   
-  var full = `${understanding}\n\n${summary}\n\n${judgement.message}`;
+  const full = `${understanding}\n\n${summary}\n\n${judgement.message}`;
   
   return {
     full,
