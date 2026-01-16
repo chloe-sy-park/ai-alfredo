@@ -286,7 +286,7 @@ export default function Home() {
       <PageHeader />
 
       {/* 메인 컨텐츠 */}
-      <div className="max-w-[640px] mx-auto px-6 py-4 space-y-4">
+      <div className="max-w-[640px] mx-auto px-4 sm:px-6 py-4 space-y-4">
         
         {/* PRD: ModeSwitch - ALL/WORK/LIFE 탭 전환 */}
         <ModeSwitch
@@ -300,8 +300,8 @@ export default function Home() {
         {/* 인사 */}
         <div className="animate-fade-in">
           <ModeBadge />
-          <p className="text-sm text-[#999999]">{getGreeting()}</p>
-          <h1 className="text-xl font-bold text-[#1A1A1A] dark:text-white">
+          <p className="text-sm sm:text-base text-[#999999]">{getGreeting()}</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#1A1A1A] dark:text-white">
             {user?.name || 'Boss'}님
           </h1>
         </div>

@@ -162,12 +162,12 @@ export default function Work() {
     <div className="min-h-screen bg-[#F5F5F5]">
       <PageHeader />
       
-      <div className="max-w-[1200px] mx-auto px-4 py-4">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-4">
         {/* 페이지 헤더 */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
           <div className="flex items-center gap-2">
             <Briefcase size={24} className="text-[#A996FF]" />
-            <h1 className="text-xl font-bold text-[#1A1A1A]">Work</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-[#1A1A1A]">Work</h1>
           </div>
           
           <div className="flex items-center gap-2">
@@ -175,9 +175,9 @@ export default function Work() {
             <div className="bg-white rounded-lg p-1 flex">
               <button
                 onClick={function() { setViewMode('project'); }}
-                className={`p-2 rounded ${
-                  viewMode === 'project' 
-                    ? 'bg-[#A996FF] text-white' 
+                className={`w-10 h-10 sm:w-11 sm:h-11 rounded flex items-center justify-center touch-target ${
+                  viewMode === 'project'
+                    ? 'bg-[#A996FF] text-white'
                     : 'text-[#666666] hover:bg-[#F5F5F5]'
                 }`}
               >
@@ -185,28 +185,28 @@ export default function Work() {
               </button>
               <button
                 onClick={function() { setViewMode('list'); }}
-                className={`p-2 rounded ${
-                  viewMode === 'list' 
-                    ? 'bg-[#A996FF] text-white' 
+                className={`w-10 h-10 sm:w-11 sm:h-11 rounded flex items-center justify-center touch-target ${
+                  viewMode === 'list'
+                    ? 'bg-[#A996FF] text-white'
                     : 'text-[#666666] hover:bg-[#F5F5F5]'
                 }`}
               >
                 <List size={18} />
               </button>
             </div>
-            
+
             {/* 태스크 추가 버튼 */}
             <button
               onClick={function() { handleAddTask(); }}
-              className="px-4 py-2 bg-[#A996FF] text-white rounded-lg hover:bg-[#8B7BE8] flex items-center gap-2"
+              className="px-4 py-2.5 sm:py-3 bg-[#A996FF] text-white rounded-lg hover:bg-[#8B7BE8] flex items-center gap-2 min-h-[44px]"
             >
               <Plus size={18} />
-              <span>태스크 추가</span>
+              <span className="text-sm sm:text-base">태스크 추가</span>
             </button>
           </div>
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* 메인 컨텐츠 (2열) */}
           <div className="lg:col-span-2 space-y-4">
             {/* 상황 브리핑 */}

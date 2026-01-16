@@ -36,7 +36,7 @@ export default function PageHeader({
           {showNotification && (
             <button
               onClick={toggleNotification}
-              className="relative w-9 h-9 flex items-center justify-center text-[#666666] hover:bg-[#E5E5E5] rounded-full transition-colors"
+              className="relative w-11 h-11 flex items-center justify-center text-[#666666] hover:bg-[#E5E5E5] rounded-full transition-colors touch-target"
             >
               <Bell size={20} />
               {unreadCount > 0 && (
@@ -48,7 +48,7 @@ export default function PageHeader({
           )}
           <button
             onClick={open}
-            className="w-9 h-9 flex items-center justify-center text-[#666666] hover:bg-[#E5E5E5] rounded-full transition-colors"
+            className="w-11 h-11 flex items-center justify-center text-[#666666] hover:bg-[#E5E5E5] rounded-full transition-colors touch-target"
           >
             <Menu size={20} />
           </button>

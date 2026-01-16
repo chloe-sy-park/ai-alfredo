@@ -96,8 +96,8 @@ const FloatingBar: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-6 pt-2 bg-gradient-to-t from-gray-50 via-gray-50 to-transparent">
-      <div className="max-w-md mx-auto">
+    <div className="fixed bottom-0 left-0 right-0 z-50 px-4 sm:px-6 pb-6 pt-2 bg-gradient-to-t from-gray-50 via-gray-50 to-transparent safe-area-bottom">
+      <div className="max-w-md sm:max-w-lg mx-auto">
         {/* 퀵액션 확장 상태 */}
         {isExpanded && (
           <div className="mb-3 animate-in slide-in-from-bottom-2 duration-300">
@@ -109,10 +109,10 @@ const FloatingBar: React.FC = () => {
                     <button
                       key={index}
                       onClick={action.action}
-                      className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-gray-50 active:scale-95 transition-all"
+                      className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-gray-50 active:scale-95 transition-all touch-target"
                     >
-                      <div className="w-10 h-10 rounded-full bg-[#F5F3FF] flex items-center justify-center">
-                        <Icon className="w-5 h-5 text-[#A996FF]" />
+                      <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-[#F5F3FF] flex items-center justify-center">
+                        <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-[#A996FF]" />
                       </div>
                       <span className="text-xs text-gray-600">{action.label}</span>
                     </button>
