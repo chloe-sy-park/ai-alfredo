@@ -1,6 +1,8 @@
 import { PageHeader } from '../components/layout';
-import { Link2, CheckCircle2, Circle, AlertCircle } from 'lucide-react';
+import { Link2, CheckCircle2, Circle, AlertCircle, Settings } from 'lucide-react';
+import { useState } from 'react';
 import { isGoogleAuthenticated } from '../services/calendar';
+import { CalendarSettings } from '../components/calendar';
 
 interface Integration {
   id: string;
@@ -13,6 +15,7 @@ interface Integration {
 
 export default function Integrations() {
   const googleConnected = isGoogleAuthenticated();
+  const [showCalendarSettings, setShowCalendarSettings] = useState(false);
 
   const integrations: Integration[] = [
     {
@@ -91,10 +94,21 @@ export default function Integrations() {
 
                 <div className="flex items-center gap-2">
                   {integration.connected ? (
-                    <div className="flex items-center gap-1 px-3 py-1.5 bg-green-50 text-green-600 rounded-lg text-sm">
-                      <CheckCircle2 size={16} />
-                      <span>연결됨</span>
-                    </div>
+                    <>
+                      <div className="flex items-center gap-1 px-3 py-1.5 bg-green-50 text-green-600 rounded-lg text-sm">
+                        <CheckCircle2 size={16} />
+                        <span>연결됨</span>
+                      </div>
+                      {integration.id === 'google-calendar' && (
+                        <button
+                          onClick={() => setShowCalendarSettings(!showCalendarSettings)}
+                          className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                          title="캘린더 설정"
+                        >
+                          <Settings size={18} className="text-gray-500" />
+                        </button>
+                      )}
+                    </>
                   ) : (
                     <button
                       onClick={integration.onConnect}
@@ -107,6 +121,13 @@ export default function Integrations() {
                   )}
                 </div>
               </div>
+
+              {/* 캘린더 설정 패널 */}
+              {integration.id === 'google-calendar' && integration.connected && showCalendarSettings && (
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <CalendarSettings />
+                </div>
+              )}
             </div>
           ))}
         </div>
