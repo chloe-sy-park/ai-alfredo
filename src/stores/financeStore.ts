@@ -23,6 +23,11 @@ import {
   OneTimeExpense,
   INCOME_TYPE_DEFAULT_WORKLIFE,
   EXPENSE_CATEGORY_DEFAULT_WORKLIFE,
+  BudgetSettings,
+  BudgetSuggestion,
+  BudgetStatusInfo,
+  BudgetStatus,
+  BUDGET_STATUS_THRESHOLDS,
 } from '../services/finance/types';
 import {
   classifyWorkLife,
@@ -51,6 +56,10 @@ interface FinanceState {
   nudges: FinanceNudge[];
   incomeItems: IncomeItem[];
   oneTimeExpenses: OneTimeExpense[];
+
+  // Budget (예산 - 옵션 기능)
+  budgetSettings: BudgetSettings;
+  budgetSuggestion: BudgetSuggestion | null;
 
   // Computed (cached)
   overview: FinanceOverview | null;
@@ -110,6 +119,14 @@ interface FinanceState {
   closeUsageCheckModal: () => void;
   setStatsViewPeriod: (period: 'weekly' | 'monthly' | 'yearly') => void;
 
+  // Actions - Budget
+  setBudgetEnabled: (enabled: boolean) => void;
+  updateBudgetSettings: (settings: Partial<BudgetSettings>) => void;
+  applyBudgetSuggestion: () => void;
+  dismissBudgetSuggestion: () => void;
+  checkBudgetSuggestion: () => void;
+  getBudgetStatusInfo: () => BudgetStatusInfo | null;
+
   // Actions - Refresh
   refreshOverview: () => void;
   refreshDuplicates: () => void;
@@ -130,6 +147,13 @@ const initialState = {
   nudges: [],
   incomeItems: [],
   oneTimeExpenses: [],
+  // Budget (기본값: OFF)
+  budgetSettings: {
+    enabled: false,
+    workRatio: 40,
+    lifeRatio: 60,
+  } as BudgetSettings,
+  budgetSuggestion: null as BudgetSuggestion | null,
   overview: null,
   activeTab: 'all' as const,
   selectedItemId: null,
@@ -567,6 +591,156 @@ export const useFinanceStore = create<FinanceState>()(
       },
 
       // ============================================
+      // Budget Actions
+      // ============================================
+
+      setBudgetEnabled: (enabled) => {
+        set((state) => ({
+          budgetSettings: { ...state.budgetSettings, enabled },
+        }));
+      },
+
+      updateBudgetSettings: (settings) => {
+        set((state) => ({
+          budgetSettings: { ...state.budgetSettings, ...settings },
+        }));
+      },
+
+      applyBudgetSuggestion: () => {
+        const { budgetSuggestion } = get();
+        if (!budgetSuggestion) return;
+
+        set((state) => ({
+          budgetSettings: {
+            ...state.budgetSettings,
+            enabled: true,
+            workRatio: budgetSuggestion.workRatio,
+            lifeRatio: budgetSuggestion.lifeRatio,
+          },
+          budgetSuggestion: {
+            ...budgetSuggestion,
+            appliedAt: new Date().toISOString(),
+          },
+        }));
+      },
+
+      dismissBudgetSuggestion: () => {
+        const { budgetSuggestion } = get();
+        if (!budgetSuggestion) return;
+
+        set({
+          budgetSuggestion: {
+            ...budgetSuggestion,
+            dismissedAt: new Date().toISOString(),
+          },
+        });
+      },
+
+      checkBudgetSuggestion: () => {
+        const { recurringItems, commitmentItems, budgetSuggestion, budgetSettings } = get();
+
+        // 이미 예산 설정 중이거나, 이미 제안이 있으면 스킵
+        if (budgetSettings.enabled) return;
+        if (budgetSuggestion && !budgetSuggestion.dismissedAt) return;
+
+        // 조건: 최소 10개 이상의 항목이 있을 때만 제안
+        const totalItems = recurringItems.length + commitmentItems.length;
+        if (totalItems < 10) return;
+
+        // Work/Life 비중 계산
+        const workExpense = recurringItems
+          .filter((i) => i.workLife === 'Work')
+          .reduce((sum, i) => sum + (i.billingCycle === 'yearly' ? i.amount / 12 : i.amount), 0);
+
+        const lifeExpense = recurringItems
+          .filter((i) => i.workLife === 'Life')
+          .reduce((sum, i) => sum + (i.billingCycle === 'yearly' ? i.amount / 12 : i.amount), 0);
+
+        const totalExpense = workExpense + lifeExpense;
+        if (totalExpense === 0) return;
+
+        const workRatio = Math.round((workExpense / totalExpense) * 100);
+        const lifeRatio = 100 - workRatio;
+
+        set({
+          budgetSuggestion: {
+            workRatio,
+            lifeRatio,
+            suggestedAt: new Date().toISOString(),
+            basedOnDays: 14, // MVP: 기본 14일 분석 가정
+          },
+        });
+      },
+
+      getBudgetStatusInfo: () => {
+        const { budgetSettings, recurringItems, commitmentItems, incomeItems } = get();
+
+        if (!budgetSettings.enabled) return null;
+
+        // 총 고정지출 계산
+        const recurringTotal = recurringItems.reduce(
+          (sum, i) => sum + (i.billingCycle === 'yearly' ? i.amount / 12 : i.amount),
+          0
+        );
+        const commitmentTotal = commitmentItems.reduce(
+          (sum, i) => sum + i.monthlyPayment,
+          0
+        );
+        const totalFixedExpense = recurringTotal + commitmentTotal;
+
+        // Work/Life 지출 계산
+        const workExpense = recurringItems
+          .filter((i) => i.workLife === 'Work')
+          .reduce((sum, i) => sum + (i.billingCycle === 'yearly' ? i.amount / 12 : i.amount), 0);
+        const lifeExpense = recurringItems
+          .filter((i) => i.workLife === 'Life')
+          .reduce((sum, i) => sum + (i.billingCycle === 'yearly' ? i.amount / 12 : i.amount), 0)
+          + commitmentTotal; // Commitments are usually Life
+
+        // 수입 기반 예산 계산 (수입이 없으면 지출 기준으로)
+        const monthlyIncome = incomeItems
+          .filter((i) => i.isRecurring)
+          .reduce((sum, i) => sum + i.amount, 0);
+
+        const budgetBase = monthlyIncome > 0 ? monthlyIncome : totalFixedExpense * 1.2;
+        const workBudget = (budgetBase * budgetSettings.workRatio) / 100;
+        const lifeBudget = (budgetBase * budgetSettings.lifeRatio) / 100;
+        const totalBudget = budgetSettings.totalCap || budgetBase;
+
+        // 상태 계산 함수
+        const getStatus = (percentage: number): BudgetStatus => {
+          if (percentage < BUDGET_STATUS_THRESHOLDS.STABLE_MAX) return 'Stable';
+          if (percentage <= BUDGET_STATUS_THRESHOLDS.TIGHT_MAX) return 'Tight';
+          return 'Over';
+        };
+
+        const workPercentage = workBudget > 0 ? Math.round((workExpense / workBudget) * 100) : 0;
+        const lifePercentage = lifeBudget > 0 ? Math.round((lifeExpense / lifeBudget) * 100) : 0;
+        const overallPercentage = totalBudget > 0 ? Math.round((totalFixedExpense / totalBudget) * 100) : 0;
+
+        return {
+          work: {
+            budget: Math.round(workBudget),
+            current: Math.round(workExpense),
+            percentage: workPercentage,
+            status: getStatus(workPercentage),
+          },
+          life: {
+            budget: Math.round(lifeBudget),
+            current: Math.round(lifeExpense),
+            percentage: lifePercentage,
+            status: getStatus(lifePercentage),
+          },
+          overall: {
+            budget: Math.round(totalBudget),
+            current: Math.round(totalFixedExpense),
+            percentage: overallPercentage,
+            status: getStatus(overallPercentage),
+          },
+        };
+      },
+
+      // ============================================
       // Refresh Actions
       // ============================================
 
@@ -603,6 +777,8 @@ export const useFinanceStore = create<FinanceState>()(
         classificationRules: state.classificationRules,
         incomeItems: state.incomeItems,
         oneTimeExpenses: state.oneTimeExpenses,
+        budgetSettings: state.budgetSettings,
+        budgetSuggestion: state.budgetSuggestion,
       }),
     }
   )
