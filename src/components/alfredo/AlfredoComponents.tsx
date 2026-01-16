@@ -433,6 +433,79 @@ export function WeeklyReportCard({ report, onGenerateReport }: WeeklyReportCardP
 }
 
 // =============================================
+// 미니 이해도 위젯 (Home 페이지용)
+// =============================================
+
+export function MiniUnderstandingWidget() {
+  const { understanding, preferences } = useAlfredoStore();
+
+  if (!understanding) return null;
+
+  const { understandingScore, level, title, daysTogether } = understanding;
+  const currentDomain = preferences?.currentDomain || 'work';
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`bg-white rounded-xl p-4 shadow-card border-l-4 ${
+        currentDomain === 'work' ? 'border-l-[#A996FF]' : 'border-l-[#4ECDC4]'
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          {/* 작은 원형 프로그레스 */}
+          <div className="relative w-12 h-12">
+            <svg className="w-12 h-12 transform -rotate-90">
+              <circle
+                cx="24"
+                cy="24"
+                r="20"
+                stroke="#E5E5E5"
+                strokeWidth="4"
+                fill="none"
+              />
+              <circle
+                cx="24"
+                cy="24"
+                r="20"
+                stroke={currentDomain === 'work' ? '#A996FF' : '#4ECDC4'}
+                strokeWidth="4"
+                fill="none"
+                strokeDasharray={`${2 * Math.PI * 20}`}
+                strokeDashoffset={`${2 * Math.PI * 20 * (1 - understandingScore / 100)}`}
+                strokeLinecap="round"
+              />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-xs font-bold text-[#1A1A1A]">{understandingScore}%</span>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-[#1A1A1A]">{title}</p>
+            <p className="text-xs text-[#999999]">
+              Lv.{level} · {daysTogether}일째 함께
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#F5F5F5] rounded-full">
+          {currentDomain === 'work' ? (
+            <Briefcase size={12} className="text-[#A996FF]" />
+          ) : (
+            <Home size={12} className="text-[#4ECDC4]" />
+          )}
+          <span className="text-xs font-medium text-[#666666]">
+            {currentDomain === 'work' ? 'Work' : 'Life'}
+          </span>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// =============================================
 // 파악 중인 것 목록
 // =============================================
 

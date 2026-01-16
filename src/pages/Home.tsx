@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
+import { useAlfredoStore } from '../stores/alfredoStore';
 import { getTodayEvents, isGoogleAuthenticated, CalendarEvent } from '../services/calendar';
 import { ConditionLevel, getTodayCondition } from '../services/condition';
 import { Top3Item, getTop3 } from '../services/top3';
@@ -22,6 +23,7 @@ import QuickMemoCard from '../components/home/QuickMemoCard';
 import DailyEntry from '../components/home/DailyEntry';
 import { calculateIntensity } from '../components/common/IntensityBadge';
 import { SkeletonCard, SkeletonBriefing } from '../components/common/Skeleton';
+import { MiniUnderstandingWidget } from '../components/alfredo';
 
 type IntensityLevel = 'light' | 'normal' | 'heavy' | 'overloaded';
 type HomeMode = 'all' | 'work' | 'life';
@@ -29,6 +31,7 @@ type HomeMode = 'all' | 'work' | 'life';
 export default function Home() {
   const location = useLocation();
   const user = useAuthStore().user;
+  const { initialize: initAlfredo, understanding } = useAlfredoStore();
   const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [currentCondition, setCurrentCondition] = useState<ConditionLevel | null>(null);
@@ -50,10 +53,17 @@ export default function Home() {
     }
   }, [location]);
 
+  // 알프레도 스토어 초기화
+  useEffect(function() {
+    if (user?.email && !understanding) {
+      initAlfredo(user.email);
+    }
+  }, [user?.email, understanding, initAlfredo]);
+
   // 방문 체크 및 Daily Entry 표시
   useEffect(function() {
     updateVisit();
-    
+
     // Daily Entry를 아직 안 봤으면 표시
     if (!hasSeenEntryToday()) {
       setShowDailyEntry(true);
@@ -279,12 +289,15 @@ export default function Home() {
         </div>
 
         {/* 모드 카드 - Work/Life 가로 2개 */}
-        <ModeCards 
+        <ModeCards
           workCount={workCount}
           lifeCount={lifeCount}
           workStatus={calendarEvents.length + '개 일정'}
           lifeStatus={'컨디션 ' + conditionStatus}
         />
+
+        {/* 알프레도 이해도 위젯 */}
+        {understanding && <MiniUnderstandingWidget />}
 
         {/* 날씨 카드 */}
         {isLoading ? <SkeletonCard /> : <WeatherCard />}

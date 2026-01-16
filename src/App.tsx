@@ -2,7 +2,8 @@ import './App.css';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
 import { useDrawerStore } from './stores/drawerStore';
-import { lazy, Suspense } from 'react';
+import { useAlfredoStore } from './stores/alfredoStore';
+import { lazy, Suspense, useEffect } from 'react';
 
 // Common Components
 import FloatingBar from './components/common/FloatingBar';
@@ -49,7 +50,16 @@ function App() {
   // isAuthenticated와 accessToken 상태를 직접 가져와서 판단
   const isAuthenticated = useAuthStore(state => state.isAuthenticated && !!state.accessToken);
   const isOnboarded = useAuthStore(state => state.isOnboarded);
+  const user = useAuthStore(state => state.user);
   const { isOpen: isDrawerOpen, close: closeDrawer } = useDrawerStore();
+  const { initialize: initAlfredo, preferences: alfredoPrefs } = useAlfredoStore();
+
+  // 알프레도 스토어 초기화 (로그인 후)
+  useEffect(() => {
+    if (isAuthenticated && isOnboarded && user?.email && !alfredoPrefs) {
+      initAlfredo(user.email);
+    }
+  }, [isAuthenticated, isOnboarded, user?.email, alfredoPrefs, initAlfredo]);
 
   // 온보딩 여부를 체크하여 라우팅
   if (!isAuthenticated) {

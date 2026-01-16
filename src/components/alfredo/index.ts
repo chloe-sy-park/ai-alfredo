@@ -4,5 +4,6 @@ export {
   LearningCard,
   LearningsList,
   WeeklyReportCard,
-  PendingLearningsList
+  PendingLearningsList,
+  MiniUnderstandingWidget
 } from './AlfredoComponents';
