@@ -3,6 +3,7 @@ import React, { useEffect, useRef } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useChatStore } from '../stores/chatStore';
+import { useToneStore } from '../stores/toneStore';
 import { ChatContext, CHAT_ENTRY_POINTS } from '../types/chat';
 import ChatMessageItem from '../components/chat/ChatMessageItem';
 import ChatInput from '../components/chat/ChatInput';
@@ -20,6 +21,10 @@ const Chat: React.FC = () => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // 톤 스토어 연결
+  const { getMessage, shouldUseEmoji } = useToneStore();
+  const useEmoji = shouldUseEmoji();
 
   const {
     currentSession,
@@ -128,23 +133,27 @@ const Chat: React.FC = () => {
   
   const entryInfo = entryContext ? CHAT_ENTRY_POINTS[entryContext.entry] : CHAT_ENTRY_POINTS.manual;
   
+  // 톤 기반 빈 화면 메시지
+  const emptyGreeting = getMessage('greeting');
+  const emptyPrompt = entryInfo.prompt || (useEmoji ? '알프레도와 대화를 시작해보세요! 💬' : '알프레도와 대화를 시작해보세요.');
+
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex flex-col h-screen bg-background">
       {/* Header */}
-      <header className="bg-white border-b px-4 py-3 flex items-center gap-3">
+      <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
         <button
           onClick={handleBack}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-5 h-5 text-text-primary" />
         </button>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#A996FF] rounded-full flex items-center justify-center">
+          <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
             <span className="text-xl">🐧</span>
           </div>
           <div>
-            <h1 className="font-semibold">알프레도</h1>
-            <p className="text-xs text-gray-500">
+            <h1 className="font-semibold text-text-primary">알프레도</h1>
+            <p className="text-xs text-text-muted">
               {entryInfo.title}
             </p>
           </div>
@@ -154,10 +163,11 @@ const Chat: React.FC = () => {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-gray-400">
+          <div className="flex flex-col items-center justify-center h-full text-text-muted">
             <span className="text-6xl mb-4">🐧</span>
-            <p className="text-center">
-              {entryInfo.prompt || '알프레도와 대화를 시작해보세요!'}
+            <p className="text-sm text-text-secondary mb-1">{emptyGreeting}</p>
+            <p className="text-center text-sm">
+              {emptyPrompt}
             </p>
           </div>
         ) : (
@@ -165,7 +175,7 @@ const Chat: React.FC = () => {
             <div key={groupIndex}>
               {/* 날짜 구분선 */}
               <div className="flex items-center justify-center my-4">
-                <div className="bg-gray-200 text-gray-600 text-xs px-3 py-1 rounded-full">
+                <div className="bg-gray-100 text-text-secondary text-xs px-3 py-1 rounded-full">
                   {group.date}
                 </div>
               </div>

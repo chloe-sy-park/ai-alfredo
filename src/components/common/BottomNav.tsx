@@ -2,11 +2,12 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Briefcase, Heart, MessageCircle, BarChart3 } from 'lucide-react';
 
+// Chat을 중앙에 배치 (알프레도 핵심 기능)
 const navItems = [
   { path: '/', icon: Home, label: '홈' },
   { path: '/work', icon: Briefcase, label: '업무' },
+  { path: '/chat', icon: MessageCircle, label: '대화', isCenter: true },
   { path: '/life', icon: Heart, label: '일상' },
-  { path: '/chat', icon: MessageCircle, label: '대화' },
   { path: '/report', icon: BarChart3, label: '리포트' }
 ];
 
@@ -28,7 +29,8 @@ const BottomNav: React.FC = () => {
         {navItems.map(function(item) {
           const isActive = location.pathname === item.path;
           const Icon = item.icon;
-          
+          const isCenter = 'isCenter' in item && item.isCenter;
+
           return (
             <button
               key={item.path}
@@ -36,12 +38,13 @@ const BottomNav: React.FC = () => {
               className={[
                 'flex flex-col items-center justify-center py-2 px-3 rounded-lg transition-all min-w-[56px]',
                 isActive
-                  ? 'text-[#A996FF]'
-                  : 'text-gray-400 hover:text-gray-600'
+                  ? 'text-primary'
+                  : 'text-text-muted hover:text-text-secondary'
               ].join(' ')}
             >
               <Icon className={[
-                'w-5 h-5 mb-1 transition-transform',
+                isCenter ? 'w-6 h-6 mb-0.5' : 'w-5 h-5 mb-1',
+                'transition-transform',
                 isActive ? 'scale-110' : ''
               ].join(' ')} />
               <span className={[

@@ -144,7 +144,7 @@ export default function ChatMessageItem({
               {/* R2: 구조화 요약 */}
               {message.summary && (
                 <div className="bg-neutral-100 rounded-2xl px-4 py-2.5">
-                  <p className="text-sm text-[#1A1A1A] font-medium whitespace-pre-wrap break-words">{message.summary}</p>
+                  <p className="text-sm text-text-primary font-medium whitespace-pre-wrap break-words">{message.summary}</p>
                 </div>
               )}
               
@@ -160,7 +160,7 @@ export default function ChatMessageItem({
                   {message.judgement.type === 'apply' && <CheckCircle2 size={16} className="text-green-600 mt-0.5 flex-shrink-0" />}
                   {message.judgement.type === 'consider' && <AlertCircle size={16} className="text-yellow-600 mt-0.5 flex-shrink-0" />}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[#1A1A1A] break-words">{message.judgement.message}</p>
+                    <p className="text-sm font-medium text-text-primary break-words">{message.judgement.message}</p>
                     {message.judgement.changes && (
                       <ul className="mt-1 space-y-0.5">
                         {message.judgement.changes.map((change, idx) => (

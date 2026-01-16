@@ -175,7 +175,7 @@ export default function ChatInput({
           onKeyDown={handleKeyDown}
           placeholder={displayPlaceholder}
           disabled={disabled || isActive}
-          className="flex-1 resize-none outline-none text-sm text-[#1A1A1A] placeholder:text-[#999999] min-h-[44px] max-h-[200px] py-3 px-0 bg-transparent"
+          className="flex-1 resize-none outline-none text-sm text-text-primary placeholder:text-text-muted min-h-[44px] max-h-[200px] py-3 px-0 bg-transparent"
           rows={1}
         />
 
@@ -247,14 +247,14 @@ export default function ChatInput({
           disabled={!message.trim() || disabled || isActive}
           className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
             message.trim() && !disabled && !isActive
-              ? 'bg-[#1A1A1A] text-white hover:bg-[#333333] active:scale-95'
+              ? 'bg-text-primary text-white hover:bg-text-secondary active:scale-95'
               : 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
           }`}
         >
           <Send size={18} />
         </button>
       </div>
-      <p className="text-xs text-[#999999] mt-2">
+      <p className="text-xs text-text-muted mt-2">
         {isSpeechSupported ? `마이크로 음성 입력 • ` : ''}Shift+Enter로 줄바꿈 • Enter로 전송
       </p>
     </div>
