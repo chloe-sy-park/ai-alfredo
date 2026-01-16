@@ -19,6 +19,7 @@ import {
   Menu,
   Bell,
   ChevronLeft,
+  ChevronRight,
   Clock,
   Check,
   Repeat,
@@ -30,6 +31,9 @@ import {
   BarChart3,
   ArrowDownCircle,
   ArrowUpCircle,
+  List,
+  CreditCard,
+  Landmark,
 } from 'lucide-react';
 import { useDrawerStore } from '../stores';
 import { useNotificationStore } from '../stores/notificationStore';
@@ -214,6 +218,9 @@ export default function Finance() {
             recommended={overviewData.recommended}
             itemCount={recurringItems.length}
             financeSummary={monthlyFinanceSummary}
+            recurringItems={recurringItems}
+            commitmentItems={commitmentItems}
+            oneTimeExpenses={oneTimeExpenses}
             onNavigate={setCurrentState}
             onQuickAddRecurring={() => setShowAddModal(true)}
           />
@@ -411,6 +418,9 @@ interface OverviewScreenProps {
   recommended: 'overlaps' | 'candidates' | 'upcoming' | 'allclear';
   itemCount: number;
   financeSummary: FinanceSummary;
+  recurringItems: RecurringItem[];
+  commitmentItems: CommitmentItem[];
+  oneTimeExpenses: OneTimeExpense[];
   onNavigate: (state: FinanceState) => void;
   onQuickAddRecurring?: () => void;
 }
@@ -421,6 +431,9 @@ function OverviewScreen({
   recommended,
   itemCount,
   financeSummary,
+  recurringItems,
+  commitmentItems,
+  oneTimeExpenses,
   onNavigate,
   onQuickAddRecurring,
 }: OverviewScreenProps) {
@@ -428,6 +441,92 @@ function OverviewScreen({
   const hasCandidates = stateSummary.candidates.countItems > 0;
   const hasUpcoming = stateSummary.upcoming.countPayments > 0;
   const isAllClear = !hasOverlaps && !hasCandidates && !hasUpcoming;
+
+  // 고정지출 내역 계산
+  const fixedExpenseBreakdown = useMemo(() => {
+    const subscriptions = recurringItems
+      .filter((item) => item.billingCycle === 'monthly')
+      .reduce((sum, item) => sum + item.amount, 0);
+    const yearlyAsMonthly = recurringItems
+      .filter((item) => item.billingCycle === 'yearly')
+      .reduce((sum, item) => sum + item.amount / 12, 0);
+
+    // CommitmentItems는 이름 키워드로 분류 (대출/보험/적금 키워드)
+    const commitmentTotal = commitmentItems.reduce((sum, item) => sum + item.monthlyPayment, 0);
+
+    return {
+      subscriptions: Math.round(subscriptions + yearlyAsMonthly),
+      commitments: commitmentTotal, // 대출/보험/적금 통합
+    };
+  }, [recurringItems, commitmentItems]);
+
+  // 다음 결제 예정 (7일 이후 포함)
+  const nextPaymentInfo = useMemo(() => {
+    if (recurringItems.length === 0) return null;
+
+    const now = new Date();
+    const sortedItems = [...recurringItems].sort((a, b) =>
+      new Date(a.nextPaymentDate).getTime() - new Date(b.nextPaymentDate).getTime()
+    );
+
+    const nextItem = sortedItems.find((item) => new Date(item.nextPaymentDate) >= now);
+    if (!nextItem) return null;
+
+    const nextDate = new Date(nextItem.nextPaymentDate);
+    const daysUntil = Math.ceil((nextDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+    return {
+      name: nextItem.name,
+      amount: nextItem.amount,
+      daysUntil,
+      date: nextItem.nextPaymentDate,
+    };
+  }, [recurringItems]);
+
+  // 최근 거래 내역 (정기결제 + 1회성 지출 혼합, 최근 5개)
+  const recentTransactions = useMemo(() => {
+    const now = new Date();
+    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // 1회성 지출
+    const expenses = oneTimeExpenses
+      .filter((e) => new Date(e.date) >= thisMonth)
+      .map((e) => ({
+        id: e.id,
+        name: e.name,
+        amount: e.amount,
+        date: e.date,
+        type: 'expense' as const,
+        category: e.category,
+      }));
+
+    // 정기결제 중 이번 달 결제된 것들 (추정)
+    const paidSubscriptions = recurringItems
+      .filter((item) => {
+        const paymentDate = new Date(item.nextPaymentDate);
+        // nextPaymentDate가 이번 달 이후면, 지난달에 결제됐을 가능성
+        const lastPayment = new Date(paymentDate);
+        lastPayment.setMonth(lastPayment.getMonth() - 1);
+        return lastPayment >= thisMonth && lastPayment <= now;
+      })
+      .map((item) => {
+        const lastPayment = new Date(item.nextPaymentDate);
+        lastPayment.setMonth(lastPayment.getMonth() - 1);
+        return {
+          id: item.id,
+          name: item.name,
+          amount: item.amount,
+          date: lastPayment.toISOString().split('T')[0],
+          type: 'subscription' as const,
+          category: item.categoryL1,
+        };
+      });
+
+    // 합치고 날짜순 정렬
+    return [...expenses, ...paidSubscriptions]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 5);
+  }, [oneTimeExpenses, recurringItems]);
 
   // Empty State (데이터 없음)
   if (itemCount === 0) {
@@ -464,7 +563,7 @@ function OverviewScreen({
       className="px-4 pt-4 space-y-4"
     >
       {/* ================================ */}
-      {/* StatusSummaryRow - 3 Metrics */}
+      {/* StatusSummaryRow - 고정지출 요약 */}
       {/* ================================ */}
       <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
         {/* 이번 달 고정지출 */}
@@ -474,24 +573,68 @@ function OverviewScreen({
             ₩{metrics.fixedCostThisMonth.toLocaleString()}
             <span className="text-sm font-normal text-gray-400 ml-1">/월</span>
           </div>
-          <div className="text-xs text-gray-400 mt-1">구독 + 대출 + 보험 + 적금</div>
         </div>
+
+        {/* 고정지출 내역 브레이크다운 */}
+        {(fixedExpenseBreakdown.subscriptions > 0 || fixedExpenseBreakdown.commitments > 0) && (
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            {fixedExpenseBreakdown.subscriptions > 0 && (
+              <div className="flex items-center gap-2 p-2 bg-lavender-50 rounded-lg">
+                <CreditCard size={16} className="text-primary" />
+                <div>
+                  <div className="text-[10px] text-gray-500">구독/정기결제</div>
+                  <div className="text-sm font-semibold text-gray-700">
+                    ₩{fixedExpenseBreakdown.subscriptions.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            )}
+            {fixedExpenseBreakdown.commitments > 0 && (
+              <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg">
+                <Landmark size={16} className="text-blue-500" />
+                <div>
+                  <div className="text-[10px] text-gray-500">대출/보험/적금</div>
+                  <div className="text-sm font-semibold text-gray-700">
+                    ₩{fixedExpenseBreakdown.commitments.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 하단 2개 메트릭 */}
         <div className="grid grid-cols-2 gap-3">
-          {/* 7일 결제 예정 */}
+          {/* 7일 결제 예정 / 다음 결제 */}
           <div className="p-3 bg-gray-50 rounded-xl">
             <div className="flex items-center gap-1.5 mb-1">
               <Calendar size={14} className="text-gray-400" />
-              <span className="text-xs text-gray-500">7일 결제 예정</span>
+              <span className="text-xs text-gray-500">
+                {metrics.upcoming7DaysAmount > 0 ? '7일 내 결제' : '다음 결제'}
+              </span>
             </div>
-            <div className="text-lg font-semibold text-gray-800">
-              ₩{metrics.upcoming7DaysAmount.toLocaleString()}
-            </div>
-            {stateSummary.upcoming.nearestDDay !== null && (
-              <div className="text-xs text-gray-400 mt-0.5">
-                최대 D-{stateSummary.upcoming.nearestDDay}
-              </div>
+            {metrics.upcoming7DaysAmount > 0 ? (
+              <>
+                <div className="text-lg font-semibold text-gray-800">
+                  ₩{metrics.upcoming7DaysAmount.toLocaleString()}
+                </div>
+                {stateSummary.upcoming.nearestDDay !== null && (
+                  <div className="text-xs text-blue-500 mt-0.5">
+                    D-{stateSummary.upcoming.nearestDDay} {stateSummary.upcoming.countPayments > 1 && `외 ${stateSummary.upcoming.countPayments - 1}건`}
+                  </div>
+                )}
+              </>
+            ) : nextPaymentInfo ? (
+              <>
+                <div className="text-base font-semibold text-gray-700">
+                  {nextPaymentInfo.name}
+                </div>
+                <div className="text-xs text-gray-400 mt-0.5">
+                  D-{nextPaymentInfo.daysUntil} · ₩{nextPaymentInfo.amount.toLocaleString()}
+                </div>
+              </>
+            ) : (
+              <div className="text-sm text-gray-400">예정된 결제 없음</div>
             )}
           </div>
 
@@ -499,9 +642,14 @@ function OverviewScreen({
           <div className="p-3 bg-gray-50 rounded-xl">
             <div className="flex items-center gap-1.5 mb-1">
               <Shield size={14} className="text-gray-400" />
-              <span className="text-xs text-gray-500">Risk</span>
+              <span className="text-xs text-gray-500">재정 상태</span>
             </div>
             <RiskBadge level={metrics.riskLevel} />
+            <div className="text-[10px] text-gray-400 mt-1">
+              {metrics.riskLevel === 'LOW' && '중복/미사용 없음'}
+              {metrics.riskLevel === 'MEDIUM' && '점검 필요 항목 있음'}
+              {metrics.riskLevel === 'HIGH' && '즉시 점검 권장'}
+            </div>
           </div>
         </div>
       </div>
@@ -539,16 +687,16 @@ function OverviewScreen({
 
             {/* 순 현금흐름 */}
             <div className={`text-center p-2 rounded-lg ${
-              financeSummary.netCashFlow >= 0 ? 'bg-emerald-50' : 'bg-amber-50'
+              financeSummary.netCashFlow >= 0 ? 'bg-success/10' : 'bg-amber-50'
             }`}>
               {financeSummary.netCashFlow >= 0 ? (
-                <TrendingUp size={16} className="text-emerald-500 mx-auto mb-1" />
+                <TrendingUp size={16} className="text-success mx-auto mb-1" />
               ) : (
                 <TrendingDown size={16} className="text-amber-500 mx-auto mb-1" />
               )}
               <div className="text-xs text-gray-500 mb-0.5">순 흐름</div>
               <div className={`text-sm font-semibold ${
-                financeSummary.netCashFlow >= 0 ? 'text-emerald-700' : 'text-amber-700'
+                financeSummary.netCashFlow >= 0 ? 'text-success' : 'text-amber-700'
               }`}>
                 {financeSummary.netCashFlow >= 0 ? '+' : ''}₩{financeSummary.netCashFlow.toLocaleString()}
               </div>
@@ -614,10 +762,10 @@ function OverviewScreen({
         {/* All Clear Card */}
         {isAllClear && (
           <StateCard
-            icon={<Check size={20} className="text-emerald-500" />}
+            icon={<Check size={20} className="text-success" />}
             title="All Clear"
-            subtitle="이번 주는 안정적이에요"
-            ctaText="전체 보기"
+            subtitle="중복 구독·미사용 항목이 없어요"
+            ctaText="구독 목록 보기"
             color="emerald"
             isPrimary={true}
             onClick={() => onNavigate('allclear')}
@@ -625,29 +773,92 @@ function OverviewScreen({
         )}
       </div>
 
-      {/* Quick Actions (Optional) */}
+      {/* ================================ */}
+      {/* 최근 거래 내역 */}
+      {/* ================================ */}
+      {recentTransactions.length > 0 && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <List size={16} className="text-gray-400" />
+              <span className="text-sm font-medium text-gray-700">최근 거래</span>
+            </div>
+            <button
+              onClick={() => onNavigate('stats')}
+              className="text-xs text-primary flex items-center gap-0.5"
+            >
+              전체 보기 <ChevronRight size={14} />
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {recentTransactions.map((tx) => (
+              <div
+                key={tx.id}
+                className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    tx.type === 'subscription' ? 'bg-lavender-50' : 'bg-gray-100'
+                  }`}>
+                    {tx.type === 'subscription' ? (
+                      <Repeat size={14} className="text-primary" />
+                    ) : (
+                      <ArrowUpCircle size={14} className="text-gray-400" />
+                    )}
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-800">{tx.name}</div>
+                    <div className="text-xs text-gray-400">
+                      {new Date(tx.date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                      {tx.type === 'subscription' && ' · 정기결제'}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-sm font-semibold text-gray-700">
+                  -₩{tx.amount.toLocaleString()}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Quick Actions */}
       <div className="grid grid-cols-3 gap-2">
         <button
           onClick={onQuickAddRecurring}
-          className="flex items-center justify-center gap-1.5 py-3 bg-white border border-gray-200 rounded-xl text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
+          className="flex flex-col items-center justify-center gap-1 py-3 bg-white border border-gray-200 rounded-xl text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
         >
-          <Plus size={14} />
-          추가
+          <Plus size={18} />
+          <span className="text-xs">지출 추가</span>
         </button>
         <button
           onClick={() => onNavigate('stats')}
-          className="flex items-center justify-center gap-1.5 py-3 bg-white border border-gray-200 rounded-xl text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
+          className="flex flex-col items-center justify-center gap-1 py-3 bg-white border border-gray-200 rounded-xl text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
         >
-          <BarChart3 size={14} />
-          통계
+          <BarChart3 size={18} />
+          <span className="text-xs">통계 분석</span>
         </button>
         <button
           onClick={() => onNavigate('allclear')}
-          className="flex items-center justify-center gap-1.5 py-3 bg-white border border-gray-200 rounded-xl text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
+          className="flex flex-col items-center justify-center gap-1 py-3 bg-white border border-gray-200 rounded-xl text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
         >
-          전체 {itemCount}개
+          <List size={18} />
+          <span className="text-xs">구독 {itemCount}개</span>
         </button>
       </div>
+
+      {/* 결제 일정 캘린더 연동 안내 */}
+      {itemCount > 0 && (
+        <div className="bg-lavender-50 rounded-xl p-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Calendar size={16} className="text-primary" />
+            <span className="text-xs text-gray-600">결제 일정을 캘린더에서 확인하세요</span>
+          </div>
+          <ChevronRight size={16} className="text-gray-400" />
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -660,9 +871,9 @@ function RiskBadge({ level }: { level: RiskLevel }) {
   const config = {
     LOW: {
       text: '안정',
-      bgColor: 'bg-emerald-100',
-      textColor: 'text-emerald-700',
-      icon: <Shield size={14} className="text-emerald-600" />,
+      bgColor: 'bg-success/20',
+      textColor: 'text-success',
+      icon: <Shield size={14} className="text-success" />,
     },
     MEDIUM: {
       text: '주의',
@@ -1159,11 +1370,11 @@ function StatsScreen({
         {/* 순 현금흐름 & 저축률 */}
         <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-4">
           <div className={`text-center p-3 rounded-xl ${
-            stats.netCashFlow >= 0 ? 'bg-emerald-50' : 'bg-amber-50'
+            stats.netCashFlow >= 0 ? 'bg-success/10' : 'bg-amber-50'
           }`}>
             <div className="text-xs text-gray-500 mb-1">순 현금흐름</div>
             <div className={`text-lg font-bold ${
-              stats.netCashFlow >= 0 ? 'text-emerald-600' : 'text-amber-600'
+              stats.netCashFlow >= 0 ? 'text-success' : 'text-amber-600'
             }`}>
               {stats.netCashFlow >= 0 ? '+' : ''}₩{stats.netCashFlow.toLocaleString()}
             </div>
@@ -1171,7 +1382,7 @@ function StatsScreen({
           <div className="text-center p-3 bg-gray-50 rounded-xl">
             <div className="text-xs text-gray-500 mb-1">저축률</div>
             <div className={`text-lg font-bold ${
-              stats.savingsRate >= 20 ? 'text-emerald-600' : stats.savingsRate >= 0 ? 'text-gray-700' : 'text-red-600'
+              stats.savingsRate >= 20 ? 'text-success' : stats.savingsRate >= 0 ? 'text-gray-700' : 'text-red-600'
             }`}>
               {stats.savingsRate}%
             </div>
@@ -1186,7 +1397,7 @@ function StatsScreen({
                 수입 {stats.comparedToPrevious.incomeChange >= 0 ? '+' : ''}
                 ₩{stats.comparedToPrevious.incomeChange.toLocaleString()}
               </span>
-              <span className={stats.comparedToPrevious.expenseChange <= 0 ? 'text-emerald-500' : 'text-red-500'}>
+              <span className={stats.comparedToPrevious.expenseChange <= 0 ? 'text-success' : 'text-red-500'}>
                 지출 {stats.comparedToPrevious.expenseChange >= 0 ? '+' : ''}
                 ₩{stats.comparedToPrevious.expenseChange.toLocaleString()}
               </span>
@@ -1222,7 +1433,7 @@ function StatsScreen({
                 <div className="w-20 text-xs text-gray-600 truncate">{cat.label}</div>
                 <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-emerald-400"
+                    className="h-full bg-primary"
                     style={{ width: `${cat.percentage}%` }}
                   />
                 </div>
@@ -1240,7 +1451,7 @@ function StatsScreen({
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-3">
             <div className="text-sm font-medium text-gray-700">절감 기회</div>
-            <div className="text-sm font-semibold text-emerald-600">
+            <div className="text-sm font-semibold text-success">
               월 ₩{totalPossibleSavings.toLocaleString()} 절감 가능
             </div>
           </div>
@@ -1261,7 +1472,7 @@ function StatsScreen({
                     <div className="text-sm font-medium text-gray-800">{opp.title}</div>
                     <div className="text-xs text-gray-500 mt-0.5">{opp.description}</div>
                   </div>
-                  <div className="text-sm font-semibold text-emerald-600">
+                  <div className="text-sm font-semibold text-success">
                     ₩{opp.estimatedMonthlySavings.toLocaleString()}/월
                   </div>
                 </div>
@@ -1427,7 +1638,7 @@ function AddItemModal({ onClose }: AddItemModalProps) {
   };
 
   const tabConfig = [
-    { key: 'recurring' as AddItemTab, label: '정기결제', color: 'emerald' },
+    { key: 'recurring' as AddItemTab, label: '정기결제', color: 'lavender' },
     { key: 'income' as AddItemTab, label: '수입', color: 'blue' },
     { key: 'expense' as AddItemTab, label: '1회지출', color: 'amber' },
   ];
@@ -1496,7 +1707,7 @@ function AddItemModal({ onClose }: AddItemModalProps) {
                   onClick={() => setRecBillingCycle('monthly')}
                   className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
                     recBillingCycle === 'monthly'
-                      ? 'border-emerald-500 bg-emerald-50 text-emerald-600'
+                      ? 'border-primary bg-lavender-50 text-primary'
                       : 'border-gray-200 text-gray-500'
                   }`}
                 >
@@ -1506,7 +1717,7 @@ function AddItemModal({ onClose }: AddItemModalProps) {
                   onClick={() => setRecBillingCycle('yearly')}
                   className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
                     recBillingCycle === 'yearly'
-                      ? 'border-emerald-500 bg-emerald-50 text-emerald-600'
+                      ? 'border-primary bg-lavender-50 text-primary'
                       : 'border-gray-200 text-gray-500'
                   }`}
                 >
