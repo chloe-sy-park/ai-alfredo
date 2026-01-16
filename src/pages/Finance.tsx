@@ -276,7 +276,7 @@ export default function Finance() {
         <div className="fixed bottom-24 right-4">
           <button
             onClick={() => setShowAddModal(true)}
-            className="w-14 h-14 bg-emerald-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-emerald-600 transition-colors"
+            className="w-14 h-14 bg-primary text-white rounded-full shadow-lg flex items-center justify-center hover:bg-lavender-500 transition-colors"
           >
             <Plus size={24} />
           </button>
@@ -353,8 +353,8 @@ function FinanceHeader({
               <ChevronLeft size={24} />
             </button>
           ) : (
-            <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
-              <Wallet size={16} className="text-emerald-600" />
+            <div className="w-8 h-8 bg-lavender-100 rounded-full flex items-center justify-center">
+              <Wallet size={16} className="text-lavender-600" />
             </div>
           )}
           <span className="font-semibold text-[#1A1A1A]">{titles[currentState]}</span>
@@ -365,7 +365,7 @@ function FinanceHeader({
           {currentState === 'overview' && (
             <button
               onClick={onAdd}
-              className="w-10 h-10 flex items-center justify-center text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors"
+              className="w-10 h-10 flex items-center justify-center text-primary hover:bg-lavender-50 rounded-full transition-colors"
             >
               <Plus size={20} />
             </button>
@@ -438,8 +438,8 @@ function OverviewScreen({
         exit={{ opacity: 0, y: -20 }}
         className="px-4 pt-8 text-center"
       >
-        <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Wallet size={40} className="text-emerald-500" />
+        <div className="w-20 h-20 bg-lavender-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Wallet size={40} className="text-primary" />
         </div>
         <h3 className="text-xl font-semibold text-gray-800 mb-2">시작하기</h3>
         <p className="text-sm text-gray-500 mb-6">
@@ -448,7 +448,7 @@ function OverviewScreen({
         </p>
         <button
           onClick={onQuickAddRecurring}
-          className="px-6 py-3 bg-emerald-500 text-white font-medium rounded-xl hover:bg-emerald-600 transition-colors"
+          className="px-6 py-3 bg-accent text-accent-dark font-medium rounded-xl hover:bg-accent-muted transition-colors"
         >
           첫 구독 추가하기
         </button>
@@ -739,12 +739,12 @@ function StateCard({
       highlightText: 'text-blue-600',
     },
     emerald: {
-      bg: 'bg-emerald-50',
-      border: 'border-emerald-200',
-      hoverBorder: 'hover:border-emerald-300',
-      ring: 'ring-emerald-300',
-      ctaBg: 'bg-emerald-500 hover:bg-emerald-600',
-      highlightText: 'text-emerald-600',
+      bg: 'bg-lavender-50',
+      border: 'border-lavender-200',
+      hoverBorder: 'hover:border-lavender-300',
+      ring: 'ring-lavender-300',
+      ctaBg: 'bg-primary hover:bg-lavender-500',
+      highlightText: 'text-lavender-600',
     },
   };
 
@@ -815,14 +815,14 @@ function OverlapsScreen({ duplicates, items, onResolve, onDismiss, onComplete }:
         exit={{ opacity: 0 }}
         className="px-4 pt-8 text-center"
       >
-        <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Check size={32} className="text-emerald-500" />
+        <div className="w-16 h-16 bg-success/20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Check size={32} className="text-success" />
         </div>
         <h3 className="text-lg font-medium text-gray-800 mb-2">중복 해결 완료!</h3>
         <p className="text-sm text-gray-500 mb-6">겹치는 구독이 모두 정리되었어요</p>
         <button
           onClick={onComplete}
-          className="px-6 py-3 bg-emerald-500 text-white font-medium rounded-xl hover:bg-emerald-600 transition-colors"
+          className="px-6 py-3 bg-primary text-white font-medium rounded-xl hover:bg-lavender-500 transition-colors"
         >
           완료
         </button>
@@ -876,14 +876,14 @@ function CandidatesScreen({ candidates, onToggleWorkLife, onSelect, onComplete }
         exit={{ opacity: 0 }}
         className="px-4 pt-8 text-center"
       >
-        <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Check size={32} className="text-emerald-500" />
+        <div className="w-16 h-16 bg-success/20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Check size={32} className="text-success" />
         </div>
         <h3 className="text-lg font-medium text-gray-800 mb-2">해지 후보 없음</h3>
         <p className="text-sm text-gray-500 mb-6">모든 구독을 잘 활용하고 계시네요!</p>
         <button
           onClick={onComplete}
-          className="px-6 py-3 bg-emerald-500 text-white font-medium rounded-xl hover:bg-emerald-600 transition-colors"
+          className="px-6 py-3 bg-primary text-white font-medium rounded-xl hover:bg-lavender-500 transition-colors"
         >
           완료
         </button>
@@ -913,14 +913,14 @@ function CandidatesScreen({ candidates, onToggleWorkLife, onSelect, onComplete }
           <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
             <button
               onClick={() => dismissFromCancelCandidates(item.id)}
-              className="flex-1 py-2.5 bg-emerald-100 text-emerald-700 font-medium rounded-lg text-sm hover:bg-emerald-200 transition-colors"
+              className="flex-1 py-2.5 bg-lavender-100 text-lavender-700 font-medium rounded-lg text-sm hover:bg-lavender-200 transition-colors"
             >
               유지
             </button>
             <button className="flex-1 py-2.5 bg-gray-100 text-gray-600 font-medium rounded-lg text-sm hover:bg-gray-200 transition-colors">
               보류
             </button>
-            <button className="flex-1 py-2.5 bg-red-100 text-red-700 font-medium rounded-lg text-sm hover:bg-red-200 transition-colors">
+            <button className="flex-1 py-2.5 bg-error/10 text-error font-medium rounded-lg text-sm hover:bg-error/20 transition-colors">
               해지
             </button>
           </div>
@@ -1028,8 +1028,8 @@ function AllClearScreen({ itemCount, onViewAll, onComplete }: AllClearScreenProp
       exit={{ opacity: 0 }}
       className="px-4 pt-8 text-center"
     >
-      <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-        <Check size={40} className="text-emerald-500" />
+      <div className="w-20 h-20 bg-success/20 rounded-full flex items-center justify-center mx-auto mb-4">
+        <Check size={40} className="text-success" />
       </div>
       <h3 className="text-xl font-semibold text-gray-800 mb-2">모두 정상이에요!</h3>
       <p className="text-sm text-gray-500 mb-8">
@@ -1041,7 +1041,7 @@ function AllClearScreen({ itemCount, onViewAll, onComplete }: AllClearScreenProp
       <div className="space-y-3">
         <button
           onClick={onComplete}
-          className="w-full py-3 bg-emerald-500 text-white font-medium rounded-xl hover:bg-emerald-600 transition-colors"
+          className="w-full py-3 bg-primary text-white font-medium rounded-xl hover:bg-lavender-500 transition-colors"
         >
           완료
         </button>
@@ -1474,7 +1474,7 @@ function AddItemModal({ onClose }: AddItemModalProps) {
                 value={recName}
                 onChange={(e) => setRecName(e.target.value)}
                 placeholder="예: Netflix, Notion"
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-primary"
               />
             </div>
 
@@ -1485,7 +1485,7 @@ function AddItemModal({ onClose }: AddItemModalProps) {
                 value={recAmount}
                 onChange={(e) => setRecAmount(e.target.value)}
                 placeholder="예: 17000"
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-primary"
               />
             </div>
 
@@ -1524,7 +1524,7 @@ function AddItemModal({ onClose }: AddItemModalProps) {
                 value={recBillingDay}
                 onChange={(e) => setRecBillingDay(e.target.value)}
                 placeholder="1-31"
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-primary"
               />
             </div>
 
@@ -1535,7 +1535,7 @@ function AddItemModal({ onClose }: AddItemModalProps) {
                   onClick={() => setRecWorkLife('Work')}
                   className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
                     recWorkLife === 'Work'
-                      ? 'border-blue-400 bg-blue-50 text-blue-600'
+                      ? 'border-work-border bg-work-bg text-work-text'
                       : 'border-gray-200 text-gray-500'
                   }`}
                 >
@@ -1545,7 +1545,7 @@ function AddItemModal({ onClose }: AddItemModalProps) {
                   onClick={() => setRecWorkLife('Life')}
                   className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
                     recWorkLife === 'Life'
-                      ? 'border-rose-400 bg-rose-50 text-rose-600'
+                      ? 'border-life-border bg-life-bg text-life-text'
                       : 'border-gray-200 text-gray-500'
                   }`}
                 >
@@ -1642,7 +1642,7 @@ function AddItemModal({ onClose }: AddItemModalProps) {
                   onClick={() => setIncWorkLife('Work')}
                   className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
                     incWorkLife === 'Work'
-                      ? 'border-blue-400 bg-blue-50 text-blue-600'
+                      ? 'border-work-border bg-work-bg text-work-text'
                       : 'border-gray-200 text-gray-500'
                   }`}
                 >
@@ -1652,7 +1652,7 @@ function AddItemModal({ onClose }: AddItemModalProps) {
                   onClick={() => setIncWorkLife('Life')}
                   className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
                     incWorkLife === 'Life'
-                      ? 'border-rose-400 bg-rose-50 text-rose-600'
+                      ? 'border-life-border bg-life-bg text-life-text'
                       : 'border-gray-200 text-gray-500'
                   }`}
                 >
@@ -1749,7 +1749,7 @@ function AddItemModal({ onClose }: AddItemModalProps) {
                   onClick={() => setExpWorkLife('Work')}
                   className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
                     expWorkLife === 'Work'
-                      ? 'border-blue-400 bg-blue-50 text-blue-600'
+                      ? 'border-work-border bg-work-bg text-work-text'
                       : 'border-gray-200 text-gray-500'
                   }`}
                 >
@@ -1759,7 +1759,7 @@ function AddItemModal({ onClose }: AddItemModalProps) {
                   onClick={() => setExpWorkLife('Life')}
                   className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
                     expWorkLife === 'Life'
-                      ? 'border-rose-400 bg-rose-50 text-rose-600'
+                      ? 'border-life-border bg-life-bg text-life-text'
                       : 'border-gray-200 text-gray-500'
                   }`}
                 >
@@ -1783,10 +1783,10 @@ function AddItemModal({ onClose }: AddItemModalProps) {
             className={`flex-1 py-3 font-medium rounded-xl transition-colors ${
               isValid()
                 ? activeTab === 'recurring'
-                  ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                  ? 'bg-primary text-white hover:bg-lavender-500'
                   : activeTab === 'income'
-                  ? 'bg-blue-500 text-white hover:bg-blue-600'
-                  : 'bg-amber-500 text-white hover:bg-amber-600'
+                  ? 'bg-info text-white hover:bg-blue-600'
+                  : 'bg-warning text-white hover:bg-amber-600'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
             }`}
           >
