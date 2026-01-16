@@ -2,9 +2,11 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
 export type User = {
+  id?: string;
   email: string;
   name?: string;
   picture?: string;
+  onboarded?: boolean;
   preferences?: {
     context?: 'work' | 'life' | 'unsure';
     boundary?: 'soft' | 'balanced' | 'firm';

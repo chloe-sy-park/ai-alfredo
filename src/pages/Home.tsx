@@ -300,13 +300,30 @@ export default function Home() {
     'bad': '좋지 않음'
   }[currentCondition] : '미설정';
 
-  // 모드 표시를 위한 배지
+  // 모드별 배경색 클래스
+  const getModeBackgroundClass = () => {
+    switch (homeMode) {
+      case 'work':
+        return 'bg-work-bg/30';
+      case 'life':
+        return 'bg-life-bg/30';
+      default:
+        return 'bg-background';
+    }
+  };
+
+  // 모드 표시를 위한 배지 (색상 강화)
   const ModeBadge = () => {
     if (homeMode === 'all') return null;
-    
+
+    const badgeStyles = {
+      work: 'bg-work-bg text-work-text border border-work-border',
+      life: 'bg-life-bg text-life-text border border-life-border',
+    };
+
     return (
-      <div className="inline-flex items-center gap-1 px-3 py-1 bg-primary-50 rounded-full mb-2">
-        <span className="text-xs font-medium text-primary-main uppercase">
+      <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full mb-2 ${badgeStyles[homeMode]}`}>
+        <span className="text-xs font-semibold uppercase">
           {homeMode} MODE
         </span>
       </div>
@@ -314,7 +331,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5]">
+    <div className={`min-h-screen transition-colors duration-300 ${getModeBackgroundClass()}`}>
       {/* Daily Entry */}
       {showDailyEntry && (
         <DailyEntry 
@@ -376,63 +393,132 @@ export default function Home() {
         {/* 알프레도 이해도 위젯 */}
         {understanding && <MiniUnderstandingWidget />}
 
-        {/* 날씨 카드 */}
-        {isLoading ? <SkeletonCard /> : <WeatherCard />}
+        {/* === WORK 모드: 업무 중심 위젯 순서 === */}
+        {homeMode === 'work' && (
+          <>
+            {/* 1. 오늘 타임라인 (일정 우선) */}
+            <TodayTimeline />
 
-        {/* 컨디션 퀵변경 */}
-        <ConditionQuick onConditionChange={handleConditionChange} />
+            {/* 2. 지금 집중할거 */}
+            <FocusNow
+              externalFocus={currentFocus}
+              onFocusChange={handleFocusChange}
+            />
 
-        {/* Live Briefing - 지금 이 순간의 상태 */}
-        <LiveBriefing onMore={function() { setIsMoreSheetOpen(true); }} />
+            {/* 3. 오늘의 Top 3 (업무만) */}
+            <TodayTop3 onFocusSelect={handleFocusSelect} />
 
-        {/* 알프레도 브리핑 (상세) */}
-        {isLoading ? (
-          <SkeletonBriefing />
-        ) : (
-          <BriefingCard
-            headline={briefing.headline}
-            subline={briefing.subline}
-            intensity={intensity}
-            onMore={function() { setIsMoreSheetOpen(true); }}
-            onFeedback={function(type) {
-              // 피드백 처리: postAction으로 알림 또는 학습에 활용
-              if (type === 'helpful') {
-                postAction.onBriefingFeedback('positive');
-              } else if (type === 'different') {
-                postAction.onBriefingFeedback('different');
-              } else if (type === 'skip') {
-                postAction.onBriefingFeedback('skip');
-              }
-            }}
-          />
+            {/* 4. 알프레도 브리핑 */}
+            {isLoading ? (
+              <SkeletonBriefing />
+            ) : (
+              <BriefingCard
+                headline={briefing.headline}
+                subline={briefing.subline}
+                intensity={intensity}
+                onMore={function() { setIsMoreSheetOpen(true); }}
+                onFeedback={function(type) {
+                  if (type === 'helpful') postAction.onBriefingFeedback('positive');
+                  else if (type === 'different') postAction.onBriefingFeedback('different');
+                  else if (type === 'skip') postAction.onBriefingFeedback('skip');
+                }}
+              />
+            )}
+
+            {/* 5. 기억해야할거 */}
+            <QuickMemoCard />
+          </>
         )}
 
-        {/* PRD: BalanceHint (mini) - ALL 모드에서 균형 표시 */}
+        {/* === LIFE 모드: 개인 중심 위젯 순서 === */}
+        {homeMode === 'life' && (
+          <>
+            {/* 1. 컨디션 퀵변경 (우선) */}
+            <ConditionQuick onConditionChange={handleConditionChange} />
+
+            {/* 2. 알프레도 브리핑 */}
+            {isLoading ? (
+              <SkeletonBriefing />
+            ) : (
+              <BriefingCard
+                headline={briefing.headline}
+                subline={briefing.subline}
+                intensity={intensity}
+                onMore={function() { setIsMoreSheetOpen(true); }}
+                onFeedback={function(type) {
+                  if (type === 'helpful') postAction.onBriefingFeedback('positive');
+                  else if (type === 'different') postAction.onBriefingFeedback('different');
+                  else if (type === 'skip') postAction.onBriefingFeedback('skip');
+                }}
+              />
+            )}
+
+            {/* 3. 오늘의 Top 3 (개인만) */}
+            <TodayTop3 onFocusSelect={handleFocusSelect} />
+
+            {/* 4. 날씨 카드 */}
+            {isLoading ? <SkeletonCard /> : <WeatherCard />}
+
+            {/* 5. 기억해야할거 */}
+            <QuickMemoCard />
+          </>
+        )}
+
+        {/* === ALL 모드: 전체 위젯 표시 === */}
         {homeMode === 'all' && (
-          <BalanceHint
-            workPercent={workCount > 0 || lifeCount > 0
-              ? Math.round((workCount / (workCount + lifeCount)) * 100)
-              : 50}
-            lifePercent={workCount > 0 || lifeCount > 0
-              ? Math.round((lifeCount / (workCount + lifeCount)) * 100)
-              : 50}
-          />
+          <>
+            {/* 날씨 카드 */}
+            {isLoading ? <SkeletonCard /> : <WeatherCard />}
+
+            {/* 컨디션 퀵변경 */}
+            <ConditionQuick onConditionChange={handleConditionChange} />
+
+            {/* Live Briefing - 지금 이 순간의 상태 */}
+            <LiveBriefing onMore={function() { setIsMoreSheetOpen(true); }} />
+
+            {/* 알프레도 브리핑 (상세) */}
+            {isLoading ? (
+              <SkeletonBriefing />
+            ) : (
+              <BriefingCard
+                headline={briefing.headline}
+                subline={briefing.subline}
+                intensity={intensity}
+                onMore={function() { setIsMoreSheetOpen(true); }}
+                onFeedback={function(type) {
+                  if (type === 'helpful') postAction.onBriefingFeedback('positive');
+                  else if (type === 'different') postAction.onBriefingFeedback('different');
+                  else if (type === 'skip') postAction.onBriefingFeedback('skip');
+                }}
+              />
+            )}
+
+            {/* PRD: BalanceHint (mini) - 균형 표시 */}
+            <BalanceHint
+              workPercent={workCount > 0 || lifeCount > 0
+                ? Math.round((workCount / (workCount + lifeCount)) * 100)
+                : 50}
+              lifePercent={workCount > 0 || lifeCount > 0
+                ? Math.round((lifeCount / (workCount + lifeCount)) * 100)
+                : 50}
+            />
+
+            {/* 지금 집중할거 - 가장 강조 */}
+            <FocusNow
+              externalFocus={currentFocus}
+              onFocusChange={handleFocusChange}
+            />
+
+            {/* 오늘의 Top 3 */}
+            <TodayTop3 onFocusSelect={handleFocusSelect} />
+
+            {/* 기억해야할거 */}
+            <QuickMemoCard />
+
+            {/* 오늘 타임라인 */}
+            <TodayTimeline />
+          </>
         )}
-
-        {/* 지금 집중할거 - 가장 강조 */}
-        <FocusNow 
-          externalFocus={currentFocus} 
-          onFocusChange={handleFocusChange} 
-        />
-
-        {/* 오늘의 Top 3 */}
-        <TodayTop3 onFocusSelect={handleFocusSelect} />
-
-        {/* 기억해야할거 */}
-        <QuickMemoCard />
-
-        {/* 오늘 타임라인 */}
-        <TodayTimeline />
       </div>
 
       {/* 더보기 시트 */}

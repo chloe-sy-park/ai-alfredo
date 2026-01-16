@@ -6,30 +6,27 @@ interface ModeSwitchProps {
 }
 
 export default function ModeSwitch({ activeMode, onChange }: ModeSwitchProps) {
-  var modes: { key: Mode; label: string }[] = [
-    { key: 'all', label: 'ALL' },
-    { key: 'work', label: 'WORK' },
-    { key: 'life', label: 'LIFE' }
+  const modes: { key: Mode; label: string; activeClass: string }[] = [
+    { key: 'all', label: 'ALL', activeClass: 'bg-primary text-white' },
+    { key: 'work', label: 'WORK', activeClass: 'bg-work-text text-white' },
+    { key: 'life', label: 'LIFE', activeClass: 'bg-life-text text-white' },
   ];
 
   return (
     <div className="flex bg-white rounded-full p-1 shadow-card">
-      {modes.map(function(mode) {
-        return (
-          <button
-            key={mode.key}
-            onClick={function() { onChange(mode.key); }}
-            className={
-              'flex-1 py-3 px-4 text-sm font-semibold rounded-full transition-all duration-200 min-h-[44px] ' +
-              (activeMode === mode.key
-                ? 'bg-[#A996FF] text-white shadow-sm'
-                : 'text-[#999999] hover:text-[#666666]')
-            }
-          >
-            {mode.label}
-          </button>
-        );
-      })}
+      {modes.map((mode) => (
+        <button
+          key={mode.key}
+          onClick={() => onChange(mode.key)}
+          className={`flex-1 py-2 px-3 text-xs font-semibold rounded-full transition-all duration-200 min-h-[36px] ${
+            activeMode === mode.key
+              ? `${mode.activeClass} shadow-sm`
+              : 'text-text-muted hover:text-text-secondary'
+          }`}
+        >
+          {mode.label}
+        </button>
+      ))}
     </div>
   );
 }
