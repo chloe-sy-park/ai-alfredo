@@ -9,3 +9,6 @@ export * from './colors';
 // Product Philosophy & Core
 export * from './philosophy';
 export * from './speechRules';
+
+// Live Briefing
+export * from './liveBriefing';

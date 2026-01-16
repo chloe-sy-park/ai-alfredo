@@ -12,6 +12,7 @@ import {
 } from '../services/safety';
 import { useAlfredoStore } from './alfredoStore';
 import { useLiftStore } from './liftStore';
+import { triggerLiveBriefingUpdate } from './liveBriefingStore';
 import {
   extractLearningsFromMessage,
   detectFeedbackSentiment
@@ -301,6 +302,9 @@ export const useChatStore = create<ChatStore>()(
         } catch (error) {
           console.error('Failed to save learning from chat:', error);
         }
+
+        // === Live Briefing 갱신 트리거 (채팅 입력 시 즉시 갱신) ===
+        triggerLiveBriefingUpdate('chat_input');
       },
       
       startNewSession: (context) => {

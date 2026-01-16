@@ -18,6 +18,7 @@ import { useHomeModeStore } from '../stores/homeModeStore';
 import { PageHeader } from '../components/layout';
 import { ModeCards, MoreSheet, ModeSwitch, BalanceHint } from '../components/home';
 import BriefingCard from '../components/home/BriefingCard';
+import LiveBriefing from '../components/home/LiveBriefing';
 import TodayTimeline from '../components/home/TodayTimeline';
 import ConditionQuick from '../components/home/ConditionQuick';
 import TodayTop3 from '../components/home/TodayTop3';
@@ -388,7 +389,10 @@ export default function Home() {
         {/* 컨디션 퀵변경 */}
         <ConditionQuick onConditionChange={handleConditionChange} />
 
-        {/* 알프레도 브리핑 */}
+        {/* Live Briefing - 지금 이 순간의 상태 */}
+        <LiveBriefing onMore={function() { setIsMoreSheetOpen(true); }} />
+
+        {/* 알프레도 브리핑 (상세) */}
         {isLoading ? (
           <SkeletonBriefing />
         ) : (
