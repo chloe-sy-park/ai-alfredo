@@ -39,6 +39,9 @@ import {
   ToggleRight,
   Target,
   Sparkles,
+  Download,
+  Eye,
+  ChevronDown,
 } from 'lucide-react';
 import { useDrawerStore } from '../stores';
 import { useNotificationStore } from '../stores/notificationStore';
@@ -1635,7 +1638,7 @@ function StatsScreen({
 }
 
 // ============================================
-// Settings Screen (예산 설정 포함)
+// Settings Screen (Budget / Rules / Export)
 // ============================================
 
 interface SettingsScreenProps {
@@ -1660,7 +1663,7 @@ interface SettingsScreenProps {
     overall: { budget: number; current: number; percentage: number; status: string };
   } | null;
   onBudgetToggle: (enabled: boolean) => void;
-  onBudgetSettingsChange: (settings: Partial<{ workRatio: number; lifeRatio: number; totalCap?: number }>) => void;
+  onBudgetSettingsChange: (settings: Partial<{ workRatio: number; lifeRatio: number; totalCap?: number; personalGrowthCap?: number }>) => void;
   onApplySuggestion: () => void;
   onDismissSuggestion: () => void;
   onBack: () => void;
@@ -1677,7 +1680,30 @@ function SettingsScreen({
   onBack,
 }: SettingsScreenProps) {
   const [localWorkRatio, setLocalWorkRatio] = useState(budgetSettings.workRatio);
+  const [showTotalCap, setShowTotalCap] = useState(!!budgetSettings.totalCap);
+  const [showGrowthCap, setShowGrowthCap] = useState(!!budgetSettings.personalGrowthCap);
+  const [localTotalCap, setLocalTotalCap] = useState(budgetSettings.totalCap?.toString() || '');
+  const [localGrowthCap, setLocalGrowthCap] = useState(budgetSettings.personalGrowthCap?.toString() || '');
+  const [exportPeriod, setExportPeriod] = useState<'this_week' | 'this_month' | 'last_month' | 'all'>('this_month');
+  const [exportFormat, setExportFormat] = useState<'csv' | 'pdf'>('csv');
+  const [exportIncludeRecurring, setExportIncludeRecurring] = useState(true);
+  const [exportIncludeCommitments, setExportIncludeCommitments] = useState(true);
+  const [exportIncludeBudget, setExportIncludeBudget] = useState(true);
+
   const showSuggestion = budgetSuggestion && !budgetSuggestion.appliedAt && !budgetSuggestion.dismissedAt;
+
+  // Store에서 Rules 데이터 가져오기
+  const classificationRules = useFinanceStore((s) => s.classificationRules);
+  const duplicateGroups = useFinanceStore((s) => s.duplicateGroups);
+  const recurringItems = useFinanceStore((s) => s.recurringItems);
+
+  // Work/Life 규칙 상위 3개
+  const topRules = classificationRules.slice(0, 3);
+
+  // 중복 그룹 상위 2개
+  const topDuplicateGroups = duplicateGroups
+    .filter((g) => g.status === 'detected')
+    .slice(0, 2);
 
   // 슬라이더 변경 시 자동으로 lifeRatio 동기화
   const handleRatioChange = (workRatio: number) => {
@@ -1685,57 +1711,93 @@ function SettingsScreen({
     onBudgetSettingsChange({ workRatio, lifeRatio: 100 - workRatio });
   };
 
+  // Total Cap 토글
+  const handleTotalCapToggle = () => {
+    if (showTotalCap) {
+      setShowTotalCap(false);
+      onBudgetSettingsChange({ totalCap: undefined });
+    } else {
+      setShowTotalCap(true);
+    }
+  };
+
+  // Growth Cap 토글
+  const handleGrowthCapToggle = () => {
+    if (showGrowthCap) {
+      setShowGrowthCap(false);
+      onBudgetSettingsChange({ personalGrowthCap: undefined });
+    } else {
+      setShowGrowthCap(true);
+    }
+  };
+
+  // Cap 값 변경
+  const handleTotalCapChange = (value: string) => {
+    setLocalTotalCap(value);
+    const numValue = parseInt(value.replace(/,/g, ''));
+    if (!isNaN(numValue)) {
+      onBudgetSettingsChange({ totalCap: numValue });
+    }
+  };
+
+  const handleGrowthCapChange = (value: string) => {
+    setLocalGrowthCap(value);
+    const numValue = parseInt(value.replace(/,/g, ''));
+    if (!isNaN(numValue)) {
+      onBudgetSettingsChange({ personalGrowthCap: numValue });
+    }
+  };
+
+  // Export 기능 (MVP: 콘솔에 데이터 출력)
+  const handleExport = () => {
+    const exportData = {
+      period: exportPeriod,
+      format: exportFormat,
+      includeRecurring: exportIncludeRecurring,
+      includeCommitments: exportIncludeCommitments,
+      includeBudget: exportIncludeBudget,
+      exportedAt: new Date().toISOString(),
+    };
+    console.log('Export data:', exportData);
+    alert('내보내기 기능은 준비 중이에요. 콘솔에서 데이터를 확인할 수 있어요.');
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="px-4 pt-4 space-y-4 pb-8"
+      className="px-4 pt-4 space-y-6 pb-8"
     >
-      {/* 알프레도 예산 제안 */}
-      {showSuggestion && (
-        <div className="bg-lavender-50 rounded-2xl p-4 border border-lavender-200">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
-              <Sparkles size={20} className="text-white" />
-            </div>
-            <div className="flex-1">
-              <div className="text-sm font-medium text-gray-800 mb-1">
-                알프레도 제안
-              </div>
-              <div className="text-sm text-gray-600 mb-3">
-                최근 패턴 기준, Work {budgetSuggestion.workRatio}% / Life {budgetSuggestion.lifeRatio}%가 가장 안정적이에요.
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={onApplySuggestion}
-                  className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-lavender-500 transition-colors"
-                >
-                  적용
-                </button>
-                <button
-                  onClick={onDismissSuggestion}
-                  className="px-4 py-2 bg-white text-gray-600 text-sm font-medium rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-                >
-                  나중에
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 헤더 */}
+      <div className="mb-2">
+        <h2 className="text-lg font-semibold text-gray-900">Finance Settings</h2>
+        <p className="text-sm text-gray-500">Set your guardrails</p>
+      </div>
 
-      {/* 예산 설정 카드 */}
-      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Target size={20} className="text-primary" />
-            <span className="font-medium text-gray-800">예산 사용하기</span>
-          </div>
+      {/* ================================ */}
+      {/* Section A: Budget */}
+      {/* ================================ */}
+      <div className="space-y-3">
+        <div className="text-sm font-semibold text-gray-700 px-1">Budget</div>
+
+        {/* Budget Toggle Card */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
           <button
             onClick={() => onBudgetToggle(!budgetSettings.enabled)}
-            className="transition-colors"
+            className="w-full flex items-center justify-between"
           >
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                budgetSettings.enabled ? 'bg-primary' : 'bg-gray-200'
+              }`}>
+                <Target size={20} className={budgetSettings.enabled ? 'text-white' : 'text-gray-500'} />
+              </div>
+              <div className="text-left">
+                <div className="font-medium text-gray-800">예산 사용하기</div>
+                <div className="text-xs text-gray-500">Budget is a guardrail, not limits.</div>
+              </div>
+            </div>
             {budgetSettings.enabled ? (
               <ToggleRight size={32} className="text-primary" />
             ) : (
@@ -1744,103 +1806,379 @@ function SettingsScreen({
           </button>
         </div>
 
-        <p className="text-sm text-gray-500 mb-4">
-          예산은 "지금 이 선택, 내 상황에서 괜찮은가?"를 판단하는 기준선이에요.
-          초과해도 차단되지 않아요.
-        </p>
+        {/* Budget OFF 상태: Teaser 카드 */}
+        {!budgetSettings.enabled && showSuggestion && (
+          <div className="bg-lavender-50 rounded-2xl p-4 border border-lavender-200">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+                <Sparkles size={20} className="text-white" />
+              </div>
+              <div className="flex-1">
+                <div className="text-sm font-medium text-gray-800 mb-1">
+                  알프레도 제안
+                </div>
+                <div className="text-sm text-gray-600 mb-3">
+                  최근 패턴 기준 Work {budgetSuggestion.workRatio}% / Life {budgetSuggestion.lifeRatio}% 추천
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {}}
+                    className="px-4 py-2 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors flex items-center gap-1"
+                  >
+                    <Eye size={14} />
+                    미리보기
+                  </button>
+                  <button
+                    onClick={() => {
+                      onBudgetToggle(true);
+                      onApplySuggestion();
+                    }}
+                    className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-lavender-500 transition-colors"
+                  >
+                    켜기
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
+        {/* Budget ON 상태 */}
         {budgetSettings.enabled && (
           <>
-            {/* Work / Life 비중 슬라이더 */}
-            <div className="mt-6">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700">Work / Life 비중</span>
+            {/* Budget Summary Card (read-only) */}
+            {budgetStatusInfo && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                <div className="text-xs text-gray-500 mb-3">Budget Summary</div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-700">Work</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">₩{budgetStatusInfo.work.budget.toLocaleString()}</span>
+                      <span className={`text-sm font-semibold ${
+                        budgetStatusInfo.work.status === 'Stable' ? 'text-success' :
+                        budgetStatusInfo.work.status === 'Tight' ? 'text-amber-500' : 'text-red-500'
+                      }`}>
+                        {budgetStatusInfo.work.percentage}%
+                      </span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        budgetStatusInfo.work.status === 'Stable' ? 'bg-success/10 text-success' :
+                        budgetStatusInfo.work.status === 'Tight' ? 'bg-amber-100 text-amber-600' : 'bg-red-100 text-red-600'
+                      }`}>
+                        {budgetStatusInfo.work.status}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-700">Life</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">₩{budgetStatusInfo.life.budget.toLocaleString()}</span>
+                      <span className={`text-sm font-semibold ${
+                        budgetStatusInfo.life.status === 'Stable' ? 'text-success' :
+                        budgetStatusInfo.life.status === 'Tight' ? 'text-amber-500' : 'text-red-500'
+                      }`}>
+                        {budgetStatusInfo.life.percentage}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Work / Life Ratio Slider */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-gray-700">Work / Life ratio</span>
                 <span className="text-sm text-gray-500">
-                  {localWorkRatio}% / {100 - localWorkRatio}%
+                  Work {localWorkRatio}% / {100 - localWorkRatio}% Life
                 </span>
               </div>
-              <div className="relative">
+              <div className="relative px-1">
                 <input
                   type="range"
                   min="0"
                   max="100"
                   value={localWorkRatio}
                   onChange={(e) => handleRatioChange(parseInt(e.target.value))}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+                  className="w-full h-2 bg-gradient-to-r from-life-bg via-gray-300 to-work-bg rounded-lg appearance-none cursor-pointer"
+                  style={{
+                    background: `linear-gradient(to right, #FFE4E1 0%, #E5E5E5 50%, #E8E3FF 100%)`
+                  }}
                 />
-                <div className="flex justify-between mt-2 text-xs text-gray-400">
-                  <span>Life 100%</span>
-                  <span>Work 100%</span>
-                </div>
+              </div>
+              <div className="text-xs text-gray-400 mt-3 text-center">
+                월 1회 조정을 권장해요
+              </div>
+            </div>
+
+            {/* Optional Caps */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-4">
+              {/* Total Cap */}
+              <div>
+                <button
+                  onClick={handleTotalCapToggle}
+                  className="flex items-center gap-2 w-full"
+                >
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                    showTotalCap ? 'bg-primary border-primary' : 'border-gray-300'
+                  }`}>
+                    {showTotalCap && <Check size={12} className="text-white" />}
+                  </div>
+                  <span className="text-sm text-gray-700">총 고정지출 상한 (optional)</span>
+                </button>
+                {showTotalCap && (
+                  <div className="mt-2 ml-7">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500">₩</span>
+                      <input
+                        type="text"
+                        value={localTotalCap}
+                        onChange={(e) => handleTotalCapChange(e.target.value)}
+                        placeholder="3,000,000"
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      />
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1">타이트 상태를 더 일찍 알려줘요</div>
+                  </div>
+                )}
               </div>
 
-              {/* 현재 상태 표시 (예산 활성화 시) */}
-              {budgetStatusInfo && (
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <div className={`p-3 rounded-xl ${
-                    budgetStatusInfo.work.status === 'Stable' ? 'bg-success/10' :
-                    budgetStatusInfo.work.status === 'Tight' ? 'bg-amber-50' : 'bg-red-50'
+              {/* Personal Growth Cap */}
+              <div>
+                <button
+                  onClick={handleGrowthCapToggle}
+                  className="flex items-center gap-2 w-full"
+                >
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                    showGrowthCap ? 'bg-primary border-primary' : 'border-gray-300'
                   }`}>
-                    <div className="text-xs text-gray-500 mb-1">Work 예산</div>
-                    <div className="text-lg font-semibold text-gray-800">
-                      {budgetStatusInfo.work.percentage}%
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      ₩{budgetStatusInfo.work.current.toLocaleString()} / ₩{budgetStatusInfo.work.budget.toLocaleString()}
-                    </div>
+                    {showGrowthCap && <Check size={12} className="text-white" />}
                   </div>
-                  <div className={`p-3 rounded-xl ${
-                    budgetStatusInfo.life.status === 'Stable' ? 'bg-success/10' :
-                    budgetStatusInfo.life.status === 'Tight' ? 'bg-amber-50' : 'bg-red-50'
-                  }`}>
-                    <div className="text-xs text-gray-500 mb-1">Life 예산</div>
-                    <div className="text-lg font-semibold text-gray-800">
-                      {budgetStatusInfo.life.percentage}%
+                  <span className="text-sm text-gray-700">Personal Growth 상한 (optional)</span>
+                </button>
+                {showGrowthCap && (
+                  <div className="mt-2 ml-7">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500">₩</span>
+                      <input
+                        type="text"
+                        value={localGrowthCap}
+                        onChange={(e) => handleGrowthCapChange(e.target.value)}
+                        placeholder="400,000"
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      />
                     </div>
-                    <div className="text-xs text-gray-500">
-                      ₩{budgetStatusInfo.life.current.toLocaleString()} / ₩{budgetStatusInfo.life.budget.toLocaleString()}
+                    <div className="text-xs text-gray-400 mt-1">Growth 태그 구독에 적용돼요</div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Alfredo Suggestion (ON 상태) */}
+            {showSuggestion && (
+              <div className="bg-lavender-50 rounded-2xl p-4 border border-lavender-200">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+                    <Sparkles size={20} className="text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-gray-800 mb-1">알프레도 제안</div>
+                    <div className="text-sm text-gray-600 mb-3">
+                      최근 패턴 기준 Work {budgetSuggestion.workRatio}% / Life {budgetSuggestion.lifeRatio}% 안정
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={onApplySuggestion}
+                        className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-lavender-500 transition-colors"
+                      >
+                        적용
+                      </button>
+                      <button
+                        onClick={onDismissSuggestion}
+                        className="px-4 py-2 bg-white text-gray-600 text-sm font-medium rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                      >
+                        나중에
+                      </button>
                     </div>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </>
         )}
       </div>
 
-      {/* 예산 상태 설명 */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-        <div className="text-sm font-medium text-gray-700 mb-3">예산 상태 의미</div>
-        <div className="space-y-2">
-          <div className="flex items-center gap-3">
-            <div className="w-3 h-3 rounded-full bg-success" />
-            <div className="text-sm">
-              <span className="font-medium text-gray-700">Stable</span>
-              <span className="text-gray-500 ml-2">여유 있음 (70% 미만)</span>
+      {/* ================================ */}
+      {/* Section B: Rules */}
+      {/* ================================ */}
+      <div className="space-y-3">
+        <div className="px-1">
+          <div className="text-sm font-semibold text-gray-700">Rules</div>
+          <div className="text-xs text-gray-400">Edits become auto-rules</div>
+        </div>
+
+        {/* Work/Life auto rules */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="text-xs text-gray-500 mb-3">Work/Life 자동 규칙</div>
+          {topRules.length > 0 ? (
+            <div className="space-y-2">
+              {topRules.map((rule) => (
+                <div key={rule.id} className="flex items-center justify-between py-1">
+                  <span className="text-sm text-gray-700">{rule.categoryL1}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                    rule.workLife === 'Work' ? 'bg-work-bg text-work-text' : 'bg-life-bg text-life-text'
+                  }`}>
+                    {rule.workLife}
+                  </span>
+                </div>
+              ))}
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-3 h-3 rounded-full bg-amber-400" />
-            <div className="text-sm">
-              <span className="font-medium text-gray-700">Tight</span>
-              <span className="text-gray-500 ml-2">선택 필요 (70-100%)</span>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between py-1">
+                <span className="text-sm text-gray-700">Notion</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-work-bg text-work-text">Work</span>
+              </div>
+              <div className="flex items-center justify-between py-1">
+                <span className="text-sm text-gray-700">Netflix</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-life-bg text-life-text">Life</span>
+              </div>
+              <div className="flex items-center justify-between py-1">
+                <span className="text-sm text-gray-700">Adobe</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-work-bg text-work-text">Work</span>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-3 h-3 rounded-full bg-red-400" />
-            <div className="text-sm">
-              <span className="font-medium text-gray-700">Over</span>
-              <span className="text-gray-500 ml-2">기준 초과 (확인 요청)</span>
+          )}
+          <button className="w-full mt-3 text-sm text-primary font-medium py-2 hover:bg-lavender-50 rounded-lg transition-colors">
+            모두보기
+          </button>
+        </div>
+
+        {/* Duplicate grouping */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="text-xs text-gray-500 mb-3">중복 그룹 매핑</div>
+          {topDuplicateGroups.length > 0 ? (
+            <div className="space-y-2">
+              {topDuplicateGroups.map((group) => {
+                const groupItems = recurringItems.filter((i) => group.itemIds.includes(i.id));
+                return (
+                  <div key={group.id} className="py-1">
+                    <span className="text-sm font-medium text-gray-700">{group.purpose}: </span>
+                    <span className="text-sm text-gray-500">
+                      {groupItems.map((i) => i.name).join(', ')}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
-          </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="py-1">
+                <span className="text-sm font-medium text-gray-700">OTT: </span>
+                <span className="text-sm text-gray-500">Netflix, Disney+, Watcha</span>
+              </div>
+              <div className="py-1">
+                <span className="text-sm font-medium text-gray-700">Cloud: </span>
+                <span className="text-sm text-gray-500">iCloud, Google One</span>
+              </div>
+            </div>
+          )}
+          <button className="w-full mt-3 text-sm text-primary font-medium py-2 hover:bg-lavender-50 rounded-lg transition-colors">
+            편집
+          </button>
         </div>
       </div>
 
-      {/* 운영 원칙 */}
-      <div className="bg-gray-50 rounded-xl p-4">
-        <div className="text-xs text-gray-500 leading-relaxed">
-          💡 예산은 "차단"이 아니라 "기준선"이에요. 초과해도 결정은 항상 당신의 몫이에요.
-          알프레도는 판단을 돕는 정보만 제공해요.
+      {/* ================================ */}
+      {/* Section C: Export */}
+      {/* ================================ */}
+      <div className="space-y-3">
+        <div className="px-1">
+          <div className="text-sm font-semibold text-gray-700">Export</div>
+          <div className="text-xs text-gray-400">For backup & accounting</div>
+        </div>
+
+        {/* Quick export */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="text-xs text-gray-500 mb-3">Quick export</div>
+
+          {/* Period & Format */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div>
+              <div className="text-xs text-gray-500 mb-1">Period</div>
+              <div className="relative">
+                <select
+                  value={exportPeriod}
+                  onChange={(e) => setExportPeriod(e.target.value as typeof exportPeriod)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                >
+                  <option value="this_week">이번 주</option>
+                  <option value="this_month">이번 달</option>
+                  <option value="last_month">지난 달</option>
+                  <option value="all">전체</option>
+                </select>
+                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-500 mb-1">Format</div>
+              <div className="relative">
+                <select
+                  value={exportFormat}
+                  onChange={(e) => setExportFormat(e.target.value as typeof exportFormat)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                >
+                  <option value="csv">CSV</option>
+                  <option value="pdf">PDF</option>
+                </select>
+                <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+          </div>
+
+          {/* Include options */}
+          <div className="text-xs text-gray-500 mb-2">Include</div>
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button
+              onClick={() => setExportIncludeRecurring(!exportIncludeRecurring)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                exportIncludeRecurring
+                  ? 'bg-primary text-white'
+                  : 'bg-gray-100 text-gray-600'
+              }`}
+            >
+              Recurring
+            </button>
+            <button
+              onClick={() => setExportIncludeCommitments(!exportIncludeCommitments)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                exportIncludeCommitments
+                  ? 'bg-primary text-white'
+                  : 'bg-gray-100 text-gray-600'
+              }`}
+            >
+              Commitments
+            </button>
+            <button
+              onClick={() => setExportIncludeBudget(!exportIncludeBudget)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                exportIncludeBudget
+                  ? 'bg-primary text-white'
+                  : 'bg-gray-100 text-gray-600'
+              }`}
+            >
+              Budget
+            </button>
+          </div>
+
+          {/* Export button */}
+          <button
+            onClick={handleExport}
+            className="w-full py-3 bg-primary text-white font-medium rounded-xl hover:bg-lavender-500 transition-colors flex items-center justify-center gap-2"
+          >
+            <Download size={18} />
+            내보내기
+          </button>
         </div>
       </div>
 
