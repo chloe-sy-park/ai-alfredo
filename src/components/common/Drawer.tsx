@@ -1,13 +1,14 @@
 import React, { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { 
-  Home, 
-  Calendar, 
-  Briefcase, 
-  Heart, 
-  BarChart3, 
-  Settings, 
-  Link2, 
+import {
+  Home,
+  Calendar,
+  Briefcase,
+  Heart,
+  Wallet,
+  BarChart3,
+  Settings,
+  Link2,
   HelpCircle,
   X
 } from 'lucide-react';
@@ -48,6 +49,7 @@ const Drawer: React.FC<DrawerProps> = ({ isOpen, onClose }) => {
     { path: '/calendar', icon: Calendar, label: '캘린더', badge: 3 },
     { path: '/work', icon: Briefcase, label: '워크OS' },
     { path: '/life', icon: Heart, label: '라이프OS' },
+    { path: '/finance', icon: Wallet, label: '파이낸스OS' },
     { path: '/report', icon: BarChart3, label: '리포트', badge: 'NEW' },
   ];
 
