@@ -34,6 +34,11 @@ import {
   List,
   CreditCard,
   Landmark,
+  Settings,
+  ToggleLeft,
+  ToggleRight,
+  Target,
+  Sparkles,
 } from 'lucide-react';
 import { useDrawerStore } from '../stores';
 import { useNotificationStore } from '../stores/notificationStore';
@@ -67,7 +72,7 @@ import {
 } from '../services/finance';
 
 // 상태 타입 정의
-type FinanceState = 'overview' | 'overlaps' | 'candidates' | 'upcoming' | 'allclear' | 'stats';
+type FinanceState = 'overview' | 'overlaps' | 'candidates' | 'upcoming' | 'allclear' | 'stats' | 'settings';
 
 export default function Finance() {
   // Store
@@ -93,6 +98,16 @@ export default function Finance() {
   const closeUsageCheckModal = useFinanceStore((s) => s.closeUsageCheckModal);
   const submitUsageCheck = useFinanceStore((s) => s.submitUsageCheck);
 
+  // Budget
+  const budgetSettings = useFinanceStore((s) => s.budgetSettings);
+  const budgetSuggestion = useFinanceStore((s) => s.budgetSuggestion);
+  const setBudgetEnabled = useFinanceStore((s) => s.setBudgetEnabled);
+  const updateBudgetSettings = useFinanceStore((s) => s.updateBudgetSettings);
+  const applyBudgetSuggestion = useFinanceStore((s) => s.applyBudgetSuggestion);
+  const dismissBudgetSuggestion = useFinanceStore((s) => s.dismissBudgetSuggestion);
+  const checkBudgetSuggestion = useFinanceStore((s) => s.checkBudgetSuggestion);
+  const getBudgetStatusInfo = useFinanceStore((s) => s.getBudgetStatusInfo);
+
   // UI State
   const [currentState, setCurrentState] = useState<FinanceState>('overview');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -101,7 +116,13 @@ export default function Finance() {
   useEffect(() => {
     refreshOverview();
     refreshDuplicates();
-  }, [refreshOverview, refreshDuplicates]);
+    checkBudgetSuggestion(); // 예산 제안 체크
+  }, [refreshOverview, refreshDuplicates, checkBudgetSuggestion]);
+
+  // 예산 상태 계산
+  const budgetStatusInfo = useMemo(() => {
+    return getBudgetStatusInfo();
+  }, [getBudgetStatusInfo, budgetSettings, recurringItems, commitmentItems, incomeItems]);
 
   // Overview State Summary (State-based IA 핵심 계산)
   const overviewData = useMemo(() => {
@@ -221,6 +242,8 @@ export default function Finance() {
             recurringItems={recurringItems}
             commitmentItems={commitmentItems}
             oneTimeExpenses={oneTimeExpenses}
+            budgetEnabled={budgetSettings.enabled}
+            budgetStatusInfo={budgetStatusInfo}
             onNavigate={setCurrentState}
             onQuickAddRecurring={() => setShowAddModal(true)}
           />
@@ -273,6 +296,20 @@ export default function Finance() {
             oneTimeExpenses={oneTimeExpenses}
             duplicateGroups={duplicateGroups}
             growthLinks={growthLinks}
+            onBack={handleBack}
+          />
+        )}
+
+        {currentState === 'settings' && (
+          <SettingsScreen
+            key="settings"
+            budgetSettings={budgetSettings}
+            budgetSuggestion={budgetSuggestion}
+            budgetStatusInfo={budgetStatusInfo}
+            onBudgetToggle={setBudgetEnabled}
+            onBudgetSettingsChange={updateBudgetSettings}
+            onApplySuggestion={applyBudgetSuggestion}
+            onDismissSuggestion={dismissBudgetSuggestion}
             onBack={handleBack}
           />
         )}
@@ -345,6 +382,7 @@ function FinanceHeader({
     upcoming: '결제 예정',
     allclear: '모두 정상',
     stats: '재정 통계',
+    settings: '설정',
   };
 
   return (
@@ -421,6 +459,12 @@ interface OverviewScreenProps {
   recurringItems: RecurringItem[];
   commitmentItems: CommitmentItem[];
   oneTimeExpenses: OneTimeExpense[];
+  budgetEnabled: boolean;
+  budgetStatusInfo: {
+    work: { budget: number; current: number; percentage: number; status: string };
+    life: { budget: number; current: number; percentage: number; status: string };
+    overall: { budget: number; current: number; percentage: number; status: string };
+  } | null;
   onNavigate: (state: FinanceState) => void;
   onQuickAddRecurring?: () => void;
 }
@@ -434,6 +478,8 @@ function OverviewScreen({
   recurringItems,
   commitmentItems,
   oneTimeExpenses,
+  budgetEnabled,
+  budgetStatusInfo,
   onNavigate,
   onQuickAddRecurring,
 }: OverviewScreenProps) {
@@ -574,6 +620,37 @@ function OverviewScreen({
             <span className="text-sm font-normal text-gray-400 ml-1">/월</span>
           </div>
         </div>
+
+        {/* Budget Signal (예산 사용 시만 표시) */}
+        {budgetEnabled && budgetStatusInfo && (
+          <div className="flex items-center justify-between mb-4 px-3 py-2 bg-gray-50 rounded-lg">
+            <div className="flex items-center gap-3 text-xs">
+              <Target size={14} className="text-gray-400" />
+              <span className={`font-medium ${
+                budgetStatusInfo.work.status === 'Stable' ? 'text-success' :
+                budgetStatusInfo.work.status === 'Tight' ? 'text-amber-500' : 'text-red-500'
+              }`}>
+                Work {budgetStatusInfo.work.percentage}%
+              </span>
+              <span className="text-gray-300">|</span>
+              <span className={`font-medium ${
+                budgetStatusInfo.life.status === 'Stable' ? 'text-success' :
+                budgetStatusInfo.life.status === 'Tight' ? 'text-amber-500' : 'text-red-500'
+              }`}>
+                Life {budgetStatusInfo.life.percentage}%
+              </span>
+            </div>
+            {(budgetStatusInfo.work.status !== 'Stable' || budgetStatusInfo.life.status !== 'Stable') && (
+              <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+                budgetStatusInfo.work.status === 'Over' || budgetStatusInfo.life.status === 'Over'
+                  ? 'bg-red-100 text-red-600'
+                  : 'bg-amber-100 text-amber-600'
+              }`}>
+                {budgetStatusInfo.work.status === 'Over' || budgetStatusInfo.life.status === 'Over' ? '확인 필요' : '타이트'}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* 고정지출 내역 브레이크다운 */}
         {(fixedExpenseBreakdown.subscriptions > 0 || fixedExpenseBreakdown.commitments > 0) && (
@@ -825,27 +902,34 @@ function OverviewScreen({
       )}
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         <button
           onClick={onQuickAddRecurring}
           className="flex flex-col items-center justify-center gap-1 py-3 bg-white border border-gray-200 rounded-xl text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
         >
           <Plus size={18} />
-          <span className="text-xs">지출 추가</span>
+          <span className="text-xs">추가</span>
         </button>
         <button
           onClick={() => onNavigate('stats')}
           className="flex flex-col items-center justify-center gap-1 py-3 bg-white border border-gray-200 rounded-xl text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
         >
           <BarChart3 size={18} />
-          <span className="text-xs">통계 분석</span>
+          <span className="text-xs">통계</span>
         </button>
         <button
           onClick={() => onNavigate('allclear')}
           className="flex flex-col items-center justify-center gap-1 py-3 bg-white border border-gray-200 rounded-xl text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
         >
           <List size={18} />
-          <span className="text-xs">구독 {itemCount}개</span>
+          <span className="text-xs">목록</span>
+        </button>
+        <button
+          onClick={() => onNavigate('settings')}
+          className="flex flex-col items-center justify-center gap-1 py-3 bg-white border border-gray-200 rounded-xl text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
+        >
+          <Settings size={18} />
+          <span className="text-xs">설정</span>
         </button>
       </div>
 
@@ -1017,6 +1101,12 @@ interface OverlapsScreenProps {
 
 function OverlapsScreen({ duplicates, items, onResolve, onDismiss, onComplete }: OverlapsScreenProps) {
   const activeDuplicates = duplicates.filter((g) => g.status === 'detected');
+  const budgetSettings = useFinanceStore((s) => s.budgetSettings);
+  const getBudgetStatusInfo = useFinanceStore((s) => s.getBudgetStatusInfo);
+  const budgetStatusInfo = getBudgetStatusInfo();
+
+  // 총 절감 가능 금액 계산
+  const totalPotentialSavings = activeDuplicates.reduce((sum, g) => sum + g.potentialSavings, 0);
 
   if (activeDuplicates.length === 0) {
     return (
@@ -1052,6 +1142,21 @@ function OverlapsScreen({ duplicates, items, onResolve, onDismiss, onComplete }:
         하나만 선택하면 나머지는 해지 후보로 이동해요
       </p>
 
+      {/* Budget Guardrail Message */}
+      {budgetSettings.enabled && budgetStatusInfo && totalPotentialSavings > 0 && (
+        <div className="bg-lavender-50 rounded-xl p-3 text-sm">
+          {budgetStatusInfo.overall.status === 'Tight' || budgetStatusInfo.overall.status === 'Over' ? (
+            <span className="text-gray-700">
+              중복을 정리하면 <span className="font-semibold text-success">+₩{totalPotentialSavings.toLocaleString()}</span>의 여유가 생겨요
+            </span>
+          ) : (
+            <span className="text-gray-600">
+              {activeDuplicates.length}개 그룹 · 월 최대 ₩{totalPotentialSavings.toLocaleString()} 절감 가능
+            </span>
+          )}
+        </div>
+      )}
+
       {activeDuplicates.map((group) => (
         <DuplicateCard
           key={group.id}
@@ -1078,6 +1183,15 @@ interface CandidatesScreenProps {
 
 function CandidatesScreen({ candidates, onToggleWorkLife, onSelect, onComplete }: CandidatesScreenProps) {
   const dismissFromCancelCandidates = useFinanceStore((s) => s.dismissFromCancelCandidates);
+  const budgetSettings = useFinanceStore((s) => s.budgetSettings);
+  const getBudgetStatusInfo = useFinanceStore((s) => s.getBudgetStatusInfo);
+  const budgetStatusInfo = getBudgetStatusInfo();
+
+  // 정리 시 예상 절감액 계산
+  const totalPotentialSavings = candidates.reduce(
+    (sum, item) => sum + (item.billingCycle === 'yearly' ? item.amount / 12 : item.amount),
+    0
+  );
 
   if (candidates.length === 0) {
     return (
@@ -1112,6 +1226,21 @@ function CandidatesScreen({ candidates, onToggleWorkLife, onSelect, onComplete }
       <p className="text-sm text-gray-500 px-1">
         유지하거나 해지할 항목을 결정해주세요
       </p>
+
+      {/* Budget Guardrail Message */}
+      {budgetSettings.enabled && budgetStatusInfo && (
+        <div className="bg-lavender-50 rounded-xl p-3 text-sm">
+          {budgetStatusInfo.overall.status === 'Tight' || budgetStatusInfo.overall.status === 'Over' ? (
+            <span className="text-gray-700">
+              이 항목들을 정리하면 <span className="font-semibold text-success">+₩{Math.round(totalPotentialSavings).toLocaleString()}</span>의 여유가 생겨요
+            </span>
+          ) : (
+            <span className="text-gray-600">
+              해지 후보 {candidates.length}개 · 월 ₩{Math.round(totalPotentialSavings).toLocaleString()} 절감 가능
+            </span>
+          )}
+        </div>
+      )}
 
       {candidates.map((item) => (
         <div key={item.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
@@ -1495,6 +1624,227 @@ function StatsScreen({
       )}
 
       {/* Back Button */}
+      <button
+        onClick={onBack}
+        className="w-full py-3 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors"
+      >
+        돌아가기
+      </button>
+    </motion.div>
+  );
+}
+
+// ============================================
+// Settings Screen (예산 설정 포함)
+// ============================================
+
+interface SettingsScreenProps {
+  budgetSettings: {
+    enabled: boolean;
+    workRatio: number;
+    lifeRatio: number;
+    totalCap?: number;
+    personalGrowthCap?: number;
+  };
+  budgetSuggestion: {
+    workRatio: number;
+    lifeRatio: number;
+    suggestedAt: string;
+    basedOnDays: number;
+    appliedAt?: string;
+    dismissedAt?: string;
+  } | null;
+  budgetStatusInfo: {
+    work: { budget: number; current: number; percentage: number; status: string };
+    life: { budget: number; current: number; percentage: number; status: string };
+    overall: { budget: number; current: number; percentage: number; status: string };
+  } | null;
+  onBudgetToggle: (enabled: boolean) => void;
+  onBudgetSettingsChange: (settings: Partial<{ workRatio: number; lifeRatio: number; totalCap?: number }>) => void;
+  onApplySuggestion: () => void;
+  onDismissSuggestion: () => void;
+  onBack: () => void;
+}
+
+function SettingsScreen({
+  budgetSettings,
+  budgetSuggestion,
+  budgetStatusInfo,
+  onBudgetToggle,
+  onBudgetSettingsChange,
+  onApplySuggestion,
+  onDismissSuggestion,
+  onBack,
+}: SettingsScreenProps) {
+  const [localWorkRatio, setLocalWorkRatio] = useState(budgetSettings.workRatio);
+  const showSuggestion = budgetSuggestion && !budgetSuggestion.appliedAt && !budgetSuggestion.dismissedAt;
+
+  // 슬라이더 변경 시 자동으로 lifeRatio 동기화
+  const handleRatioChange = (workRatio: number) => {
+    setLocalWorkRatio(workRatio);
+    onBudgetSettingsChange({ workRatio, lifeRatio: 100 - workRatio });
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="px-4 pt-4 space-y-4 pb-8"
+    >
+      {/* 알프레도 예산 제안 */}
+      {showSuggestion && (
+        <div className="bg-lavender-50 rounded-2xl p-4 border border-lavender-200">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+              <Sparkles size={20} className="text-white" />
+            </div>
+            <div className="flex-1">
+              <div className="text-sm font-medium text-gray-800 mb-1">
+                알프레도 제안
+              </div>
+              <div className="text-sm text-gray-600 mb-3">
+                최근 패턴 기준, Work {budgetSuggestion.workRatio}% / Life {budgetSuggestion.lifeRatio}%가 가장 안정적이에요.
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={onApplySuggestion}
+                  className="px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-lavender-500 transition-colors"
+                >
+                  적용
+                </button>
+                <button
+                  onClick={onDismissSuggestion}
+                  className="px-4 py-2 bg-white text-gray-600 text-sm font-medium rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                >
+                  나중에
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 예산 설정 카드 */}
+      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Target size={20} className="text-primary" />
+            <span className="font-medium text-gray-800">예산 사용하기</span>
+          </div>
+          <button
+            onClick={() => onBudgetToggle(!budgetSettings.enabled)}
+            className="transition-colors"
+          >
+            {budgetSettings.enabled ? (
+              <ToggleRight size={32} className="text-primary" />
+            ) : (
+              <ToggleLeft size={32} className="text-gray-300" />
+            )}
+          </button>
+        </div>
+
+        <p className="text-sm text-gray-500 mb-4">
+          예산은 "지금 이 선택, 내 상황에서 괜찮은가?"를 판단하는 기준선이에요.
+          초과해도 차단되지 않아요.
+        </p>
+
+        {budgetSettings.enabled && (
+          <>
+            {/* Work / Life 비중 슬라이더 */}
+            <div className="mt-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700">Work / Life 비중</span>
+                <span className="text-sm text-gray-500">
+                  {localWorkRatio}% / {100 - localWorkRatio}%
+                </span>
+              </div>
+              <div className="relative">
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={localWorkRatio}
+                  onChange={(e) => handleRatioChange(parseInt(e.target.value))}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+                />
+                <div className="flex justify-between mt-2 text-xs text-gray-400">
+                  <span>Life 100%</span>
+                  <span>Work 100%</span>
+                </div>
+              </div>
+
+              {/* 현재 상태 표시 (예산 활성화 시) */}
+              {budgetStatusInfo && (
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className={`p-3 rounded-xl ${
+                    budgetStatusInfo.work.status === 'Stable' ? 'bg-success/10' :
+                    budgetStatusInfo.work.status === 'Tight' ? 'bg-amber-50' : 'bg-red-50'
+                  }`}>
+                    <div className="text-xs text-gray-500 mb-1">Work 예산</div>
+                    <div className="text-lg font-semibold text-gray-800">
+                      {budgetStatusInfo.work.percentage}%
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      ₩{budgetStatusInfo.work.current.toLocaleString()} / ₩{budgetStatusInfo.work.budget.toLocaleString()}
+                    </div>
+                  </div>
+                  <div className={`p-3 rounded-xl ${
+                    budgetStatusInfo.life.status === 'Stable' ? 'bg-success/10' :
+                    budgetStatusInfo.life.status === 'Tight' ? 'bg-amber-50' : 'bg-red-50'
+                  }`}>
+                    <div className="text-xs text-gray-500 mb-1">Life 예산</div>
+                    <div className="text-lg font-semibold text-gray-800">
+                      {budgetStatusInfo.life.percentage}%
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      ₩{budgetStatusInfo.life.current.toLocaleString()} / ₩{budgetStatusInfo.life.budget.toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* 예산 상태 설명 */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+        <div className="text-sm font-medium text-gray-700 mb-3">예산 상태 의미</div>
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <div className="w-3 h-3 rounded-full bg-success" />
+            <div className="text-sm">
+              <span className="font-medium text-gray-700">Stable</span>
+              <span className="text-gray-500 ml-2">여유 있음 (70% 미만)</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-3 h-3 rounded-full bg-amber-400" />
+            <div className="text-sm">
+              <span className="font-medium text-gray-700">Tight</span>
+              <span className="text-gray-500 ml-2">선택 필요 (70-100%)</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-3 h-3 rounded-full bg-red-400" />
+            <div className="text-sm">
+              <span className="font-medium text-gray-700">Over</span>
+              <span className="text-gray-500 ml-2">기준 초과 (확인 요청)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 운영 원칙 */}
+      <div className="bg-gray-50 rounded-xl p-4">
+        <div className="text-xs text-gray-500 leading-relaxed">
+          💡 예산은 "차단"이 아니라 "기준선"이에요. 초과해도 결정은 항상 당신의 몫이에요.
+          알프레도는 판단을 돕는 정보만 제공해요.
+        </div>
+      </div>
+
+      {/* 돌아가기 */}
       <button
         onClick={onBack}
         className="w-full py-3 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors"

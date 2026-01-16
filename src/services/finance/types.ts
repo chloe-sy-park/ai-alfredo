@@ -314,6 +314,80 @@ export const EXPENSE_KEYWORDS: Record<string, OneTimeExpenseCategory> = {
 };
 
 // ============================================
+// Budget (예산) - 판단을 위한 기준선
+// ============================================
+
+/**
+ * 예산 상태 (숫자가 아닌 상태로 해석)
+ * - Stable: 여유 있음 (70% 미만)
+ * - Tight: 선택 필요 (70-100%)
+ * - Over: 기준 초과 (100% 이상) → 차단 ❌, 확인 요청
+ */
+export type BudgetStatus = 'Stable' | 'Tight' | 'Over';
+
+/**
+ * 예산 설정 (옵션 기능, 기본값 OFF)
+ */
+export interface BudgetSettings {
+  enabled: boolean;           // 예산 사용 여부 (기본: false)
+  workRatio: number;          // Work 비중 (0-100)
+  lifeRatio: number;          // Life 비중 (0-100)
+  totalCap?: number;          // (선택) 총 고정지출 상한
+  personalGrowthCap?: number; // (선택) Personal Growth 상한
+}
+
+/**
+ * 알프레도 자동 제안
+ */
+export interface BudgetSuggestion {
+  workRatio: number;
+  lifeRatio: number;
+  suggestedAt: string;        // ISO date
+  basedOnDays: number;        // 분석 기반 일수
+  appliedAt?: string;         // 적용한 경우
+  dismissedAt?: string;       // 무시한 경우
+}
+
+/**
+ * 예산 상태 정보 (실시간 계산)
+ */
+export interface BudgetStatusInfo {
+  work: {
+    budget: number;           // 예산액
+    current: number;          // 현재 지출
+    percentage: number;       // 사용률 (0-100+)
+    status: BudgetStatus;
+  };
+  life: {
+    budget: number;
+    current: number;
+    percentage: number;
+    status: BudgetStatus;
+  };
+  overall: {
+    budget: number;
+    current: number;
+    percentage: number;
+    status: BudgetStatus;
+  };
+  personalGrowth?: {
+    budget: number;
+    current: number;
+    percentage: number;
+    status: BudgetStatus;
+  };
+}
+
+/**
+ * 예산 임계치 (상태 판단 기준)
+ */
+export const BUDGET_STATUS_THRESHOLDS = {
+  STABLE_MAX: 70,   // 70% 미만 → Stable
+  TIGHT_MAX: 100,   // 70-100% → Tight
+  // 100% 이상 → Over
+} as const;
+
+// ============================================
 // Finance Statistics (통계)
 // ============================================
 
