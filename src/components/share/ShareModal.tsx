@@ -3,8 +3,8 @@
  * Wrapped 카드를 미리 보고 공유할 수 있는 모달
  */
 
-import { useRef, useState, useCallback } from 'react';
-import { X, Download, Share2, Copy, Check, Palette } from 'lucide-react';
+import { useRef, useState, useCallback, useMemo } from 'react';
+import { X, Download, Share2, Copy, Check, Palette, Settings2 } from 'lucide-react';
 import { WrappedCard, WrappedCardData } from './WrappedCard';
 import {
   share,
@@ -22,12 +22,45 @@ interface ShareModalProps {
 
 type CardVariant = 'default' | 'minimal' | 'colorful';
 
+interface DisplayOptions {
+  showLiftStats: boolean;
+  showWorkLifeRatio: boolean;
+  showTopDecision: boolean;
+  showUnderstanding: boolean;
+  showInsight: boolean;
+}
+
 export default function ShareModal({ isOpen, onClose, data }: ShareModalProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [variant, setVariant] = useState<CardVariant>('default');
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showOptions, setShowOptions] = useState(false);
+  const [displayOptions, setDisplayOptions] = useState<DisplayOptions>({
+    showLiftStats: true,
+    showWorkLifeRatio: true,
+    showTopDecision: true,
+    showUnderstanding: true,
+    showInsight: true,
+  });
+
+  // 표시 옵션에 따라 카드 데이터 필터링
+  const filteredData = useMemo((): WrappedCardData => ({
+    ...data,
+    totalLifts: displayOptions.showLiftStats ? data.totalLifts : 0,
+    appliedLifts: displayOptions.showLiftStats ? data.appliedLifts : 0,
+    workLifeRatio: displayOptions.showWorkLifeRatio ? data.workLifeRatio : { work: 0, life: 0 },
+    topDecision: displayOptions.showTopDecision ? data.topDecision : undefined,
+    bestDay: displayOptions.showTopDecision ? data.bestDay : undefined,
+    understandingLevel: displayOptions.showUnderstanding ? data.understandingLevel : undefined,
+    understandingTitle: displayOptions.showUnderstanding ? data.understandingTitle : undefined,
+    insight: displayOptions.showInsight ? data.insight : undefined,
+  }), [data, displayOptions]);
+
+  const toggleOption = (key: keyof DisplayOptions) => {
+    setDisplayOptions(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   // html2canvas 동적 로드 및 이미지 생성
   const generateImage = useCallback(async (): Promise<string | null> => {
@@ -134,7 +167,7 @@ ${data.insight ? `💬 "${data.insight}"` : ''}
         <div className="flex-1 overflow-y-auto p-4">
           <div className="flex justify-center">
             <div className="transform scale-[0.85] origin-top">
-              <WrappedCard ref={cardRef} data={data} variant={variant} />
+              <WrappedCard ref={cardRef} data={filteredData} variant={variant} />
             </div>
           </div>
         </div>
@@ -160,6 +193,54 @@ ${data.insight ? `💬 "${data.insight}"` : ''}
               </button>
             ))}
           </div>
+        </div>
+
+        {/* 표시 옵션 */}
+        <div className="px-4 py-3 border-t bg-gray-50">
+          <button
+            onClick={() => setShowOptions(!showOptions)}
+            className="flex items-center justify-between w-full"
+          >
+            <div className="flex items-center gap-2">
+              <Settings2 size={16} className="text-gray-500" />
+              <span className="text-sm text-gray-600">표시 항목</span>
+            </div>
+            <span className="text-xs text-gray-400">{showOptions ? '접기' : '펼치기'}</span>
+          </button>
+
+          {showOptions && (
+            <div className="mt-3 space-y-2">
+              {[
+                { key: 'showLiftStats' as const, label: '판단 변화 통계' },
+                { key: 'showWorkLifeRatio' as const, label: '일/삶 균형' },
+                { key: 'showTopDecision' as const, label: '최고의 선택' },
+                { key: 'showUnderstanding' as const, label: '알프레도 이해도' },
+                { key: 'showInsight' as const, label: '알프레도의 한마디' },
+              ].map((option) => (
+                <label
+                  key={option.key}
+                  className="flex items-center justify-between py-1.5 cursor-pointer"
+                >
+                  <span className="text-sm text-gray-700">{option.label}</span>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      toggleOption(option.key);
+                    }}
+                    className={`w-10 h-6 rounded-full transition-colors relative ${
+                      displayOptions[option.key] ? 'bg-[#A996FF]' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                        displayOptions[option.key] ? 'translate-x-5' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </label>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* 에러 메시지 */}

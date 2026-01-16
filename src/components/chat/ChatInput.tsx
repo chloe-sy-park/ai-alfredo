@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Mic, MicOff, Loader2 } from 'lucide-react';
+import { Send, Mic, MicOff, Loader2, Zap, Radio } from 'lucide-react';
 import { useSpeechRecognition, isWebSpeechSupported } from '../../services/speech';
 
 // Whisper API 키 (환경 변수에서)
@@ -22,18 +22,35 @@ export default function ChatInput({
   preferWhisper = false
 }: ChatInputProps) {
   const [message, setMessage] = useState('');
+  const [showModeSelector, setShowModeSelector] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // 사용할 음성 인식 모드 결정
+  // 사용 가능한 모드 확인
   const webSpeechAvailable = isWebSpeechSupported();
   const whisperAvailable = !!OPENAI_API_KEY;
+  const bothAvailable = webSpeechAvailable && whisperAvailable;
 
+  // 사용자 선택 모드 (localStorage에 저장)
+  const [userPreferredMode, setUserPreferredMode] = useState<SpeechMode>(() => {
+    const saved = localStorage.getItem('speechMode');
+    if (saved === 'whisper' || saved === 'web-speech') return saved;
+    return preferWhisper ? 'whisper' : 'web-speech';
+  });
+
+  // 실제 사용할 모드 결정
   const speechMode: SpeechMode =
-    preferWhisper && whisperAvailable ? 'whisper' :
-    webSpeechAvailable ? 'web-speech' :
+    userPreferredMode === 'whisper' && whisperAvailable ? 'whisper' :
+    userPreferredMode === 'web-speech' && webSpeechAvailable ? 'web-speech' :
     whisperAvailable ? 'whisper' : 'web-speech';
 
   const isSpeechSupported = webSpeechAvailable || whisperAvailable;
+
+  // 모드 변경
+  const handleModeChange = (mode: SpeechMode) => {
+    setUserPreferredMode(mode);
+    localStorage.setItem('speechMode', mode);
+    setShowModeSelector(false);
+  };
 
   // 음성 인식 훅
   const {
@@ -162,20 +179,66 @@ export default function ChatInput({
           rows={1}
         />
 
-        {/* 마이크 버튼 */}
+        {/* 마이크 버튼 + 모드 선택 */}
         {isSpeechSupported && (
-          <button
-            onClick={handleMicClick}
-            disabled={disabled}
-            className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-              isActive
-                ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse'
-                : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-            } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-            title={isActive ? '음성 입력 중지' : `음성으로 입력하기 (${speechMode === 'whisper' ? 'Whisper' : 'Web Speech'})`}
-          >
-            {isActive ? <MicOff size={18} /> : <Mic size={18} />}
-          </button>
+          <div className="relative flex items-center gap-1">
+            {/* 모드 선택기 팝업 */}
+            {showModeSelector && bothAvailable && (
+              <div className="absolute bottom-12 right-0 bg-white rounded-xl shadow-lg border border-neutral-200 p-2 min-w-[160px] z-10">
+                <p className="text-xs text-neutral-500 px-2 pb-2">음성 인식 모드</p>
+                <button
+                  onClick={() => handleModeChange('web-speech')}
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
+                    speechMode === 'web-speech' ? 'bg-primary/10 text-primary' : 'hover:bg-neutral-100'
+                  }`}
+                >
+                  <Radio size={16} />
+                  <div>
+                    <div className="font-medium">실시간</div>
+                    <div className="text-xs text-neutral-500">Web Speech API</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => handleModeChange('whisper')}
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
+                    speechMode === 'whisper' ? 'bg-primary/10 text-primary' : 'hover:bg-neutral-100'
+                  }`}
+                >
+                  <Zap size={16} />
+                  <div>
+                    <div className="font-medium">고품질</div>
+                    <div className="text-xs text-neutral-500">Whisper AI</div>
+                  </div>
+                </button>
+              </div>
+            )}
+
+            {/* 모드 표시 버튼 (두 모드 모두 가능할 때만) */}
+            {bothAvailable && !isActive && (
+              <button
+                onClick={() => setShowModeSelector(!showModeSelector)}
+                className="flex-shrink-0 h-10 px-2 rounded-lg flex items-center gap-1 text-xs text-neutral-500 hover:bg-neutral-100 transition-colors"
+                title="음성 인식 모드 변경"
+              >
+                {speechMode === 'whisper' ? <Zap size={14} /> : <Radio size={14} />}
+                <span className="hidden sm:inline">{speechMode === 'whisper' ? 'AI' : '실시간'}</span>
+              </button>
+            )}
+
+            {/* 마이크 버튼 */}
+            <button
+              onClick={handleMicClick}
+              disabled={disabled}
+              className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+                isActive
+                  ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse'
+                  : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+              } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+              title={isActive ? '음성 입력 중지' : `음성으로 입력하기 (${speechMode === 'whisper' ? 'Whisper' : 'Web Speech'})`}
+            >
+              {isActive ? <MicOff size={18} /> : <Mic size={18} />}
+            </button>
+          </div>
         )}
 
         {/* 전송 버튼 */}
@@ -192,7 +255,7 @@ export default function ChatInput({
         </button>
       </div>
       <p className="text-xs text-[#999999] mt-2">
-        {isSpeechSupported ? `마이크로 음성 입력${whisperAvailable ? ' (Whisper)' : ''} • ` : ''}Shift+Enter로 줄바꿈 • Enter로 전송
+        {isSpeechSupported ? `마이크로 음성 입력 • ` : ''}Shift+Enter로 줄바꿈 • Enter로 전송
       </p>
     </div>
   );

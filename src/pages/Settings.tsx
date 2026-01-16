@@ -1,11 +1,13 @@
 // Settings.tsx - 설정 페이지
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Users, Volume2, Palette, LogOut, Brain } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowLeft, Users, Volume2, Palette, LogOut, Brain, Bell, Moon, Clock, BellOff, Sun, Monitor } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUserPreferencesStore } from '../stores/userPreferencesStore';
 import { useAuthStore } from '../stores/authStore';
 import { useLiftStore } from '../stores/liftStore';
 import { useAlfredoStore } from '../stores/alfredoStore';
+import { useNotificationSettingsStore } from '../stores/notificationSettingsStore';
+import { useThemeStore, Theme } from '../stores/themeStore';
 import {
   DomainSwitcher,
   UnderstandingCard,
@@ -14,12 +16,14 @@ import {
   PendingLearningsList
 } from '../components/alfredo';
 
-const Settings: React.FC = () => {
+const Settings = () => {
   const navigate = useNavigate();
   const { roleBlend, interventionLevel, updatePreferences } = useUserPreferencesStore();
   const { signOut, user } = useAuthStore();
   const { addLift } = useLiftStore();
   const { initialize: initAlfredo, preferences: alfredoPrefs, isLoading: alfredoLoading } = useAlfredoStore();
+  const notificationSettings = useNotificationSettingsStore();
+  const { theme, setTheme } = useThemeStore();
 
   const [currentRoleBlend, setCurrentRoleBlend] = useState(roleBlend);
   const [currentInterventionLevel, setCurrentInterventionLevel] = useState(interventionLevel);
@@ -238,6 +242,177 @@ const Settings: React.FC = () => {
               </label>
             ))}
           </div>
+        </section>
+
+        {/* Theme Section */}
+        <section className="bg-white dark:bg-neutral-800 rounded-xl p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <Moon className="w-5 h-5 text-[#A996FF]" />
+            <h2 className="text-base font-semibold">화면 테마</h2>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { value: 'light' as Theme, label: '라이트', icon: Sun },
+              { value: 'dark' as Theme, label: '다크', icon: Moon },
+              { value: 'system' as Theme, label: '시스템', icon: Monitor },
+            ].map(option => (
+              <button
+                key={option.value}
+                onClick={() => setTheme(option.value)}
+                className={`flex flex-col items-center gap-2 p-3 rounded-lg transition-colors ${
+                  theme === option.value
+                    ? 'bg-[#A996FF]/10 border-2 border-[#A996FF]'
+                    : 'bg-gray-100 dark:bg-neutral-700 border-2 border-transparent hover:bg-gray-200 dark:hover:bg-neutral-600'
+                }`}
+              >
+                <option.icon size={20} className={theme === option.value ? 'text-[#A996FF]' : 'text-gray-500 dark:text-gray-400'} />
+                <span className={`text-sm ${theme === option.value ? 'text-[#A996FF] font-medium' : 'text-gray-600 dark:text-gray-300'}`}>
+                  {option.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* Notification Settings Section */}
+        <section className="bg-white rounded-xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <Bell className="w-5 h-5 text-[#A996FF]" />
+              <h2 className="text-base font-semibold">알림 설정</h2>
+            </div>
+            <button
+              onClick={() => notificationSettings.toggleNotification('enabled')}
+              className={`relative w-12 h-6 rounded-full transition-colors ${
+                notificationSettings.enabled ? 'bg-[#A996FF]' : 'bg-gray-300'
+              }`}
+            >
+              <span
+                className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                  notificationSettings.enabled ? 'left-7' : 'left-1'
+                }`}
+              />
+            </button>
+          </div>
+
+          {notificationSettings.enabled && (
+            <div className="space-y-4">
+              {/* 알림 종류 토글 */}
+              <div className="space-y-3">
+                {[
+                  { key: 'morningBriefing' as const, label: '아침 브리핑', desc: '오늘의 일정과 할일 요약' },
+                  { key: 'taskReminders' as const, label: '태스크 리마인더', desc: '마감 전 알림' },
+                  { key: 'meetingReminders' as const, label: '미팅 리마인더', desc: '미팅 시작 전 알림' },
+                  { key: 'breakReminders' as const, label: '휴식 알림', desc: '집중 후 휴식 권유' },
+                  { key: 'alfredoNudges' as const, label: '알프레도 넛지', desc: '도움이 될 만한 제안' },
+                ].map(item => (
+                  <div key={item.key} className="flex items-center justify-between py-2">
+                    <div>
+                      <div className="text-sm font-medium">{item.label}</div>
+                      <div className="text-xs text-gray-500">{item.desc}</div>
+                    </div>
+                    <button
+                      onClick={() => notificationSettings.toggleNotification(item.key)}
+                      className={`relative w-10 h-5 rounded-full transition-colors ${
+                        notificationSettings[item.key] ? 'bg-[#A996FF]' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
+                          notificationSettings[item.key] ? 'left-5' : 'left-0.5'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* 조용한 시간 */}
+              <div className="border-t pt-4 mt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Moon size={16} className="text-gray-500" />
+                    <span className="text-sm font-medium">조용한 시간</span>
+                  </div>
+                  <button
+                    onClick={() => notificationSettings.toggleNotification('quietHoursEnabled')}
+                    className={`relative w-10 h-5 rounded-full transition-colors ${
+                      notificationSettings.quietHoursEnabled ? 'bg-[#A996FF]' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
+                        notificationSettings.quietHoursEnabled ? 'left-5' : 'left-0.5'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {notificationSettings.quietHoursEnabled && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <input
+                      type="time"
+                      value={notificationSettings.quietHoursStart}
+                      onChange={(e) => notificationSettings.setQuietHours(e.target.value, notificationSettings.quietHoursEnd)}
+                      className="px-2 py-1 border rounded-lg text-sm"
+                    />
+                    <span className="text-gray-500">~</span>
+                    <input
+                      type="time"
+                      value={notificationSettings.quietHoursEnd}
+                      onChange={(e) => notificationSettings.setQuietHours(notificationSettings.quietHoursStart, e.target.value)}
+                      className="px-2 py-1 border rounded-lg text-sm"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* 아침 브리핑 시간 */}
+              {notificationSettings.morningBriefing && (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Clock size={16} className="text-gray-500" />
+                    <span className="text-sm">아침 브리핑 시간</span>
+                  </div>
+                  <input
+                    type="time"
+                    value={notificationSettings.morningBriefingTime}
+                    onChange={(e) => notificationSettings.setMorningBriefingTime(e.target.value)}
+                    className="px-2 py-1 border rounded-lg text-sm"
+                  />
+                </div>
+              )}
+
+              {/* 미팅 리마인더 시간 */}
+              {notificationSettings.meetingReminders && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">미팅 알림</span>
+                  <select
+                    value={notificationSettings.meetingReminderMinutes}
+                    onChange={(e) => notificationSettings.setMeetingReminderMinutes(Number(e.target.value))}
+                    className="px-2 py-1 border rounded-lg text-sm"
+                  >
+                    <option value={5}>5분 전</option>
+                    <option value={10}>10분 전</option>
+                    <option value={15}>15분 전</option>
+                    <option value={30}>30분 전</option>
+                  </select>
+                </div>
+              )}
+
+              {/* 푸시 구독 상태 */}
+              {!notificationSettings.pushSubscribed && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-start gap-2">
+                  <BellOff size={16} className="text-yellow-600 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-yellow-800 font-medium">푸시 알림 미등록</p>
+                    <p className="text-xs text-yellow-700 mt-1">브라우저 알림을 허용하면 앱을 닫아도 알림을 받을 수 있어요</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </section>
 
         {/* Save Button */}
