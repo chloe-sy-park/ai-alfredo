@@ -94,6 +94,14 @@ export function usePostAction() {
         type: 'habit_checked',
         data: { streakCount: streakCount }
       });
+    },
+
+    // 브리핑 피드백 (PRD: 👍 좋아요, 🔁 다른 제안, 🙅 괜찮아요)
+    onBriefingFeedback: function(feedback: 'positive' | 'different' | 'skip') {
+      store.triggerPostAction({
+        type: 'briefing_feedback',
+        data: { feedback: feedback }
+      });
     }
   };
 }

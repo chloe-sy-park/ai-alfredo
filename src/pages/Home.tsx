@@ -9,15 +9,16 @@ import { getTasks, Task } from '../services/tasks';
 import { FocusItem, setFocusFromTop3, getCurrentFocus } from '../services/focusNow';
 import { getWeather, WeatherData } from '../services/weather';
 import { hasSeenEntryToday, markEntryAsSeen, updateVisit } from '../services/visit';
-import { generateBriefing, WeatherData as BriefingWeatherData } from '../services/briefing';
+import { generateBriefing, generateJudgmentExplanation, WeatherData as BriefingWeatherData, BriefingContext } from '../services/briefing';
 import { usePostAction } from '../stores/postActionStore';
 import { useLiftStore } from '../stores/liftStore';
 import { useHomeModeStore } from '../stores/homeModeStore';
 
 // Components
 import { PageHeader } from '../components/layout';
-import { ModeCards, MoreSheet, ModeSwitch, ChatLauncher, BalanceHint } from '../components/home';
+import { ModeCards, MoreSheet, ModeSwitch, BalanceHint } from '../components/home';
 import BriefingCard from '../components/home/BriefingCard';
+import LiveBriefing from '../components/home/LiveBriefing';
 import TodayTimeline from '../components/home/TodayTimeline';
 import ConditionQuick from '../components/home/ConditionQuick';
 import TodayTop3 from '../components/home/TodayTop3';
@@ -265,27 +266,20 @@ export default function Home() {
     return '늦은 밤이에요';
   }
 
-  // MoreSheet 콘텐츠
+  // MoreSheet 콘텐츠 - PRD Phase 3 판단 설명 (Default: 1줄 + Expand: 상세)
   function getMoreContent() {
-    if (currentCondition === 'bad') {
-      return {
-        why: '컨디션이 좋지 않을 때 무리하면 오히려 역효과예요.',
-        whatChanged: '컨디션이 "힘듬"으로 설정되었어요.',
-        tradeOff: '급하지 않은 건 내일로. 건강이 먼저예요.'
-      };
-    }
-    if (intensity === 'overloaded' || intensity === 'heavy') {
-      return {
-        why: '오늘 일정이 ' + calendarEvents.length + '개나 있어요.',
-        whatChanged: '강도가 "' + intensity.toUpperCase() + '"로 판단되었어요.',
-        tradeOff: 'Top 3에 집중하고 나머지는 과감히 미루세요.'
-      };
-    }
-    return {
-      why: '오늘 하루를 효율적으로 보내기 위한 알프레도의 분석이에요.',
-      whatChanged: '캘린더와 컨디션을 종합해서 판단했어요.',
-      tradeOff: '모든 걸 다 할 필요 없어요. 중요한 것에 집중하세요.'
+    // 브리핑 컨텍스트 생성
+    var briefingContext: BriefingContext = {
+      currentTime: new Date(),
+      dayOfWeek: ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'][new Date().getDay()],
+      weather: weather ? convertWeatherForBriefing(weather) : undefined,
+      todayCalendar: calendarEvents,
+      incompleteTasks: [],
+      condition: currentCondition || undefined
     };
+
+    // 동적 판단 설명 생성
+    return generateJudgmentExplanation(briefingContext);
   }
 
   var moreContent = getMoreContent();
@@ -388,7 +382,10 @@ export default function Home() {
         {/* 컨디션 퀵변경 */}
         <ConditionQuick onConditionChange={handleConditionChange} />
 
-        {/* 알프레도 브리핑 */}
+        {/* Live Briefing - 지금 이 순간의 상태 */}
+        <LiveBriefing onMore={function() { setIsMoreSheetOpen(true); }} />
+
+        {/* 알프레도 브리핑 (상세) */}
         {isLoading ? (
           <SkeletonBriefing />
         ) : (
@@ -397,6 +394,16 @@ export default function Home() {
             subline={briefing.subline}
             intensity={intensity}
             onMore={function() { setIsMoreSheetOpen(true); }}
+            onFeedback={function(type) {
+              // 피드백 처리: postAction으로 알림 또는 학습에 활용
+              if (type === 'helpful') {
+                postAction.onBriefingFeedback('positive');
+              } else if (type === 'different') {
+                postAction.onBriefingFeedback('different');
+              } else if (type === 'skip') {
+                postAction.onBriefingFeedback('skip');
+              }
+            }}
           />
         )}
 
@@ -438,8 +445,7 @@ export default function Home() {
         tradeOff={moreContent.tradeOff}
       />
 
-      {/* PRD R4: ChatLauncher floating - 조정은 오직 채팅으로만 */}
-      <ChatLauncher variant="floating" />
+      {/* 채팅은 App.tsx의 FloatingBar에서 제공 (중복 제거) */}
     </div>
   );
 }

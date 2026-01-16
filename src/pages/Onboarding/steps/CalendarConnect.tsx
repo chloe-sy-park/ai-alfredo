@@ -1,6 +1,6 @@
-import { motion } from 'framer-motion';
-import { Calendar, ArrowRight, Check } from 'lucide-react';
-import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Calendar, ArrowRight, Check, ChevronRight, Sparkles, Eye } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 interface CalendarConnectProps {
   data: any;
@@ -8,16 +8,48 @@ interface CalendarConnectProps {
   onSkip: () => void;
 }
 
-export default function CalendarConnect({ onNext }: CalendarConnectProps) {
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
+// PRD Phase 3: Capability-first Consent - 샘플 브리핑 미리보기
+var SAMPLE_BRIEFINGS = [
+  {
+    headline: '오늘 미팅이 4개 있어요. 오전에 집중 시간을 확보하세요.',
+    status: '바쁨',
+    statusColor: 'bg-orange-100 text-orange-700',
+  },
+  {
+    headline: '오후 2시 중요 미팅 전에 30분 여유가 있어요.',
+    status: '안정',
+    statusColor: 'bg-green-100 text-green-700',
+  },
+  {
+    headline: '오늘은 일정이 없어요. 미뤄둔 일을 처리하기 좋아요.',
+    status: '여유',
+    statusColor: 'bg-blue-100 text-blue-700',
+  },
+];
 
-  const benefits = [
+export default function CalendarConnect({ onNext }: CalendarConnectProps) {
+  var [isConnecting, setIsConnecting] = useState(false);
+  var [isConnected, setIsConnected] = useState(false);
+  var [showPreview, setShowPreview] = useState(false);
+  var [currentSampleIndex, setCurrentSampleIndex] = useState(0);
+
+  var benefits = [
     "하루 일정을 자동으로 분석해요",
     "중요한 미팅 전 미리 알려드려요",
     "비어있는 시간대를 찾아 집중 시간을 제안해요",
     "일정 충돌을 미리 방지해요"
   ];
+
+  // 샘플 브리핑 자동 순환 (미리보기 열려 있을 때만)
+  useEffect(() => {
+    if (!showPreview) return;
+
+    var timer = setInterval(() => {
+      setCurrentSampleIndex((prev) => (prev + 1) % SAMPLE_BRIEFINGS.length);
+    }, 3000);
+
+    return () => clearInterval(timer);
+  }, [showPreview]);
 
   const handleConnect = async () => {
     setIsConnecting(true);
@@ -87,6 +119,83 @@ export default function CalendarConnect({ onNext }: CalendarConnectProps) {
             <p className="text-sm text-[#666666] flex-1">{benefit}</p>
           </motion.div>
         ))}
+      </div>
+
+      {/* PRD Phase 3: Capability-first Consent - 샘플 브리핑 미리보기 */}
+      <div className="mb-6">
+        <button
+          onClick={() => setShowPreview(!showPreview)}
+          className="w-full flex items-center justify-between p-3 bg-[#F8F8FF] rounded-xl hover:bg-[#F0F0FF] transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Eye className="w-4 h-4 text-[#A996FF]" />
+            <span className="text-sm font-medium text-[#666666]">
+              이 데이터를 쓰면, 이런 판단이 가능해져요
+            </span>
+          </div>
+          <ChevronRight className={`w-4 h-4 text-[#999999] transition-transform ${showPreview ? 'rotate-90' : ''}`} />
+        </button>
+
+        <AnimatePresence>
+          {showPreview && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-3 p-4 bg-white rounded-xl border border-[#E5E5E5] shadow-sm">
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles className="w-4 h-4 text-[#A996FF]" />
+                  <span className="text-xs font-medium text-[#A996FF]">샘플 브리핑 미리보기</span>
+                </div>
+
+                {/* 샘플 브리핑 카드 */}
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentSampleIndex}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.3 }}
+                    className="p-3 bg-[#FAFAFA] rounded-lg"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 bg-[#F0F0FF] rounded-lg flex items-center justify-center flex-shrink-0">
+                        <span className="text-lg">🐧</span>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${SAMPLE_BRIEFINGS[currentSampleIndex].statusColor}`}>
+                            {SAMPLE_BRIEFINGS[currentSampleIndex].status}
+                          </span>
+                        </div>
+                        <p className="text-sm text-[#1A1A1A] leading-snug">
+                          {SAMPLE_BRIEFINGS[currentSampleIndex].headline}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
+
+                {/* 샘플 인디케이터 */}
+                <div className="flex justify-center gap-1.5 mt-3">
+                  {SAMPLE_BRIEFINGS.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentSampleIndex(index)}
+                      className={`w-2 h-2 rounded-full transition-colors ${
+                        index === currentSampleIndex ? 'bg-[#A996FF]' : 'bg-[#E5E5E5]'
+                      }`}
+                      aria-label={`샘플 ${index + 1}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* 안내 메시지 */}

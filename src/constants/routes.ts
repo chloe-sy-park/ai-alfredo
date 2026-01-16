@@ -9,6 +9,7 @@ export const ROUTES = {
   LOGIN: '/login',
   ONBOARDING: '/onboarding',
   AUTH_CALLBACK: '/auth/callback',
+  AUTH_OUTLOOK_CALLBACK: '/auth/outlook/callback',
 } as const;
 
 export type RoutePath = typeof ROUTES[keyof typeof ROUTES];

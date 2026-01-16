@@ -4,10 +4,11 @@
  */
 import React from 'react';
 import { LiftRecord } from '../../stores/liftStore';
-import InsightChart from './InsightChart';
+import InsightChart, { TimePatternData } from './InsightChart';
 import LiftSummary from './LiftSummary';
 import LiftTimeline from './LiftTimeline';
-import { SummaryNarrative, ObservationNarrative, SuggestionNarrative } from './ReportNarrative';
+import { SummaryNarrative, ObservationNarrative } from './ReportNarrative';
+import NextWeekExperiment from './NextWeekExperiment';
 import EmptyState from '../common/EmptyState';
 
 interface WeeklyReportProps {
@@ -61,28 +62,54 @@ function generateObservation(lifts: LiftRecord[]): string[] {
   return observations;
 }
 
-// 제안 텍스트 생성
-function generateSuggestions(lifts: LiftRecord[]): string[] {
-  var categories = lifts.map(function(l) { return l.category; });
-  var suggestions: string[] = [];
+// 시간대 패턴 데이터 생성
+function generateTimePatternData(lifts: LiftRecord[]): TimePatternData {
+  var timeSlots = [
+    { hour: '6-9', label: '이른 아침', count: 0 },
+    { hour: '9-12', label: '오전', count: 0 },
+    { hour: '12-14', label: '점심', count: 0 },
+    { hour: '14-18', label: '오후', count: 0 },
+    { hour: '18-21', label: '저녁', count: 0 },
+    { hour: '21-24', label: '밤', count: 0 },
+  ];
 
-  if (categories.filter(function(c) { return c === 'schedule'; }).length > 2) {
-    suggestions.push('일정 변경이 잦았어요. 버퍼 시간을 좀 더 확보해보세요.');
-  }
+  // 각 lift의 시간대 집계
+  lifts.forEach(function(lift) {
+    var date = new Date(lift.timestamp);
+    var hour = date.getHours();
 
-  if (categories.filter(function(c) { return c === 'condition'; }).length > 2) {
-    suggestions.push('컨디션 기반 조정이 많았어요. 에너지 패턴을 파악해보면 좋겠어요.');
-  }
+    if (hour >= 6 && hour < 9) timeSlots[0].count++;
+    else if (hour >= 9 && hour < 12) timeSlots[1].count++;
+    else if (hour >= 12 && hour < 14) timeSlots[2].count++;
+    else if (hour >= 14 && hour < 18) timeSlots[3].count++;
+    else if (hour >= 18 && hour < 21) timeSlots[4].count++;
+    else if (hour >= 21 || hour < 6) timeSlots[5].count++;
+  });
 
-  // 기본 제안
-  if (suggestions.length === 0) {
-    suggestions.push('아침 시간대 판단은 전날 밤에 미리 해보기');
-    suggestions.push('Work 시간이 길어질 때 15분 단위로 체크인하기');
-  }
+  // intensity 계산
+  var maxCount = Math.max(...timeSlots.map(function(s) { return s.count; }), 1);
 
-  suggestions.push('다음 주에도 알프레도와 함께 균형을 찾아가요');
+  var slots = timeSlots.map(function(slot) {
+    var intensity: 'low' | 'medium' | 'high' = 'low';
+    if (slot.count > maxCount * 0.66) intensity = 'high';
+    else if (slot.count > maxCount * 0.33) intensity = 'medium';
 
-  return suggestions;
+    return {
+      hour: slot.hour,
+      label: slot.label,
+      count: slot.count,
+      intensity: intensity,
+    };
+  });
+
+  // 피크 타임 찾기
+  var peakSlot = slots.reduce(function(max, slot) {
+    return slot.count > max.count ? slot : max;
+  }, slots[0]);
+
+  var peakTime = peakSlot && peakSlot.count > 0 ? peakSlot.label : undefined;
+
+  return { slots: slots, peakTime: peakTime };
 }
 
 const WeeklyReport: React.FC<WeeklyReportProps> = ({ lifts }) => {
@@ -116,7 +143,7 @@ const WeeklyReport: React.FC<WeeklyReportProps> = ({ lifts }) => {
           }}
         />
 
-        <SuggestionNarrative content={generateSuggestions(lifts)} title="시작해볼까요?" />
+        <NextWeekExperiment lifts={lifts} />
       </div>
     );
   }
@@ -132,6 +159,14 @@ const WeeklyReport: React.FC<WeeklyReportProps> = ({ lifts }) => {
         title="균형 개요"
         data={{ work: workPercent, life: lifePercent }}
         height={140}
+      />
+
+      {/* Section 2.5: Time Pattern Chart - PRD Phase 3 패턴 우선순위 */}
+      <InsightChart
+        type="timePattern"
+        title="시간대별 패턴"
+        data={generateTimePatternData(lifts)}
+        height={160}
       />
 
       {/* Section 3: Judgement Lift Summary */}
@@ -151,8 +186,8 @@ const WeeklyReport: React.FC<WeeklyReportProps> = ({ lifts }) => {
       {/* Section 5: Alfredo's Observation */}
       <ObservationNarrative content={generateObservation(lifts)} />
 
-      {/* Section 6: Suggestions */}
-      <SuggestionNarrative content={generateSuggestions(lifts)} />
+      {/* Section 6: Next Week Experiment - PRD Phase 3 방향 제안 */}
+      <NextWeekExperiment lifts={lifts} />
     </div>
   );
 };
