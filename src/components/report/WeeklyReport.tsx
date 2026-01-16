@@ -1,133 +1,158 @@
-// WeeklyReport.tsx - 주간 리포트 컴포넌트
+/**
+ * WeeklyReport.tsx - 주간 리포트 컴포넌트
+ * PRD Component Inventory 컴포넌트 활용
+ */
 import React from 'react';
 import { LiftRecord } from '../../stores/liftStore';
-import { DonutChart } from './charts/DonutChart';
-import { TimelineChart } from './charts/TimelineChart';
-import { ChevronRight } from 'lucide-react';
+import InsightChart from './InsightChart';
+import LiftSummary from './LiftSummary';
+import LiftTimeline from './LiftTimeline';
+import { SummaryNarrative, ObservationNarrative, SuggestionNarrative } from './ReportNarrative';
+import EmptyState from '../common/EmptyState';
 
 interface WeeklyReportProps {
   lifts: LiftRecord[];
 }
 
+// 주간 요약 텍스트 생성
+function generateWeeklySummary(lifts: LiftRecord[]): string {
+  var applyCount = lifts.filter(function(l) { return l.type === 'apply'; }).length;
+  var total = lifts.length;
+
+  if (total === 0) {
+    return '이번 주는 기록된 판단 변화가 없어요. 평온한 한 주였나요?';
+  }
+
+  if (applyCount >= total * 0.7) {
+    return '이번 주는 결단력 있게 변화를 적용했고, 흐름이 안정적이었어요.';
+  }
+
+  if (applyCount >= total * 0.4) {
+    return '이번 주는 신중하게 판단을 조율했고, 균형을 유지했어요.';
+  }
+
+  return '이번 주는 많은 것을 고민했고, 그 과정 자체가 의미 있었어요.';
+}
+
+// 관찰 텍스트 생성
+function generateObservation(lifts: LiftRecord[]): string[] {
+  if (lifts.length === 0) {
+    return ['아직 기록된 판단 변화가 없어요.', '채팅에서 우선순위를 조정하거나 할 일을 완료하면 기록이 쌓여요.'];
+  }
+
+  var highImpact = lifts.filter(function(l) { return l.impact === 'high'; }).length;
+  var worklifeCount = lifts.filter(function(l) { return l.category === 'worklife'; }).length;
+  var priorityCount = lifts.filter(function(l) { return l.category === 'priority'; }).length;
+
+  var observations: string[] = [];
+
+  observations.push('이번 주에는 ' + lifts.length + '번의 판단 재조정이 있었어요.');
+
+  if (highImpact > 0) {
+    observations.push('그 중 ' + highImpact + '번은 영향도가 높은 결정이었어요.');
+  }
+
+  if (worklifeCount > priorityCount) {
+    observations.push('워라밸 관련 조정이 가장 많았어요. 균형을 찾으려 노력한 흔적이에요.');
+  } else if (priorityCount > 0) {
+    observations.push('우선순위 조정이 많았어요. 집중할 대상을 계속 다듬어 나갔네요.');
+  }
+
+  return observations;
+}
+
+// 제안 텍스트 생성
+function generateSuggestions(lifts: LiftRecord[]): string[] {
+  var categories = lifts.map(function(l) { return l.category; });
+  var suggestions: string[] = [];
+
+  if (categories.filter(function(c) { return c === 'schedule'; }).length > 2) {
+    suggestions.push('일정 변경이 잦았어요. 버퍼 시간을 좀 더 확보해보세요.');
+  }
+
+  if (categories.filter(function(c) { return c === 'condition'; }).length > 2) {
+    suggestions.push('컨디션 기반 조정이 많았어요. 에너지 패턴을 파악해보면 좋겠어요.');
+  }
+
+  // 기본 제안
+  if (suggestions.length === 0) {
+    suggestions.push('아침 시간대 판단은 전날 밤에 미리 해보기');
+    suggestions.push('Work 시간이 길어질 때 15분 단위로 체크인하기');
+  }
+
+  suggestions.push('다음 주에도 알프레도와 함께 균형을 찾아가요');
+
+  return suggestions;
+}
+
 const WeeklyReport: React.FC<WeeklyReportProps> = ({ lifts }) => {
-  // Work vs Life 비율 계산 (실제로는 활동 기록에서 계산)
-  const workLifeBalance = {
-    work: 65,
-    life: 35
-  };
-  
-  // Lift 통계
-  const liftStats = {
-    total: lifts.length,
-    apply: lifts.filter(l => l.type === 'apply').length,
-    maintain: lifts.filter(l => l.type === 'maintain').length,
-    consider: lifts.filter(l => l.type === 'consider').length
-  };
-  
+  // Work vs Life 비율 계산
+  var worklifeLifts = lifts.filter(function(l) { return l.category === 'worklife'; });
+  var workPercent = 65; // 기본값
+  var lifePercent = 35;
+
+  if (worklifeLifts.length > 0) {
+    // 실제 데이터가 있으면 조정 방향으로 계산
+    var towardLife = worklifeLifts.filter(function(l) {
+      return l.newDecision.includes('life') || l.newDecision.includes('삶') || l.newDecision.includes('휴식');
+    }).length;
+    lifePercent = Math.min(30 + (towardLife * 5), 50);
+    workPercent = 100 - lifePercent;
+  }
+
+  // 데이터 없을 때
+  if (lifts.length === 0) {
+    return (
+      <div className="px-4 py-6 space-y-6">
+        <SummaryNarrative content={generateWeeklySummary(lifts)} />
+
+        <EmptyState
+          variant="default"
+          title="아직 기록이 없어요"
+          description="채팅에서 우선순위를 조정하거나 할 일을 완료하면 여기에 기록이 쌓여요."
+          action={{
+            label: '채팅 시작하기',
+            onClick: function() { window.location.href = '/chat'; }
+          }}
+        />
+
+        <SuggestionNarrative content={generateSuggestions(lifts)} title="시작해볼까요?" />
+      </div>
+    );
+  }
+
   return (
-    <div className="px-4 py-6 space-y-8">
+    <div className="px-4 py-6 space-y-6">
       {/* Section 1: One-line Summary */}
-      <section className="bg-white rounded-xl p-6">
-        <h2 className="text-2xl font-bold text-gray-900 leading-relaxed">
-          이번 주는<br />
-          삶이 일을 두 번 밀어냈고,<br />
-          그 선택은 대체로 옳았어요.
-        </h2>
-      </section>
-      
-      {/* Section 2: Balance Overview */}
-      <section className="bg-white rounded-xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">균형 개요</h3>
-          <button className="text-sm text-gray-500 hover:text-gray-700">
-            자세히 <ChevronRight className="inline w-4 h-4" />
-          </button>
-        </div>
-        
-        <div className="flex items-center gap-6">
-          <DonutChart 
-            data={[
-              { name: 'Work', value: workLifeBalance.work },
-              { name: 'Life', value: workLifeBalance.life }
-            ]}
-            width={120}
-            height={120}
-          />
-          <div>
-            <p className="text-gray-600">
-              일과 삶의 비중이 이번 주는 일 쪽으로 기울었지만,<br />
-              중요한 순간에는 삶을 선택했어요.
-            </p>
-          </div>
-        </div>
-      </section>
-      
+      <SummaryNarrative content={generateWeeklySummary(lifts)} />
+
+      {/* Section 2: Balance Overview with InsightChart */}
+      <InsightChart
+        type="balance"
+        title="균형 개요"
+        data={{ work: workPercent, life: lifePercent }}
+        height={140}
+      />
+
       {/* Section 3: Judgement Lift Summary */}
-      <section className="bg-white rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">판단 변화</h3>
-        
-        <div className="grid grid-cols-3 gap-4">
-          <div className="text-center">
-            <div className="text-3xl font-bold text-[#A996FF]">{liftStats.total}</div>
-            <div className="text-sm text-gray-600 mt-1">전체 변화</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-gray-900">{liftStats.apply}</div>
-            <div className="text-sm text-gray-600 mt-1">적용</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-gray-400">{liftStats.maintain}</div>
-            <div className="text-sm text-gray-600 mt-1">유지</div>
-          </div>
-        </div>
-        
-        <p className="text-gray-600 mt-4">
-          이번 주에는 {liftStats.total}번의 판단 재조정이 있었고,
-          그 중 {liftStats.apply}번을 실제로 반영했어요.
-        </p>
-      </section>
-      
+      <LiftSummary
+        lifts={lifts}
+        period="week"
+        showDescription={true}
+      />
+
       {/* Section 4: Lift Timeline */}
-      <section className="bg-white rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">변화 타임라인</h3>
-        
-        <TimelineChart lifts={lifts} height={200} />
-        
-        <p className="text-gray-600 mt-4">
-          화요일 오후와 목요일 아침의 판단 변경이<br />
-          이번 주 흐름을 결정했어요.
-        </p>
-      </section>
-      
-      {/* Section 5: Alfredo's Take */}
-      <section className="bg-white rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">알프레도의 관찰</h3>
-        <p className="text-gray-700 leading-relaxed">
-          이번 주에는 결정을 미루지 않았어요.<br />
-          그래서 흐름이 흔들리지 않았습니다.<br /><br />
-          특히 화요일에 미팅 대신 개인 시간을 선택한 것이<br />
-          나머지 주를 안정적으로 만들었어요.
-        </p>
-      </section>
-      
-      {/* Section 6: Suggestions to Try */}
-      <section className="bg-[#F9F7FF] rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">다음 주 실험</h3>
-        <ul className="space-y-3">
-          <li className="flex items-start gap-3">
-            <span className="text-[#A996FF] mt-1">•</span>
-            <p className="text-gray-700">아침 시간대 판단은 전날 밤에 미리 해보기</p>
-          </li>
-          <li className="flex items-start gap-3">
-            <span className="text-[#A996FF] mt-1">•</span>
-            <p className="text-gray-700">Work 시간이 길어질 때 15분 단위로 체크인하기</p>
-          </li>
-          <li className="flex items-start gap-3">
-            <span className="text-[#A996FF] mt-1">•</span>
-            <p className="text-gray-700">목요일 오후를 '판단 없는 시간'으로 실험해보기</p>
-          </li>
-        </ul>
-      </section>
+      <LiftTimeline
+        lifts={lifts}
+        maxItems={5}
+        showDate={true}
+      />
+
+      {/* Section 5: Alfredo's Observation */}
+      <ObservationNarrative content={generateObservation(lifts)} />
+
+      {/* Section 6: Suggestions */}
+      <SuggestionNarrative content={generateSuggestions(lifts)} />
     </div>
   );
 };
