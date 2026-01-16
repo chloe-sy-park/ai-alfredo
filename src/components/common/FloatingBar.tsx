@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Zap,
@@ -32,6 +32,7 @@ import { usePostAction } from '../../stores/postActionStore';
 interface QuickAction {
   icon: React.ElementType;
   label: string;
+  ariaLabel: string;
   action: () => void;
 }
 
@@ -44,12 +45,44 @@ const FloatingBar: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [activeSheet, setActiveSheet] = useState<SheetType>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const toggleButtonRef = useRef<HTMLButtonElement>(null);
 
   // 특정 페이지에서는 플로팅 바 숨기기
   const hiddenPaths = ['/onboarding', '/login', '/body-doubling', '/entry', '/chat'];
   const shouldHide = hiddenPaths.some(function(path) {
     return location.pathname.startsWith(path);
   });
+
+  // ESC 키와 외부 클릭으로 메뉴 닫기
+  const handleClickOutside = useCallback(function(event: MouseEvent) {
+    if (
+      menuRef.current &&
+      !menuRef.current.contains(event.target as Node) &&
+      toggleButtonRef.current &&
+      !toggleButtonRef.current.contains(event.target as Node)
+    ) {
+      setIsExpanded(false);
+    }
+  }, []);
+
+  const handleEscKey = useCallback(function(event: KeyboardEvent) {
+    if (event.key === 'Escape' && isExpanded) {
+      setIsExpanded(false);
+      toggleButtonRef.current?.focus();
+    }
+  }, [isExpanded]);
+
+  useEffect(function() {
+    if (isExpanded) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscKey);
+    }
+    return function() {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [isExpanded, handleClickOutside, handleEscKey]);
 
   if (shouldHide) return null;
 
@@ -59,6 +92,7 @@ const FloatingBar: React.FC = () => {
     {
       icon: MessageCircle,
       label: '채팅',
+      ariaLabel: '알프레도와 채팅하기',
       action: () => {
         setIsExpanded(false);
         navigate('/chat');
@@ -67,6 +101,7 @@ const FloatingBar: React.FC = () => {
     {
       icon: Plus,
       label: '태스크',
+      ariaLabel: '새 태스크 추가하기',
       action: () => {
         setIsExpanded(false);
         navigate('/entry');
@@ -75,6 +110,7 @@ const FloatingBar: React.FC = () => {
     {
       icon: Smile,
       label: '컨디션',
+      ariaLabel: '오늘 컨디션 기록하기',
       action: () => {
         setIsExpanded(false);
         setActiveSheet('condition');
@@ -83,6 +119,7 @@ const FloatingBar: React.FC = () => {
     {
       icon: FileText,
       label: '메모',
+      ariaLabel: '빠른 메모 작성하기',
       action: () => {
         setIsExpanded(false);
         setActiveSheet('memo');
@@ -91,6 +128,7 @@ const FloatingBar: React.FC = () => {
     {
       icon: Timer,
       label: '타이머',
+      ariaLabel: '집중 타이머 시작하기',
       action: () => {
         setIsExpanded(false);
         navigate('/body-doubling');
@@ -99,6 +137,7 @@ const FloatingBar: React.FC = () => {
     {
       icon: Calendar,
       label: '일정',
+      ariaLabel: '새 일정 추가하기',
       action: () => {
         setIsExpanded(false);
         setActiveSheet('calendar');
@@ -126,31 +165,41 @@ const FloatingBar: React.FC = () => {
         <div className="max-w-md sm:max-w-lg mx-auto">
           {/* 퀵액션 확장 상태 */}
           {isExpanded && (
-            <div className="mb-3 animate-in slide-in-from-bottom-2 duration-300">
-              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-3">
-                <div className="flex justify-around">
+            <div
+              ref={menuRef}
+              className="mb-3 animate-in slide-in-from-bottom-2 duration-300"
+              role="menu"
+              aria-label="빠른 작업 메뉴"
+            >
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-3 sm:p-4">
+                <div className="grid grid-cols-3 sm:flex sm:justify-around gap-2 sm:gap-1">
                   {quickActions.map((action, index) => {
                     const Icon = action.icon;
                     return (
                       <button
                         key={index}
                         onClick={action.action}
-                        className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-gray-50 active:scale-95 transition-all touch-target"
+                        role="menuitem"
+                        aria-label={action.ariaLabel}
+                        className="flex flex-col items-center gap-1.5 p-2 sm:p-3 rounded-xl hover:bg-gray-50 active:scale-95 transition-all min-w-[60px] min-h-[72px]"
                       >
                         <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-[#F5F3FF] flex items-center justify-center">
                           <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-[#A996FF]" />
                         </div>
-                        <span className="text-xs text-gray-600">{action.label}</span>
+                        <span className="text-xs text-gray-600 whitespace-nowrap">{action.label}</span>
                       </button>
                     );
                   })}
                 </div>
               </div>
+              <p className="text-center text-xs text-gray-400 mt-2">
+                바깥을 탭하거나 ESC로 닫기
+              </p>
             </div>
           )}
 
           {/* 메인 입력 바 */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <div className="flex-1 bg-white rounded-full shadow-lg border border-gray-100 flex items-center overflow-hidden">
               <input
                 type="text"
@@ -158,28 +207,36 @@ const FloatingBar: React.FC = () => {
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="AlFredo에게 물어보세요..."
-                className="flex-1 px-5 py-3.5 text-sm bg-transparent outline-none placeholder:text-gray-400"
+                className="flex-1 px-5 py-3.5 text-sm bg-transparent outline-none placeholder:text-gray-400 min-h-[48px]"
+                aria-label="알프레도에게 메시지 입력"
               />
               {inputValue && (
                 <button
                   onClick={handleSubmit}
-                  className="pr-4 text-[#A996FF] hover:text-[#8B7BE8] transition-colors"
+                  aria-label="메시지 전송"
+                  className="pr-4 text-[#A996FF] hover:text-[#8B7BE8] transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                 >
                   <MessageCircle className="w-5 h-5" />
                 </button>
               )}
             </div>
 
-            {/* 퀵액션 토글 버튼 */}
+            {/* 퀵액션 토글 버튼 - 모바일 터치 타겟 44x44px 이상 */}
             <button
+              ref={toggleButtonRef}
               onClick={() => setIsExpanded(!isExpanded)}
+              aria-expanded={isExpanded}
+              aria-haspopup="menu"
+              aria-label={isExpanded ? '빠른 작업 메뉴 닫기' : '빠른 작업 메뉴 열기'}
+              title={isExpanded ? '메뉴 닫기' : '빠른 작업'}
               className={`
-                w-12 h-12 rounded-full shadow-lg
+                w-14 h-14 rounded-full shadow-lg
                 flex items-center justify-center
                 transition-all duration-300
+                focus:outline-none focus:ring-2 focus:ring-[#A996FF] focus:ring-offset-2
                 ${isExpanded
                   ? 'bg-gray-200 text-gray-600 rotate-45'
-                  : 'bg-[#A996FF] text-white shadow-[#A996FF]/30'
+                  : 'bg-[#A996FF] text-white shadow-[#A996FF]/30 hover:bg-[#8B7BE8]'
                 }
               `}
             >

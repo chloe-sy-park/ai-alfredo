@@ -16,7 +16,7 @@ import { useHomeModeStore } from '../stores/homeModeStore';
 
 // Components
 import { PageHeader } from '../components/layout';
-import { ModeCards, MoreSheet, ModeSwitch, ChatLauncher, BalanceHint } from '../components/home';
+import { ModeCards, MoreSheet, ModeSwitch, BalanceHint } from '../components/home';
 import BriefingCard from '../components/home/BriefingCard';
 import TodayTimeline from '../components/home/TodayTimeline';
 import ConditionQuick from '../components/home/ConditionQuick';
@@ -438,8 +438,7 @@ export default function Home() {
         tradeOff={moreContent.tradeOff}
       />
 
-      {/* PRD R4: ChatLauncher floating - 조정은 오직 채팅으로만 */}
-      <ChatLauncher variant="floating" />
+      {/* 채팅은 App.tsx의 FloatingBar에서 제공 (중복 제거) */}
     </div>
   );
 }
