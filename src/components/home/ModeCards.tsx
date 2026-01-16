@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 
 interface ModeCardsProps {
@@ -7,16 +8,21 @@ interface ModeCardsProps {
   lifeStatus?: string;
 }
 
-export default function ModeCards({ 
-  workCount, 
+export default function ModeCards({
+  workCount,
   lifeCount,
   workStatus = '',
-  lifeStatus = '' 
+  lifeStatus = ''
 }: ModeCardsProps) {
+  const navigate = useNavigate();
+
   return (
     <div className="grid grid-cols-2 gap-3">
       {/* Work OS */}
-      <button className="bg-white rounded-xl p-4 text-left shadow-card hover:shadow-card-hover active:shadow-sm transition-all duration-fast group">
+      <button
+        onClick={() => navigate('/work')}
+        className="bg-white rounded-xl p-4 text-left shadow-card hover:shadow-card-hover active:shadow-sm transition-all duration-fast group"
+      >
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <h3 className="font-semibold text-sm text-[#1A1A1A]">Work OS</h3>
@@ -26,9 +32,12 @@ export default function ModeCards({
           <ChevronRight size={16} className="text-[#CCCCCC] mt-1 transition-transform duration-fast group-hover:translate-x-1" />
         </div>
       </button>
-      
+
       {/* Life OS */}
-      <button className="bg-white rounded-xl p-4 text-left shadow-card hover:shadow-card-hover active:shadow-sm transition-all duration-fast group">
+      <button
+        onClick={() => navigate('/life')}
+        className="bg-white rounded-xl p-4 text-left shadow-card hover:shadow-card-hover active:shadow-sm transition-all duration-fast group"
+      >
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <h3 className="font-semibold text-sm text-[#1A1A1A]">Life OS</h3>

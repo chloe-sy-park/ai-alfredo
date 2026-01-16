@@ -11,6 +11,7 @@ import { BodyDoublingButton } from './components/body-doubling/BodyDoublingButto
 import { NudgeBubble } from './components/nudge/NudgeBubble';
 import { NudgeManager } from './components/nudge/NudgeManager';
 import ReflectButton from './components/common/ReflectButton';
+import { NotificationPanel } from './components/notification';
 
 // Pages - Lazy Loaded
 const Login = lazy(() => import('./pages/Login'));
@@ -22,6 +23,8 @@ const Chat = lazy(() => import('./pages/Chat'));
 const Report = lazy(() => import('./pages/Report'));
 const Settings = lazy(() => import('./pages/Settings'));
 const BodyDoubling = lazy(() => import('./pages/BodyDoubling'));
+const Integrations = lazy(() => import('./pages/Integrations'));
+const Help = lazy(() => import('./pages/Help'));
 
 // Entry Pages - Lazy Loaded
 const Entry = lazy(() => import('./pages/Entry'));
@@ -84,7 +87,9 @@ function App() {
             <Route path="/report" element={<Report />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/body-doubling" element={<BodyDoubling />} />
-            
+            <Route path="/integrations" element={<Integrations />} />
+            <Route path="/help" element={<Help />} />
+
             {/* Entry Routes */}
             <Route path="/entry" element={<Entry />} />
             <Route path="/entry/work" element={<WorkEntry />} />
@@ -100,7 +105,10 @@ function App() {
       
       {/* 드로어 메뉴 */}
       <Drawer isOpen={isDrawerOpen} onClose={closeDrawer} />
-      
+
+      {/* 알림 패널 */}
+      <NotificationPanel />
+
       {/* 기타 플로팅 요소들 */}
       <BodyDoublingButton />
       <NudgeBubble />
