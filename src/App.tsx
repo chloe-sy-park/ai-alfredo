@@ -37,6 +37,10 @@ const LifeEntry = lazy(() => import('./pages/Entry/LifeEntry'));
 // Onboarding - Lazy Loaded
 const Onboarding = lazy(() => import('./pages/Onboarding'));
 
+// Auth Callback Pages - Lazy Loaded
+const AuthCallback = lazy(() => import('./pages/AuthCallback'));
+const OutlookCallback = lazy(() => import('./pages/OutlookCallback'));
+
 // Loading Component
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -70,6 +74,8 @@ function App() {
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/auth/outlook/callback" element={<OutlookCallback />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Suspense>
@@ -81,6 +87,8 @@ function App() {
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/auth/outlook/callback" element={<OutlookCallback />} />
           <Route path="*" element={<Navigate to="/onboarding" replace />} />
         </Routes>
       </Suspense>

@@ -2,6 +2,8 @@ import { PageHeader } from '../components/layout';
 import { Link2, CheckCircle2, Circle, AlertCircle, Settings } from 'lucide-react';
 import { useState } from 'react';
 import { isGoogleAuthenticated } from '../services/calendar';
+import { isOutlookConnected, startOutlookAuth, disconnectOutlook } from '../services/auth';
+import { startGoogleAuth, disconnectGoogle } from '../services/auth';
 import { CalendarSettings } from '../components/calendar';
 
 interface Integration {
@@ -11,19 +13,61 @@ interface Integration {
   icon: string;
   connected: boolean;
   onConnect?: () => void;
+  onDisconnect?: () => void;
 }
 
 export default function Integrations() {
-  const googleConnected = isGoogleAuthenticated();
-  const [showCalendarSettings, setShowCalendarSettings] = useState(false);
+  var googleConnected = isGoogleAuthenticated();
+  var outlookConnected = isOutlookConnected();
+  var [showCalendarSettings, setShowCalendarSettings] = useState(false);
+  var [showOutlookSettings, setShowOutlookSettings] = useState(false);
 
-  const integrations: Integration[] = [
+  function handleGoogleConnect() {
+    startGoogleAuth().catch(function(err) {
+      console.error('Google auth failed:', err);
+      alert('Google 연결에 실패했습니다.');
+    });
+  }
+
+  function handleGoogleDisconnect() {
+    if (window.confirm('Google Calendar 연결을 해제하시겠습니까?')) {
+      disconnectGoogle();
+      window.location.reload();
+    }
+  }
+
+  function handleOutlookConnect() {
+    startOutlookAuth().catch(function(err) {
+      console.error('Outlook auth failed:', err);
+      alert('Outlook 연결에 실패했습니다.');
+    });
+  }
+
+  function handleOutlookDisconnect() {
+    if (window.confirm('Outlook Calendar 연결을 해제하시겠습니까?')) {
+      disconnectOutlook();
+      window.location.reload();
+    }
+  }
+
+  var integrations: Integration[] = [
     {
       id: 'google-calendar',
       name: 'Google Calendar',
-      description: '일정을 연동해서 하루를 더 잘 계획해요',
+      description: '구글 캘린더와 연동해요',
       icon: '📅',
-      connected: googleConnected
+      connected: googleConnected,
+      onConnect: handleGoogleConnect,
+      onDisconnect: handleGoogleDisconnect
+    },
+    {
+      id: 'outlook-calendar',
+      name: 'Outlook Calendar',
+      description: 'Microsoft Outlook 캘린더와 연동해요',
+      icon: '📆',
+      connected: outlookConnected,
+      onConnect: handleOutlookConnect,
+      onDisconnect: handleOutlookDisconnect
     },
     {
       id: 'notion',
@@ -99,9 +143,15 @@ export default function Integrations() {
                         <CheckCircle2 size={16} />
                         <span>연결됨</span>
                       </div>
-                      {integration.id === 'google-calendar' && (
+                      {(integration.id === 'google-calendar' || integration.id === 'outlook-calendar') && (
                         <button
-                          onClick={() => setShowCalendarSettings(!showCalendarSettings)}
+                          onClick={function() {
+                            if (integration.id === 'google-calendar') {
+                              setShowCalendarSettings(!showCalendarSettings);
+                            } else {
+                              setShowOutlookSettings(!showOutlookSettings);
+                            }
+                          }}
                           className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
                           title="캘린더 설정"
                         >
@@ -122,10 +172,29 @@ export default function Integrations() {
                 </div>
               </div>
 
-              {/* 캘린더 설정 패널 */}
+              {/* Google 캘린더 설정 패널 */}
               {integration.id === 'google-calendar' && integration.connected && showCalendarSettings && (
                 <div className="mt-4 pt-4 border-t border-gray-100">
                   <CalendarSettings />
+                  <button
+                    onClick={integration.onDisconnect}
+                    className="mt-4 w-full py-2 text-sm text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    연결 해제
+                  </button>
+                </div>
+              )}
+
+              {/* Outlook 캘린더 설정 패널 */}
+              {integration.id === 'outlook-calendar' && integration.connected && showOutlookSettings && (
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <p className="text-sm text-gray-600 mb-4">Outlook Calendar가 연결되었습니다.</p>
+                  <button
+                    onClick={integration.onDisconnect}
+                    className="w-full py-2 text-sm text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    연결 해제
+                  </button>
                 </div>
               )}
             </div>

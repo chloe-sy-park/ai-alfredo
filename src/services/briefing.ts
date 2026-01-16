@@ -444,7 +444,8 @@ export type PostActionType =
   | 'mode_changed'
   | 'memo_saved'
   | 'meeting_minutes_generated'
-  | 'habit_checked';
+  | 'habit_checked'
+  | 'briefing_feedback';
 
 export interface PostActionContext {
   type: PostActionType;
@@ -455,6 +456,7 @@ export interface PostActionContext {
     mode?: 'all' | 'work' | 'life';
     remainingTasks?: number;
     streakCount?: number;
+    feedback?: 'positive' | 'different' | 'skip';
   };
 }
 
@@ -578,6 +580,34 @@ export function generatePostActionBriefing(context: PostActionContext): PostActi
         subline: streakMsg,
         duration: 2500,
         tone: streak > 3 ? 'celebration' : 'encouragement'
+      };
+    }
+
+    case 'briefing_feedback': {
+      var feedback = context.data?.feedback;
+      var feedbackMessages: Record<string, { headline: string; subline: string; tone: 'celebration' | 'encouragement' | 'neutral' | 'gentle' }> = {
+        positive: {
+          headline: '피드백 감사해요! 💜',
+          subline: '앞으로 더 유용한 브리핑을 준비할게요',
+          tone: 'celebration'
+        },
+        different: {
+          headline: '알겠어요!',
+          subline: '다른 관점으로 다시 생각해볼게요',
+          tone: 'neutral'
+        },
+        skip: {
+          headline: '좋아요 👍',
+          subline: '필요할 때 언제든 불러주세요',
+          tone: 'gentle'
+        }
+      };
+      var fbMsg = feedback ? feedbackMessages[feedback] : feedbackMessages.positive;
+      return {
+        headline: fbMsg.headline,
+        subline: fbMsg.subline,
+        duration: 2500,
+        tone: fbMsg.tone
       };
     }
 

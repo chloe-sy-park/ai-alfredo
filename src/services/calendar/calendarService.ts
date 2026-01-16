@@ -1,11 +1,40 @@
-// Calendar Service - Google Calendar API 연동
+// Calendar Service - Google Calendar & Outlook Calendar API 연동
 // Uses centralized auth service for token management
 
-import { getGoogleToken, isGoogleConnected } from '../auth';
+import { getGoogleToken, isGoogleConnected, getOutlookToken, isOutlookConnected } from '../auth';
 
-const CALENDAR_API_URL = '/api/calendar';
+const GOOGLE_CALENDAR_API_URL = '/api/calendar';
+const OUTLOOK_CALENDAR_API_URL = '/api/outlook-calendar';
 const SELECTED_CALENDARS_KEY = 'selected_calendars';
 const CALENDARS_CACHE_KEY = 'calendars_cache';
+
+export type CalendarProvider = 'google' | 'outlook' | null;
+
+// Get current calendar provider
+export function getCalendarProvider(): CalendarProvider {
+  if (isGoogleConnected()) return 'google';
+  if (isOutlookConnected()) return 'outlook';
+  return null;
+}
+
+// Get API URL based on provider
+function getCalendarApiUrl(): string {
+  var provider = getCalendarProvider();
+  if (provider === 'outlook') return OUTLOOK_CALENDAR_API_URL;
+  return GOOGLE_CALENDAR_API_URL;
+}
+
+// Get token based on provider
+function getCalendarToken(): string | null {
+  var provider = getCalendarProvider();
+  if (provider === 'outlook') return getOutlookToken();
+  return getGoogleToken();
+}
+
+// Check if any calendar is connected
+export function isCalendarConnected(): boolean {
+  return isGoogleConnected() || isOutlookConnected();
+}
 
 export interface CalendarInfo {
   id: string;
@@ -115,14 +144,14 @@ function transformEvent(event: GoogleEvent, calendars: CalendarInfo[]): Calendar
 
 // Get list of calendars
 export async function getCalendarList(): Promise<CalendarInfo[]> {
-  var token = getGoogleToken();
+  var token = getCalendarToken();
   if (!token) {
-    console.log('[Calendar] No Google access token');
+    console.log('[Calendar] No calendar access token');
     return [];
   }
 
   try {
-    var response = await fetch(CALENDAR_API_URL, {
+    var response = await fetch(getCalendarApiUrl(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -152,9 +181,9 @@ export async function getCalendarList(): Promise<CalendarInfo[]> {
 
 // List events for today
 export async function getTodayEvents(): Promise<CalendarEvent[]> {
-  var token = getGoogleToken();
+  var token = getCalendarToken();
   if (!token) {
-    console.log('[Calendar] No Google access token');
+    console.log('[Calendar] No calendar access token');
     return [];
   }
 
@@ -174,7 +203,7 @@ export async function getTodayEvents(): Promise<CalendarEvent[]> {
       calendarIds: selectedCalendars.length > 0 ? selectedCalendars : undefined
     };
 
-    var response = await fetch(CALENDAR_API_URL, {
+    var response = await fetch(getCalendarApiUrl(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -185,7 +214,7 @@ export async function getTodayEvents(): Promise<CalendarEvent[]> {
 
     if (!response.ok) {
       if (response.status === 401) {
-        console.log('[Calendar] Google token expired');
+        console.log('[Calendar] Token expired');
       }
       throw new Error('Failed to fetch events');
     }
@@ -202,9 +231,9 @@ export async function getTodayEvents(): Promise<CalendarEvent[]> {
 
 // List events for a date range
 export async function getEvents(startDate: Date, endDate: Date): Promise<CalendarEvent[]> {
-  var token = getGoogleToken();
+  var token = getCalendarToken();
   if (!token) {
-    console.log('[Calendar] No Google access token');
+    console.log('[Calendar] No calendar access token');
     return [];
   }
 
@@ -224,7 +253,7 @@ export async function getEvents(startDate: Date, endDate: Date): Promise<Calenda
       calendarIds: selectedCalendars.length > 0 ? selectedCalendars : undefined
     };
 
-    var response = await fetch(CALENDAR_API_URL, {
+    var response = await fetch(getCalendarApiUrl(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -235,7 +264,7 @@ export async function getEvents(startDate: Date, endDate: Date): Promise<Calenda
 
     if (!response.ok) {
       if (response.status === 401) {
-        console.log('[Calendar] Google token expired');
+        console.log('[Calendar] Token expired');
       }
       throw new Error('Failed to fetch events');
     }
@@ -252,13 +281,13 @@ export async function getEvents(startDate: Date, endDate: Date): Promise<Calenda
 
 // Add a new event
 export async function addEvent(event: Omit<CalendarEvent, 'id'>, calendarId?: string): Promise<CalendarEvent | null> {
-  var token = getGoogleToken();
+  var token = getCalendarToken();
   if (!token) return null;
 
   var cachedCalendars = getCachedCalendars();
 
   try {
-    var response = await fetch(CALENDAR_API_URL, {
+    var response = await fetch(getCalendarApiUrl(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -291,13 +320,13 @@ export async function addEvent(event: Omit<CalendarEvent, 'id'>, calendarId?: st
 
 // Update an event
 export async function updateEvent(eventId: string, event: Omit<CalendarEvent, 'id'>, calendarId?: string): Promise<CalendarEvent | null> {
-  var token = getGoogleToken();
+  var token = getCalendarToken();
   if (!token) return null;
 
   var cachedCalendars = getCachedCalendars();
 
   try {
-    var response = await fetch(CALENDAR_API_URL, {
+    var response = await fetch(getCalendarApiUrl(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -331,11 +360,11 @@ export async function updateEvent(eventId: string, event: Omit<CalendarEvent, 'i
 
 // Delete an event
 export async function deleteEvent(eventId: string, calendarId?: string): Promise<boolean> {
-  var token = getGoogleToken();
+  var token = getCalendarToken();
   if (!token) return false;
 
   try {
-    var response = await fetch(CALENDAR_API_URL, {
+    var response = await fetch(getCalendarApiUrl(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

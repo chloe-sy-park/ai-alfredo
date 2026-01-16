@@ -397,6 +397,16 @@ export default function Home() {
             subline={briefing.subline}
             intensity={intensity}
             onMore={function() { setIsMoreSheetOpen(true); }}
+            onFeedback={function(type) {
+              // 피드백 처리: postAction으로 알림 또는 학습에 활용
+              if (type === 'helpful') {
+                postAction.onBriefingFeedback('positive');
+              } else if (type === 'different') {
+                postAction.onBriefingFeedback('different');
+              } else if (type === 'skip') {
+                postAction.onBriefingFeedback('skip');
+              }
+            }}
           />
         )}
 
