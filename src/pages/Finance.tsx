@@ -24,6 +24,8 @@ import {
   Repeat,
   TrendingDown,
   Calendar,
+  AlertTriangle,
+  Shield,
 } from 'lucide-react';
 import { useDrawerStore } from '../stores';
 import { useNotificationStore } from '../stores/notificationStore';
@@ -36,8 +38,11 @@ import {
 import {
   RecurringItem,
   DuplicateGroup,
-  FinanceOverview,
+  RiskLevel,
+  OverviewMetrics,
+  OverviewStateSummary,
 } from '../services/finance/types';
+import { buildOverviewStateSummary } from '../services/finance';
 
 // 상태 타입 정의
 type FinanceState = 'overview' | 'overlaps' | 'candidates' | 'upcoming' | 'allclear';
@@ -45,8 +50,9 @@ type FinanceState = 'overview' | 'overlaps' | 'candidates' | 'upcoming' | 'allcl
 export default function Finance() {
   // Store
   const recurringItems = useFinanceStore((s) => s.recurringItems);
+  const commitmentItems = useFinanceStore((s) => s.commitmentItems);
   const duplicateGroups = useFinanceStore((s) => s.duplicateGroups);
-  const overview = useFinanceStore((s) => s.overview);
+  const growthLinks = useFinanceStore((s) => s.growthLinks);
 
   const { open: openDrawer } = useDrawerStore();
   const { toggle: toggleNotification, unreadCount } = useNotificationStore();
@@ -73,7 +79,17 @@ export default function Finance() {
     refreshDuplicates();
   }, [refreshOverview, refreshDuplicates]);
 
-  // 상태 계산 (State Detection)
+  // Overview State Summary (State-based IA 핵심 계산)
+  const overviewData = useMemo(() => {
+    return buildOverviewStateSummary(
+      recurringItems,
+      commitmentItems,
+      duplicateGroups,
+      growthLinks
+    );
+  }, [recurringItems, commitmentItems, duplicateGroups, growthLinks]);
+
+  // 상태 계산 (State Detection) - 기존 호환성 유지
   const stateInfo = useMemo(() => {
     const activeDuplicates = duplicateGroups.filter((g) => g.status === 'detected');
     const cancelCandidates = recurringItems.filter(
@@ -104,14 +120,6 @@ export default function Finance() {
     };
   }, [duplicateGroups, recurringItems]);
 
-  // 우선순위에 따른 자동 상태 결정
-  const determinePrimaryState = (): FinanceState => {
-    if (stateInfo.hasOverlaps) return 'overlaps';
-    if (stateInfo.hasCandidates) return 'candidates';
-    if (stateInfo.hasUpcoming) return 'upcoming';
-    return 'allclear';
-  };
-
   // 현재 사용여부 체크 대상 아이템
   const currentUsageCheckItem = currentUsageCheckItemId
     ? recurringItems.find((i) => i.id === currentUsageCheckItemId)
@@ -139,10 +147,12 @@ export default function Finance() {
         {currentState === 'overview' && (
           <OverviewScreen
             key="overview"
-            overview={overview}
-            stateInfo={stateInfo}
+            metrics={overviewData.metrics}
+            stateSummary={overviewData.stateSummary}
+            recommended={overviewData.recommended}
+            itemCount={recurringItems.length}
             onNavigate={setCurrentState}
-            primaryState={determinePrimaryState()}
+            onQuickAddRecurring={() => setShowAddModal(true)}
           />
         )}
 
@@ -307,25 +317,58 @@ function FinanceHeader({
 }
 
 // ============================================
-// Overview Screen (Entry Hub)
+// Overview Screen (Entry Hub) - State-based IA 명세 기반
 // ============================================
 
 interface OverviewScreenProps {
-  overview: FinanceOverview | null;
-  stateInfo: {
-    hasOverlaps: boolean;
-    hasCandidates: boolean;
-    hasUpcoming: boolean;
-    overlapsCount: number;
-    candidatesCount: number;
-    upcomingCount: number;
-    upcomingAmount: number;
-  };
+  metrics: OverviewMetrics;
+  stateSummary: OverviewStateSummary;
+  recommended: 'overlaps' | 'candidates' | 'upcoming' | 'allclear';
+  itemCount: number;
   onNavigate: (state: FinanceState) => void;
-  primaryState: FinanceState;
+  onQuickAddRecurring?: () => void;
 }
 
-function OverviewScreen({ overview, stateInfo, onNavigate, primaryState }: OverviewScreenProps) {
+function OverviewScreen({
+  metrics,
+  stateSummary,
+  recommended,
+  itemCount,
+  onNavigate,
+  onQuickAddRecurring,
+}: OverviewScreenProps) {
+  const hasOverlaps = stateSummary.overlaps.countGroups > 0;
+  const hasCandidates = stateSummary.candidates.countItems > 0;
+  const hasUpcoming = stateSummary.upcoming.countPayments > 0;
+  const isAllClear = !hasOverlaps && !hasCandidates && !hasUpcoming;
+
+  // Empty State (데이터 없음)
+  if (itemCount === 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        className="px-4 pt-8 text-center"
+      >
+        <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Wallet size={40} className="text-emerald-500" />
+        </div>
+        <h3 className="text-xl font-semibold text-gray-800 mb-2">시작하기</h3>
+        <p className="text-sm text-gray-500 mb-6">
+          구독/정기결제를 추가하면<br />
+          AlFredo가 똑똑하게 관리해줄게요
+        </p>
+        <button
+          onClick={onQuickAddRecurring}
+          className="px-6 py-3 bg-emerald-500 text-white font-medium rounded-xl hover:bg-emerald-600 transition-colors"
+        >
+          첫 구독 추가하기
+        </button>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -333,72 +376,104 @@ function OverviewScreen({ overview, stateInfo, onNavigate, primaryState }: Overv
       exit={{ opacity: 0, y: -20 }}
       className="px-4 pt-4 space-y-4"
     >
-      {/* Monthly Summary */}
+      {/* ================================ */}
+      {/* StatusSummaryRow - 3 Metrics */}
+      {/* ================================ */}
       <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-        <div className="text-sm text-gray-500 mb-1">이번 달 고정지출</div>
-        <div className="text-3xl font-bold text-gray-900 mb-4">
-          ₩{(overview?.monthlyFixedExpense || 0).toLocaleString()}
-          <span className="text-sm font-normal text-gray-400 ml-1">/월</span>
+        {/* 이번 달 고정지출 */}
+        <div className="mb-4">
+          <div className="text-sm text-gray-500 mb-1">이번 달 고정지출</div>
+          <div className="text-3xl font-bold text-gray-900">
+            ₩{metrics.fixedCostThisMonth.toLocaleString()}
+            <span className="text-sm font-normal text-gray-400 ml-1">/월</span>
+          </div>
+          <div className="text-xs text-gray-400 mt-1">구독 + 대출 + 보험 + 적금</div>
         </div>
 
-        {/* 다음 7일 */}
-        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-          <div className="flex items-center gap-2">
-            <Calendar size={16} className="text-gray-400" />
-            <span className="text-sm text-gray-600">다음 7일 결제</span>
+        {/* 하단 2개 메트릭 */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* 7일 결제 예정 */}
+          <div className="p-3 bg-gray-50 rounded-xl">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Calendar size={14} className="text-gray-400" />
+              <span className="text-xs text-gray-500">7일 결제 예정</span>
+            </div>
+            <div className="text-lg font-semibold text-gray-800">
+              ₩{metrics.upcoming7DaysAmount.toLocaleString()}
+            </div>
+            {stateSummary.upcoming.nearestDDay !== null && (
+              <div className="text-xs text-gray-400 mt-0.5">
+                최대 D-{stateSummary.upcoming.nearestDDay}
+              </div>
+            )}
           </div>
-          <span className="text-sm font-semibold text-gray-800">
-            ₩{stateInfo.upcomingAmount.toLocaleString()}
-          </span>
+
+          {/* Risk Badge */}
+          <div className="p-3 bg-gray-50 rounded-xl">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Shield size={14} className="text-gray-400" />
+              <span className="text-xs text-gray-500">Risk</span>
+            </div>
+            <RiskBadge level={metrics.riskLevel} />
+          </div>
         </div>
       </div>
 
-      {/* State Badges - 분기점 허브 */}
+      {/* ================================ */}
+      {/* StateCards - 분기점 허브 */}
+      {/* ================================ */}
       <div className="space-y-3">
-        <h3 className="text-sm font-medium text-gray-500 px-1">확인이 필요한 항목</h3>
-
-        {/* 중복 있음 */}
-        {stateInfo.hasOverlaps && (
-          <StateBadgeCard
+        {/* Overlaps Card */}
+        {hasOverlaps && (
+          <StateCard
             icon={<Repeat size={20} className="text-red-500" />}
             title="겹치는 구독"
-            subtitle={`${stateInfo.overlapsCount}개 발견`}
+            subtitle={`${stateSummary.overlaps.countGroups} 그룹`}
+            highlight={`월 최대 ₩${stateSummary.overlaps.estimatedMonthlySavings.toLocaleString()} 절감 가능`}
+            ctaText="정리하기"
             color="red"
-            isPrimary={primaryState === 'overlaps'}
+            isPrimary={recommended === 'overlaps'}
             onClick={() => onNavigate('overlaps')}
           />
         )}
 
-        {/* 해지 후보 */}
-        {stateInfo.hasCandidates && (
-          <StateBadgeCard
+        {/* Candidates Card */}
+        {hasCandidates && (
+          <StateCard
             icon={<TrendingDown size={20} className="text-amber-500" />}
             title="해지 후보"
-            subtitle={`${stateInfo.candidatesCount}개`}
+            subtitle={`${stateSummary.candidates.countItems}개`}
+            highlight={`정리하면 월 ₩${stateSummary.candidates.estimatedMonthlySavings.toLocaleString()} 줄일 수 있어요`}
+            ctaText="확인하기"
             color="amber"
-            isPrimary={primaryState === 'candidates'}
+            isPrimary={recommended === 'candidates'}
             onClick={() => onNavigate('candidates')}
           />
         )}
 
-        {/* 결제 임박 */}
-        {stateInfo.hasUpcoming && (
-          <StateBadgeCard
+        {/* Upcoming Card */}
+        {hasUpcoming && (
+          <StateCard
             icon={<Clock size={20} className="text-blue-500" />}
-            title="결제 예정"
-            subtitle={`${stateInfo.upcomingCount}건 · D-7 이내`}
+            title="결제 임박"
+            subtitle={stateSummary.upcoming.nearestDDay === 0
+              ? '오늘'
+              : `D-${stateSummary.upcoming.nearestDDay}`}
+            highlight={`7일 내 ₩${stateSummary.upcoming.totalAmount.toLocaleString()}`}
+            ctaText="일정 확인"
             color="blue"
-            isPrimary={primaryState === 'upcoming'}
+            isPrimary={recommended === 'upcoming'}
             onClick={() => onNavigate('upcoming')}
           />
         )}
 
-        {/* All Clear */}
-        {!stateInfo.hasOverlaps && !stateInfo.hasCandidates && !stateInfo.hasUpcoming && (
-          <StateBadgeCard
+        {/* All Clear Card */}
+        {isAllClear && (
+          <StateCard
             icon={<Check size={20} className="text-emerald-500" />}
-            title="모두 정상"
-            subtitle="확인이 필요한 항목이 없어요"
+            title="All Clear"
+            subtitle="이번 주는 안정적이에요"
+            ctaText="전체 보기"
             color="emerald"
             isPrimary={true}
             onClick={() => onNavigate('allclear')}
@@ -406,73 +481,162 @@ function OverviewScreen({ overview, stateInfo, onNavigate, primaryState }: Overv
         )}
       </div>
 
-      {/* Quick Stats */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-        <div className="grid grid-cols-3 gap-4 text-center">
-          <div>
-            <div className="text-xs text-gray-400 mb-1">총 구독</div>
-            <div className="text-lg font-semibold text-gray-800">
-              {overview?.upcomingPayments?.length || 0}개
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-gray-400 mb-1">중복</div>
-            <div className={`text-lg font-semibold ${stateInfo.hasOverlaps ? 'text-red-500' : 'text-gray-800'}`}>
-              {stateInfo.overlapsCount}개
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-gray-400 mb-1">해지 후보</div>
-            <div className={`text-lg font-semibold ${stateInfo.hasCandidates ? 'text-amber-500' : 'text-gray-800'}`}>
-              {stateInfo.candidatesCount}개
-            </div>
-          </div>
-        </div>
+      {/* Quick Actions (Optional) */}
+      <div className="flex gap-2">
+        <button
+          onClick={onQuickAddRecurring}
+          className="flex-1 flex items-center justify-center gap-2 py-3 bg-white border border-gray-200 rounded-xl text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
+        >
+          <Plus size={16} />
+          빠른 추가
+        </button>
+        <button
+          onClick={() => onNavigate('allclear')}
+          className="flex-1 flex items-center justify-center gap-2 py-3 bg-white border border-gray-200 rounded-xl text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
+        >
+          전체 {itemCount}개 보기
+        </button>
       </div>
     </motion.div>
   );
 }
 
 // ============================================
-// State Badge Card
+// Risk Badge Component
 // ============================================
 
-interface StateBadgeCardProps {
+function RiskBadge({ level }: { level: RiskLevel }) {
+  const config = {
+    LOW: {
+      text: '안정',
+      bgColor: 'bg-emerald-100',
+      textColor: 'text-emerald-700',
+      icon: <Shield size={14} className="text-emerald-600" />,
+    },
+    MEDIUM: {
+      text: '주의',
+      bgColor: 'bg-amber-100',
+      textColor: 'text-amber-700',
+      icon: <AlertTriangle size={14} className="text-amber-600" />,
+    },
+    HIGH: {
+      text: '과부하',
+      bgColor: 'bg-red-100',
+      textColor: 'text-red-700',
+      icon: <AlertTriangle size={14} className="text-red-600" />,
+    },
+  };
+
+  const { text, bgColor, textColor, icon } = config[level];
+
+  return (
+    <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full ${bgColor}`}>
+      {icon}
+      <span className={`text-sm font-medium ${textColor}`}>{text}</span>
+    </div>
+  );
+}
+
+// ============================================
+// State Card (명세 기반)
+// ============================================
+
+interface StateCardProps {
   icon: React.ReactNode;
   title: string;
   subtitle: string;
+  highlight?: string;
+  ctaText: string;
   color: 'red' | 'amber' | 'blue' | 'emerald';
   isPrimary: boolean;
   onClick: () => void;
 }
 
-function StateBadgeCard({ icon, title, subtitle, color, isPrimary, onClick }: StateBadgeCardProps) {
-  const colorClasses = {
-    red: 'bg-red-50 border-red-200 hover:border-red-300',
-    amber: 'bg-amber-50 border-amber-200 hover:border-amber-300',
-    blue: 'bg-blue-50 border-blue-200 hover:border-blue-300',
-    emerald: 'bg-emerald-50 border-emerald-200 hover:border-emerald-300',
+function StateCard({
+  icon,
+  title,
+  subtitle,
+  highlight,
+  ctaText,
+  color,
+  isPrimary,
+  onClick,
+}: StateCardProps) {
+  const colorConfig = {
+    red: {
+      bg: 'bg-red-50',
+      border: 'border-red-200',
+      hoverBorder: 'hover:border-red-300',
+      ring: 'ring-red-300',
+      ctaBg: 'bg-red-500 hover:bg-red-600',
+      highlightText: 'text-red-600',
+    },
+    amber: {
+      bg: 'bg-amber-50',
+      border: 'border-amber-200',
+      hoverBorder: 'hover:border-amber-300',
+      ring: 'ring-amber-300',
+      ctaBg: 'bg-amber-500 hover:bg-amber-600',
+      highlightText: 'text-amber-600',
+    },
+    blue: {
+      bg: 'bg-blue-50',
+      border: 'border-blue-200',
+      hoverBorder: 'hover:border-blue-300',
+      ring: 'ring-blue-300',
+      ctaBg: 'bg-blue-500 hover:bg-blue-600',
+      highlightText: 'text-blue-600',
+    },
+    emerald: {
+      bg: 'bg-emerald-50',
+      border: 'border-emerald-200',
+      hoverBorder: 'hover:border-emerald-300',
+      ring: 'ring-emerald-300',
+      ctaBg: 'bg-emerald-500 hover:bg-emerald-600',
+      highlightText: 'text-emerald-600',
+    },
   };
+
+  const { bg, border, hoverBorder, ring, ctaBg, highlightText } = colorConfig[color];
 
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${colorClasses[color]} ${
-        isPrimary ? 'ring-2 ring-offset-2 ring-' + color + '-300' : ''
+      className={`w-full p-4 rounded-xl border-2 transition-all text-left ${bg} ${border} ${hoverBorder} ${
+        isPrimary ? `ring-2 ring-offset-2 ${ring}` : ''
       }`}
+      aria-label={`${title} - ${subtitle}`}
     >
-      <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
-        {icon}
+      <div className="flex items-start gap-4">
+        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm flex-shrink-0">
+          {icon}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <div className="font-medium text-gray-800">{title}</div>
+              <div className="text-sm text-gray-500">{subtitle}</div>
+            </div>
+            {isPrimary && (
+              <span className="text-xs bg-white px-2 py-1 rounded-full text-gray-500 shadow-sm flex-shrink-0">
+                우선
+              </span>
+            )}
+          </div>
+          {highlight && (
+            <div className={`text-sm font-medium mt-2 ${highlightText}`}>
+              {highlight}
+            </div>
+          )}
+        </div>
       </div>
-      <div className="flex-1 text-left">
-        <div className="font-medium text-gray-800">{title}</div>
-        <div className="text-sm text-gray-500">{subtitle}</div>
-      </div>
-      {isPrimary && (
-        <span className="text-xs bg-white px-2 py-1 rounded-full text-gray-500 shadow-sm">
-          우선
+      <div className="mt-3">
+        <span
+          className={`inline-flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium text-white ${ctaBg} transition-colors`}
+        >
+          {ctaText}
         </span>
-      )}
+      </div>
     </button>
   );
 }

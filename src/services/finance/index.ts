@@ -24,9 +24,17 @@ import {
   UsageCheckResponse,
   UsageFrequency,
   AutoClassificationRule,
+  RiskLevel,
+  OverviewMetrics,
+  OverviewStateSummary,
+  OverviewData,
+  CandidateScore,
+  GrowthLink,
   CATEGORY_DEFAULT_WORKLIFE,
   WORK_KEYWORDS,
   USAGE_CHECK_QUESTIONS,
+  MERCHANT_CLUSTER_MAP,
+  RISK_THRESHOLDS,
 } from './types';
 
 // ============================================
@@ -117,65 +125,90 @@ export function updateClassificationRule(
 // ============================================
 
 /**
- * 중복 구독 탐지
- * 기준: 동일 서비스군, 최근 60일 내 2개 이상 결제, 목적 동일
+ * 아이템의 중복 클러스터 키 반환
+ * 우선순위: 머천트 매핑 → categoryL2 → categoryL1
+ */
+export function getDuplicateClusterKey(item: RecurringItem): string {
+  const nameLower = item.name.toLowerCase();
+
+  // 1. 머천트 매핑 테이블에서 찾기
+  for (const [merchant, cluster] of Object.entries(MERCHANT_CLUSTER_MAP)) {
+    if (nameLower.includes(merchant.toLowerCase())) {
+      return cluster;
+    }
+  }
+
+  // 2. categoryL2가 있으면 사용
+  if (item.categoryL2) {
+    return item.categoryL2;
+  }
+
+  // 3. categoryL1 사용
+  return item.categoryL1;
+}
+
+/**
+ * 중복 구독 탐지 (개선된 버전)
+ * 클러스터 키 기반으로 그룹화하고 절감 예상액 계산
  */
 export function detectDuplicates(items: RecurringItem[]): DuplicateGroup[] {
   const groups: DuplicateGroup[] = [];
   const processedIds = new Set<string>();
 
-  // 카테고리별로 그룹화
-  const categoryGroups = new Map<ServiceCategory, RecurringItem[]>();
+  // 클러스터 키로 그룹화
+  const clusterGroups = new Map<string, RecurringItem[]>();
   items.forEach((item) => {
-    const existing = categoryGroups.get(item.categoryL1) || [];
-    categoryGroups.set(item.categoryL1, [...existing, item]);
+    const clusterKey = getDuplicateClusterKey(item);
+    const existing = clusterGroups.get(clusterKey) || [];
+    clusterGroups.set(clusterKey, [...existing, item]);
   });
 
-  // 각 카테고리에서 중복 탐지
-  categoryGroups.forEach((categoryItems, category) => {
-    if (categoryItems.length < 2) return;
+  // 각 클러스터에서 중복 탐지
+  clusterGroups.forEach((clusterItems, clusterKey) => {
+    if (clusterItems.length < 2) return;
 
-    // 같은 목적의 서비스들 그룹화
-    const purposeMap = getPurposeForCategory(category);
-    if (!purposeMap) {
-      // 같은 카테고리 내 2개 이상이면 중복 가능성
-      const itemIds = categoryItems
-        .filter((item) => !processedIds.has(item.id))
-        .map((item) => item.id);
+    const itemIds = clusterItems
+      .filter((item) => !processedIds.has(item.id))
+      .map((item) => item.id);
 
-      if (itemIds.length >= 2) {
-        const relevantItems = categoryItems.filter((i) => itemIds.includes(i.id));
-        const potentialSavings = Math.min(...relevantItems.map((i) => i.amount));
+    if (itemIds.length >= 2) {
+      const relevantItems = clusterItems.filter((i) => itemIds.includes(i.id));
 
-        groups.push({
-          id: uuidv4(),
-          purpose: getCategoryLabel(category),
-          itemIds,
-          potentialSavings,
-          suggestedKeep: relevantItems.reduce((a, b) =>
-            a.usageSignalScore > b.usageSignalScore ? a : b
-          ).id,
-          status: 'detected',
-          createdAt: new Date().toISOString(),
-        });
+      // 절감 예상액: 가장 저렴한 것 하나만 유지한다고 가정
+      // (모든 금액 합계 - 가장 비싼 것)
+      const amounts = relevantItems.map((i) => i.amount);
+      const maxAmount = Math.max(...amounts);
+      const totalAmount = amounts.reduce((a, b) => a + b, 0);
+      const potentialSavings = totalAmount - maxAmount;
 
-        itemIds.forEach((id) => processedIds.add(id));
-      }
+      groups.push({
+        id: uuidv4(),
+        purpose: getClusterLabel(clusterKey),
+        itemIds,
+        potentialSavings,
+        suggestedKeep: relevantItems.reduce((a, b) =>
+          a.usageSignalScore > b.usageSignalScore ? a : b
+        ).id,
+        status: 'detected',
+        createdAt: new Date().toISOString(),
+      });
+
+      itemIds.forEach((id) => processedIds.add(id));
     }
   });
 
   return groups;
 }
 
-function getPurposeForCategory(category: ServiceCategory): string | null {
-  const purposeMap: Partial<Record<ServiceCategory, string>> = {
-    entertainment: '엔터테인먼트',
-    fitness: '운동/피트니스',
-    wellbeing: '명상/웰빙',
-    cloud_storage: '클라우드 스토리지',
-    collaboration: '업무 협업',
+function getClusterLabel(clusterKey: string): string {
+  const labels: Record<string, string> = {
+    'OTT': 'OTT 영상',
+    '음악스트리밍': '음악 스트리밍',
+    '클라우드스토리지': '클라우드 스토리지',
+    '생산성도구': '생산성 도구',
+    '피트니스앱': '피트니스 앱',
   };
-  return purposeMap[category] || null;
+  return labels[clusterKey] || getCategoryLabel(clusterKey as ServiceCategory);
 }
 
 function getCategoryLabel(category: ServiceCategory): string {
@@ -482,6 +515,289 @@ export function shouldSuggestGoal(
   }
 
   return { suggest: false };
+}
+
+// ============================================
+// 9. Overview State Summary (State-based IA)
+// ============================================
+
+/**
+ * 해지 후보 점수 계산
+ * 점수 >= 0.6이면 해지 후보로 분류
+ */
+export function computeCandidateScore(
+  item: RecurringItem,
+  isInOverlapGroup: boolean,
+  goalLinks: GrowthLink[]
+): number {
+  let score = 0;
+
+  // 1. 사용 빈도 신호
+  if (item.usageFrequency === 'rarely') {
+    score += 0.6;
+  } else if (item.usageFrequency === 'sometimes') {
+    score += 0.3;
+  }
+
+  // 2. 중복 압력
+  if (isInOverlapGroup || item.hasDuplicate) {
+    score += 0.3;
+  }
+
+  // 3. 고비용 압력 (연간 비용 기준)
+  const annualCost = item.billingCycle === 'yearly' ? item.amount : item.amount * 12;
+  if (annualCost >= RISK_THRESHOLDS.HIGH_COST_THRESHOLD) {
+    score += 0.2;
+  }
+
+  // 4. 목표 연결 보호 (점수 감소)
+  const itemGoalLinks = goalLinks.filter((l) => l.recurringItemId === item.id);
+  const hasPrimaryGoal = itemGoalLinks.some((l) => l.weight === 'primary');
+  const hasSecondaryGoal = itemGoalLinks.some((l) => l.weight === 'secondary');
+
+  if (hasPrimaryGoal) {
+    score -= 0.4;
+  } else if (hasSecondaryGoal) {
+    score -= 0.2;
+  }
+
+  // 5. 명시적 유지 의사
+  if (item.retentionIntent === 'keep') {
+    score -= 0.5;
+  }
+
+  // 0-1 범위로 클램프
+  return Math.max(0, Math.min(1, score));
+}
+
+/**
+ * 해지 후보 항목 탐지
+ */
+export function detectCandidates(
+  items: RecurringItem[],
+  duplicateGroups: DuplicateGroup[],
+  goalLinks: GrowthLink[]
+): CandidateScore[] {
+  // 중복 그룹에 속한 아이템 ID Set
+  const itemsInOverlaps = new Set<string>();
+  duplicateGroups
+    .filter((g) => g.status === 'detected')
+    .forEach((g) => g.itemIds.forEach((id) => itemsInOverlaps.add(id)));
+
+  const candidates: CandidateScore[] = [];
+
+  for (const item of items) {
+    // 이미 명시적 해지 후보로 마킹된 경우 포함
+    if (item.retentionIntent === 'cancel_candidate') {
+      candidates.push({ itemId: item.id, score: 1.0 });
+      continue;
+    }
+
+    const score = computeCandidateScore(
+      item,
+      itemsInOverlaps.has(item.id),
+      goalLinks
+    );
+
+    if (score >= 0.6) {
+      candidates.push({ itemId: item.id, score });
+    }
+  }
+
+  // 점수 내림차순 정렬
+  return candidates.sort((a, b) => b.score - a.score);
+}
+
+/**
+ * 7일 내 결제 임박 항목 탐지
+ */
+export function detectUpcoming(
+  recurringItems: RecurringItem[],
+  commitmentItems: CommitmentItem[],
+  today: Date = new Date()
+): UpcomingPayment[] {
+  const sevenDaysLater = new Date(today);
+  sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+
+  const upcoming: UpcomingPayment[] = [];
+
+  // Recurring Items
+  for (const item of recurringItems) {
+    const nextPayment = new Date(item.nextPaymentDate);
+    if (nextPayment >= today && nextPayment <= sevenDaysLater) {
+      const daysUntil = Math.ceil(
+        (nextPayment.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      upcoming.push({
+        itemId: item.id,
+        name: item.name,
+        amount: item.amount,
+        dueDate: item.nextPaymentDate,
+        daysUntil,
+        workLife: item.workLife,
+        icon: item.icon,
+      });
+    }
+  }
+
+  // Commitment Items
+  for (const item of commitmentItems) {
+    const nextPaymentDate = calculateNextCommitmentPaymentDate(item.dueDay, today);
+    const nextPayment = new Date(nextPaymentDate);
+    if (nextPayment >= today && nextPayment <= sevenDaysLater) {
+      const daysUntil = Math.ceil(
+        (nextPayment.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      upcoming.push({
+        itemId: item.id,
+        name: item.name,
+        amount: item.monthlyPayment,
+        dueDate: nextPaymentDate,
+        daysUntil,
+        workLife: item.workLife,
+        icon: item.icon,
+      });
+    }
+  }
+
+  // D-day 오름차순 정렬
+  return upcoming.sort((a, b) => a.daysUntil - b.daysUntil);
+}
+
+function calculateNextCommitmentPaymentDate(dueDay: number, fromDate: Date): string {
+  const result = new Date(fromDate);
+  if (fromDate.getDate() > dueDay) {
+    result.setMonth(result.getMonth() + 1);
+  }
+  result.setDate(Math.min(dueDay, getDaysInMonth(result)));
+  return result.toISOString().split('T')[0];
+}
+
+/**
+ * 리스크 레벨 계산 (단일 배지)
+ */
+export function computeRiskLevel(
+  metrics: { fixedCostThisMonth: number; upcoming7DaysAmount: number },
+  overlapsCount: number,
+  candidatesCount: number
+): RiskLevel {
+  let riskScore = 0;
+
+  // 중복 2개 이상
+  if (overlapsCount >= 2) riskScore += 1;
+
+  // 해지 후보 3개 이상
+  if (candidatesCount >= 3) riskScore += 1;
+
+  // 7일 내 결제액이 임계치 이상
+  if (metrics.upcoming7DaysAmount >= RISK_THRESHOLDS.UPCOMING_HIGH_AMOUNT) {
+    riskScore += 1;
+  }
+
+  // 월 고정지출이 임계치 이상
+  if (metrics.fixedCostThisMonth >= RISK_THRESHOLDS.FIXED_HIGH_AMOUNT) {
+    riskScore += 1;
+  }
+
+  if (riskScore >= 3) return 'HIGH';
+  if (riskScore >= 2) return 'MEDIUM';
+  return 'LOW';
+}
+
+/**
+ * Overview State Summary 빌드 (메인 함수)
+ */
+export function buildOverviewStateSummary(
+  recurringItems: RecurringItem[],
+  commitmentItems: CommitmentItem[],
+  duplicateGroups: DuplicateGroup[],
+  goalLinks: GrowthLink[],
+  today: Date = new Date()
+): OverviewData {
+  // 1. 중복 감지
+  const activeDuplicates = duplicateGroups.filter((g) => g.status === 'detected');
+
+  // 2. 해지 후보 감지
+  const candidates = detectCandidates(recurringItems, duplicateGroups, goalLinks);
+
+  // 3. 결제 임박 감지
+  const upcoming = detectUpcoming(recurringItems, commitmentItems, today);
+
+  // 4. 메트릭스 계산
+  const monthlyRecurring = recurringItems
+    .filter((item) => item.billingCycle === 'monthly')
+    .reduce((sum, item) => sum + item.amount, 0);
+
+  const yearlyAsMonthly = recurringItems
+    .filter((item) => item.billingCycle === 'yearly')
+    .reduce((sum, item) => sum + item.amount / 12, 0);
+
+  const monthlyCommitments = commitmentItems.reduce(
+    (sum, item) => sum + item.monthlyPayment,
+    0
+  );
+
+  const fixedCostThisMonth = monthlyRecurring + yearlyAsMonthly + monthlyCommitments;
+  const upcoming7DaysAmount = upcoming.reduce((sum, p) => sum + p.amount, 0);
+
+  // 5. 리스크 레벨 계산
+  const riskLevel = computeRiskLevel(
+    { fixedCostThisMonth, upcoming7DaysAmount },
+    activeDuplicates.length,
+    candidates.length
+  );
+
+  // 6. 상태 요약 구성
+  const overlapsEstimatedSavings = activeDuplicates.reduce(
+    (sum, g) => sum + g.potentialSavings,
+    0
+  );
+
+  // 해지 후보 절감 예상액: 상위 5개 항목의 월 금액 합
+  const candidateItems = candidates
+    .slice(0, 5)
+    .map((c) => recurringItems.find((i) => i.id === c.itemId))
+    .filter((item): item is RecurringItem => item !== undefined);
+  const candidatesEstimatedSavings = candidateItems.reduce(
+    (sum, item) => sum + (item.billingCycle === 'yearly' ? item.amount / 12 : item.amount),
+    0
+  );
+
+  const metrics: OverviewMetrics = {
+    fixedCostThisMonth,
+    upcoming7DaysAmount,
+    riskLevel,
+  };
+
+  const stateSummary: OverviewStateSummary = {
+    overlaps: {
+      countGroups: activeDuplicates.length,
+      estimatedMonthlySavings: overlapsEstimatedSavings,
+    },
+    candidates: {
+      countItems: candidates.length,
+      estimatedMonthlySavings: candidatesEstimatedSavings,
+    },
+    upcoming: {
+      countPayments: upcoming.length,
+      totalAmount: upcoming7DaysAmount,
+      nearestDDay: upcoming.length > 0 ? upcoming[0].daysUntil : null,
+    },
+  };
+
+  // 7. 추천 상태 결정 (우선순위)
+  let recommended: OverviewData['recommended'];
+  if (activeDuplicates.length > 0) {
+    recommended = 'overlaps';
+  } else if (candidates.length > 0) {
+    recommended = 'candidates';
+  } else if (upcoming.length > 0) {
+    recommended = 'upcoming';
+  } else {
+    recommended = 'allclear';
+  }
+
+  return { metrics, stateSummary, recommended };
 }
 
 // ============================================
