@@ -21,106 +21,102 @@ import ProjectPulse from '../components/home/ProjectPulse';
 import ActionCard from '../components/home/ActionCard';
 
 export default function Work() {
-  var [tasks, setTasks] = useState<Task[]>([]);
-  var [projects, setProjects] = useState<Project[]>([]);
-  var [events, setEvents] = useState<CalendarEvent[]>([]);
-  var [focusTask, setFocusTask] = useState<Task | null>(null);
-  var [viewMode, setViewMode] = useState<'project' | 'list'>('project');
-  var [showTaskModal, setShowTaskModal] = useState(false);
-  var [editingTask, setEditingTask] = useState<Task | null>(null);
-  var [defaultProjectId, setDefaultProjectId] = useState<string>('');
-  var [meetingMinutes, setMeetingMinutes] = useState<MeetingMinutes | null>(null);
-  var postAction = usePostAction();
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [focusTask, setFocusTask] = useState<Task | null>(null);
+  const [viewMode, setViewMode] = useState<'project' | 'list'>('project');
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [defaultProjectId, setDefaultProjectId] = useState<string>('');
+  const [meetingMinutes, setMeetingMinutes] = useState<MeetingMinutes | null>(null);
+  const postAction = usePostAction();
 
   // 데이터 로드
-  useEffect(function() {
+  useEffect(() => {
     loadData();
   }, []);
 
-  function loadData() {
+  const loadData = () => {
     // 태스크 로드
-    var workTasks = getTasksByCategory('work');
+    const workTasks = getTasksByCategory('work');
     setTasks(workTasks);
-    
+
     // 프로젝트 로드
-    var activeProjects = getActiveProjects();
+    const activeProjects = getActiveProjects();
     setProjects(activeProjects);
-    
+
     // 프로젝트별 태스크 수 업데이트
-    var taskCounts: Record<string, number> = {};
-    workTasks.forEach(function(task) {
-      var projectId = task.projectId || 'project_default';
+    const taskCounts: Record<string, number> = {};
+    workTasks.forEach((task) => {
+      const projectId = task.projectId || 'project_default';
       taskCounts[projectId] = (taskCounts[projectId] || 0) + 1;
     });
     updateProjectTaskCounts(taskCounts);
-    
+
     // 포커스 태스크 선택 (우선순위 높은 미완료 태스크)
-    var pendingTasks = workTasks.filter(function(t) { return t.status !== 'done'; });
-    var highPriorityTasks = pendingTasks.filter(function(t) { return t.priority === 'high'; });
-    var nextTask = highPriorityTasks[0] || pendingTasks[0] || null;
+    const pendingTasks = workTasks.filter((t) => t.status !== 'done');
+    const highPriorityTasks = pendingTasks.filter((t) => t.priority === 'high');
+    const nextTask = highPriorityTasks[0] || pendingTasks[0] || null;
     setFocusTask(nextTask);
-    
+
     // 캘린더 이벤트
     getTodayEvents().then(setEvents).catch(() => {});
-  }
+  };
 
   // 프로젝트별 태스크 그룹핑
-  function getTasksByProjects(): Record<string, Task[]> {
-    var grouped: Record<string, Task[]> = {};
-    
+  const getTasksByProjects = (): Record<string, Task[]> => {
+    const grouped: Record<string, Task[]> = {};
+
     // 모든 프로젝트에 빈 배열 초기화
-    projects.forEach(function(project) {
+    projects.forEach((project) => {
       grouped[project.id] = [];
     });
-    
+
     // 태스크 분배
-    tasks.forEach(function(task) {
-      var projectId = task.projectId || 'project_default';
+    tasks.forEach((task) => {
+      const projectId = task.projectId || 'project_default';
       if (!grouped[projectId]) {
         grouped[projectId] = [];
       }
       grouped[projectId].push(task);
     });
-    
-    return grouped;
-  }
 
-  function handleTaskClick(task: Task) {
+    return grouped;
+  };
+
+  const handleTaskClick = (task: Task) => {
     setEditingTask(task);
     setShowTaskModal(true);
-  }
+  };
 
-  function handleAddTask(projectId?: string) {
+  const handleAddTask = (projectId?: string) => {
     setDefaultProjectId(projectId || 'project_default');
     setEditingTask(null);
     setShowTaskModal(true);
-  }
+  };
 
-  function handleSaveTask(task: Task) {
+  const handleSaveTask = (task: Task) => {
     loadData(); // 데이터 새로고침
     setFocusTask(task); // 새로 추가/수정한 태스크를 포커스로
-  }
+  };
 
-  function handleProjectEdit(project: Project) {
+  const handleProjectEdit = (project: Project) => {
     // 프로젝트 편집 모달 (나중에 구현)
     console.log('Edit project:', project);
-  }
+  };
 
   // PRD: ProjectPulse용 데이터 변환
-  function getProjectPulseData() {
-    return projects.map(function(project) {
-      var projectTasks = tasks.filter(function(t) {
-        return t.projectId === project.id;
-      });
-      var pendingCount = projectTasks.filter(function(t) {
-        return t.status !== 'done';
-      }).length;
-      var highPriorityPending = projectTasks.filter(function(t) {
-        return t.status !== 'done' && t.priority === 'high';
-      }).length;
+  const getProjectPulseData = () => {
+    return projects.map((project) => {
+      const projectTasks = tasks.filter((t) => t.projectId === project.id);
+      const pendingCount = projectTasks.filter((t) => t.status !== 'done').length;
+      const highPriorityPending = projectTasks.filter(
+        (t) => t.status !== 'done' && t.priority === 'high'
+      ).length;
 
       // 신호등 결정: 긴급 미완료 있으면 red, 미완료 많으면 yellow, 아니면 green
-      var signal: 'green' | 'yellow' | 'red' = 'green';
+      let signal: 'green' | 'yellow' | 'red' = 'green';
       if (highPriorityPending > 0) {
         signal = 'red';
       } else if (pendingCount > 3) {
@@ -133,72 +129,74 @@ export default function Work() {
         signal: signal
       };
     });
-  }
+  };
 
   // PRD R5: 우선순위는 순서다 - 업무 태스크를 우선순위로 변환
-  function getWorkPriorityItems() {
+  const getWorkPriorityItems = () => {
     // 미완료 태스크만, 우선순위 높은 것 먼저
-    var pendingTasks = tasks.filter(function(t) { return t.status !== 'done'; });
+    const pendingTasks = tasks.filter((t) => t.status !== 'done');
 
     // 우선순위 정렬: high > medium > low
-    var priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
-    pendingTasks.sort(function(a, b) {
+    const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+    pendingTasks.sort((a, b) => {
       return (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2);
     });
 
     // Top 3만 반환
-    return pendingTasks.slice(0, 3).map(function(task) {
-      return {
-        id: task.id,
-        title: task.title,
-        sourceTag: 'WORK' as const,
-        meta: task.priority === 'high' ? '긴급' : task.dueDate ? '마감' : undefined,
-        status: task.status === 'in_progress' ? 'in-progress' as const : 'pending' as const
-      };
-    });
-  }
+    return pendingTasks.slice(0, 3).map((task) => ({
+      id: task.id,
+      title: task.title,
+      sourceTag: 'WORK' as const,
+      meta: task.priority === 'high' ? '긴급' : task.dueDate ? '마감' : undefined,
+      status: task.status === 'in_progress' ? 'in-progress' as const : 'pending' as const
+    }));
+  };
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5]">
+    <div className="min-h-screen bg-background dark:bg-gray-900">
       <PageHeader />
       
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-4">
         {/* 페이지 헤더 */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
           <div className="flex items-center gap-2">
-            <Briefcase size={24} className="text-[#A996FF]" />
-            <h1 className="text-xl sm:text-2xl font-bold text-[#1A1A1A]">Work</h1>
+            <Briefcase size={24} className="text-primary" />
+            <h1 className="text-xl sm:text-2xl font-bold text-text-primary dark:text-white">Work</h1>
           </div>
           
           <div className="flex items-center gap-2">
             {/* 보기 모드 전환 */}
-            <div className="bg-white rounded-lg p-1 flex">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-1 flex" role="group" aria-label="보기 모드 선택">
               <button
-                onClick={function() { setViewMode('project'); }}
+                onClick={() => setViewMode('project')}
+                aria-pressed={viewMode === 'project'}
                 className={`w-10 h-10 sm:w-11 sm:h-11 rounded flex items-center justify-center touch-target ${
                   viewMode === 'project'
-                    ? 'bg-[#A996FF] text-white'
-                    : 'text-[#666666] hover:bg-[#F5F5F5]'
+                    ? 'bg-primary text-white'
+                    : 'text-text-secondary dark:text-gray-400 hover:bg-background dark:hover:bg-gray-700'
                 }`}
               >
-                <LayoutGrid size={18} />
+                <LayoutGrid size={18} aria-hidden="true" />
+                <span className="sr-only">프로젝트 뷰</span>
               </button>
               <button
-                onClick={function() { setViewMode('list'); }}
+                onClick={() => setViewMode('list')}
+                aria-pressed={viewMode === 'list'}
                 className={`w-10 h-10 sm:w-11 sm:h-11 rounded flex items-center justify-center touch-target ${
                   viewMode === 'list'
-                    ? 'bg-[#A996FF] text-white'
-                    : 'text-[#666666] hover:bg-[#F5F5F5]'
+                    ? 'bg-primary text-white'
+                    : 'text-text-secondary dark:text-gray-400 hover:bg-background dark:hover:bg-gray-700'
                 }`}
               >
-                <List size={18} />
+                <List size={18} aria-hidden="true" />
+                <span className="sr-only">리스트 뷰</span>
               </button>
             </div>
 
             {/* 태스크 추가 버튼 */}
             <button
-              onClick={function() { handleAddTask(); }}
-              className="px-4 py-2.5 sm:py-3 bg-[#A996FF] text-white rounded-lg hover:bg-[#8B7BE8] flex items-center gap-2 min-h-[44px]"
+              onClick={() => handleAddTask()}
+              className="px-4 py-2.5 sm:py-3 bg-primary text-white rounded-lg hover:bg-primary-dark flex items-center gap-2 min-h-[44px]"
             >
               <Plus size={18} />
               <span className="text-sm sm:text-base">태스크 추가</span>
@@ -222,33 +220,31 @@ export default function Work() {
 
             {/* PRD: ActionCards - 대응이 필요한 항목 */}
             {events.length > 0 && (
-              <div className="space-y-2">
-                <h3 className="text-sm font-semibold text-[#1A1A1A] px-1">대응 필요</h3>
-                {events.slice(0, 2).map(function(event) {
-                  return (
-                    <ActionCard
-                      key={event.id}
-                      variant="meeting"
-                      title={event.title}
-                      summary={event.location || '장소 미정'}
-                      meta={new Date(event.start).toLocaleTimeString('ko-KR', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                      recommendedAction="회의 준비 자료를 확인하세요"
-                    />
-                  );
-                })}
-              </div>
+              <section className="space-y-2" aria-labelledby="action-needed-heading">
+                <h3 id="action-needed-heading" className="text-sm font-semibold text-text-primary dark:text-white px-1">대응 필요</h3>
+                {events.slice(0, 2).map((event) => (
+                  <ActionCard
+                    key={event.id}
+                    variant="meeting"
+                    title={event.title}
+                    summary={event.location || '장소 미정'}
+                    meta={new Date(event.start).toLocaleTimeString('ko-KR', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                    recommendedAction="회의 준비 자료를 확인하세요"
+                  />
+                ))}
+              </section>
             )}
 
             {/* 프로젝트별 태스크 그룹 */}
             {viewMode === 'project' ? (
               <div className="space-y-4">
-                {projects.map(function(project) {
-                  var projectTasks = getTasksByProjects()[project.id] || [];
+                {projects.map((project) => {
+                  const projectTasks = getTasksByProjects()[project.id] || [];
                   return (
-                    <div key={project.id} id={'project-' + project.id}>
+                    <div key={project.id} id={`project-${project.id}`}>
                       <ProjectTaskGroup
                         project={project}
                         tasks={projectTasks}
@@ -262,8 +258,8 @@ export default function Work() {
               </div>
             ) : (
               // 리스트 뷰 (나중에 구현)
-              <div className="bg-white rounded-xl p-4 shadow-card">
-                <p className="text-[#999999]">리스트 뷰는 준비중입니다</p>
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-card">
+                <p className="text-text-muted dark:text-gray-400">리스트 뷰는 준비중입니다</p>
               </div>
             )}
           </div>
@@ -275,7 +271,7 @@ export default function Work() {
 
             {/* PRD: 회의 음성 → 회의록 */}
             <VoiceUploadCard
-              onMinutesGenerated={function(minutes) {
+              onMinutesGenerated={(minutes) => {
                 setMeetingMinutes(minutes);
                 postAction.onMeetingMinutesGenerated();
               }}
@@ -285,7 +281,7 @@ export default function Work() {
             {meetingMinutes && (
               <MeetingMinutesCard
                 minutes={meetingMinutes}
-                onClose={function() { setMeetingMinutes(null); }}
+                onClose={() => setMeetingMinutes(null)}
               />
             )}
 
@@ -297,9 +293,9 @@ export default function Work() {
             {projects.length > 0 && (
               <ProjectPulse
                 projects={getProjectPulseData()}
-                onOpen={function(id) {
+                onOpen={(id) => {
                   // 해당 프로젝트로 스크롤
-                  var element = document.getElementById('project-' + id);
+                  const element = document.getElementById(`project-${id}`);
                   if (element) {
                     element.scrollIntoView({ behavior: 'smooth' });
                   }
@@ -309,11 +305,11 @@ export default function Work() {
           </div>
         </div>
       </div>
-      
+
       {/* 태스크 모달 */}
       <TaskModal
         isOpen={showTaskModal}
-        onClose={function() { 
+        onClose={() => {
           setShowTaskModal(false);
           setEditingTask(null);
           setDefaultProjectId('');

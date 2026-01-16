@@ -14,39 +14,37 @@ import { MoreSheet } from '../components/home';
 import { LifeTrends } from '../components/life';
 
 export default function Life() {
-  var [condition, setCondition] = useState<ConditionLevel | null>(null);
-  var [briefing, setBriefing] = useState({ headline: '', subline: '' });
-  var [lifePriorities, setLifePriorities] = useState<Top3Item[]>([]);
-  var [relationships, setRelationships] = useState<Relationship[]>([]);
-  var [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
+  const [condition, setCondition] = useState<ConditionLevel | null>(null);
+  const [briefing, setBriefing] = useState({ headline: '', subline: '' });
+  const [lifePriorities, setLifePriorities] = useState<Top3Item[]>([]);
+  const [relationships, setRelationships] = useState<Relationship[]>([]);
+  const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
 
-  useEffect(function() {
+  useEffect(() => {
     loadData();
   }, []);
 
-  function loadData() {
+  const loadData = () => {
     // 컨디션 로드
-    var todayCondition = getTodayCondition();
+    const todayCondition = getTodayCondition();
     if (todayCondition) {
       setCondition(todayCondition.level);
     }
 
     // Life 우선순위 (개인 항목만 필터)
-    var allItems = getTop3();
-    var lifeItems = allItems.filter(function(item) {
-      return item.isPersonal === true;
-    });
+    const allItems = getTop3();
+    const lifeItems = allItems.filter((item) => item.isPersonal === true);
     setLifePriorities(lifeItems);
 
     // 관계 데이터 로드
-    var relationshipData = getRelationships();
+    const relationshipData = getRelationships();
     setRelationships(relationshipData.slice(0, 3)); // Top 3만
 
     // Life 모드에 맞는 브리핑 메시지
-    var now = new Date();
-    var hour = now.getHours();
-    var lifeHeadline = '';
-    var lifeSubline = '';
+    const now = new Date();
+    const hour = now.getHours();
+    let lifeHeadline = '';
+    let lifeSubline = '';
 
     if (hour < 12) {
       lifeHeadline = '오늘은 나를 위한 하루예요';
@@ -72,32 +70,28 @@ export default function Life() {
       headline: lifeHeadline,
       subline: lifeSubline
     });
-  }
+  };
 
   // PriorityStack용 데이터 변환
-  var priorityItems = lifePriorities.map(function(item) {
-    return {
-      id: item.id,
-      title: item.title,
-      sourceTag: 'LIFE' as const,
-      meta: item.completed ? '완료' : undefined,
-      status: item.completed ? 'done' as const : 'pending' as const
-    };
-  });
+  const priorityItems = lifePriorities.map((item) => ({
+    id: item.id,
+    title: item.title,
+    sourceTag: 'LIFE' as const,
+    meta: item.completed ? '완료' : undefined,
+    status: item.completed ? 'done' as const : 'pending' as const
+  }));
 
   // RelationshipReminder용 데이터 변환
-  var relationshipItems = relationships.map(function(rel) {
-    return {
-      id: rel.id,
-      name: rel.name,
-      reason: rel.lastContactDate
-        ? '마지막 연락: ' + new Date(rel.lastContactDate).toLocaleDateString('ko-KR')
-        : '연락해보세요'
-    };
-  });
+  const relationshipItems = relationships.map((rel) => ({
+    id: rel.id,
+    name: rel.name,
+    reason: rel.lastContactDate
+      ? '마지막 연락: ' + new Date(rel.lastContactDate).toLocaleDateString('ko-KR')
+      : '연락해보세요'
+  }));
 
   // LifeFactors 데이터
-  var lifeFactorItems = [
+  const lifeFactorItems = [
     {
       id: 'condition',
       label: '컨디션',
@@ -129,32 +123,28 @@ export default function Life() {
   ];
 
   // MoreSheet 콘텐츠
-  function getMoreContent() {
-    return {
-      why: '라이프 영역의 균형을 위해 분석했어요.',
-      whatChanged: '컨디션과 관계 데이터를 기반으로 판단했어요.',
-      tradeOff: '일에 치여 소중한 것들을 놓치지 마세요.'
-    };
-  }
-
-  var moreContent = getMoreContent();
+  const moreContent = {
+    why: '라이프 영역의 균형을 위해 분석했어요.',
+    whatChanged: '컨디션과 관계 데이터를 기반으로 판단했어요.',
+    tradeOff: '일에 치여 소중한 것들을 놓치지 마세요.'
+  };
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] dark:bg-gray-900">
+    <div className="min-h-screen bg-background dark:bg-gray-900">
       <PageHeader />
 
       <div className="max-w-[640px] mx-auto px-4 py-4 space-y-4">
         {/* 페이지 타이틀 */}
-        <div className="flex items-center gap-2">
-          <Heart size={20} className="text-pink-500" />
-          <h1 className="text-lg font-bold text-[#1A1A1A] dark:text-white">라이프</h1>
+        <div className="flex items-center gap-2" role="heading" aria-level={1}>
+          <Heart size={20} className="text-life-text" aria-hidden="true" />
+          <h1 className="text-lg font-bold text-text-primary dark:text-white">라이프</h1>
         </div>
 
         {/* 1. BriefingCard - PRD R1: 브리핑은 항상 있다 */}
         <BriefingCard
           headline={briefing.headline}
           subline={briefing.subline}
-          onMore={function() { setIsMoreSheetOpen(true); }}
+          onMore={() => setIsMoreSheetOpen(true)}
         />
 
         {/* 2. PriorityStack - PRD R5: 우선순위는 순서다 */}
@@ -162,7 +152,7 @@ export default function Life() {
           <PriorityStack
             items={priorityItems}
             count={3}
-            onMore={function() { setIsMoreSheetOpen(true); }}
+            onMore={() => setIsMoreSheetOpen(true)}
           />
         )}
 
@@ -183,7 +173,7 @@ export default function Life() {
       {/* 더보기 시트 - PRD R3: 확장은 오직 "더 보기" */}
       <MoreSheet
         isOpen={isMoreSheetOpen}
-        onClose={function() { setIsMoreSheetOpen(false); }}
+        onClose={() => setIsMoreSheetOpen(false)}
         title="알프레도의 판단 근거"
         why={moreContent.why}
         whatChanged={moreContent.whatChanged}
