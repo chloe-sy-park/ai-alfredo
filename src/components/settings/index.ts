@@ -15,3 +15,5 @@ export {
   QuickSettings,
   FeedbackRequest
 } from './SettingsComponents';
+
+export { default as PenguinPersonalitySliders } from './PenguinPersonalitySliders';

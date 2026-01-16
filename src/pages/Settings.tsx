@@ -1,6 +1,6 @@
 // Settings.tsx - 설정 페이지
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Users, Volume2, Palette, LogOut, Brain, Bell, Moon, Clock, BellOff, Sun, Monitor } from 'lucide-react';
+import { ArrowLeft, Users, Volume2, Palette, LogOut, Brain, Bell, Moon, Clock, BellOff, Sun, Monitor, Sliders } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUserPreferencesStore } from '../stores/userPreferencesStore';
 import { useAuthStore } from '../stores/authStore';
@@ -15,6 +15,7 @@ import {
   WeeklyReportCard,
   PendingLearningsList
 } from '../components/alfredo';
+import { PenguinPersonalitySliders } from '../components/settings';
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -422,6 +423,15 @@ const Settings = () => {
         >
           설정 저장
         </button>
+
+        {/* 펭귄 성격 설정 (4축 슬라이더) */}
+        <section className="bg-white rounded-xl p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <Sliders className="w-5 h-5 text-[#A996FF]" />
+            <h2 className="text-base font-semibold">알프레도 성격 설정</h2>
+          </div>
+          <PenguinPersonalitySliders />
+        </section>
 
         {/* Alfredo 육성 시스템 섹션 */}
         <section className="bg-white rounded-xl p-5">
