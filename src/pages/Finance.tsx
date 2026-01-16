@@ -87,7 +87,7 @@ export default function Finance() {
   const oneTimeExpenses = useFinanceStore((s) => s.oneTimeExpenses);
 
   const { open: openDrawer } = useDrawerStore();
-  const { toggle: toggleNotification, unreadCount } = useNotificationStore();
+  const { toggle: toggleNotification, unreadCount, addNotification } = useNotificationStore();
 
   const toggleWorkLife = useFinanceStore((s) => s.toggleWorkLife);
   const setSelectedItem = useFinanceStore((s) => s.setSelectedItem);
@@ -110,6 +110,7 @@ export default function Finance() {
   const dismissBudgetSuggestion = useFinanceStore((s) => s.dismissBudgetSuggestion);
   const checkBudgetSuggestion = useFinanceStore((s) => s.checkBudgetSuggestion);
   const getBudgetStatusInfo = useFinanceStore((s) => s.getBudgetStatusInfo);
+  const checkUpcomingPaymentNotifications = useFinanceStore((s) => s.checkUpcomingPaymentNotifications);
 
   // UI State
   const [currentState, setCurrentState] = useState<FinanceState>('overview');
@@ -121,6 +122,36 @@ export default function Finance() {
     refreshDuplicates();
     checkBudgetSuggestion(); // 예산 제안 체크
   }, [refreshOverview, refreshDuplicates, checkBudgetSuggestion]);
+
+  // D-3 결제 알림 체크 (하루에 한 번만)
+  useEffect(() => {
+    const lastNotificationCheck = localStorage.getItem('alfredo_finance_notification_check');
+    const today = new Date().toISOString().split('T')[0];
+
+    if (lastNotificationCheck === today) return;
+
+    const { itemsToNotify } = checkUpcomingPaymentNotifications();
+
+    if (itemsToNotify.length > 0) {
+      // 가장 임박한 결제 3개만 알림
+      const topItems = itemsToNotify.slice(0, 3);
+
+      topItems.forEach((item) => {
+        const daysText = item.daysUntil === 0 ? '오늘' : `D-${item.daysUntil}`;
+        addNotification({
+          type: 'warning',
+          title: `${daysText} 결제 예정`,
+          message: `${item.name} ₩${item.amount.toLocaleString()}`,
+          action: {
+            label: '확인하기',
+            path: '/finance',
+          },
+        });
+      });
+
+      localStorage.setItem('alfredo_finance_notification_check', today);
+    }
+  }, [checkUpcomingPaymentNotifications, addNotification]);
 
   // 예산 상태 계산
   const budgetStatusInfo = useMemo(() => {
@@ -389,7 +420,7 @@ function FinanceHeader({
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-[#F5F5F5] safe-area-top">
+    <header className="sticky top-0 z-30 bg-background safe-area-top">
       <div className="flex items-center justify-between px-4 py-3">
         {/* Left */}
         <div className="flex items-center gap-2">
@@ -405,7 +436,7 @@ function FinanceHeader({
               <Wallet size={16} className="text-lavender-600" />
             </div>
           )}
-          <span className="font-semibold text-[#1A1A1A]">{titles[currentState]}</span>
+          <span className="font-semibold text-text-primary">{titles[currentState]}</span>
         </div>
 
         {/* Right */}
@@ -420,18 +451,18 @@ function FinanceHeader({
           )}
           <button
             onClick={onNotification}
-            className="relative w-10 h-10 flex items-center justify-center text-[#666666] hover:bg-[#E5E5E5] rounded-full transition-colors"
+            className="relative w-10 h-10 flex items-center justify-center text-text-secondary hover:bg-neutral-200 rounded-full transition-colors"
           >
             <Bell size={20} />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 bg-[#A996FF] text-white text-[10px] font-medium rounded-full flex items-center justify-center">
+              <span className="absolute top-1 right-1 w-4 h-4 bg-primary text-white text-[10px] font-medium rounded-full flex items-center justify-center">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
           </button>
           <button
             onClick={onMenu}
-            className="w-10 h-10 flex items-center justify-center text-[#666666] hover:bg-[#E5E5E5] rounded-full transition-colors"
+            className="w-10 h-10 flex items-center justify-center text-text-secondary hover:bg-neutral-200 rounded-full transition-colors"
           >
             <Menu size={20} />
           </button>
@@ -2016,10 +2047,7 @@ function SettingsScreen({
                   max="100"
                   value={localWorkRatio}
                   onChange={(e) => handleRatioChange(parseInt(e.target.value))}
-                  className="w-full h-2 bg-gradient-to-r from-life-bg via-gray-300 to-work-bg rounded-lg appearance-none cursor-pointer"
-                  style={{
-                    background: `linear-gradient(to right, #FFE4E1 0%, #E5E5E5 50%, #E8E3FF 100%)`
-                  }}
+                  className="w-full h-2 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-runnable-track]:bg-gradient-to-r [&::-webkit-slider-runnable-track]:from-life-bg [&::-webkit-slider-runnable-track]:via-neutral-200 [&::-webkit-slider-runnable-track]:to-work-bg"
                 />
               </div>
               <div className="text-xs text-gray-400 mt-3 text-center">

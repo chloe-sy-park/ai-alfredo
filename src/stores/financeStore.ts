@@ -131,6 +131,9 @@ interface FinanceState {
   refreshOverview: () => void;
   refreshDuplicates: () => void;
   checkGoalSuggestion: () => { suggest: boolean; suggestedTitle?: string; relatedItemIds?: string[] };
+
+  // Actions - Notifications
+  checkUpcomingPaymentNotifications: () => { itemsToNotify: Array<{ id: string; name: string; amount: number; daysUntil: number; nextPaymentDate: string }> };
 }
 
 // ============================================
@@ -763,6 +766,50 @@ export const useFinanceStore = create<FinanceState>()(
       checkGoalSuggestion: () => {
         const { recurringItems, goals } = get();
         return shouldSuggestGoal(recurringItems, goals);
+      },
+
+      // ============================================
+      // Notification Actions
+      // ============================================
+
+      checkUpcomingPaymentNotifications: () => {
+        const { recurringItems } = get();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const itemsToNotify: Array<{
+          id: string;
+          name: string;
+          amount: number;
+          daysUntil: number;
+          nextPaymentDate: string;
+        }> = [];
+
+        recurringItems.forEach((item) => {
+          if (!item.nextPaymentDate) return;
+
+          const paymentDate = new Date(item.nextPaymentDate);
+          paymentDate.setHours(0, 0, 0, 0);
+
+          const diffTime = paymentDate.getTime() - today.getTime();
+          const daysUntil = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+          // D-3 이내의 결제만 알림 대상
+          if (daysUntil >= 0 && daysUntil <= 3) {
+            itemsToNotify.push({
+              id: item.id,
+              name: item.name,
+              amount: item.amount,
+              daysUntil,
+              nextPaymentDate: item.nextPaymentDate,
+            });
+          }
+        });
+
+        // 금액 큰 순서로 정렬
+        itemsToNotify.sort((a, b) => b.amount - a.amount);
+
+        return { itemsToNotify };
       },
     }),
     {
