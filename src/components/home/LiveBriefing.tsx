@@ -1,9 +1,12 @@
 // Live Briefing Component
 // 지금 이 순간의 나를 알프레도가 어떻게 보고 있는지 요약
+// Phase 6: 4개 Core Blocks - Understanding, Now Judgment, Improvement Forecast, Open Door
 
 import { useState, useEffect, useRef } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Brain, Sparkles } from 'lucide-react';
 import { useLiveBriefingStore } from '../../stores/liveBriefingStore';
+import { useAlfredoStore } from '../../stores/alfredoStore';
+import { useBriefingEvolutionStore } from '../../stores/briefingEvolutionStore';
 import { STATUS_TAGS, LiveBriefingStatus } from '../../constants/liveBriefing';
 
 interface LiveBriefingProps {
@@ -11,13 +14,46 @@ interface LiveBriefingProps {
   onMore?: () => void;
 }
 
+// Improvement Forecast 생성 (상태 기반 제안)
+function generateImprovementForecast(status: LiveBriefingStatus): string | null {
+  switch (status) {
+    case 'focused':
+      return '이 집중력을 30분 더 유지하면 핵심 작업을 끝낼 수 있어요';
+    case 'nearOverload':
+      return '지금 5분만 쉬면 오후 생산성이 20% 올라가요';
+    case 'needsAdjust':
+      return '다음 미팅 전 한 가지만 정리하면 여유가 생겨요';
+    case 'recovery':
+      return '내일 아침에 시작하면 더 좋은 결과가 나와요';
+    case 'stable':
+      return '지금 페이스 유지하면 오늘 목표를 달성할 수 있어요';
+    default:
+      return null;
+  }
+}
+
 export default function LiveBriefing({ className = '', onMore }: LiveBriefingProps) {
   var { briefing, getTimeSinceUpdate, startAutoRefresh, stopAutoRefresh } = useLiveBriefingStore();
+  var { understanding } = useAlfredoStore();
+  var { updateDensityFromUnderstanding, getEffectiveDensity } = useBriefingEvolutionStore();
   var [isExpanded, setIsExpanded] = useState(false);
   var [isAnimating, setIsAnimating] = useState(false);
   var [displayedSentence, setDisplayedSentence] = useState(briefing.sentence);
   var [displayedStatus, setDisplayedStatus] = useState(briefing.status);
   var prevSentenceRef = useRef(briefing.sentence);
+
+  // Phase 6: 이해도 변경 시 밀도 자동 조절
+  useEffect(function() {
+    if (understanding?.understandingScore !== undefined) {
+      updateDensityFromUnderstanding(understanding.understandingScore);
+    }
+  }, [understanding?.understandingScore, updateDensityFromUnderstanding]);
+
+  // 현재 밀도
+  var density = getEffectiveDensity();
+
+  // Improvement Forecast (밀도가 minimal이면 생략)
+  var forecast = density !== 'minimal' ? generateImprovementForecast(displayedStatus) : null;
 
   // 자동 갱신 시작/정지
   useEffect(function() {
@@ -81,11 +117,55 @@ export default function LiveBriefing({ className = '', onMore }: LiveBriefingPro
             {displayedSentence}
           </p>
 
-          {/* 확장 시 추가 정보 */}
+          {/* 확장 시 추가 정보 - Phase 6 Core Blocks (밀도에 따라 조절) */}
           {isExpanded && (
-            <p className="text-sm text-[#666666] mt-2">
-              {statusConfig.description}
-            </p>
+            <div className="mt-3 space-y-3">
+              {/* Block 1: Understanding - 알프레도가 나를 이렇게 보고 있다 */}
+              {understanding && (
+                <div className="flex items-center gap-2 p-2 bg-[#F8F8FF] rounded-lg">
+                  <Brain size={14} className="text-[#A996FF]" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-[#666666]">알프레도 이해도</span>
+                      <span className="text-xs font-medium text-[#A996FF]">
+                        {understanding.title} ({understanding.understandingScore}%)
+                      </span>
+                    </div>
+                    {/* minimal 밀도면 진행바 숨김 (이미 잘 알고 있으니) */}
+                    {density !== 'minimal' && (
+                      <div className="h-1 bg-gray-200 rounded-full mt-1 overflow-hidden">
+                        <div
+                          className="h-full bg-[#A996FF] rounded-full transition-all duration-500"
+                          style={{ width: understanding.understandingScore + '%' }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Block 2: Status Description - detailed 밀도일 때만 표시 */}
+              {density !== 'minimal' && (
+                <p className="text-sm text-[#666666]">
+                  {statusConfig.description}
+                </p>
+              )}
+
+              {/* Block 3: Improvement Forecast - 이렇게 하면 나아진다 (minimal이면 이미 null) */}
+              {forecast && (
+                <div className="flex items-start gap-2 p-2 bg-[#FFFBEB] rounded-lg">
+                  <Sparkles size={14} className="text-[#F59E0B] mt-0.5" />
+                  <p className="text-xs text-[#92400E]">{forecast}</p>
+                </div>
+              )}
+
+              {/* 밀도 레벨 표시 (디버그/개발용, 추후 제거 가능) */}
+              {density === 'minimal' && (
+                <p className="text-[10px] text-[#BBBBBB] text-center">
+                  💜 알프레도가 이제 간결하게 전달해요
+                </p>
+              )}
+            </div>
           )}
         </div>
       </div>

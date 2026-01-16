@@ -12,6 +12,7 @@ import {
   SITUATION_THRESHOLDS,
 } from '../constants/liveBriefing';
 import { getTodayEvents, CalendarEvent } from '../services/calendar/calendarService';
+import { useBriefingEvolutionStore } from './briefingEvolutionStore';
 
 interface UserActivityState {
   lastInputTime: Date | null;
@@ -174,30 +175,38 @@ export var useLiveBriefingStore = create<LiveBriefingStore>(function(set, get) {
       return 'stable';
     },
 
-    // 문장 생성
+    // 문장 생성 - Phase 6: 가중치 기반 템플릿 선택
     generateSentence: function(status: LiveBriefingStatus): string {
       var templates = STATUS_SENTENCE_TEMPLATES[status];
       var now = new Date();
       var currentHour = now.getHours();
 
+      // Phase 6: 이해도 기반 밀도 조절
+      var evolutionStore = useBriefingEvolutionStore.getState();
+      var density = evolutionStore.getEffectiveDensity();
+
       // 시간대에 따른 문장 조정
       var timePrefix = '';
-      if (currentHour >= 6 && currentHour < 10) {
-        timePrefix = '좋은 아침이에요. ';
-      } else if (currentHour >= 12 && currentHour < 14) {
-        timePrefix = '점심시간이네요. ';
-      } else if (currentHour >= 17 && currentHour < 20) {
-        timePrefix = '하루 마무리 시간이에요. ';
-      } else if (currentHour >= 22 || currentHour < 6) {
-        timePrefix = '늦은 시간이네요. ';
+      // 밀도가 'minimal'이면 시간 프리픽스 생략 (말이 줄어든다)
+      if (density !== 'minimal') {
+        if (currentHour >= 6 && currentHour < 10) {
+          timePrefix = '좋은 아침이에요. ';
+        } else if (currentHour >= 12 && currentHour < 14) {
+          timePrefix = '점심시간이네요. ';
+        } else if (currentHour >= 17 && currentHour < 20) {
+          timePrefix = '하루 마무리 시간이에요. ';
+        } else if (currentHour >= 22 || currentHour < 6) {
+          timePrefix = '늦은 시간이네요. ';
+        }
       }
 
-      // 랜덤 템플릿 선택
-      var randomIndex = Math.floor(Math.random() * templates.length);
-      var baseSentence = templates[randomIndex];
+      // Phase 6: 가중치 기반 템플릿 선택 (랜덤 → 학습 기반)
+      var selectedIndex = evolutionStore.getWeightedTemplateIndex(status, templates.length);
+      var baseSentence = templates[selectedIndex];
 
-      // 시간대 프리픽스 추가 (확률적으로)
-      if (timePrefix && Math.random() > 0.5) {
+      // 시간대 프리픽스 추가 (확률적으로, 밀도에 따라)
+      var prefixProbability = density === 'detailed' ? 0.7 : density === 'normal' ? 0.5 : 0.2;
+      if (timePrefix && Math.random() < prefixProbability) {
         return timePrefix + baseSentence;
       }
 
