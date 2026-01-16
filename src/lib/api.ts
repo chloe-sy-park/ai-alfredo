@@ -184,6 +184,9 @@ export const authApi = {
     }),
 
   logout: () => api.post('/auth-logout'),
+
+  // 사용자 정보 조회
+  getMe: () => api.get<{ user: any }>('/auth-me'),
 };
 
 // ========== Tasks API ==========

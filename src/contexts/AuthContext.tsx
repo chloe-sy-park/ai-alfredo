@@ -170,9 +170,46 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // 사용자 정보 새로고침
   const refreshUser = useCallback(async () => {
-    // TODO: 사용자 정보 API 호출
-    console.log('사용자 정보 새로고침');
-  }, []);
+    if (!state.isAuthenticated || !state.session) {
+      console.log('인증되지 않은 상태에서 새로고침 시도');
+      return;
+    }
+
+    try {
+      // 세션 만료 확인 및 토큰 갱신
+      if (state.session.expires_at && state.session.expires_at * 1000 < Date.now()) {
+        // 토큰 만료됨 - 갱신 시도
+        if (state.session.refresh_token) {
+          var refreshResponse = await authApi.refreshToken(state.session.refresh_token);
+          if (refreshResponse.success && refreshResponse.data) {
+            var newSession = {
+              ...state.session,
+              access_token: refreshResponse.data.access_token,
+              refresh_token: refreshResponse.data.refresh_token,
+              expires_at: refreshResponse.data.expires_at
+            };
+            localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(newSession));
+            setState(function(prev) {
+              return { ...prev, session: newSession };
+            });
+          }
+        }
+      }
+
+      // 사용자 정보 조회 시도
+      var userResponse = await authApi.getMe();
+      if (userResponse.success && userResponse.data?.user) {
+        var updatedUser = userResponse.data.user;
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
+        setState(function(prev) {
+          return { ...prev, user: updatedUser };
+        });
+        console.log('사용자 정보 새로고침 완료');
+      }
+    } catch (error) {
+      console.error('사용자 정보 새로고침 오류:', error);
+    }
+  }, [state.isAuthenticated, state.session]);
 
   const value: AuthContextType = {
     ...state,

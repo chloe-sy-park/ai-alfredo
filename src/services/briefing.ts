@@ -322,15 +322,112 @@ function generateReasoning(intensity: DayIntensity, _context: BriefingContext): 
   return reasons.join(', ') + '을 고려했어요.';
 }
 
-// 사용자 패턴 학습 (추후 구현)
-export function learnUserPattern(_history: any[]): UserPattern {
-  // TODO: 실제 구현 시 히스토리 분석
+// 히스토리 입력 타입
+interface PatternHistory {
+  calendarEvents?: CalendarEvent[];
+  conditionHistory?: { level: ConditionLevel; date: string }[];
+  taskHistory?: { completedAt?: string; category?: string }[];
+}
+
+// 사용자 패턴 학습 - 히스토리 기반 분석
+export function learnUserPattern(history: PatternHistory): UserPattern {
+  // 기본값 설정
+  var peakHours = [10, 11, 14, 15];
+  var averageMeetingCount = 3;
+  var stressThreshold = 5;
+  var preferredWorkStyle: 'morning' | 'afternoon' | 'evening' | 'mixed' = 'morning';
+  var recentStressLevel: 'low' | 'normal' | 'high' = 'normal';
+
+  // 1. 캘린더 이벤트 기반 피크 시간 분석
+  if (history.calendarEvents && history.calendarEvents.length > 0) {
+    var hourCounts: { [key: number]: number } = {};
+
+    history.calendarEvents.forEach(function(event) {
+      if (event.start) {
+        var startDate = new Date(event.start);
+        var hour = startDate.getHours();
+        hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+      }
+    });
+
+    // 가장 많은 이벤트가 있는 시간대 추출 (상위 4개)
+    var sortedHours = Object.keys(hourCounts)
+      .map(function(h) { return parseInt(h); })
+      .sort(function(a, b) { return (hourCounts[b] || 0) - (hourCounts[a] || 0); })
+      .slice(0, 4);
+
+    if (sortedHours.length > 0) {
+      peakHours = sortedHours;
+    }
+
+    // 미팅 평균 계산
+    var meetingEvents = history.calendarEvents.filter(function(e) {
+      return e.title && (
+        e.title.includes('미팅') ||
+        e.title.includes('회의') ||
+        e.title.includes('meeting')
+      );
+    });
+    if (meetingEvents.length > 0) {
+      // 최근 7일 기준 평균
+      averageMeetingCount = Math.ceil(meetingEvents.length / 7);
+    }
+
+    // 선호 작업 스타일 분석
+    var morningCount = 0;
+    var afternoonCount = 0;
+    var eveningCount = 0;
+
+    history.calendarEvents.forEach(function(event) {
+      if (event.start) {
+        var hour = new Date(event.start).getHours();
+        if (hour >= 6 && hour < 12) morningCount++;
+        else if (hour >= 12 && hour < 18) afternoonCount++;
+        else eveningCount++;
+      }
+    });
+
+    if (morningCount > afternoonCount && morningCount > eveningCount) {
+      preferredWorkStyle = 'morning';
+    } else if (afternoonCount > morningCount && afternoonCount > eveningCount) {
+      preferredWorkStyle = 'afternoon';
+    } else if (eveningCount > morningCount && eveningCount > afternoonCount) {
+      preferredWorkStyle = 'evening';
+    } else {
+      preferredWorkStyle = 'mixed';
+    }
+  }
+
+  // 2. 컨디션 히스토리 기반 스트레스 분석
+  if (history.conditionHistory && history.conditionHistory.length > 0) {
+    var badCount = 0;
+    var goodCount = 0;
+    var recentConditions = history.conditionHistory.slice(0, 7); // 최근 7일
+
+    recentConditions.forEach(function(c) {
+      if (c.level === 'bad') badCount++;
+      else if (c.level === 'great' || c.level === 'good') goodCount++;
+    });
+
+    // 스트레스 레벨 결정
+    if (badCount >= 3) {
+      recentStressLevel = 'high';
+      stressThreshold = 3; // 스트레스가 높으면 임계치 낮춤
+    } else if (goodCount >= 4) {
+      recentStressLevel = 'low';
+      stressThreshold = 7; // 컨디션이 좋으면 임계치 높임
+    } else {
+      recentStressLevel = 'normal';
+      stressThreshold = 5;
+    }
+  }
+
   return {
-    peakHours: [10, 11, 14, 15],
-    averageMeetingCount: 3,
-    stressThreshold: 5,
-    preferredWorkStyle: 'morning',
-    recentStressLevel: 'normal'
+    peakHours: peakHours,
+    averageMeetingCount: averageMeetingCount,
+    stressThreshold: stressThreshold,
+    preferredWorkStyle: preferredWorkStyle,
+    recentStressLevel: recentStressLevel
   };
 }
 

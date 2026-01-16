@@ -2,23 +2,25 @@ import React, { useEffect } from 'react';
 import { useNudgeStore, createContextualNudge } from '../../stores/nudgeStore';
 import { useUserPreferencesStore } from '../../stores/userPreferencesStore';
 import { useBodyDoublingStore } from '../../stores/bodyDoublingStore';
+import { useHomeModeStore } from '../../stores/homeModeStore';
 
 export const NudgeManager: React.FC = () => {
   const { showNudge } = useNudgeStore();
   const { interventionLevel } = useUserPreferencesStore();
   const { isActive, getElapsedTime } = useBodyDoublingStore();
-  
+  const { isWorkMode } = useHomeModeStore();
+
   useEffect(function() {
     // 개입 수준이 낮으면 nudge 빈도 감소
     const checkInterval = interventionLevel > 50 ? 60000 : 300000; // 1분 vs 5분
-    
+
     const interval = setInterval(function() {
       const now = new Date();
-      
-      // 컨텍스트 수집
+
+      // 컨텍스트 수집 - 실제 모드 사용
       const context = {
         time: now,
-        workMode: true, // TODO: 실제 모드 확인
+        workMode: isWorkMode(),
         focusTime: isActive ? getElapsedTime() : 0
       };
       
@@ -31,7 +33,7 @@ export const NudgeManager: React.FC = () => {
     }, checkInterval);
     
     return function() { clearInterval(interval); };
-  }, [interventionLevel, showNudge, isActive, getElapsedTime]);
+  }, [interventionLevel, showNudge, isActive, getElapsedTime, isWorkMode]);
   
   // 특별한 이벤트 기반 nudge
   useEffect(function() {
