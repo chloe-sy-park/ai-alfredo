@@ -3,12 +3,13 @@
  * PRD Component Inventory 컴포넌트 활용
  */
 import React from 'react';
-import { LiftRecord } from '../../stores/liftStore';
+import { LiftRecord, useLiftStore } from '../../stores/liftStore';
 import InsightChart, { TimePatternData } from './InsightChart';
 import LiftSummary from './LiftSummary';
 import LiftTimeline from './LiftTimeline';
 import { SummaryNarrative, ObservationNarrative } from './ReportNarrative';
 import NextWeekExperiment from './NextWeekExperiment';
+import DecisionFatigueCard from './DecisionFatigueCard';
 import EmptyState from '../common/EmptyState';
 
 interface WeeklyReportProps {
@@ -113,6 +114,9 @@ function generateTimePatternData(lifts: LiftRecord[]): TimePatternData {
 }
 
 const WeeklyReport: React.FC<WeeklyReportProps> = ({ lifts }) => {
+  // 결정 피로 분석 가져오기
+  var fatigueAnalysis = useLiftStore().getDecisionFatigueAnalysis();
+
   // Work vs Life 비율 계산
   var worklifeLifts = lifts.filter(function(l) { return l.category === 'worklife'; });
   var workPercent = 65; // 기본값
@@ -168,6 +172,9 @@ const WeeklyReport: React.FC<WeeklyReportProps> = ({ lifts }) => {
         data={generateTimePatternData(lifts)}
         height={160}
       />
+
+      {/* Section 2.6: Decision Fatigue Analysis - PRD Phase 3 결정 피로 흐름 */}
+      <DecisionFatigueCard analysis={fatigueAnalysis} />
 
       {/* Section 3: Judgement Lift Summary */}
       <LiftSummary

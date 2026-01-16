@@ -1,4 +1,4 @@
-import { X, MessageCircle } from 'lucide-react';
+import { X, MessageCircle, BarChart2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useChatStore } from '../../stores/chatStore';
 
@@ -31,6 +31,12 @@ export default function MoreSheet({
     });
     onClose();
     navigate('/chat');
+  }
+
+  // Phase 6: Report 페이지로 이동
+  function handleViewReport() {
+    onClose();
+    navigate('/report');
   }
   
   if (!isOpen) return null;
@@ -84,14 +90,26 @@ export default function MoreSheet({
             </div>
           )}
           
-          {/* 같이 조정하기 CTA */}
-          <button
-            onClick={handleAdjust}
-            className="w-full flex items-center justify-center gap-2 py-3 bg-[#1A1A1A] text-white rounded-xl font-medium hover:bg-[#333333] transition-all active:scale-[0.98]"
-          >
-            <MessageCircle size={18} />
-            <span>같이 조정해볼까?</span>
-          </button>
+          {/* CTA 버튼들 - Phase 6 Open Door */}
+          <div className="space-y-2">
+            {/* 같이 조정하기 CTA */}
+            <button
+              onClick={handleAdjust}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-[#1A1A1A] text-white rounded-xl font-medium hover:bg-[#333333] transition-all active:scale-[0.98]"
+            >
+              <MessageCircle size={18} />
+              <span>같이 조정해볼까?</span>
+            </button>
+
+            {/* 리포트 보기 - Phase 6: 패턴/데이터 연결 */}
+            <button
+              onClick={handleViewReport}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-[#F5F5F5] text-[#666666] rounded-xl font-medium hover:bg-[#EBEBEB] transition-all active:scale-[0.98]"
+            >
+              <BarChart2 size={18} />
+              <span>내 패턴 리포트 보기</span>
+            </button>
+          </div>
         </div>
         
         {/* Safe area padding */}

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { AlfredoCard } from '../common/Card';
 import IntensityBadge from '../common/IntensityBadge';
+import { useBriefingEvolutionStore } from '../../stores/briefingEvolutionStore';
+import { useLiveBriefingStore } from '../../stores/liveBriefingStore';
 
 type IntensityLevel = 'light' | 'normal' | 'heavy' | 'overloaded';
 type FeedbackType = 'helpful' | 'different' | 'skip' | null;
@@ -37,10 +39,29 @@ export default function BriefingCard({
   const [selectedFeedback, setSelectedFeedback] = useState<FeedbackType>(null);
   const [showResponse, setShowResponse] = useState(false);
 
+  // Phase 6: 브리핑 진화 시스템 연결
+  var evolutionStore = useBriefingEvolutionStore();
+  var liveBriefingStore = useLiveBriefingStore();
+  var evolutionLevel = evolutionStore.getEvolutionLevel();
+
   function handleFeedback(type: FeedbackType) {
     setSelectedFeedback(type);
     setShowResponse(true);
     onFeedback?.(type);
+
+    // Phase 6: 피드백을 진화 스토어에 기록
+    if (type) {
+      var feedbackMap: Record<string, 'helpful' | 'different' | 'skip'> = {
+        helpful: 'helpful',
+        different: 'different',
+        skip: 'skip'
+      };
+      evolutionStore.recordFeedback(
+        liveBriefingStore.briefing.status,
+        0, // 현재 템플릿 인덱스 (추후 개선 가능)
+        feedbackMap[type]
+      );
+    }
 
     // 3초 후 응답 메시지 숨기기
     setTimeout(function() {
@@ -51,12 +72,18 @@ export default function BriefingCard({
   return (
     <AlfredoCard onMore={onMore} className="animate-slide-down">
       <div className="space-y-3">
-        {/* 강도 뱃지 */}
-        {intensity && (
-          <div className="mb-2 animate-fade-in animation-delay-100">
+        {/* 강도 뱃지 + 진화 레벨 */}
+        <div className="flex items-center gap-2 mb-2 animate-fade-in animation-delay-100">
+          {intensity && (
             <IntensityBadge level={intensity} size="sm" />
-          </div>
-        )}
+          )}
+          {/* Phase 6: 브리핑 진화 레벨 표시 */}
+          {evolutionLevel.level > 1 && (
+            <span className="text-[10px] px-2 py-0.5 bg-[#F0F0FF] text-[#A996FF] rounded-full">
+              {evolutionLevel.description}
+            </span>
+          )}
+        </div>
 
         {/* 헤드라인 */}
         <h2 className="font-semibold text-[#1A1A1A] leading-relaxed">
