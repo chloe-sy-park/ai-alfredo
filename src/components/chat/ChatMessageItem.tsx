@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { ChatMessage } from '../../types/chat';
-import { CheckCircle2, AlertCircle, Lightbulb } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Lightbulb, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { useAlfredoStore } from '../../stores/alfredoStore';
 
 // Date 안전 변환 헬퍼
 const toDate = (value: Date | string | undefined): Date => {
@@ -14,13 +16,39 @@ interface ChatMessageItemProps {
   previousMessageTime?: Date | string; // 이전 메시지 시간 (날짜 구분선용)
 }
 
-export default function ChatMessageItem({ 
-  message, 
+export default function ChatMessageItem({
+  message,
   showAvatar = true,
-  previousMessageTime 
+  previousMessageTime
 }: ChatMessageItemProps) {
   const isAlfredo = message.role === 'alfredo';
   const messageTime = toDate(message.timestamp);
+  const [feedbackGiven, setFeedbackGiven] = useState<'positive' | 'negative' | null>(null);
+  const { addNewLearning, preferences } = useAlfredoStore();
+
+  // 피드백 핸들러
+  const handleFeedback = async (isPositive: boolean) => {
+    if (feedbackGiven) return; // 이미 피드백 줌
+
+    setFeedbackGiven(isPositive ? 'positive' : 'negative');
+
+    // 피드백을 학습으로 저장
+    if (preferences && message.judgement) {
+      try {
+        await addNewLearning({
+          type: isPositive ? 'feedback' : 'correction',
+          category: 'general',
+          summary: isPositive
+            ? `"${message.judgement.message.slice(0, 50)}..." 응답이 도움이 됨`
+            : `"${message.judgement.message.slice(0, 50)}..." 응답이 적절하지 않음`,
+          originalInput: message.content,
+          source: 'feedback'
+        });
+      } catch (error) {
+        console.error('Failed to save feedback:', error);
+      }
+    }
+  };
   
   // 타임스탬프 포맷
   const timeString = messageTime.toLocaleTimeString('ko-KR', {
@@ -158,6 +186,35 @@ export default function ChatMessageItem({
                       </p>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* 피드백 버튼 (판단이 있는 메시지에만) */}
+              {message.judgement && !message.isSafetyMessage && (
+                <div className="flex items-center gap-1 mt-1">
+                  {feedbackGiven ? (
+                    <span className="text-xs text-neutral-400">
+                      {feedbackGiven === 'positive' ? '👍 도움이 됐어요' : '👎 피드백 반영할게요'}
+                    </span>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => handleFeedback(true)}
+                        className="p-1.5 text-neutral-400 hover:text-green-500 hover:bg-green-50 rounded-lg transition-colors"
+                        title="도움이 됐어요"
+                      >
+                        <ThumbsUp size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleFeedback(false)}
+                        className="p-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        title="아니에요"
+                      >
+                        <ThumbsDown size={14} />
+                      </button>
+                      <span className="text-[10px] text-neutral-300 ml-1">이 응답이 도움이 됐나요?</span>
+                    </>
+                  )}
                 </div>
               )}
             </div>
