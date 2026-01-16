@@ -333,3 +333,163 @@ export function learnUserPattern(_history: any[]): UserPattern {
     recentStressLevel: 'normal'
   };
 }
+
+// ========================================
+// PRD: PostAction 브리핑 패턴
+// 액션 완료 후 즉각적인 피드백 메시지 생성
+// ========================================
+
+export type PostActionType =
+  | 'task_completed'
+  | 'focus_set'
+  | 'focus_cleared'
+  | 'condition_updated'
+  | 'mode_changed'
+  | 'memo_saved'
+  | 'meeting_minutes_generated'
+  | 'habit_checked';
+
+export interface PostActionContext {
+  type: PostActionType;
+  data?: {
+    taskTitle?: string;
+    focusTitle?: string;
+    condition?: ConditionLevel;
+    mode?: 'all' | 'work' | 'life';
+    remainingTasks?: number;
+    streakCount?: number;
+  };
+}
+
+export interface PostActionBriefing {
+  headline: string;
+  subline: string;
+  duration: number; // 표시 시간 (ms)
+  tone: 'celebration' | 'encouragement' | 'neutral' | 'gentle';
+}
+
+// PostAction 브리핑 생성
+export function generatePostActionBriefing(context: PostActionContext): PostActionBriefing {
+  switch (context.type) {
+    case 'task_completed': {
+      var remaining = context.data?.remainingTasks || 0;
+      var headline = '잘했어요! ✨';
+      var subline = remaining > 0
+        ? '다음 우선순위로 넘어갈까요? ' + remaining + '개 남았어요'
+        : '오늘 할 일을 모두 끝냈어요! 🎉';
+      return {
+        headline: headline,
+        subline: subline,
+        duration: 3000,
+        tone: 'celebration'
+      };
+    }
+
+    case 'focus_set': {
+      var title = context.data?.focusTitle || '작업';
+      return {
+        headline: '집중 모드 시작 🎯',
+        subline: '"' + title + '"에 집중해볼게요',
+        duration: 2500,
+        tone: 'encouragement'
+      };
+    }
+
+    case 'focus_cleared':
+      return {
+        headline: '집중 세션 종료',
+        subline: '수고했어요! 잠시 쉬어가도 좋아요',
+        duration: 2500,
+        tone: 'gentle'
+      };
+
+    case 'condition_updated': {
+      var condition = context.data?.condition;
+      var conditionMessages: Record<ConditionLevel, { headline: string; subline: string }> = {
+        great: {
+          headline: '컨디션 좋네요! 💪',
+          subline: '이 에너지로 중요한 일을 처리해봐요'
+        },
+        good: {
+          headline: '컨디션 체크 완료',
+          subline: '좋은 상태예요. 오늘 일정 그대로 진행해요'
+        },
+        normal: {
+          headline: '컨디션 체크 완료',
+          subline: '무리하지 않는 선에서 진행해요'
+        },
+        bad: {
+          headline: '오늘은 쉬어가도 괜찮아요 🌿',
+          subline: '급한 것만 처리하고 컨디션 회복에 집중하세요'
+        }
+      };
+      var msg = condition ? conditionMessages[condition] : conditionMessages.normal;
+      return {
+        headline: msg.headline,
+        subline: msg.subline,
+        duration: 3000,
+        tone: condition === 'bad' ? 'gentle' : 'neutral'
+      };
+    }
+
+    case 'mode_changed': {
+      var mode = context.data?.mode || 'all';
+      var modeMessages: Record<string, { headline: string; subline: string }> = {
+        all: {
+          headline: '전체 보기로 전환',
+          subline: 'Work와 Life를 함께 관리해요'
+        },
+        work: {
+          headline: '업무 모드 🖥️',
+          subline: '업무에 집중하는 시간이에요'
+        },
+        life: {
+          headline: '라이프 모드 🌸',
+          subline: '나를 위한 시간이에요'
+        }
+      };
+      var modeMsg = modeMessages[mode];
+      return {
+        headline: modeMsg.headline,
+        subline: modeMsg.subline,
+        duration: 2000,
+        tone: 'neutral'
+      };
+    }
+
+    case 'memo_saved':
+      return {
+        headline: '메모 저장됨 📝',
+        subline: '나중에 다시 볼 수 있어요',
+        duration: 2000,
+        tone: 'neutral'
+      };
+
+    case 'meeting_minutes_generated':
+      return {
+        headline: '회의록 생성 완료 📋',
+        subline: '주요 결정사항과 후속 작업을 정리했어요',
+        duration: 3000,
+        tone: 'celebration'
+      };
+
+    case 'habit_checked': {
+      var streak = context.data?.streakCount || 0;
+      var streakMsg = streak > 1 ? streak + '일 연속 달성! 🔥' : '오늘도 실천했어요';
+      return {
+        headline: '습관 체크 완료 ✓',
+        subline: streakMsg,
+        duration: 2500,
+        tone: streak > 3 ? 'celebration' : 'encouragement'
+      };
+    }
+
+    default:
+      return {
+        headline: '완료됨',
+        subline: '',
+        duration: 1500,
+        tone: 'neutral'
+      };
+  }
+}

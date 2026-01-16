@@ -5,3 +5,6 @@ export { default as IncomingSignals } from './IncomingSignals';
 export { ProjectTaskGroup } from './ProjectTaskGroup';
 export { FocusTimer } from './FocusTimer';
 export { TaskModal } from './TaskModal';
+export { default as VoiceUploadCard } from './VoiceUploadCard';
+export { default as MeetingMinutesCard } from './MeetingMinutesCard';
+export type { MeetingMinutes } from './VoiceUploadCard';

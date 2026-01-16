@@ -4,6 +4,7 @@ export { default as Button } from './Button';
 export { default as RingProgress } from './RingProgress';
 export { default as LoadingSpinner } from './LoadingSpinner';
 export { default as EventModal } from './EventModal';
+export { default as PostActionToast } from './PostActionToast';
 export * from './Skeleton';
 export * from './SuccessFeedback';
 export * from './Toast';

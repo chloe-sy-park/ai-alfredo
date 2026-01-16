@@ -1,17 +1,22 @@
 import { useState, useEffect } from 'react';
 import { PageHeader } from '../components/layout';
-import { 
-  WorkBriefing, 
-  WorkTimeline, 
+import {
+  WorkBriefing,
+  WorkTimeline,
   IncomingSignals,
   ProjectTaskGroup,
   FocusTimer,
-  TaskModal
+  TaskModal,
+  VoiceUploadCard,
+  MeetingMinutesCard,
+  MeetingMinutes
 } from '../components/work';
 import { getTasksByCategory, Task } from '../services/tasks';
+import { usePostAction } from '../stores/postActionStore';
 import { getTodayEvents, CalendarEvent } from '../services/calendar';
 import { getActiveProjects, Project, updateProjectTaskCounts } from '../services/projects';
 import { Briefcase, Plus, LayoutGrid, List } from 'lucide-react';
+import PriorityStack from '../components/home/PriorityStack';
 
 export default function Work() {
   var [tasks, setTasks] = useState<Task[]>([]);
@@ -22,6 +27,8 @@ export default function Work() {
   var [showTaskModal, setShowTaskModal] = useState(false);
   var [editingTask, setEditingTask] = useState<Task | null>(null);
   var [defaultProjectId, setDefaultProjectId] = useState<string>('');
+  var [meetingMinutes, setMeetingMinutes] = useState<MeetingMinutes | null>(null);
+  var postAction = usePostAction();
 
   // 데이터 로드
   useEffect(function() {
@@ -97,6 +104,29 @@ export default function Work() {
     console.log('Edit project:', project);
   }
 
+  // PRD R5: 우선순위는 순서다 - 업무 태스크를 우선순위로 변환
+  function getWorkPriorityItems() {
+    // 미완료 태스크만, 우선순위 높은 것 먼저
+    var pendingTasks = tasks.filter(function(t) { return t.status !== 'done'; });
+
+    // 우선순위 정렬: high > medium > low
+    var priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+    pendingTasks.sort(function(a, b) {
+      return (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2);
+    });
+
+    // Top 3만 반환
+    return pendingTasks.slice(0, 3).map(function(task) {
+      return {
+        id: task.id,
+        title: task.title,
+        sourceTag: 'WORK' as const,
+        meta: task.priority === 'high' ? '긴급' : task.dueDate ? '마감' : undefined,
+        status: task.status === 'in_progress' ? 'in-progress' as const : 'pending' as const
+      };
+    });
+  }
+
   return (
     <div className="min-h-screen bg-[#F5F5F5]">
       <PageHeader />
@@ -150,7 +180,15 @@ export default function Work() {
           <div className="lg:col-span-2 space-y-4">
             {/* 상황 브리핑 */}
             <WorkBriefing tasks={tasks} events={events} />
-            
+
+            {/* PRD R5: 오늘의 우선순위 (순서로 표시) */}
+            {getWorkPriorityItems().length > 0 && (
+              <PriorityStack
+                items={getWorkPriorityItems()}
+                count={3}
+              />
+            )}
+
             {/* 프로젝트별 태스크 그룹 */}
             {viewMode === 'project' ? (
               <div className="space-y-4">
@@ -180,7 +218,23 @@ export default function Work() {
           <div className="space-y-4">
             {/* 집중 타이머 */}
             <FocusTimer currentTask={focusTask} />
-            
+
+            {/* PRD: 회의 음성 → 회의록 */}
+            <VoiceUploadCard
+              onMinutesGenerated={function(minutes) {
+                setMeetingMinutes(minutes);
+                postAction.onMeetingMinutesGenerated();
+              }}
+            />
+
+            {/* 생성된 회의록 표시 */}
+            {meetingMinutes && (
+              <MeetingMinutesCard
+                minutes={meetingMinutes}
+                onClose={function() { setMeetingMinutes(null); }}
+              />
+            )}
+
             {/* 타임라인 & 시그널 */}
             <WorkTimeline />
             <IncomingSignals />
