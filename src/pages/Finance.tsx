@@ -1685,17 +1685,18 @@ function SettingsScreen({
   const [localTotalCap, setLocalTotalCap] = useState(budgetSettings.totalCap?.toString() || '');
   const [localGrowthCap, setLocalGrowthCap] = useState(budgetSettings.personalGrowthCap?.toString() || '');
   const [exportPeriod, setExportPeriod] = useState<'this_week' | 'this_month' | 'last_month' | 'all'>('this_month');
-  const [exportFormat, setExportFormat] = useState<'csv' | 'pdf'>('csv');
+  const [exportFormat, setExportFormat] = useState<'csv' | 'json'>('csv');
   const [exportIncludeRecurring, setExportIncludeRecurring] = useState(true);
   const [exportIncludeCommitments, setExportIncludeCommitments] = useState(true);
   const [exportIncludeBudget, setExportIncludeBudget] = useState(true);
 
   const showSuggestion = budgetSuggestion && !budgetSuggestion.appliedAt && !budgetSuggestion.dismissedAt;
 
-  // Store에서 Rules 데이터 가져오기
+  // Store에서 Rules 및 Export 데이터 가져오기
   const classificationRules = useFinanceStore((s) => s.classificationRules);
   const duplicateGroups = useFinanceStore((s) => s.duplicateGroups);
   const recurringItems = useFinanceStore((s) => s.recurringItems);
+  const commitmentItems = useFinanceStore((s) => s.commitmentItems);
 
   // Work/Life 규칙 상위 3개
   const topRules = classificationRules.slice(0, 3);
@@ -1748,18 +1749,133 @@ function SettingsScreen({
     }
   };
 
-  // Export 기능 (MVP: 콘솔에 데이터 출력)
+  // Export 기능 - 실제 파일 다운로드
   const handleExport = () => {
-    const exportData = {
-      period: exportPeriod,
-      format: exportFormat,
-      includeRecurring: exportIncludeRecurring,
-      includeCommitments: exportIncludeCommitments,
-      includeBudget: exportIncludeBudget,
-      exportedAt: new Date().toISOString(),
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+
+    // 기간 필터링
+    const filterByPeriod = <T extends { createdAt?: string }>(items: T[]): T[] => {
+      if (exportPeriod === 'all') return items;
+
+      const getStartDate = () => {
+        const today = new Date();
+        switch (exportPeriod) {
+          case 'this_week':
+            const dayOfWeek = today.getDay();
+            const startOfWeek = new Date(today);
+            startOfWeek.setDate(today.getDate() - dayOfWeek);
+            startOfWeek.setHours(0, 0, 0, 0);
+            return startOfWeek;
+          case 'this_month':
+            return new Date(today.getFullYear(), today.getMonth(), 1);
+          case 'last_month':
+            return new Date(today.getFullYear(), today.getMonth() - 1, 1);
+          default:
+            return new Date(0);
+        }
+      };
+
+      const getEndDate = () => {
+        const today = new Date();
+        if (exportPeriod === 'last_month') {
+          return new Date(today.getFullYear(), today.getMonth(), 0);
+        }
+        return today;
+      };
+
+      const startDate = getStartDate();
+      const endDate = getEndDate();
+
+      return items.filter((item) => {
+        if (!item.createdAt) return true;
+        const itemDate = new Date(item.createdAt);
+        return itemDate >= startDate && itemDate <= endDate;
+      });
     };
-    console.log('Export data:', exportData);
-    alert('내보내기 기능은 준비 중이에요. 콘솔에서 데이터를 확인할 수 있어요.');
+
+    // 내보낼 데이터 수집
+    const filteredRecurring = exportIncludeRecurring ? filterByPeriod(recurringItems) : [];
+    const filteredCommitments = exportIncludeCommitments ? filterByPeriod(commitmentItems) : [];
+
+    if (exportFormat === 'csv') {
+      // CSV 생성
+      const lines: string[] = [];
+
+      // Header
+      lines.push('Type,Name,Amount,Billing Cycle,Work/Life,Category,Next Payment,Status');
+
+      // Recurring Items
+      filteredRecurring.forEach((item) => {
+        lines.push([
+          'Recurring',
+          `"${item.name}"`,
+          item.amount,
+          item.billingCycle,
+          item.workLife,
+          item.categoryL1,
+          item.nextPaymentDate || '',
+          item.retentionIntent || 'keep',
+        ].join(','));
+      });
+
+      // Commitment Items
+      filteredCommitments.forEach((item) => {
+        lines.push([
+          'Commitment',
+          `"${item.name}"`,
+          item.monthlyPayment,
+          'monthly',
+          item.workLife,
+          'commitment',
+          item.endDate || '',
+          'active',
+        ].join(','));
+      });
+
+      // Budget 정보 추가
+      if (exportIncludeBudget && budgetSettings.enabled && budgetStatusInfo) {
+        lines.push('');
+        lines.push('--- Budget Summary ---');
+        lines.push(`Work Budget,${budgetStatusInfo.work.budget},Current,${budgetStatusInfo.work.current},${budgetStatusInfo.work.percentage}%`);
+        lines.push(`Life Budget,${budgetStatusInfo.life.budget},Current,${budgetStatusInfo.life.current},${budgetStatusInfo.life.percentage}%`);
+        lines.push(`Overall Budget,${budgetStatusInfo.overall.budget},Current,${budgetStatusInfo.overall.current},${budgetStatusInfo.overall.percentage}%`);
+      }
+
+      const csvContent = lines.join('\n');
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `alfredo-finance-${dateStr}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } else {
+      // JSON 생성 (PDF 대신 JSON으로)
+      const exportData = {
+        exportedAt: now.toISOString(),
+        period: exportPeriod,
+        recurringItems: filteredRecurring,
+        commitmentItems: filteredCommitments,
+        budget: exportIncludeBudget && budgetSettings.enabled ? {
+          settings: budgetSettings,
+          status: budgetStatusInfo,
+        } : null,
+      };
+
+      const jsonContent = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([jsonContent], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `alfredo-finance-${dateStr}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
   };
 
   return (
@@ -2024,7 +2140,10 @@ function SettingsScreen({
             <div className="space-y-2">
               {topRules.map((rule) => (
                 <div key={rule.id} className="flex items-center justify-between py-1">
-                  <span className="text-sm text-gray-700">{rule.categoryL1}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-700">{rule.categoryL1}</span>
+                    <span className="text-xs text-gray-400">({rule.overrideCount}회)</span>
+                  </div>
                   <span className={`text-xs px-2 py-0.5 rounded-full ${
                     rule.workLife === 'Work' ? 'bg-work-bg text-work-text' : 'bg-life-bg text-life-text'
                   }`}>
@@ -2034,24 +2153,18 @@ function SettingsScreen({
               ))}
             </div>
           ) : (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between py-1">
-                <span className="text-sm text-gray-700">Notion</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-work-bg text-work-text">Work</span>
-              </div>
-              <div className="flex items-center justify-between py-1">
-                <span className="text-sm text-gray-700">Netflix</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-life-bg text-life-text">Life</span>
-              </div>
-              <div className="flex items-center justify-between py-1">
-                <span className="text-sm text-gray-700">Adobe</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-work-bg text-work-text">Work</span>
+            <div className="text-center py-4">
+              <div className="text-sm text-gray-500 mb-1">아직 학습된 규칙이 없어요</div>
+              <div className="text-xs text-gray-400">
+                Work/Life 분류를 수정하면 자동으로 규칙이 생성돼요
               </div>
             </div>
           )}
-          <button className="w-full mt-3 text-sm text-primary font-medium py-2 hover:bg-lavender-50 rounded-lg transition-colors">
-            모두보기
-          </button>
+          {classificationRules.length > 3 && (
+            <button className="w-full mt-3 text-sm text-primary font-medium py-2 hover:bg-lavender-50 rounded-lg transition-colors">
+              모두보기 ({classificationRules.length}개)
+            </button>
+          )}
         </div>
 
         {/* Duplicate grouping */}
@@ -2070,22 +2183,20 @@ function SettingsScreen({
                   </div>
                 );
               })}
+              {duplicateGroups.filter((g) => g.status === 'detected').length > 2 && (
+                <button className="w-full mt-3 text-sm text-primary font-medium py-2 hover:bg-lavender-50 rounded-lg transition-colors">
+                  모두보기 ({duplicateGroups.filter((g) => g.status === 'detected').length}개)
+                </button>
+              )}
             </div>
           ) : (
-            <div className="space-y-2">
-              <div className="py-1">
-                <span className="text-sm font-medium text-gray-700">OTT: </span>
-                <span className="text-sm text-gray-500">Netflix, Disney+, Watcha</span>
-              </div>
-              <div className="py-1">
-                <span className="text-sm font-medium text-gray-700">Cloud: </span>
-                <span className="text-sm text-gray-500">iCloud, Google One</span>
+            <div className="text-center py-4">
+              <div className="text-sm text-gray-500 mb-1">감지된 중복 그룹이 없어요</div>
+              <div className="text-xs text-gray-400">
+                비슷한 구독이 있으면 자동으로 그룹화돼요
               </div>
             </div>
           )}
-          <button className="w-full mt-3 text-sm text-primary font-medium py-2 hover:bg-lavender-50 rounded-lg transition-colors">
-            편집
-          </button>
         </div>
       </div>
 
@@ -2129,7 +2240,7 @@ function SettingsScreen({
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 >
                   <option value="csv">CSV</option>
-                  <option value="pdf">PDF</option>
+                  <option value="json">JSON</option>
                 </select>
                 <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
               </div>
