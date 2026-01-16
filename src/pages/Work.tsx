@@ -17,6 +17,8 @@ import { getTodayEvents, CalendarEvent } from '../services/calendar';
 import { getActiveProjects, Project, updateProjectTaskCounts } from '../services/projects';
 import { Briefcase, Plus, LayoutGrid, List } from 'lucide-react';
 import PriorityStack from '../components/home/PriorityStack';
+import ProjectPulse from '../components/home/ProjectPulse';
+import ActionCard from '../components/home/ActionCard';
 
 export default function Work() {
   var [tasks, setTasks] = useState<Task[]>([]);
@@ -104,6 +106,35 @@ export default function Work() {
     console.log('Edit project:', project);
   }
 
+  // PRD: ProjectPulse용 데이터 변환
+  function getProjectPulseData() {
+    return projects.map(function(project) {
+      var projectTasks = tasks.filter(function(t) {
+        return t.projectId === project.id;
+      });
+      var pendingCount = projectTasks.filter(function(t) {
+        return t.status !== 'done';
+      }).length;
+      var highPriorityPending = projectTasks.filter(function(t) {
+        return t.status !== 'done' && t.priority === 'high';
+      }).length;
+
+      // 신호등 결정: 긴급 미완료 있으면 red, 미완료 많으면 yellow, 아니면 green
+      var signal: 'green' | 'yellow' | 'red' = 'green';
+      if (highPriorityPending > 0) {
+        signal = 'red';
+      } else if (pendingCount > 3) {
+        signal = 'yellow';
+      }
+
+      return {
+        id: project.id,
+        name: project.name,
+        signal: signal
+      };
+    });
+  }
+
   // PRD R5: 우선순위는 순서다 - 업무 태스크를 우선순위로 변환
   function getWorkPriorityItems() {
     // 미완료 태스크만, 우선순위 높은 것 먼저
@@ -189,20 +220,43 @@ export default function Work() {
               />
             )}
 
+            {/* PRD: ActionCards - 대응이 필요한 항목 */}
+            {events.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-[#1A1A1A] px-1">대응 필요</h3>
+                {events.slice(0, 2).map(function(event) {
+                  return (
+                    <ActionCard
+                      key={event.id}
+                      variant="meeting"
+                      title={event.title}
+                      summary={event.location || '장소 미정'}
+                      meta={new Date(event.start).toLocaleTimeString('ko-KR', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                      recommendedAction="회의 준비 자료를 확인하세요"
+                    />
+                  );
+                })}
+              </div>
+            )}
+
             {/* 프로젝트별 태스크 그룹 */}
             {viewMode === 'project' ? (
               <div className="space-y-4">
                 {projects.map(function(project) {
                   var projectTasks = getTasksByProjects()[project.id] || [];
                   return (
-                    <ProjectTaskGroup
-                      key={project.id}
-                      project={project}
-                      tasks={projectTasks}
-                      onTaskClick={handleTaskClick}
-                      onAddTask={handleAddTask}
-                      onProjectEdit={handleProjectEdit}
-                    />
+                    <div key={project.id} id={'project-' + project.id}>
+                      <ProjectTaskGroup
+                        project={project}
+                        tasks={projectTasks}
+                        onTaskClick={handleTaskClick}
+                        onAddTask={handleAddTask}
+                        onProjectEdit={handleProjectEdit}
+                      />
+                    </div>
                   );
                 })}
               </div>
@@ -238,6 +292,20 @@ export default function Work() {
             {/* 타임라인 & 시그널 */}
             <WorkTimeline />
             <IncomingSignals />
+
+            {/* PRD: ProjectPulse - 프로젝트 상태 신호등 */}
+            {projects.length > 0 && (
+              <ProjectPulse
+                projects={getProjectPulseData()}
+                onOpen={function(id) {
+                  // 해당 프로젝트로 스크롤
+                  var element = document.getElementById('project-' + id);
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
+              />
+            )}
           </div>
         </div>
       </div>
