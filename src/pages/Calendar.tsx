@@ -6,6 +6,7 @@ import { PageHeader } from '../components/layout';
 import EventModal from '../components/common/EventModal';
 import WeekView from '../components/calendar/WeekView';
 import EventSearch from '../components/calendar/EventSearch';
+import LoadingState from '../components/common/LoadingState';
 
 function formatDateLocal(date: Date): string {
   var year = date.getFullYear();
@@ -377,9 +378,7 @@ export default function CalendarPage() {
                   </button>
                 </div>
               ) : isLoading ? (
-                <div className="text-center py-8 text-[#999999] text-sm">
-                  불러오는 중...
-                </div>
+                <LoadingState variant="spinner" message="불러오는 중..." />
               ) : selectedDateEvents.length === 0 ? (
                 <div className="text-center py-6">
                   <p className="text-[#999999] text-sm mb-3">일정이 없어요</p>

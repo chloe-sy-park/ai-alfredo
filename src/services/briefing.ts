@@ -1,7 +1,7 @@
 // Alfredo Briefing Service - DNA 기반 브리핑 생성
 
-import { CalendarEvent } from './calendar';
-import { ConditionLevel } from './condition';
+import { CalendarEvent } from './calendar/calendarService';
+import { ConditionLevel } from './condition/conditionService';
 import { Task } from './tasks';
 
 export interface BriefingContext {
