@@ -12,6 +12,7 @@ import { hasSeenEntryToday, markEntryAsSeen, updateVisit } from '../services/vis
 import { generateBriefing, WeatherData as BriefingWeatherData } from '../services/briefing';
 import { usePostAction } from '../stores/postActionStore';
 import { useLiftStore } from '../stores/liftStore';
+import { useHomeModeStore } from '../stores/homeModeStore';
 
 // Components
 import { PageHeader } from '../components/layout';
@@ -48,6 +49,7 @@ export default function Home() {
   const [homeMode, setHomeMode] = useState<HomeMode>('all');
   const postAction = usePostAction();
   const liftStore = useLiftStore();
+  const { setMode: setGlobalMode } = useHomeModeStore();
 
   // URL 쿼리 파라미터에서 mode 확인
   useEffect(() => {
@@ -55,8 +57,9 @@ export default function Home() {
     const mode = searchParams.get('mode');
     if (mode === 'work' || mode === 'life') {
       setHomeMode(mode);
+      setGlobalMode(mode); // 전역 스토어 동기화
     }
-  }, [location]);
+  }, [location, setGlobalMode]);
 
   // 알프레도 스토어 초기화
   useEffect(function() {
@@ -340,6 +343,7 @@ export default function Home() {
           onChange={function(mode) {
             var previousMode = homeMode;
             setHomeMode(mode);
+            setGlobalMode(mode); // 전역 스토어 동기화
             postAction.onModeChanged(mode);
 
             // Lift 기록: 모드 변경
