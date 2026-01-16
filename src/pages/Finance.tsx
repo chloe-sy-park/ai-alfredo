@@ -23,9 +23,13 @@ import {
   Check,
   Repeat,
   TrendingDown,
+  TrendingUp,
   Calendar,
   AlertTriangle,
   Shield,
+  BarChart3,
+  ArrowDownCircle,
+  ArrowUpCircle,
 } from 'lucide-react';
 import { useDrawerStore } from '../stores';
 import { useNotificationStore } from '../stores/notificationStore';
@@ -37,15 +41,29 @@ import {
 } from '../components/finance';
 import {
   RecurringItem,
+  CommitmentItem,
   DuplicateGroup,
+  GrowthLink,
   RiskLevel,
   OverviewMetrics,
   OverviewStateSummary,
+  IncomeItem,
+  IncomeType,
+  OneTimeExpense,
+  OneTimeExpenseCategory,
+  INCOME_TYPE_LABELS,
+  EXPENSE_CATEGORY_LABELS,
 } from '../services/finance/types';
-import { buildOverviewStateSummary } from '../services/finance';
+import {
+  buildOverviewStateSummary,
+  classifyOneTimeExpense,
+  calculateFinanceStats,
+  analyzeByCategory,
+  findSavingsOpportunities,
+} from '../services/finance';
 
 // 상태 타입 정의
-type FinanceState = 'overview' | 'overlaps' | 'candidates' | 'upcoming' | 'allclear';
+type FinanceState = 'overview' | 'overlaps' | 'candidates' | 'upcoming' | 'allclear' | 'stats';
 
 export default function Finance() {
   // Store
@@ -53,6 +71,8 @@ export default function Finance() {
   const commitmentItems = useFinanceStore((s) => s.commitmentItems);
   const duplicateGroups = useFinanceStore((s) => s.duplicateGroups);
   const growthLinks = useFinanceStore((s) => s.growthLinks);
+  const incomeItems = useFinanceStore((s) => s.incomeItems);
+  const oneTimeExpenses = useFinanceStore((s) => s.oneTimeExpenses);
 
   const { open: openDrawer } = useDrawerStore();
   const { toggle: toggleNotification, unreadCount } = useNotificationStore();
@@ -88,6 +108,48 @@ export default function Finance() {
       growthLinks
     );
   }, [recurringItems, commitmentItems, duplicateGroups, growthLinks]);
+
+  // 이번 달 수입/지출 요약 계산
+  const monthlyFinanceSummary = useMemo(() => {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    // 이번 달 총 수입
+    const monthlyIncome = incomeItems
+      .filter((item) => {
+        if (item.isRecurring) return true; // 정기 수입 포함
+        const date = item.receivedDate
+          ? new Date(item.receivedDate)
+          : item.expectedDate
+          ? new Date(item.expectedDate)
+          : null;
+        return date && date >= monthStart && date <= monthEnd;
+      })
+      .reduce((sum, item) => sum + item.amount, 0);
+
+    // 이번 달 1회성 지출
+    const monthlyOneTimeExpense = oneTimeExpenses
+      .filter((expense) => {
+        const date = new Date(expense.date);
+        return date >= monthStart && date <= monthEnd;
+      })
+      .reduce((sum, expense) => sum + expense.amount, 0);
+
+    // 이번 달 고정지출
+    const fixedExpense = overviewData.metrics.fixedCostThisMonth;
+
+    // 순 현금흐름
+    const netCashFlow = monthlyIncome - fixedExpense - monthlyOneTimeExpense;
+
+    return {
+      income: monthlyIncome,
+      oneTimeExpense: monthlyOneTimeExpense,
+      fixedExpense,
+      netCashFlow,
+      hasIncomeData: incomeItems.length > 0,
+    };
+  }, [incomeItems, oneTimeExpenses, overviewData.metrics.fixedCostThisMonth]);
 
   // 상태 계산 (State Detection) - 기존 호환성 유지
   const stateInfo = useMemo(() => {
@@ -151,6 +213,7 @@ export default function Finance() {
             stateSummary={overviewData.stateSummary}
             recommended={overviewData.recommended}
             itemCount={recurringItems.length}
+            financeSummary={monthlyFinanceSummary}
             onNavigate={setCurrentState}
             onQuickAddRecurring={() => setShowAddModal(true)}
           />
@@ -191,6 +254,19 @@ export default function Finance() {
             itemCount={recurringItems.length}
             onViewAll={() => {}}
             onComplete={handleBack}
+          />
+        )}
+
+        {currentState === 'stats' && (
+          <StatsScreen
+            key="stats"
+            incomeItems={incomeItems}
+            recurringItems={recurringItems}
+            commitmentItems={commitmentItems}
+            oneTimeExpenses={oneTimeExpenses}
+            duplicateGroups={duplicateGroups}
+            growthLinks={growthLinks}
+            onBack={handleBack}
           />
         )}
       </AnimatePresence>
@@ -261,6 +337,7 @@ function FinanceHeader({
     candidates: '해지 후보',
     upcoming: '결제 예정',
     allclear: '모두 정상',
+    stats: '재정 통계',
   };
 
   return (
@@ -320,11 +397,20 @@ function FinanceHeader({
 // Overview Screen (Entry Hub) - State-based IA 명세 기반
 // ============================================
 
+interface FinanceSummary {
+  income: number;
+  oneTimeExpense: number;
+  fixedExpense: number;
+  netCashFlow: number;
+  hasIncomeData: boolean;
+}
+
 interface OverviewScreenProps {
   metrics: OverviewMetrics;
   stateSummary: OverviewStateSummary;
   recommended: 'overlaps' | 'candidates' | 'upcoming' | 'allclear';
   itemCount: number;
+  financeSummary: FinanceSummary;
   onNavigate: (state: FinanceState) => void;
   onQuickAddRecurring?: () => void;
 }
@@ -334,6 +420,7 @@ function OverviewScreen({
   stateSummary,
   recommended,
   itemCount,
+  financeSummary,
   onNavigate,
   onQuickAddRecurring,
 }: OverviewScreenProps) {
@@ -420,6 +507,63 @@ function OverviewScreen({
       </div>
 
       {/* ================================ */}
+      {/* Monthly Cash Flow Summary */}
+      {/* ================================ */}
+      {financeSummary.hasIncomeData && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <BarChart3 size={16} className="text-gray-400" />
+              <span className="text-sm font-medium text-gray-700">이번 달 현금흐름</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            {/* 수입 */}
+            <div className="text-center p-2 bg-blue-50 rounded-lg">
+              <ArrowDownCircle size={16} className="text-blue-500 mx-auto mb-1" />
+              <div className="text-xs text-gray-500 mb-0.5">수입</div>
+              <div className="text-sm font-semibold text-blue-700">
+                +₩{financeSummary.income.toLocaleString()}
+              </div>
+            </div>
+
+            {/* 지출 */}
+            <div className="text-center p-2 bg-red-50 rounded-lg">
+              <ArrowUpCircle size={16} className="text-red-500 mx-auto mb-1" />
+              <div className="text-xs text-gray-500 mb-0.5">총 지출</div>
+              <div className="text-sm font-semibold text-red-700">
+                -₩{(financeSummary.fixedExpense + financeSummary.oneTimeExpense).toLocaleString()}
+              </div>
+            </div>
+
+            {/* 순 현금흐름 */}
+            <div className={`text-center p-2 rounded-lg ${
+              financeSummary.netCashFlow >= 0 ? 'bg-emerald-50' : 'bg-amber-50'
+            }`}>
+              {financeSummary.netCashFlow >= 0 ? (
+                <TrendingUp size={16} className="text-emerald-500 mx-auto mb-1" />
+              ) : (
+                <TrendingDown size={16} className="text-amber-500 mx-auto mb-1" />
+              )}
+              <div className="text-xs text-gray-500 mb-0.5">순 흐름</div>
+              <div className={`text-sm font-semibold ${
+                financeSummary.netCashFlow >= 0 ? 'text-emerald-700' : 'text-amber-700'
+              }`}>
+                {financeSummary.netCashFlow >= 0 ? '+' : ''}₩{financeSummary.netCashFlow.toLocaleString()}
+              </div>
+            </div>
+          </div>
+
+          {/* 세부 내역 (접힌 상태) */}
+          <div className="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-400">
+            고정 ₩{financeSummary.fixedExpense.toLocaleString()} +
+            1회성 ₩{financeSummary.oneTimeExpense.toLocaleString()}
+          </div>
+        </div>
+      )}
+
+      {/* ================================ */}
       {/* StateCards - 분기점 허브 */}
       {/* ================================ */}
       <div className="space-y-3">
@@ -482,19 +626,26 @@ function OverviewScreen({
       </div>
 
       {/* Quick Actions (Optional) */}
-      <div className="flex gap-2">
+      <div className="grid grid-cols-3 gap-2">
         <button
           onClick={onQuickAddRecurring}
-          className="flex-1 flex items-center justify-center gap-2 py-3 bg-white border border-gray-200 rounded-xl text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
+          className="flex items-center justify-center gap-1.5 py-3 bg-white border border-gray-200 rounded-xl text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
         >
-          <Plus size={16} />
-          빠른 추가
+          <Plus size={14} />
+          추가
+        </button>
+        <button
+          onClick={() => onNavigate('stats')}
+          className="flex items-center justify-center gap-1.5 py-3 bg-white border border-gray-200 rounded-xl text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
+        >
+          <BarChart3 size={14} />
+          통계
         </button>
         <button
           onClick={() => onNavigate('allclear')}
-          className="flex-1 flex items-center justify-center gap-2 py-3 bg-white border border-gray-200 rounded-xl text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
+          className="flex items-center justify-center gap-1.5 py-3 bg-white border border-gray-200 rounded-xl text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
         >
-          전체 {itemCount}개 보기
+          전체 {itemCount}개
         </button>
       </div>
     </motion.div>
@@ -908,8 +1059,246 @@ function AllClearScreen({ itemCount, onViewAll, onComplete }: AllClearScreenProp
 }
 
 // ============================================
-// Add Item Modal
+// Stats Screen
 // ============================================
+
+interface StatsScreenProps {
+  incomeItems: IncomeItem[];
+  recurringItems: RecurringItem[];
+  commitmentItems: CommitmentItem[];
+  oneTimeExpenses: OneTimeExpense[];
+  duplicateGroups: DuplicateGroup[];
+  growthLinks: GrowthLink[];
+  onBack: () => void;
+}
+
+function StatsScreen({
+  incomeItems,
+  recurringItems,
+  commitmentItems,
+  oneTimeExpenses,
+  duplicateGroups,
+  growthLinks,
+  onBack,
+}: StatsScreenProps) {
+  const [period, setPeriod] = useState<'weekly' | 'monthly' | 'yearly'>('monthly');
+
+  // 통계 계산
+  const stats = useMemo(() => {
+    return calculateFinanceStats(
+      incomeItems,
+      recurringItems,
+      commitmentItems,
+      oneTimeExpenses,
+      period
+    );
+  }, [incomeItems, recurringItems, commitmentItems, oneTimeExpenses, period]);
+
+  // 카테고리 분석
+  const categoryAnalysis = useMemo(() => {
+    return analyzeByCategory(recurringItems, oneTimeExpenses, period);
+  }, [recurringItems, oneTimeExpenses, period]);
+
+  // 절감 기회
+  const opportunities = useMemo(() => {
+    return findSavingsOpportunities(recurringItems, oneTimeExpenses, duplicateGroups, growthLinks);
+  }, [recurringItems, oneTimeExpenses, duplicateGroups, growthLinks]);
+
+  const totalPossibleSavings = opportunities.reduce((sum, o) => sum + o.estimatedMonthlySavings, 0);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      className="px-4 pt-4 space-y-4 pb-8"
+    >
+      {/* Period Selector */}
+      <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
+        {(['weekly', 'monthly', 'yearly'] as const).map((p) => (
+          <button
+            key={p}
+            onClick={() => setPeriod(p)}
+            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+              period === p
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {p === 'weekly' ? '주간' : p === 'monthly' ? '월간' : '연간'}
+          </button>
+        ))}
+      </div>
+
+      {/* Summary Card */}
+      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        <div className="text-sm text-gray-500 mb-1">{stats.periodLabel}</div>
+
+        {/* 수입 vs 지출 */}
+        <div className="grid grid-cols-2 gap-4 mt-4">
+          <div className="text-center">
+            <div className="text-xs text-gray-400 mb-1">총 수입</div>
+            <div className="text-xl font-bold text-blue-600">
+              +₩{stats.totalIncome.toLocaleString()}
+            </div>
+            <div className="text-xs text-gray-400 mt-1">
+              정기 ₩{stats.recurringIncome.toLocaleString()}
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="text-xs text-gray-400 mb-1">총 지출</div>
+            <div className="text-xl font-bold text-red-600">
+              -₩{stats.totalExpense.toLocaleString()}
+            </div>
+            <div className="text-xs text-gray-400 mt-1">
+              고정 ₩{stats.fixedExpense.toLocaleString()}
+            </div>
+          </div>
+        </div>
+
+        {/* 순 현금흐름 & 저축률 */}
+        <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-4">
+          <div className={`text-center p-3 rounded-xl ${
+            stats.netCashFlow >= 0 ? 'bg-emerald-50' : 'bg-amber-50'
+          }`}>
+            <div className="text-xs text-gray-500 mb-1">순 현금흐름</div>
+            <div className={`text-lg font-bold ${
+              stats.netCashFlow >= 0 ? 'text-emerald-600' : 'text-amber-600'
+            }`}>
+              {stats.netCashFlow >= 0 ? '+' : ''}₩{stats.netCashFlow.toLocaleString()}
+            </div>
+          </div>
+          <div className="text-center p-3 bg-gray-50 rounded-xl">
+            <div className="text-xs text-gray-500 mb-1">저축률</div>
+            <div className={`text-lg font-bold ${
+              stats.savingsRate >= 20 ? 'text-emerald-600' : stats.savingsRate >= 0 ? 'text-gray-700' : 'text-red-600'
+            }`}>
+              {stats.savingsRate}%
+            </div>
+          </div>
+        </div>
+
+        {/* 전월 대비 (선택적) */}
+        {stats.comparedToPrevious && (
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="flex items-center justify-center gap-4 text-xs">
+              <span className={stats.comparedToPrevious.incomeChange >= 0 ? 'text-blue-500' : 'text-gray-500'}>
+                수입 {stats.comparedToPrevious.incomeChange >= 0 ? '+' : ''}
+                ₩{stats.comparedToPrevious.incomeChange.toLocaleString()}
+              </span>
+              <span className={stats.comparedToPrevious.expenseChange <= 0 ? 'text-emerald-500' : 'text-red-500'}>
+                지출 {stats.comparedToPrevious.expenseChange >= 0 ? '+' : ''}
+                ₩{stats.comparedToPrevious.expenseChange.toLocaleString()}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Work/Life 비율 */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+        <div className="text-sm font-medium text-gray-700 mb-3">Work / Life 지출 비율</div>
+        <div className="flex items-center gap-2">
+          <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-400"
+              style={{ width: `${stats.workLifeExpenseRatio.work}%` }}
+            />
+          </div>
+          <div className="flex gap-3 text-xs">
+            <span className="text-blue-600">Work {stats.workLifeExpenseRatio.work}%</span>
+            <span className="text-rose-600">Life {stats.workLifeExpenseRatio.life}%</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Category Breakdown */}
+      {categoryAnalysis.length > 0 && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="text-sm font-medium text-gray-700 mb-3">카테고리별 지출</div>
+          <div className="space-y-2">
+            {categoryAnalysis.slice(0, 5).map((cat) => (
+              <div key={cat.category} className="flex items-center gap-2">
+                <div className="w-20 text-xs text-gray-600 truncate">{cat.label}</div>
+                <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-400"
+                    style={{ width: `${cat.percentage}%` }}
+                  />
+                </div>
+                <div className="w-24 text-right text-xs text-gray-500">
+                  ₩{cat.amount.toLocaleString()} ({cat.percentage}%)
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Savings Opportunities */}
+      {opportunities.length > 0 && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-sm font-medium text-gray-700">절감 기회</div>
+            <div className="text-sm font-semibold text-emerald-600">
+              월 ₩{totalPossibleSavings.toLocaleString()} 절감 가능
+            </div>
+          </div>
+          <div className="space-y-2">
+            {opportunities.slice(0, 3).map((opp) => (
+              <div
+                key={opp.id}
+                className={`p-3 rounded-xl border ${
+                  opp.priority === 'high'
+                    ? 'bg-red-50 border-red-200'
+                    : opp.priority === 'medium'
+                    ? 'bg-amber-50 border-amber-200'
+                    : 'bg-gray-50 border-gray-200'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-medium text-gray-800">{opp.title}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">{opp.description}</div>
+                  </div>
+                  <div className="text-sm font-semibold text-emerald-600">
+                    ₩{opp.estimatedMonthlySavings.toLocaleString()}/월
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {incomeItems.length === 0 && oneTimeExpenses.length === 0 && (
+        <div className="text-center py-8">
+          <BarChart3 size={48} className="text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-700 mb-2">데이터를 추가해보세요</h3>
+          <p className="text-sm text-gray-500">
+            수입과 지출을 기록하면<br />
+            자세한 통계를 볼 수 있어요
+          </p>
+        </div>
+      )}
+
+      {/* Back Button */}
+      <button
+        onClick={onBack}
+        className="w-full py-3 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors"
+      >
+        돌아가기
+      </button>
+    </motion.div>
+  );
+}
+
+// ============================================
+// Add Item Modal (탭 기반)
+// ============================================
+
+type AddItemTab = 'recurring' | 'income' | 'expense';
 
 interface AddItemModalProps {
   onClose: () => void;
@@ -917,18 +1306,50 @@ interface AddItemModalProps {
 
 function AddItemModal({ onClose }: AddItemModalProps) {
   const addRecurringItem = useFinanceStore((s) => s.addRecurringItem);
-  const [name, setName] = useState('');
-  const [amount, setAmount] = useState('');
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
-  const [billingDay, setBillingDay] = useState('1');
-  const [workLife, setWorkLife] = useState<'Work' | 'Life'>('Life');
+  const addIncomeItem = useFinanceStore((s) => s.addIncomeItem);
+  const addOneTimeExpense = useFinanceStore((s) => s.addOneTimeExpense);
 
-  const handleSubmit = () => {
-    if (!name || !amount) return;
+  const [activeTab, setActiveTab] = useState<AddItemTab>('recurring');
+
+  // === 정기결제 상태 ===
+  const [recName, setRecName] = useState('');
+  const [recAmount, setRecAmount] = useState('');
+  const [recBillingCycle, setRecBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const [recBillingDay, setRecBillingDay] = useState('1');
+  const [recWorkLife, setRecWorkLife] = useState<'Work' | 'Life'>('Life');
+
+  // === 수입 상태 ===
+  const [incName, setIncName] = useState('');
+  const [incAmount, setIncAmount] = useState('');
+  const [incType, setIncType] = useState<IncomeType>('salary');
+  const [incIsRecurring, setIncIsRecurring] = useState(true);
+  const [incRecurringDay, setIncRecurringDay] = useState('25');
+  const [incWorkLife, setIncWorkLife] = useState<'Work' | 'Life'>('Work');
+
+  // === 1회성 지출 상태 ===
+  const [expName, setExpName] = useState('');
+  const [expAmount, setExpAmount] = useState('');
+  const [expCategory, setExpCategory] = useState<OneTimeExpenseCategory>('other');
+  const [expDate, setExpDate] = useState(new Date().toISOString().split('T')[0]);
+  const [expIsPlanned, setExpIsPlanned] = useState(false);
+  const [expWorkLife, setExpWorkLife] = useState<'Work' | 'Life'>('Life');
+
+  // 지출명 입력 시 자동 분류
+  const handleExpNameChange = (value: string) => {
+    setExpName(value);
+    if (value.length >= 2) {
+      const classification = classifyOneTimeExpense(value, parseInt(expAmount) || undefined);
+      setExpCategory(classification.category);
+      setExpWorkLife(classification.workLife);
+    }
+  };
+
+  const handleSubmitRecurring = () => {
+    if (!recName || !recAmount) return;
 
     const now = new Date();
     const nextPaymentDate = new Date(now);
-    const day = parseInt(billingDay) || 1;
+    const day = parseInt(recBillingDay) || 1;
 
     if (now.getDate() >= day) {
       nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1);
@@ -936,18 +1357,80 @@ function AddItemModal({ onClose }: AddItemModalProps) {
     nextPaymentDate.setDate(Math.min(day, 28));
 
     addRecurringItem({
-      name,
-      amount: parseInt(amount) || 0,
-      billingCycle,
+      name: recName,
+      amount: parseInt(recAmount) || 0,
+      billingCycle: recBillingCycle,
       billingDay: day,
       categoryL1: 'other',
-      workLife,
+      workLife: recWorkLife,
       personalGrowthType: null,
       nextPaymentDate: nextPaymentDate.toISOString().split('T')[0],
     });
 
     onClose();
   };
+
+  const handleSubmitIncome = () => {
+    if (!incName || !incAmount) return;
+
+    const expectedDate = new Date();
+    if (incIsRecurring) {
+      const day = parseInt(incRecurringDay) || 25;
+      if (expectedDate.getDate() > day) {
+        expectedDate.setMonth(expectedDate.getMonth() + 1);
+      }
+      expectedDate.setDate(day);
+    }
+
+    addIncomeItem({
+      name: incName,
+      amount: parseInt(incAmount) || 0,
+      incomeType: incType,
+      isRecurring: incIsRecurring,
+      recurringDay: incIsRecurring ? parseInt(incRecurringDay) || 25 : undefined,
+      workLife: incWorkLife,
+      expectedDate: expectedDate.toISOString().split('T')[0],
+    });
+
+    onClose();
+  };
+
+  const handleSubmitExpense = () => {
+    if (!expName || !expAmount) return;
+
+    addOneTimeExpense({
+      name: expName,
+      amount: parseInt(expAmount) || 0,
+      category: expCategory,
+      workLife: expWorkLife,
+      date: expDate,
+      isPlanned: expIsPlanned,
+    });
+
+    onClose();
+  };
+
+  const handleSubmit = () => {
+    if (activeTab === 'recurring') {
+      handleSubmitRecurring();
+    } else if (activeTab === 'income') {
+      handleSubmitIncome();
+    } else {
+      handleSubmitExpense();
+    }
+  };
+
+  const isValid = () => {
+    if (activeTab === 'recurring') return recName && recAmount;
+    if (activeTab === 'income') return incName && incAmount;
+    return expName && expAmount;
+  };
+
+  const tabConfig = [
+    { key: 'recurring' as AddItemTab, label: '정기결제', color: 'emerald' },
+    { key: 'income' as AddItemTab, label: '수입', color: 'blue' },
+    { key: 'expense' as AddItemTab, label: '1회지출', color: 'amber' },
+  ];
 
   return (
     <motion.div
@@ -961,101 +1444,331 @@ function AddItemModal({ onClose }: AddItemModalProps) {
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
-        className="w-full max-w-lg bg-white rounded-t-3xl p-6 pb-8"
+        className="w-full max-w-lg bg-white rounded-t-3xl p-6 pb-8 max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          구독/정기결제 추가
-        </h3>
-
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm text-gray-600 mb-1 block">서비스명</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="예: Netflix, Notion"
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm text-gray-600 mb-1 block">금액 (원)</label>
-            <input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="예: 17000"
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm text-gray-600 mb-1 block">결제 주기</label>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setBillingCycle('monthly')}
-                className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
-                  billingCycle === 'monthly'
-                    ? 'border-emerald-500 bg-emerald-50 text-emerald-600'
-                    : 'border-gray-200 text-gray-500'
-                }`}
-              >
-                월간
-              </button>
-              <button
-                onClick={() => setBillingCycle('yearly')}
-                className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
-                  billingCycle === 'yearly'
-                    ? 'border-emerald-500 bg-emerald-50 text-emerald-600'
-                    : 'border-gray-200 text-gray-500'
-                }`}
-              >
-                연간
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <label className="text-sm text-gray-600 mb-1 block">결제일</label>
-            <input
-              type="number"
-              min="1"
-              max="31"
-              value={billingDay}
-              onChange={(e) => setBillingDay(e.target.value)}
-              placeholder="1-31"
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm text-gray-600 mb-1 block">분류</label>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setWorkLife('Work')}
-                className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
-                  workLife === 'Work'
-                    ? 'border-blue-400 bg-blue-50 text-blue-600'
-                    : 'border-gray-200 text-gray-500'
-                }`}
-              >
-                Work
-              </button>
-              <button
-                onClick={() => setWorkLife('Life')}
-                className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
-                  workLife === 'Life'
-                    ? 'border-rose-400 bg-rose-50 text-rose-600'
-                    : 'border-gray-200 text-gray-500'
-                }`}
-              >
-                Life
-              </button>
-            </div>
-          </div>
+        {/* 탭 헤더 */}
+        <div className="flex gap-1 p-1 bg-gray-100 rounded-xl mb-4">
+          {tabConfig.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all ${
+                activeTab === tab.key
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
+
+        {/* 정기결제 폼 */}
+        {activeTab === 'recurring' && (
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm text-gray-600 mb-1 block">서비스명</label>
+              <input
+                type="text"
+                value={recName}
+                onChange={(e) => setRecName(e.target.value)}
+                placeholder="예: Netflix, Notion"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm text-gray-600 mb-1 block">금액 (원)</label>
+              <input
+                type="number"
+                value={recAmount}
+                onChange={(e) => setRecAmount(e.target.value)}
+                placeholder="예: 17000"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm text-gray-600 mb-1 block">결제 주기</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setRecBillingCycle('monthly')}
+                  className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
+                    recBillingCycle === 'monthly'
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-600'
+                      : 'border-gray-200 text-gray-500'
+                  }`}
+                >
+                  월간
+                </button>
+                <button
+                  onClick={() => setRecBillingCycle('yearly')}
+                  className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
+                    recBillingCycle === 'yearly'
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-600'
+                      : 'border-gray-200 text-gray-500'
+                  }`}
+                >
+                  연간
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm text-gray-600 mb-1 block">결제일</label>
+              <input
+                type="number"
+                min="1"
+                max="31"
+                value={recBillingDay}
+                onChange={(e) => setRecBillingDay(e.target.value)}
+                placeholder="1-31"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm text-gray-600 mb-1 block">분류</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setRecWorkLife('Work')}
+                  className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
+                    recWorkLife === 'Work'
+                      ? 'border-blue-400 bg-blue-50 text-blue-600'
+                      : 'border-gray-200 text-gray-500'
+                  }`}
+                >
+                  Work
+                </button>
+                <button
+                  onClick={() => setRecWorkLife('Life')}
+                  className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
+                    recWorkLife === 'Life'
+                      ? 'border-rose-400 bg-rose-50 text-rose-600'
+                      : 'border-gray-200 text-gray-500'
+                  }`}
+                >
+                  Life
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 수입 폼 */}
+        {activeTab === 'income' && (
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm text-gray-600 mb-1 block">수입명</label>
+              <input
+                type="text"
+                value={incName}
+                onChange={(e) => setIncName(e.target.value)}
+                placeholder="예: 월급, 프리랜서 수입"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm text-gray-600 mb-1 block">금액 (원)</label>
+              <input
+                type="number"
+                value={incAmount}
+                onChange={(e) => setIncAmount(e.target.value)}
+                placeholder="예: 4500000"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm text-gray-600 mb-1 block">수입 유형</label>
+              <select
+                value={incType}
+                onChange={(e) => setIncType(e.target.value as IncomeType)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 bg-white"
+              >
+                {Object.entries(INCOME_TYPE_LABELS).map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-sm text-gray-600 mb-1 block">반복 여부</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setIncIsRecurring(true)}
+                  className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
+                    incIsRecurring
+                      ? 'border-blue-500 bg-blue-50 text-blue-600'
+                      : 'border-gray-200 text-gray-500'
+                  }`}
+                >
+                  매달 반복
+                </button>
+                <button
+                  onClick={() => setIncIsRecurring(false)}
+                  className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
+                    !incIsRecurring
+                      ? 'border-blue-500 bg-blue-50 text-blue-600'
+                      : 'border-gray-200 text-gray-500'
+                  }`}
+                >
+                  1회성
+                </button>
+              </div>
+            </div>
+
+            {incIsRecurring && (
+              <div>
+                <label className="text-sm text-gray-600 mb-1 block">수입일</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="31"
+                  value={incRecurringDay}
+                  onChange={(e) => setIncRecurringDay(e.target.value)}
+                  placeholder="25"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="text-sm text-gray-600 mb-1 block">분류</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setIncWorkLife('Work')}
+                  className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
+                    incWorkLife === 'Work'
+                      ? 'border-blue-400 bg-blue-50 text-blue-600'
+                      : 'border-gray-200 text-gray-500'
+                  }`}
+                >
+                  Work
+                </button>
+                <button
+                  onClick={() => setIncWorkLife('Life')}
+                  className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
+                    incWorkLife === 'Life'
+                      ? 'border-rose-400 bg-rose-50 text-rose-600'
+                      : 'border-gray-200 text-gray-500'
+                  }`}
+                >
+                  Life
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 1회지출 폼 */}
+        {activeTab === 'expense' && (
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm text-gray-600 mb-1 block">지출 내역</label>
+              <input
+                type="text"
+                value={expName}
+                onChange={(e) => handleExpNameChange(e.target.value)}
+                placeholder="예: 쿠팡 쇼핑, 커피"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-amber-500"
+              />
+              {expName && expCategory !== 'other' && (
+                <div className="text-xs text-amber-600 mt-1">
+                  자동 분류: {EXPENSE_CATEGORY_LABELS[expCategory]}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="text-sm text-gray-600 mb-1 block">금액 (원)</label>
+              <input
+                type="number"
+                value={expAmount}
+                onChange={(e) => setExpAmount(e.target.value)}
+                placeholder="예: 35000"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm text-gray-600 mb-1 block">카테고리</label>
+              <select
+                value={expCategory}
+                onChange={(e) => setExpCategory(e.target.value as OneTimeExpenseCategory)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-amber-500 bg-white"
+              >
+                {Object.entries(EXPENSE_CATEGORY_LABELS).map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-sm text-gray-600 mb-1 block">지출일</label>
+              <input
+                type="date"
+                value={expDate}
+                onChange={(e) => setExpDate(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm text-gray-600 mb-1 block">지출 유형</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setExpIsPlanned(true)}
+                  className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
+                    expIsPlanned
+                      ? 'border-amber-500 bg-amber-50 text-amber-600'
+                      : 'border-gray-200 text-gray-500'
+                  }`}
+                >
+                  계획된 지출
+                </button>
+                <button
+                  onClick={() => setExpIsPlanned(false)}
+                  className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
+                    !expIsPlanned
+                      ? 'border-amber-500 bg-amber-50 text-amber-600'
+                      : 'border-gray-200 text-gray-500'
+                  }`}
+                >
+                  즉흥 지출
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm text-gray-600 mb-1 block">분류</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setExpWorkLife('Work')}
+                  className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
+                    expWorkLife === 'Work'
+                      ? 'border-blue-400 bg-blue-50 text-blue-600'
+                      : 'border-gray-200 text-gray-500'
+                  }`}
+                >
+                  Work
+                </button>
+                <button
+                  onClick={() => setExpWorkLife('Life')}
+                  className={`flex-1 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
+                    expWorkLife === 'Life'
+                      ? 'border-rose-400 bg-rose-50 text-rose-600'
+                      : 'border-gray-200 text-gray-500'
+                  }`}
+                >
+                  Life
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-3 mt-6">
           <button
@@ -1066,10 +1779,14 @@ function AddItemModal({ onClose }: AddItemModalProps) {
           </button>
           <button
             onClick={handleSubmit}
-            disabled={!name || !amount}
+            disabled={!isValid()}
             className={`flex-1 py-3 font-medium rounded-xl transition-colors ${
-              name && amount
-                ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+              isValid()
+                ? activeTab === 'recurring'
+                  ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                  : activeTab === 'income'
+                  ? 'bg-blue-500 text-white hover:bg-blue-600'
+                  : 'bg-amber-500 text-white hover:bg-amber-600'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
             }`}
           >

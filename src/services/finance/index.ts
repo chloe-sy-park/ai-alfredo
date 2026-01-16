@@ -30,11 +30,20 @@ import {
   OverviewData,
   CandidateScore,
   GrowthLink,
+  IncomeItem,
+  OneTimeExpense,
+  OneTimeExpenseCategory,
+  FinanceStatsSummary,
+  CategoryAnalysis,
+  SavingsOpportunity,
   CATEGORY_DEFAULT_WORKLIFE,
   WORK_KEYWORDS,
   USAGE_CHECK_QUESTIONS,
   MERCHANT_CLUSTER_MAP,
   RISK_THRESHOLDS,
+  EXPENSE_CATEGORY_DEFAULT_WORKLIFE,
+  EXPENSE_CATEGORY_LABELS,
+  EXPENSE_KEYWORDS,
 } from './types';
 
 // ============================================
@@ -883,4 +892,437 @@ export function createGoal(
     createdAt: now,
     updatedAt: now,
   };
+}
+
+// ============================================
+// 10. Finance Statistics (통계 계산)
+// ============================================
+
+/**
+ * 기간의 시작/종료 날짜 계산
+ */
+function getPeriodDates(
+  period: 'weekly' | 'monthly' | 'yearly',
+  referenceDate: Date = new Date()
+): { startDate: Date; endDate: Date; periodLabel: string } {
+  const start = new Date(referenceDate);
+  const end = new Date(referenceDate);
+
+  if (period === 'weekly') {
+    // 이번 주 월요일부터 일요일까지
+    const dayOfWeek = start.getDay();
+    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    start.setDate(start.getDate() + diffToMonday);
+    start.setHours(0, 0, 0, 0);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+
+    const weekNum = Math.ceil((start.getDate() + 6) / 7);
+    return {
+      startDate: start,
+      endDate: end,
+      periodLabel: `${start.getMonth() + 1}월 ${weekNum}주차`,
+    };
+  } else if (period === 'monthly') {
+    // 이번 달 1일부터 말일까지
+    start.setDate(1);
+    start.setHours(0, 0, 0, 0);
+    end.setMonth(end.getMonth() + 1);
+    end.setDate(0);
+    end.setHours(23, 59, 59, 999);
+
+    return {
+      startDate: start,
+      endDate: end,
+      periodLabel: `${start.getFullYear()}년 ${start.getMonth() + 1}월`,
+    };
+  } else {
+    // 이번 년도 1월 1일부터 12월 31일까지
+    start.setMonth(0, 1);
+    start.setHours(0, 0, 0, 0);
+    end.setMonth(11, 31);
+    end.setHours(23, 59, 59, 999);
+
+    return {
+      startDate: start,
+      endDate: end,
+      periodLabel: `${start.getFullYear()}년`,
+    };
+  }
+}
+
+/**
+ * 이전 기간의 날짜 계산
+ */
+function getPreviousPeriodDates(
+  period: 'weekly' | 'monthly' | 'yearly',
+  currentStart: Date
+): { startDate: Date; endDate: Date } {
+  const start = new Date(currentStart);
+  const end = new Date(currentStart);
+  end.setDate(end.getDate() - 1);
+  end.setHours(23, 59, 59, 999);
+
+  if (period === 'weekly') {
+    start.setDate(start.getDate() - 7);
+  } else if (period === 'monthly') {
+    start.setMonth(start.getMonth() - 1);
+  } else {
+    start.setFullYear(start.getFullYear() - 1);
+  }
+  start.setHours(0, 0, 0, 0);
+
+  return { startDate: start, endDate: end };
+}
+
+/**
+ * 종합 재정 통계 계산
+ */
+export function calculateFinanceStats(
+  incomeItems: IncomeItem[],
+  recurringItems: RecurringItem[],
+  commitmentItems: CommitmentItem[],
+  oneTimeExpenses: OneTimeExpense[],
+  period: 'weekly' | 'monthly' | 'yearly',
+  referenceDate: Date = new Date()
+): FinanceStatsSummary {
+  const { startDate, endDate, periodLabel } = getPeriodDates(period, referenceDate);
+
+  // === 수입 계산 ===
+  const periodIncomes = incomeItems.filter((item) => {
+    const receivedDate = item.receivedDate ? new Date(item.receivedDate) : null;
+    const expectedDate = item.expectedDate ? new Date(item.expectedDate) : null;
+    const date = receivedDate || expectedDate;
+    if (!date) return item.isRecurring; // 정기 수입은 항상 포함
+    return date >= startDate && date <= endDate;
+  });
+
+  let totalIncome = 0;
+  let recurringIncome = 0;
+  let oneTimeIncome = 0;
+  const incomeByType: Partial<Record<IncomeItem['incomeType'], number>> = {};
+
+  periodIncomes.forEach((item) => {
+    totalIncome += item.amount;
+    incomeByType[item.incomeType] = (incomeByType[item.incomeType] || 0) + item.amount;
+    if (item.isRecurring) {
+      recurringIncome += item.amount;
+    } else {
+      oneTimeIncome += item.amount;
+    }
+  });
+
+  // === 지출 계산 ===
+  // 정기 지출 (월간 환산)
+  let fixedExpense = 0;
+
+  if (period === 'monthly' || period === 'yearly') {
+    const monthsInPeriod = period === 'yearly' ? 12 : 1;
+
+    // Recurring Items
+    recurringItems.forEach((item) => {
+      const monthlyAmount = item.billingCycle === 'yearly' ? item.amount / 12 : item.amount;
+      fixedExpense += monthlyAmount * monthsInPeriod;
+    });
+
+    // Commitment Items
+    commitmentItems.forEach((item) => {
+      fixedExpense += item.monthlyPayment * monthsInPeriod;
+    });
+  } else {
+    // 주간: 월 고정비의 1/4 추정
+    recurringItems.forEach((item) => {
+      const monthlyAmount = item.billingCycle === 'yearly' ? item.amount / 12 : item.amount;
+      fixedExpense += monthlyAmount / 4;
+    });
+    commitmentItems.forEach((item) => {
+      fixedExpense += item.monthlyPayment / 4;
+    });
+  }
+
+  // 1회성 지출
+  const periodExpenses = oneTimeExpenses.filter((expense) => {
+    const date = new Date(expense.date);
+    return date >= startDate && date <= endDate;
+  });
+
+  const variableExpense = periodExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+  const totalExpense = fixedExpense + variableExpense;
+
+  // === 순 현금흐름 & 저축률 ===
+  const netCashFlow = totalIncome - totalExpense;
+  const savingsRate = totalIncome > 0 ? Math.round((netCashFlow / totalIncome) * 100) : 0;
+
+  // === Work/Life 지출 비율 ===
+  let workExpense = 0;
+  let lifeExpense = 0;
+
+  recurringItems.forEach((item) => {
+    const monthlyAmount = item.billingCycle === 'yearly' ? item.amount / 12 : item.amount;
+    if (item.workLife === 'Work') {
+      workExpense += monthlyAmount;
+    } else {
+      lifeExpense += monthlyAmount;
+    }
+  });
+
+  periodExpenses.forEach((expense) => {
+    if (expense.workLife === 'Work') {
+      workExpense += expense.amount;
+    } else {
+      lifeExpense += expense.amount;
+    }
+  });
+
+  const totalWorkLife = workExpense + lifeExpense;
+  const workLifeExpenseRatio = {
+    work: totalWorkLife > 0 ? Math.round((workExpense / totalWorkLife) * 100) : 0,
+    life: totalWorkLife > 0 ? Math.round((lifeExpense / totalWorkLife) * 100) : 0,
+  };
+
+  // === 전 기간 대비 (선택적) ===
+  let comparedToPrevious: FinanceStatsSummary['comparedToPrevious'] = null;
+
+  // 간략화를 위해 이전 기간 비교는 월간만 구현
+  if (period === 'monthly' && incomeItems.length > 0) {
+    const { startDate: prevStart, endDate: prevEnd } = getPreviousPeriodDates(period, startDate);
+
+    const prevIncomes = incomeItems.filter((item) => {
+      const date = item.receivedDate ? new Date(item.receivedDate) : null;
+      if (!date) return false;
+      return date >= prevStart && date <= prevEnd;
+    });
+
+    const prevExpenses = oneTimeExpenses.filter((expense) => {
+      const date = new Date(expense.date);
+      return date >= prevStart && date <= prevEnd;
+    });
+
+    const prevTotalIncome = prevIncomes.reduce((sum, i) => sum + i.amount, 0);
+    const prevVariableExpense = prevExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const prevTotalExpense = fixedExpense + prevVariableExpense; // 고정비는 같다고 가정
+    const prevNetCashFlow = prevTotalIncome - prevTotalExpense;
+    const prevSavingsRate = prevTotalIncome > 0 ? Math.round((prevNetCashFlow / prevTotalIncome) * 100) : 0;
+
+    if (prevTotalIncome > 0 || prevTotalExpense > 0) {
+      comparedToPrevious = {
+        incomeChange: totalIncome - prevTotalIncome,
+        expenseChange: totalExpense - prevTotalExpense,
+        savingsRateChange: savingsRate - prevSavingsRate,
+      };
+    }
+  }
+
+  return {
+    period,
+    periodLabel,
+    startDate: startDate.toISOString().split('T')[0],
+    endDate: endDate.toISOString().split('T')[0],
+    totalIncome,
+    incomeByType,
+    recurringIncome,
+    oneTimeIncome,
+    totalExpense,
+    fixedExpense,
+    variableExpense,
+    netCashFlow,
+    savingsRate,
+    workLifeExpenseRatio,
+    comparedToPrevious,
+  };
+}
+
+/**
+ * 카테고리별 지출 분석
+ */
+export function analyzeByCategory(
+  recurringItems: RecurringItem[],
+  oneTimeExpenses: OneTimeExpense[],
+  period: 'weekly' | 'monthly' | 'yearly',
+  referenceDate: Date = new Date()
+): CategoryAnalysis[] {
+  const { startDate, endDate } = getPeriodDates(period, referenceDate);
+
+  // 정기 지출 카테고리별 집계
+  const categoryMap = new Map<string, { amount: number; count: number; label: string }>();
+
+  recurringItems.forEach((item) => {
+    const monthlyAmount = item.billingCycle === 'yearly' ? item.amount / 12 : item.amount;
+    const amount = period === 'yearly' ? monthlyAmount * 12 : period === 'monthly' ? monthlyAmount : monthlyAmount / 4;
+
+    const existing = categoryMap.get(item.categoryL1) || { amount: 0, count: 0, label: getCategoryLabel(item.categoryL1) };
+    categoryMap.set(item.categoryL1, {
+      amount: existing.amount + amount,
+      count: existing.count + 1,
+      label: existing.label,
+    });
+  });
+
+  // 1회성 지출 카테고리별 집계
+  const periodExpenses = oneTimeExpenses.filter((expense) => {
+    const date = new Date(expense.date);
+    return date >= startDate && date <= endDate;
+  });
+
+  periodExpenses.forEach((expense) => {
+    const existing = categoryMap.get(expense.category) || {
+      amount: 0,
+      count: 0,
+      label: EXPENSE_CATEGORY_LABELS[expense.category] || expense.category,
+    };
+    categoryMap.set(expense.category, {
+      amount: existing.amount + expense.amount,
+      count: existing.count + 1,
+      label: existing.label,
+    });
+  });
+
+  // 총액 계산
+  let totalAmount = 0;
+  categoryMap.forEach((data) => {
+    totalAmount += data.amount;
+  });
+
+  // 결과 배열 생성
+  const result: CategoryAnalysis[] = [];
+  categoryMap.forEach((data, category) => {
+    result.push({
+      category,
+      label: data.label,
+      amount: Math.round(data.amount),
+      percentage: totalAmount > 0 ? Math.round((data.amount / totalAmount) * 100) : 0,
+      itemCount: data.count,
+      trend: 'stable', // 간략화: 트렌드 계산 생략
+    });
+  });
+
+  // 금액 내림차순 정렬
+  return result.sort((a, b) => b.amount - a.amount);
+}
+
+/**
+ * 절감 기회 분석
+ */
+export function findSavingsOpportunities(
+  recurringItems: RecurringItem[],
+  oneTimeExpenses: OneTimeExpense[],
+  duplicateGroups: DuplicateGroup[],
+  goalLinks: GrowthLink[]
+): SavingsOpportunity[] {
+  const opportunities: SavingsOpportunity[] = [];
+
+  // 1. 중복 구독 절감 기회
+  const activeDuplicates = duplicateGroups.filter((g) => g.status === 'detected');
+  activeDuplicates.forEach((group) => {
+    opportunities.push({
+      id: `dup-${group.id}`,
+      type: 'duplicate',
+      title: `${group.purpose} 중복 구독`,
+      description: `${group.itemIds.length}개의 비슷한 서비스가 있습니다. 하나로 정리하세요.`,
+      estimatedMonthlySavings: group.potentialSavings,
+      relatedItemIds: group.itemIds,
+      priority: group.potentialSavings >= 20000 ? 'high' : 'medium',
+    });
+  });
+
+  // 2. 미사용 구독 절감 기회
+  const unusedItems = recurringItems.filter(
+    (item) => item.usageFrequency === 'rarely' && item.retentionIntent !== 'keep'
+  );
+  unusedItems.forEach((item) => {
+    const monthlySavings = item.billingCycle === 'yearly' ? item.amount / 12 : item.amount;
+    opportunities.push({
+      id: `unused-${item.id}`,
+      type: 'unused',
+      title: `${item.name} 미사용`,
+      description: '거의 사용하지 않는 구독입니다. 해지를 고려해보세요.',
+      estimatedMonthlySavings: monthlySavings,
+      relatedItemIds: [item.id],
+      priority: monthlySavings >= 15000 ? 'high' : 'medium',
+    });
+  });
+
+  // 3. 고비용 구독 검토 기회
+  const highCostItems = recurringItems.filter((item) => {
+    const annualCost = item.billingCycle === 'yearly' ? item.amount : item.amount * 12;
+    const hasGoal = goalLinks.some((l) => l.recurringItemId === item.id);
+    return annualCost >= RISK_THRESHOLDS.HIGH_COST_THRESHOLD && !hasGoal;
+  });
+  highCostItems.forEach((item) => {
+    const monthlySavings = item.billingCycle === 'yearly' ? item.amount / 12 : item.amount;
+    // 이미 미사용으로 추가된 경우 스킵
+    if (unusedItems.some((u) => u.id === item.id)) return;
+
+    opportunities.push({
+      id: `highcost-${item.id}`,
+      type: 'high_cost',
+      title: `${item.name} 고비용 검토`,
+      description: '연간 비용이 높은 구독입니다. 사용 빈도를 확인해보세요.',
+      estimatedMonthlySavings: monthlySavings * 0.5, // 50% 절감 가정
+      relatedItemIds: [item.id],
+      priority: 'low',
+    });
+  });
+
+  // 4. 충동 소비 패턴 (비계획 지출 비율이 높은 경우)
+  const thisMonth = new Date();
+  thisMonth.setDate(1);
+  const monthlyUnplanned = oneTimeExpenses.filter((e) => {
+    const date = new Date(e.date);
+    return date >= thisMonth && !e.isPlanned;
+  });
+
+  if (monthlyUnplanned.length >= 5) {
+    const totalUnplanned = monthlyUnplanned.reduce((sum, e) => sum + e.amount, 0);
+    opportunities.push({
+      id: 'impulse-pattern',
+      type: 'impulse_spending',
+      title: '충동 소비 패턴 감지',
+      description: `이번 달 비계획 지출이 ${monthlyUnplanned.length}건 있습니다. 지출 전 잠시 생각해보세요.`,
+      estimatedMonthlySavings: Math.round(totalUnplanned * 0.3), // 30% 절감 가정
+      relatedItemIds: monthlyUnplanned.map((e) => e.id),
+      priority: 'medium',
+    });
+  }
+
+  // 우선순위 및 절감액 기준 정렬
+  const priorityOrder = { high: 0, medium: 1, low: 2 };
+  return opportunities.sort((a, b) => {
+    if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
+      return priorityOrder[a.priority] - priorityOrder[b.priority];
+    }
+    return b.estimatedMonthlySavings - a.estimatedMonthlySavings;
+  });
+}
+
+/**
+ * 1회성 지출 자동 분류
+ */
+export function classifyOneTimeExpense(
+  name: string,
+  amount?: number
+): { category: OneTimeExpenseCategory; workLife: WorkLifeType } {
+  const nameLower = name.toLowerCase();
+
+  // 키워드 매칭으로 카테고리 결정
+  // EXPENSE_KEYWORDS는 { keyword: category } 형태
+  for (const [keyword, category] of Object.entries(EXPENSE_KEYWORDS)) {
+    if (nameLower.includes(keyword.toLowerCase())) {
+      return {
+        category,
+        workLife: EXPENSE_CATEGORY_DEFAULT_WORKLIFE[category] || 'Life',
+      };
+    }
+  }
+
+  // 금액 기반 추론 (선택적)
+  if (amount) {
+    if (amount >= 300000) {
+      // 고액: 가전/가구 가능성
+      return { category: 'maintenance', workLife: 'Life' };
+    }
+  }
+
+  // 기본값
+  return { category: 'other', workLife: 'Life' };
 }
