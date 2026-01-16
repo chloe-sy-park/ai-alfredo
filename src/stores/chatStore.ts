@@ -11,6 +11,7 @@ import {
   ConversationContext
 } from '../services/safety';
 import { useAlfredoStore } from './alfredoStore';
+import { useLiftStore } from './liftStore';
 import {
   extractLearningsFromMessage,
   detectFeedbackSentiment
@@ -200,6 +201,39 @@ export const useChatStore = create<ChatStore>()(
           ...msg,
           timestamp: toDate(msg.timestamp)
         }));
+
+        // === Lift 기록 (판단 변경 시) ===
+        if (alfredoResponse.judgement && alfredoResponse.judgement.type !== 'maintain') {
+          try {
+            const liftStore = useLiftStore.getState();
+
+            // 카테고리 결정 (메시지 내용 기반)
+            let category: 'priority' | 'schedule' | 'worklife' | 'condition' = 'priority';
+            if (content.includes('일정') || content.includes('미팅') || content.includes('회의')) {
+              category = 'schedule';
+            } else if (content.includes('컨디션') || content.includes('피곤') || content.includes('힘들')) {
+              category = 'condition';
+            } else if (content.includes('균형') || content.includes('워라밸') || content.includes('휴식')) {
+              category = 'worklife';
+            }
+
+            // 영향도 결정
+            let impact: 'high' | 'medium' | 'low' = 'medium';
+            if (alfredoResponse.judgement.confidence >= 0.9) impact = 'high';
+            else if (alfredoResponse.judgement.confidence < 0.7) impact = 'low';
+
+            liftStore.addLift({
+              type: alfredoResponse.judgement.type as 'apply' | 'consider',
+              category: category,
+              previousDecision: '기존 판단',
+              newDecision: alfredoResponse.judgement.message || '',
+              reason: content,
+              impact: impact
+            });
+          } catch (error) {
+            console.error('Failed to record Lift:', error);
+          }
+        }
 
         // 세션 업데이트
         const updatedSession: ChatSession = {

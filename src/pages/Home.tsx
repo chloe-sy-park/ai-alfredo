@@ -10,6 +10,7 @@ import { getWeather, WeatherData } from '../services/weather';
 import { hasSeenEntryToday, markEntryAsSeen, updateVisit } from '../services/visit';
 import { generateBriefing, WeatherData as BriefingWeatherData } from '../services/briefing';
 import { usePostAction } from '../stores/postActionStore';
+import { useLiftStore } from '../stores/liftStore';
 
 // Components
 import { PageHeader } from '../components/layout';
@@ -45,6 +46,7 @@ export default function Home() {
   const [briefing, setBriefing] = useState({ headline: '', subline: '' });
   const [homeMode, setHomeMode] = useState<HomeMode>('all');
   const postAction = usePostAction();
+  const liftStore = useLiftStore();
 
   // URL 쿼리 파라미터에서 mode 확인
   useEffect(() => {
@@ -173,18 +175,54 @@ export default function Home() {
 
   // Top3에서 집중 선택
   function handleFocusSelect(item: Top3Item) {
+    var previousFocus = currentFocus;
     var focusItem = setFocusFromTop3(item.id, item.title);
     setCurrentFocus(focusItem);
     postAction.onFocusSet(item.title);
+
+    // Lift 기록: 우선순위 집중 변경
+    liftStore.addLift({
+      type: 'apply',
+      category: 'priority',
+      previousDecision: previousFocus ? previousFocus.title : '집중 없음',
+      newDecision: item.title + '에 집중',
+      reason: 'Top3에서 집중 항목 선택',
+      impact: 'high'
+    });
   }
 
   // 집중 변경
   function handleFocusChange(focus: FocusItem | null) {
+    var previousFocus = currentFocus;
     setCurrentFocus(focus);
     if (focus) {
       postAction.onFocusSet(focus.title);
+
+      // Lift 기록: 새 집중 설정
+      if (!previousFocus || previousFocus.id !== focus.id) {
+        liftStore.addLift({
+          type: 'apply',
+          category: 'priority',
+          previousDecision: previousFocus ? previousFocus.title : '집중 없음',
+          newDecision: focus.title + '에 집중',
+          reason: '집중 항목 변경',
+          impact: 'high'
+        });
+      }
     } else {
       postAction.onFocusCleared();
+
+      // Lift 기록: 집중 해제
+      if (previousFocus) {
+        liftStore.addLift({
+          type: 'apply',
+          category: 'priority',
+          previousDecision: previousFocus.title + '에 집중 중',
+          newDecision: '집중 해제',
+          reason: '집중 세션 종료',
+          impact: 'medium'
+        });
+      }
     }
   }
 
@@ -292,8 +330,21 @@ export default function Home() {
         <ModeSwitch
           activeMode={homeMode}
           onChange={function(mode) {
+            var previousMode = homeMode;
             setHomeMode(mode);
             postAction.onModeChanged(mode);
+
+            // Lift 기록: 모드 변경
+            if (previousMode !== mode && previousMode !== 'all' && mode !== 'all') {
+              liftStore.addLift({
+                type: 'apply',
+                category: 'worklife',
+                previousDecision: previousMode === 'work' ? 'Work 모드' : 'Life 모드',
+                newDecision: mode === 'work' ? 'Work 모드로 전환' : 'Life 모드로 전환',
+                reason: '사용자가 직접 모드를 전환함',
+                impact: 'medium'
+              });
+            }
           }}
         />
 
