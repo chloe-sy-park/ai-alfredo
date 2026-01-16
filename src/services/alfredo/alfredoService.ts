@@ -29,15 +29,25 @@ const STORAGE_KEYS = {
 // 선호도 (Preferences) 관리
 // =============================================
 
+// 1-5 스케일을 0-100 스케일로 변환
+function scaleToPercent(value: number): number {
+  return Math.round((value - 1) * 25); // 1→0, 2→25, 3→50, 4→75, 5→100
+}
+
+// 0-100 스케일을 1-5 스케일로 변환
+function percentToScale(value: number): number {
+  return Math.round(value / 25) + 1; // 0→1, 25→2, 50→3, 75→4, 100→5
+}
+
 // 기본 선호도 생성
 function createDefaultPreferences(userId: string): AlfredoPreferences {
   return {
     id: `pref-${Date.now()}`,
     userId,
-    toneWarmth: 70,
-    notificationFreq: 50,
-    dataDepth: 50,
-    motivationStyle: 50,
+    toneWarmth: 75, // warmth: 4
+    notificationFreq: 50, // proactivity: 3
+    dataDepth: 50, // directness: 3
+    motivationStyle: 50, // pressure: 3
     domainOverrides: {},
     currentDomain: 'work',
     autoDomainSwitch: true,
@@ -49,30 +59,35 @@ function createDefaultPreferences(userId: string): AlfredoPreferences {
   };
 }
 
-// 선호도 로드
+// 선호도 로드 (user_settings 테이블 사용)
 export async function loadPreferences(userId: string): Promise<AlfredoPreferences> {
-  // Supabase에서 로드 시도
+  // Supabase에서 로드 시도 (user_settings 테이블)
   try {
     const { data, error } = await (supabase as any)
-      .from('alfredo_preferences')
+      .from('user_settings')
       .select('*')
       .eq('user_id', userId)
       .single();
 
     if (data && !error) {
+      // tone_axes에서 값 추출 (기존 데이터 호환)
+      const toneAxes = data.tone_axes || {};
+
       return {
         id: data.id,
         userId: data.user_id,
-        toneWarmth: data.tone_warmth,
-        notificationFreq: data.notification_freq,
-        dataDepth: data.data_depth,
-        motivationStyle: data.motivation_style,
-        domainOverrides: data.domain_overrides as DomainOverrides || {},
-        currentDomain: data.current_domain as Domain,
-        autoDomainSwitch: data.auto_domain_switch,
-        workHoursStart: data.work_hours_start,
-        workHoursEnd: data.work_hours_end,
-        workDays: data.work_days,
+        // tone_axes의 1-5 스케일을 0-100으로 변환
+        toneWarmth: scaleToPercent(toneAxes.warmth ?? 4),
+        notificationFreq: scaleToPercent(toneAxes.proactivity ?? 3),
+        dataDepth: scaleToPercent(toneAxes.directness ?? 3),
+        motivationStyle: scaleToPercent(toneAxes.pressure ?? 2),
+        // 새로운 Phase 3 필드들
+        domainOverrides: (data.domain_overrides as DomainOverrides) || {},
+        currentDomain: (data.current_domain as Domain) || 'work',
+        autoDomainSwitch: data.auto_domain_switch ?? true,
+        workHoursStart: data.work_start_time || '09:00',
+        workHoursEnd: data.work_end_time || '18:00',
+        workDays: data.work_days || [1, 2, 3, 4, 5],
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at)
       };
@@ -97,31 +112,36 @@ export async function loadPreferences(userId: string): Promise<AlfredoPreference
   return createDefaultPreferences(userId);
 }
 
-// 선호도 저장
+// 선호도 저장 (user_settings 테이블 사용)
 export async function savePreferences(preferences: AlfredoPreferences): Promise<void> {
   const updated = { ...preferences, updatedAt: new Date() };
 
   // LocalStorage 저장
   localStorage.setItem(STORAGE_KEYS.preferences, JSON.stringify(updated));
 
-  // Supabase 저장 시도
+  // Supabase 저장 시도 (user_settings 테이블)
   try {
     await (supabase as any)
-      .from('alfredo_preferences')
-      .upsert({
-        user_id: preferences.userId,
-        tone_warmth: preferences.toneWarmth,
-        notification_freq: preferences.notificationFreq,
-        data_depth: preferences.dataDepth,
-        motivation_style: preferences.motivationStyle,
+      .from('user_settings')
+      .update({
+        // tone_axes 업데이트 (0-100을 1-5로 변환)
+        tone_axes: {
+          warmth: percentToScale(preferences.toneWarmth),
+          proactivity: percentToScale(preferences.notificationFreq),
+          directness: percentToScale(preferences.dataDepth),
+          humor: 3, // 기존 값 유지
+          pressure: percentToScale(preferences.motivationStyle)
+        },
+        // 새로운 Phase 3 필드들
         domain_overrides: preferences.domainOverrides,
         current_domain: preferences.currentDomain,
         auto_domain_switch: preferences.autoDomainSwitch,
-        work_hours_start: preferences.workHoursStart,
-        work_hours_end: preferences.workHoursEnd,
+        work_start_time: preferences.workHoursStart,
+        work_end_time: preferences.workHoursEnd,
         work_days: preferences.workDays,
         updated_at: new Date().toISOString()
-      }, { onConflict: 'user_id' });
+      })
+      .eq('user_id', preferences.userId);
   } catch (e) {
     console.warn('Supabase 저장 실패:', e);
   }
