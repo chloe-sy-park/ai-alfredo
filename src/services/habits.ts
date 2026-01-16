@@ -191,6 +191,21 @@ export function getTodayCompletionRate(): number {
   return Math.round((completedCount / habits.length) * 100);
 }
 
+// 최근 N일간의 로그 가져오기
+export function getRecentLogs(days: number = 7): HabitLog[] {
+  var logs = getLogs();
+  var dates: string[] = [];
+  var today = new Date();
+
+  for (var i = 0; i < days; i++) {
+    var date = new Date(today);
+    date.setDate(date.getDate() - i);
+    dates.push(date.toISOString().split('T')[0]);
+  }
+
+  return logs.filter(function(l) { return dates.includes(l.date); });
+}
+
 // 스트릭 계산 (연속 완료 일수)
 export function getStreak(habitId: string): number {
   var logs = getLogs().filter(function(l) { return l.habitId === habitId && l.completed; });
