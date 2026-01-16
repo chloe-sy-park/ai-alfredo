@@ -14,6 +14,19 @@ interface LiveBriefingProps {
   onMore?: () => void;
 }
 
+// Phase 9: 깊이 단계 메시지 생성 (퍼센트 대신 정성적 표현)
+function getDepthStageMessage(understandingScore: number): string {
+  if (understandingScore < 30) {
+    return '아직은 일정 중심으로만 판단하고 있어요';
+  } else if (understandingScore < 50) {
+    return '조금씩 리듬을 파악하고 있어요';
+  } else if (understandingScore < 70) {
+    return '이제는 시간대별 리듬까지 반영하고 있어요';
+  } else {
+    return '요즘은 설명 없이도 맞는 판단이 늘었어요';
+  }
+}
+
 // Improvement Forecast 생성 (상태 기반 제안)
 function generateImprovementForecast(status: LiveBriefingStatus): string | null {
   switch (status) {
@@ -120,26 +133,21 @@ export default function LiveBriefing({ className = '', onMore }: LiveBriefingPro
           {/* 확장 시 추가 정보 - Phase 6 Core Blocks (밀도에 따라 조절) */}
           {isExpanded && (
             <div className="mt-3 space-y-3">
-              {/* Block 1: Understanding - 알프레도가 나를 이렇게 보고 있다 */}
+              {/* Block 1: Understanding - 알프레도가 나를 이렇게 보고 있다 (Phase 9: 퍼센트 대신 깊이 단계 메시지) */}
               {understanding && (
-                <div className="flex items-center gap-2 p-2 bg-[#F8F8FF] rounded-lg">
-                  <Brain size={14} className="text-[#A996FF]" />
+                <div className="flex items-start gap-2 p-2 bg-[#F8F8FF] rounded-lg">
+                  <Brain size={14} className="text-[#A996FF] mt-0.5" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-[#666666]">알프레도 이해도</span>
                       <span className="text-xs font-medium text-[#A996FF]">
-                        {understanding.title} ({understanding.understandingScore}%)
+                        {understanding.title}
                       </span>
                     </div>
-                    {/* minimal 밀도면 진행바 숨김 (이미 잘 알고 있으니) */}
-                    {density !== 'minimal' && (
-                      <div className="h-1 bg-gray-200 rounded-full mt-1 overflow-hidden">
-                        <div
-                          className="h-full bg-[#A996FF] rounded-full transition-all duration-500"
-                          style={{ width: understanding.understandingScore + '%' }}
-                        />
-                      </div>
-                    )}
+                    {/* Phase 9: 깊이 단계 메시지 (퍼센트/게이지 대신) */}
+                    <p className="text-[11px] text-[#888888] mt-1">
+                      {getDepthStageMessage(understanding.understandingScore)}
+                    </p>
                   </div>
                 </div>
               )}
