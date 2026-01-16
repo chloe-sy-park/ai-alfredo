@@ -3,6 +3,7 @@ export const ROUTES = {
   CALENDAR: '/calendar',
   WORK: '/work',
   LIFE: '/life',
+  FINANCE: '/finance',
   REPORT: '/report',
   CHAT: '/chat',
   SETTINGS: '/settings',
