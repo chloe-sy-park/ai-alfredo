@@ -138,6 +138,245 @@ export interface GrowthLink {
 }
 
 // ============================================
+// Income Management (수입 관리)
+// ============================================
+
+export type IncomeType =
+  | 'salary'        // 급여
+  | 'side_income'   // 부수입 (프리랜서, 부업)
+  | 'investment'    // 투자 수익 (배당, 이자)
+  | 'refund'        // 환급 (세금, 보험 등)
+  | 'bonus'         // 보너스, 성과급
+  | 'allowance'     // 용돈, 지원금
+  | 'other';        // 기타
+
+/**
+ * 수입 항목
+ */
+export interface IncomeItem {
+  id: string;
+  name: string;
+  amount: number;
+  incomeType: IncomeType;
+  isRecurring: boolean;           // 정기 수입 여부
+  recurringDay?: number;          // 매달 수입일 (1-31)
+  workLife: WorkLifeType;         // Work: 급여/부수입, Life: 투자/환급
+  expectedDate?: string;          // 1회성일 경우 예상 입금일 (ISO date)
+  receivedDate?: string;          // 실제 입금일 (ISO date)
+  note?: string;
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
+  icon?: string;
+}
+
+/**
+ * 수입 유형 기본 Work/Life 분류
+ */
+export const INCOME_TYPE_DEFAULT_WORKLIFE: Record<IncomeType, WorkLifeType> = {
+  salary: 'Work',
+  side_income: 'Work',
+  investment: 'Life',
+  refund: 'Life',
+  bonus: 'Work',
+  allowance: 'Life',
+  other: 'Life',
+};
+
+/**
+ * 수입 유형 라벨
+ */
+export const INCOME_TYPE_LABELS: Record<IncomeType, string> = {
+  salary: '급여',
+  side_income: '부수입',
+  investment: '투자 수익',
+  refund: '환급',
+  bonus: '보너스',
+  allowance: '용돈/지원금',
+  other: '기타',
+};
+
+// ============================================
+// One-Time Expense (1회성 지출)
+// ============================================
+
+export type OneTimeExpenseCategory =
+  | 'shopping'      // 쇼핑
+  | 'dining'        // 식비
+  | 'groceries'     // 장보기
+  | 'transport'     // 교통
+  | 'medical'       // 의료
+  | 'event'         // 경조사
+  | 'travel'        // 여행
+  | 'education'     // 교육
+  | 'maintenance'   // 유지보수, 수리
+  | 'utility'       // 공과금 (정기가 아닌 경우)
+  | 'gift'          // 선물
+  | 'other';        // 기타
+
+/**
+ * 1회성 지출 항목
+ */
+export interface OneTimeExpense {
+  id: string;
+  name: string;
+  amount: number;
+  category: OneTimeExpenseCategory;
+  workLife: WorkLifeType;
+  date: string;                   // 지출일 (ISO date)
+  isPlanned: boolean;             // 계획된 지출 vs 충동 지출
+  linkedGoalId?: string;          // 목표와 연결 (선택)
+  note?: string;
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
+  icon?: string;
+}
+
+/**
+ * 1회성 지출 카테고리 기본 Work/Life 분류
+ */
+export const EXPENSE_CATEGORY_DEFAULT_WORKLIFE: Record<OneTimeExpenseCategory, WorkLifeType> = {
+  shopping: 'Life',
+  dining: 'Life',
+  groceries: 'Life',
+  transport: 'Life',
+  medical: 'Life',
+  event: 'Life',
+  travel: 'Life',
+  education: 'Life',
+  maintenance: 'Life',
+  utility: 'Life',
+  gift: 'Life',
+  other: 'Life',
+};
+
+/**
+ * 1회성 지출 카테고리 라벨
+ */
+export const EXPENSE_CATEGORY_LABELS: Record<OneTimeExpenseCategory, string> = {
+  shopping: '쇼핑',
+  dining: '식비',
+  groceries: '장보기',
+  transport: '교통',
+  medical: '의료',
+  event: '경조사',
+  travel: '여행',
+  education: '교육',
+  maintenance: '유지보수',
+  utility: '공과금',
+  gift: '선물',
+  other: '기타',
+};
+
+/**
+ * 1회성 지출 자동 분류 키워드
+ */
+export const EXPENSE_KEYWORDS: Record<string, OneTimeExpenseCategory> = {
+  // 쇼핑
+  '쿠팡': 'shopping',
+  '11번가': 'shopping',
+  '지마켓': 'shopping',
+  '네이버쇼핑': 'shopping',
+  '무신사': 'shopping',
+  '올리브영': 'shopping',
+  // 식비
+  '배달의민족': 'dining',
+  '요기요': 'dining',
+  '쿠팡이츠': 'dining',
+  '카페': 'dining',
+  '스타벅스': 'dining',
+  '식당': 'dining',
+  // 장보기
+  '마트': 'groceries',
+  '이마트': 'groceries',
+  '홈플러스': 'groceries',
+  '롯데마트': 'groceries',
+  // 교통
+  '택시': 'transport',
+  '카카오T': 'transport',
+  '지하철': 'transport',
+  '버스': 'transport',
+  '주유': 'transport',
+  // 의료
+  '병원': 'medical',
+  '약국': 'medical',
+  '치과': 'medical',
+  '안과': 'medical',
+  // 경조사
+  '축의금': 'event',
+  '조의금': 'event',
+  '돌잔치': 'event',
+  // 여행
+  '호텔': 'travel',
+  '항공': 'travel',
+  '에어비앤비': 'travel',
+};
+
+// ============================================
+// Finance Statistics (통계)
+// ============================================
+
+/**
+ * 기간별 재정 통계 요약
+ */
+export interface FinanceStatsSummary {
+  period: 'weekly' | 'monthly' | 'yearly';
+  periodLabel: string;            // "1월 2주차", "2026년 1월"
+  startDate: string;
+  endDate: string;
+
+  // 수입
+  totalIncome: number;
+  incomeByType: Partial<Record<IncomeType, number>>;
+  recurringIncome: number;        // 정기 수입
+  oneTimeIncome: number;          // 1회성 수입
+
+  // 지출
+  totalExpense: number;
+  fixedExpense: number;           // 정기 지출 (구독, 대출 등)
+  variableExpense: number;        // 1회성 지출
+
+  // 분석
+  netCashFlow: number;            // 수입 - 지출
+  savingsRate: number;            // 저축률 (0-1)
+  workLifeExpenseRatio: { work: number; life: number };
+
+  // 트렌드 (전 기간 대비)
+  comparedToPrevious: {
+    incomeChange: number;         // % 변화
+    expenseChange: number;        // % 변화
+    savingsRateChange: number;    // 포인트 변화
+  } | null;
+}
+
+/**
+ * 카테고리별 분석 항목
+ */
+export interface CategoryAnalysis {
+  category: ServiceCategory | OneTimeExpenseCategory | string;
+  label: string;
+  amount: number;
+  percentage: number;             // 전체 대비 % (0-100)
+  itemCount: number;
+  trend: 'up' | 'down' | 'stable';
+  changeAmount?: number;          // 전 기간 대비 변화액
+}
+
+/**
+ * 절감 기회 항목
+ */
+export interface SavingsOpportunity {
+  id: string;
+  type: 'duplicate' | 'unused' | 'high_cost' | 'impulse_spending';
+  title: string;
+  description: string;
+  estimatedMonthlySavings: number;
+  relatedItemIds: string[];
+  priority: 'high' | 'medium' | 'low';
+}
+
+// ============================================
 // Auto Classification Rules
 // ============================================
 

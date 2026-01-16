@@ -19,6 +19,10 @@ import {
   WorkLifeType,
   PersonalGrowthType,
   UsageCheckResponse,
+  IncomeItem,
+  OneTimeExpense,
+  INCOME_TYPE_DEFAULT_WORKLIFE,
+  EXPENSE_CATEGORY_DEFAULT_WORKLIFE,
 } from '../services/finance/types';
 import {
   classifyWorkLife,
@@ -45,6 +49,8 @@ interface FinanceState {
   duplicateGroups: DuplicateGroup[];
   classificationRules: AutoClassificationRule[];
   nudges: FinanceNudge[];
+  incomeItems: IncomeItem[];
+  oneTimeExpenses: OneTimeExpense[];
 
   // Computed (cached)
   overview: FinanceOverview | null;
@@ -54,6 +60,7 @@ interface FinanceState {
   selectedItemId: string | null;
   showUsageCheckModal: boolean;
   currentUsageCheckItemId: string | null;
+  statsViewPeriod: 'weekly' | 'monthly' | 'yearly';
 
   // Actions - Recurring Items
   addRecurringItem: (item: Omit<RecurringItem, 'id' | 'createdAt' | 'updatedAt' | 'usageSignalScore' | 'duplicateGroupId' | 'autoRuleId'>) => void;
@@ -86,11 +93,22 @@ interface FinanceState {
   // Actions - Nudges
   dismissNudge: (nudgeId: string) => void;
 
+  // Actions - Income Items
+  addIncomeItem: (item: Omit<IncomeItem, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateIncomeItem: (id: string, updates: Partial<IncomeItem>) => void;
+  deleteIncomeItem: (id: string) => void;
+
+  // Actions - One-Time Expenses
+  addOneTimeExpense: (expense: Omit<OneTimeExpense, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateOneTimeExpense: (id: string, updates: Partial<OneTimeExpense>) => void;
+  deleteOneTimeExpense: (id: string) => void;
+
   // Actions - UI
   setActiveTab: (tab: 'overlaps' | 'candidates' | 'all') => void;
   setSelectedItem: (id: string | null) => void;
   openUsageCheckModal: (itemId: string) => void;
   closeUsageCheckModal: () => void;
+  setStatsViewPeriod: (period: 'weekly' | 'monthly' | 'yearly') => void;
 
   // Actions - Refresh
   refreshOverview: () => void;
@@ -110,11 +128,14 @@ const initialState = {
   duplicateGroups: [],
   classificationRules: [],
   nudges: [],
+  incomeItems: [],
+  oneTimeExpenses: [],
   overview: null,
   activeTab: 'all' as const,
   selectedItemId: null,
   showUsageCheckModal: false,
   currentUsageCheckItemId: null,
+  statsViewPeriod: 'monthly' as const,
 };
 
 // ============================================
@@ -446,6 +467,82 @@ export const useFinanceStore = create<FinanceState>()(
       },
 
       // ============================================
+      // Income Items Actions
+      // ============================================
+
+      addIncomeItem: (itemData) => {
+        const now = new Date().toISOString();
+        const newItem: IncomeItem = {
+          ...itemData,
+          id: `income-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          workLife: itemData.workLife || INCOME_TYPE_DEFAULT_WORKLIFE[itemData.incomeType] || 'Life',
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        set((state) => ({
+          incomeItems: [...state.incomeItems, newItem],
+        }));
+        get().refreshOverview();
+      },
+
+      updateIncomeItem: (id, updates) => {
+        set((state) => ({
+          incomeItems: state.incomeItems.map((item) =>
+            item.id === id
+              ? { ...item, ...updates, updatedAt: new Date().toISOString() }
+              : item
+          ),
+        }));
+        get().refreshOverview();
+      },
+
+      deleteIncomeItem: (id) => {
+        set((state) => ({
+          incomeItems: state.incomeItems.filter((item) => item.id !== id),
+        }));
+        get().refreshOverview();
+      },
+
+      // ============================================
+      // One-Time Expenses Actions
+      // ============================================
+
+      addOneTimeExpense: (expenseData) => {
+        const now = new Date().toISOString();
+        const newExpense: OneTimeExpense = {
+          ...expenseData,
+          id: `expense-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          workLife: expenseData.workLife || EXPENSE_CATEGORY_DEFAULT_WORKLIFE[expenseData.category] || 'Life',
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        set((state) => ({
+          oneTimeExpenses: [...state.oneTimeExpenses, newExpense],
+        }));
+        get().refreshOverview();
+      },
+
+      updateOneTimeExpense: (id, updates) => {
+        set((state) => ({
+          oneTimeExpenses: state.oneTimeExpenses.map((expense) =>
+            expense.id === id
+              ? { ...expense, ...updates, updatedAt: new Date().toISOString() }
+              : expense
+          ),
+        }));
+        get().refreshOverview();
+      },
+
+      deleteOneTimeExpense: (id) => {
+        set((state) => ({
+          oneTimeExpenses: state.oneTimeExpenses.filter((expense) => expense.id !== id),
+        }));
+        get().refreshOverview();
+      },
+
+      // ============================================
       // UI Actions
       // ============================================
 
@@ -463,6 +560,10 @@ export const useFinanceStore = create<FinanceState>()(
 
       closeUsageCheckModal: () => {
         set({ showUsageCheckModal: false, currentUsageCheckItemId: null });
+      },
+
+      setStatsViewPeriod: (period) => {
+        set({ statsViewPeriod: period });
       },
 
       // ============================================
@@ -500,6 +601,8 @@ export const useFinanceStore = create<FinanceState>()(
         growthLinks: state.growthLinks,
         duplicateGroups: state.duplicateGroups,
         classificationRules: state.classificationRules,
+        incomeItems: state.incomeItems,
+        oneTimeExpenses: state.oneTimeExpenses,
       }),
     }
   )
@@ -543,3 +646,43 @@ export const selectUpcomingPayments = (state: FinanceState) =>
 
 export const selectMonthlyTotal = (state: FinanceState) =>
   state.overview?.monthlyFixedExpense || 0;
+
+// Income Selectors
+export const selectIncomeItems = (state: FinanceState) => state.incomeItems;
+
+export const selectRecurringIncome = (state: FinanceState) =>
+  state.incomeItems.filter((item) => item.isRecurring);
+
+export const selectOneTimeIncome = (state: FinanceState) =>
+  state.incomeItems.filter((item) => !item.isRecurring);
+
+export const selectIncomeByType = (state: FinanceState) => {
+  const byType: Record<string, number> = {};
+  state.incomeItems.forEach((item) => {
+    byType[item.incomeType] = (byType[item.incomeType] || 0) + item.amount;
+  });
+  return byType;
+};
+
+// One-Time Expense Selectors
+export const selectOneTimeExpenses = (state: FinanceState) => state.oneTimeExpenses;
+
+export const selectExpensesByCategory = (state: FinanceState) => {
+  const byCategory: Record<string, number> = {};
+  state.oneTimeExpenses.forEach((expense) => {
+    byCategory[expense.category] = (byCategory[expense.category] || 0) + expense.amount;
+  });
+  return byCategory;
+};
+
+export const selectExpensesInPeriod = (state: FinanceState, startDate: Date, endDate: Date) =>
+  state.oneTimeExpenses.filter((expense) => {
+    const date = new Date(expense.date);
+    return date >= startDate && date <= endDate;
+  });
+
+export const selectPlannedExpenses = (state: FinanceState) =>
+  state.oneTimeExpenses.filter((expense) => expense.isPlanned);
+
+export const selectUnplannedExpenses = (state: FinanceState) =>
+  state.oneTimeExpenses.filter((expense) => !expense.isPlanned);
