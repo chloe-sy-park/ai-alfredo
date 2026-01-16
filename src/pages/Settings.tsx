@@ -1,20 +1,36 @@
 // Settings.tsx - 설정 페이지
-import React, { useState } from 'react';
-import { ArrowLeft, Users, Volume2, Palette, LogOut } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, Users, Volume2, Palette, LogOut, Brain } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUserPreferencesStore } from '../stores/userPreferencesStore';
 import { useAuthStore } from '../stores/authStore';
 import { useLiftStore } from '../stores/liftStore';
+import { useAlfredoStore } from '../stores/alfredoStore';
+import {
+  DomainSwitcher,
+  UnderstandingCard,
+  LearningsList,
+  WeeklyReportCard,
+  PendingLearningsList
+} from '../components/alfredo';
 
 const Settings: React.FC = () => {
   const navigate = useNavigate();
   const { roleBlend, interventionLevel, updatePreferences } = useUserPreferencesStore();
-  const { signOut } = useAuthStore();
+  const { signOut, user } = useAuthStore();
   const { addLift } = useLiftStore();
-  
+  const { initialize: initAlfredo, preferences: alfredoPrefs, isLoading: alfredoLoading } = useAlfredoStore();
+
   const [currentRoleBlend, setCurrentRoleBlend] = useState(roleBlend);
   const [currentInterventionLevel, setCurrentInterventionLevel] = useState(interventionLevel);
   const [selectedTone, setSelectedTone] = useState('formal');
+
+  // 알프레도 스토어 초기화
+  useEffect(() => {
+    if (user?.email && !alfredoPrefs) {
+      initAlfredo(user.email);
+    }
+  }, [user?.email, alfredoPrefs, initAlfredo]);
   
   // 역할 블렌드 라벨
   const getRoleBlendLabel = (value: number) => {
@@ -223,7 +239,7 @@ const Settings: React.FC = () => {
             ))}
           </div>
         </section>
-        
+
         {/* Save Button */}
         <button
           onClick={handleSaveSettings}
@@ -231,6 +247,38 @@ const Settings: React.FC = () => {
         >
           설정 저장
         </button>
+
+        {/* Alfredo 육성 시스템 섹션 */}
+        <section className="bg-white rounded-xl p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <Brain className="w-5 h-5 text-[#A996FF]" />
+            <h2 className="text-base font-semibold">알프레도 육성</h2>
+          </div>
+
+          {alfredoLoading ? (
+            <div className="text-center py-8">
+              <div className="text-3xl animate-bounce mb-2">🐧</div>
+              <p className="text-sm text-gray-500">알프레도 불러오는 중...</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* 영역 전환 */}
+              <DomainSwitcher />
+
+              {/* 이해도 카드 */}
+              <UnderstandingCard />
+
+              {/* 주간 리포트 */}
+              <WeeklyReportCard />
+
+              {/* 파악 중인 것 */}
+              <PendingLearningsList />
+
+              {/* 학습 목록 */}
+              <LearningsList />
+            </div>
+          )}
+        </section>
         
         {/* Development Tools */}
         <section className="bg-yellow-50 rounded-xl p-5 border border-yellow-200">

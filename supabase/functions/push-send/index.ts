@@ -32,6 +32,58 @@ interface PushSubscriptionRow {
   auth: string;
 }
 
+// Base64 URL 인코딩/디코딩 유틸리티
+function base64UrlEncode(data: Uint8Array): string {
+  const base64 = btoa(String.fromCharCode(...data));
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+function base64UrlDecode(str: string): Uint8Array {
+  const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+  const padding = '='.repeat((4 - base64.length % 4) % 4);
+  const decoded = atob(base64 + padding);
+  return Uint8Array.from(decoded, c => c.charCodeAt(0));
+}
+
+// VAPID JWT 생성
+async function generateVapidJwt(
+  audience: string,
+  subject: string,
+  publicKey: string,
+  privateKey: string
+): Promise<string> {
+  const header = { alg: 'ES256', typ: 'JWT' };
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    aud: audience,
+    exp: now + 12 * 60 * 60, // 12시간
+    sub: subject,
+  };
+
+  const headerB64 = base64UrlEncode(new TextEncoder().encode(JSON.stringify(header)));
+  const payloadB64 = base64UrlEncode(new TextEncoder().encode(JSON.stringify(payload)));
+  const unsignedToken = `${headerB64}.${payloadB64}`;
+
+  // ES256 서명 생성
+  const privateKeyBytes = base64UrlDecode(privateKey);
+  const cryptoKey = await crypto.subtle.importKey(
+    'pkcs8',
+    privateKeyBytes,
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    false,
+    ['sign']
+  );
+
+  const signature = await crypto.subtle.sign(
+    { name: 'ECDSA', hash: 'SHA-256' },
+    cryptoKey,
+    new TextEncoder().encode(unsignedToken)
+  );
+
+  const signatureB64 = base64UrlEncode(new Uint8Array(signature));
+  return `${unsignedToken}.${signatureB64}`;
+}
+
 // Web Push 발송 함수
 async function sendWebPush(
   subscription: PushSubscriptionRow,
@@ -45,9 +97,6 @@ async function sendWebPush(
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // web-push 라이브러리 대신 직접 Web Push Protocol 구현
-    // Deno에서는 web-push 라이브러리를 직접 사용할 수 없으므로 fetch API 사용
-
     const pushBody = JSON.stringify({
       title: payload.title,
       body: payload.body,
@@ -59,30 +108,60 @@ async function sendWebPush(
       requireInteraction: payload.urgent || false,
     });
 
-    // Web Push API 호출
-    // 참고: 실제 프로덕션에서는 VAPID 서명이 필요합니다
-    // 이 예제에서는 간단한 구조만 보여줍니다
+    // 푸시 서버 호스트 추출 (VAPID aud 파라미터용)
+    const endpoint = new URL(subscription.endpoint);
+    const audience = endpoint.origin;
+
+    // VAPID 헤더 생성
+    const vapidHeaders: Record<string, string> = {};
+
+    if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+      try {
+        const jwt = await generateVapidJwt(
+          audience,
+          VAPID_SUBJECT,
+          VAPID_PUBLIC_KEY,
+          VAPID_PRIVATE_KEY
+        );
+        vapidHeaders['Authorization'] = `vapid t=${jwt}, k=${VAPID_PUBLIC_KEY}`;
+      } catch (vapidError) {
+        console.warn('VAPID JWT generation failed, sending without auth:', vapidError);
+        // VAPID 없이 시도 (일부 푸시 서비스에서 테스트용으로 허용될 수 있음)
+      }
+    }
+
+    // Web Push 요청
+    // 참고: 실제 암호화된 페이로드를 위해서는 ECDH 키 교환 및 AES-GCM 암호화 필요
+    // 현재 구현은 간소화된 버전임
     const response = await fetch(subscription.endpoint, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/octet-stream',
-        'Content-Encoding': 'aes128gcm',
+        'Content-Type': 'application/json',
         'TTL': '86400',
-        // VAPID 헤더는 실제 구현 시 crypto API로 생성 필요
+        'Urgency': payload.urgent ? 'high' : 'normal',
+        ...vapidHeaders,
       },
       body: pushBody,
     });
 
     if (!response.ok) {
+      const responseText = await response.text().catch(() => '');
+      console.error(`Push failed: HTTP ${response.status}`, responseText);
+
       // 410 Gone = 구독 만료
       if (response.status === 410) {
         return { success: false, error: 'subscription_expired' };
+      }
+      // 401/403 = 인증 문제 (VAPID 관련)
+      if (response.status === 401 || response.status === 403) {
+        return { success: false, error: 'vapid_auth_failed' };
       }
       return { success: false, error: `HTTP ${response.status}` };
     }
 
     return { success: true };
   } catch (error) {
+    console.error('sendWebPush error:', error);
     return { success: false, error: String(error) };
   }
 }

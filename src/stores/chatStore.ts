@@ -10,6 +10,11 @@ import {
   CrisisResource,
   ConversationContext
 } from '../services/safety';
+import { useAlfredoStore } from './alfredoStore';
+import {
+  extractLearningsFromMessage,
+  detectFeedbackSentiment
+} from '../services/alfredo/learningExtractor';
 
 // Date 객체 안전 변환 헬퍼 (persist 후 string -> Date 변환)
 const toDate = (value: Date | string | undefined): Date => {
@@ -222,6 +227,46 @@ export const useChatStore = create<ChatStore>()(
           activeSafetyLevel: safetyResult.emotion.level,
           activeCrisisResources: safetyResult.crisisResources || null
         });
+
+        // === 알프레도 학습 시스템 연동 ===
+        try {
+          const alfredoStore = useAlfredoStore.getState();
+
+          // 1. 대화에서 학습 추출
+          const extractedLearnings = extractLearningsFromMessage(
+            content,
+            alfredoResponse.full,
+            { entry: entryContext.entry }
+          );
+
+          // 2. 추출된 학습 저장
+          for (const learning of extractedLearnings) {
+            if (alfredoStore.preferences) {
+              await alfredoStore.addNewLearning({
+                type: learning.type,
+                category: learning.category,
+                summary: learning.summary,
+                originalInput: learning.originalInput,
+                source: 'chat'
+              });
+            }
+          }
+
+          // 3. 피드백 감지 (이전 응답에 대한 긍정/부정)
+          const sentiment = detectFeedbackSentiment(content);
+          if (sentiment !== 'neutral' && alfredoStore.learnings.length > 0) {
+            // 가장 최근 학습에 피드백 적용
+            const recentLearning = alfredoStore.learnings[0];
+            if (recentLearning) {
+              await alfredoStore.feedbackLearning(
+                recentLearning.id,
+                sentiment === 'positive'
+              );
+            }
+          }
+        } catch (error) {
+          console.error('Failed to save learning from chat:', error);
+        }
       },
       
       startNewSession: (context) => {
@@ -306,6 +351,18 @@ async function generateAlfredoResponse(
 ) {
   // 실제로는 Claude API 호출하겠지만, 지금은 패턴 기반 응답
 
+  // 알프레도 학습 컨텍스트 가져오기
+  const alfredoStore = useAlfredoStore.getState();
+  const learnings = alfredoStore.learnings || [];
+  const understanding_score = alfredoStore.understanding?.understandingScore || 10;
+
+  // 학습 기반 응답 조정 (Claude API 연동 시 사용)
+  // const currentDomain = alfredoStore.preferences?.currentDomain || 'work';
+  // const learningsContext = formatLearningsForPrompt(
+  //   learnings.filter(l => l.isActive && l.confidence > 40).slice(0, 5)
+  // );
+  void learnings; // TODO: Claude API 연동 시 사용
+
   let understanding = '네, 이해했어요. ';
   let summary = '';
   let judgement: JudgementReflection = {
@@ -314,6 +371,14 @@ async function generateAlfredoResponse(
     confidence: 0.8
   };
   const insights: DNAInsight[] = [];
+
+  // 이해도가 높을수록 더 개인화된 응답
+  if (understanding_score >= 50) {
+    understanding = '네, 알겠어요. ';
+  }
+  if (understanding_score >= 70) {
+    understanding = '네, 잘 알겠어요. ';
+  }
 
   // 경계 주제 감지 시 대체 응답 사용
   if (safetyResult?.boundary.type !== 'safe' && safetyResult?.boundary.alternativeResponse) {

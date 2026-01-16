@@ -5,6 +5,7 @@ import { WeatherData, getWeather, getTempAdvice } from '../../services/weather';
 export default function WeatherCard() {
   var [weather, setWeather] = useState<WeatherData | null>(null);
   var [isLoading, setIsLoading] = useState(true);
+  var [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(function() {
     loadWeather();
@@ -23,8 +24,16 @@ export default function WeatherCard() {
   }
 
   async function handleRefresh() {
+    setIsRefreshing(true);
     localStorage.removeItem('alfredo_weather');
-    await loadWeather();
+    try {
+      var data = await getWeather();
+      setWeather(data);
+    } catch (e) {
+      console.error('Failed to refresh weather:', e);
+    } finally {
+      setIsRefreshing(false);
+    }
   }
 
   if (isLoading) {
@@ -78,9 +87,10 @@ export default function WeatherCard() {
           {/* 새로고침 버튼 - 48x48 */}
           <button
             onClick={handleRefresh}
-            className="w-12 h-12 flex items-center justify-center text-[#999999] hover:text-[#666666] hover:bg-[#F5F5F5] rounded-full transition-colors"
+            disabled={isRefreshing}
+            className="w-12 h-12 flex items-center justify-center text-[#999999] hover:text-[#666666] hover:bg-[#F5F5F5] rounded-full transition-colors disabled:opacity-50"
           >
-            <RefreshCw size={16} />
+            <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
           </button>
         </div>
       </div>
