@@ -22,6 +22,7 @@ const Home = lazy(() => import('./pages/Home'));
 const Calendar = lazy(() => import('./pages/Calendar'));
 const WorkOS = lazy(() => import('./pages/WorkOS'));
 const LifeOS = lazy(() => import('./pages/LifeOS'));
+const Finance = lazy(() => import('./pages/Finance'));
 const Chat = lazy(() => import('./pages/Chat'));
 const Report = lazy(() => import('./pages/Report'));
 const Settings = lazy(() => import('./pages/Settings'));
@@ -104,6 +105,7 @@ function App() {
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/work" element={<WorkOS />} />
             <Route path="/life" element={<LifeOS />} />
+            <Route path="/finance" element={<Finance />} />
             <Route path="/chat" element={<Chat />} />
             <Route path="/report" element={<Report />} />
             <Route path="/settings" element={<Settings />} />
