@@ -54,7 +54,7 @@ export default function Onboarding() {
       // 마지막 스텝 완료
       const user = {
         id: '1',
-        name: newData.userName || 'Boss',
+        name: newData.userName || '', // 빈 문자열 - 표시할 때 "사용자님"으로 처리
         email: 'user@example.com',
         onboarded: true,
         preferences: {
@@ -83,7 +83,7 @@ export default function Onboarding() {
     // Skip 시 기본값으로 완료 처리
     const user = {
       id: '1',
-      name: 'Boss',
+      name: '', // 빈 문자열 - 표시할 때 "사용자님"으로 처리
       email: 'user@example.com',
       onboarded: true,
       preferences: {

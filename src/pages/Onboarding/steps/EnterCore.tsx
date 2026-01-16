@@ -11,7 +11,9 @@ interface EnterCoreProps {
 export default function EnterCore({ data, onNext }: EnterCoreProps) {
   const [isReady, setIsReady] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const userName = data?.userName || 'Boss';
+  // 닉네임이 없으면 빈 문자열 (표시 시 "님" 생략 처리)
+  const userName = data?.userName || '';
+  const displayName = userName ? `${userName}님` : '사용자님';
 
   // 1.5초 후 준비 완료
   useState(() => {
@@ -56,7 +58,7 @@ export default function EnterCore({ data, onNext }: EnterCoreProps) {
                   transition={{ delay: 0.5 }}
                 >
                   <p className="text-lg text-[#666666] mb-2">
-                    알프레도가 {userName}님을 위해
+                    알프레도가 {displayName}을 위해
                   </p>
                   <p className="text-lg text-[#666666]">
                     첫 브리핑을 준비하고 있어요
@@ -80,7 +82,7 @@ export default function EnterCore({ data, onNext }: EnterCoreProps) {
                   준비 완료! 첫 브리핑이에요
                 </h2>
                 <p className="text-[#666666]">
-                  매일 아침 {userName}님만의 브리핑을 준비해드려요
+                  매일 아침 {displayName}만의 브리핑을 준비해드려요
                 </p>
               </div>
 
@@ -92,10 +94,10 @@ export default function EnterCore({ data, onNext }: EnterCoreProps) {
                   </div>
                   <div className="flex-1">
                     <h3 className="font-semibold text-[#1A1A1A] mb-1">
-                      좋은 아침이에요, {userName}님!
+                      좋은 아침이에요, {displayName}!
                     </h3>
                     <p className="text-[#666666]">
-                      오늘은 {data?.context === 'work' ? '중요한 미팅' : '행복한 하루'}와 함께 시작해볼까요?
+                      오늘은 {data?.context === 'work' ? '중요한 미팅과' : '행복한 하루와'} 함께 시작해볼까요?
                     </p>
                   </div>
                 </div>

@@ -21,7 +21,8 @@ export default function TrustMoment({ onNext }: TrustMomentProps) {
   }, []);
 
   const handleContinue = () => {
-    onNext({ userName: userName || 'Boss' });
+    // 닉네임 미입력 시 빈 문자열 전달 (표시할 때 처리)
+    onNext({ userName: userName.trim() || '' });
   };
 
   return (
@@ -56,6 +57,10 @@ export default function TrustMoment({ onNext }: TrustMomentProps) {
 
           {/* 프로그레스 바 */}
           <div className="mb-2">
+            <div className="flex justify-between text-sm mb-1">
+              <span className="text-[#A996FF] font-semibold">현재 {progress}%</span>
+              <span className="text-[#999999] text-xs">목표 100%</span>
+            </div>
             <div className="h-3 bg-[#F0F0F0] rounded-full overflow-hidden">
               <motion.div
                 initial={{ width: '0%' }}
@@ -64,11 +69,6 @@ export default function TrustMoment({ onNext }: TrustMomentProps) {
                 className="h-full bg-gradient-to-r from-[#A996FF] to-[#8B7ACC] rounded-full"
               />
             </div>
-          </div>
-          
-          <div className="flex justify-between text-sm">
-            <span className="text-[#A996FF] font-semibold">{progress}%</span>
-            <span className="text-[#999999]">100%</span>
           </div>
         </div>
 
@@ -108,9 +108,12 @@ export default function TrustMoment({ onNext }: TrustMomentProps) {
             type="text"
             value={userName}
             onChange={(e) => setUserName(e.target.value)}
-            placeholder="이름 또는 닉네임"
+            placeholder="알프레도가 부를 이름 (예: 민지)"
             className="w-full px-4 py-3 bg-white border border-[#E5E5E5] rounded-xl focus:outline-none focus:border-[#A996FF] transition-colors"
           />
+          <p className="text-xs text-[#999999] mt-1">
+            입력하지 않으면 "사용자님"으로 불러요
+          </p>
         </motion.div>
       </div>
 
