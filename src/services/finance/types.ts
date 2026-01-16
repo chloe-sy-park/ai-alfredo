@@ -28,6 +28,8 @@ export type RetentionIntent = 'keep' | 'considering' | 'cancel_candidate';
 
 export type FatigueLevel = 'low' | 'moderate' | 'high';
 
+export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+
 // ============================================
 // Service Categories (자동 분류 기준)
 // ============================================
@@ -210,6 +212,64 @@ export interface FinanceOverview {
   cancelCandidateCount: number;
 }
 
+// ============================================
+// Overview State Summary (State-based IA용)
+// ============================================
+
+/**
+ * Overview 메트릭스 (StatusSummaryRow용)
+ */
+export interface OverviewMetrics {
+  fixedCostThisMonth: number;     // recurring + commitments 월 합계
+  upcoming7DaysAmount: number;    // 다음 7일 결제 합계
+  riskLevel: RiskLevel;           // 단일 리스크 배지
+}
+
+/**
+ * Candidate Score (해지 후보 점수)
+ */
+export interface CandidateScore {
+  itemId: string;
+  score: number;                  // 0-1, 0.6 이상이면 후보
+}
+
+/**
+ * Overview 상태 요약 (State Cards용)
+ */
+export interface OverviewStateSummary {
+  overlaps: {
+    countGroups: number;
+    estimatedMonthlySavings: number;
+  };
+  candidates: {
+    countItems: number;
+    estimatedMonthlySavings: number;
+  };
+  upcoming: {
+    countPayments: number;
+    totalAmount: number;
+    nearestDDay: number | null;    // 가장 가까운 D-day
+  };
+}
+
+/**
+ * 전체 Overview 데이터 (buildOverviewStateSummary 리턴)
+ */
+export interface OverviewData {
+  metrics: OverviewMetrics;
+  stateSummary: OverviewStateSummary;
+  recommended: 'overlaps' | 'candidates' | 'upcoming' | 'allclear';
+}
+
+/**
+ * 리스크 계산 임계치 (MVP 상수)
+ */
+export const RISK_THRESHOLDS = {
+  UPCOMING_HIGH_AMOUNT: 300000,    // 7일 내 30만원 이상
+  FIXED_HIGH_AMOUNT: 500000,       // 월 50만원 이상
+  HIGH_COST_THRESHOLD: 240000,     // 연 24만원(월 2만원) 이상 고비용
+} as const;
+
 export interface UpcomingPayment {
   itemId: string;
   name: string;
@@ -287,6 +347,61 @@ export const DUPLICATE_PURPOSE_GROUPS: Record<string, ServiceCategory[]> = {
   '업무 협업': ['collaboration', 'productivity'],
   '운동/피트니스': ['fitness'],
   '명상/웰빙': ['wellbeing'],
+};
+
+/**
+ * 머천트 → 클러스터 매핑 (중복 탐지용)
+ * MVP: 주요 서비스들의 클러스터 키
+ */
+export const MERCHANT_CLUSTER_MAP: Record<string, string> = {
+  // OTT
+  '넷플릭스': 'OTT',
+  'netflix': 'OTT',
+  '디즈니플러스': 'OTT',
+  '디즈니+': 'OTT',
+  'disney+': 'OTT',
+  '쿠팡플레이': 'OTT',
+  '웨이브': 'OTT',
+  'wavve': 'OTT',
+  '왓챠': 'OTT',
+  'watcha': 'OTT',
+  '티빙': 'OTT',
+  'tving': 'OTT',
+  '애플tv+': 'OTT',
+  'apple tv+': 'OTT',
+  // 음악 스트리밍
+  '스포티파이': '음악스트리밍',
+  'spotify': '음악스트리밍',
+  '멜론': '음악스트리밍',
+  '지니뮤직': '음악스트리밍',
+  'genie': '음악스트리밍',
+  '플로': '음악스트리밍',
+  'flo': '음악스트리밍',
+  '유튜브뮤직': '음악스트리밍',
+  'youtube music': '음악스트리밍',
+  '애플뮤직': '음악스트리밍',
+  'apple music': '음악스트리밍',
+  // 클라우드
+  '드롭박스': '클라우드스토리지',
+  'dropbox': '클라우드스토리지',
+  '구글드라이브': '클라우드스토리지',
+  'google drive': '클라우드스토리지',
+  '아이클라우드': '클라우드스토리지',
+  'icloud': '클라우드스토리지',
+  '원드라이브': '클라우드스토리지',
+  'onedrive': '클라우드스토리지',
+  // 생산성
+  '노션': '생산성도구',
+  'notion': '생산성도구',
+  '에버노트': '생산성도구',
+  'evernote': '생산성도구',
+  '옵시디언': '생산성도구',
+  'obsidian': '생산성도구',
+  // 피트니스
+  '런데이': '피트니스앱',
+  '나이키런클럽': '피트니스앱',
+  '스트라바': '피트니스앱',
+  'strava': '피트니스앱',
 };
 
 /**
