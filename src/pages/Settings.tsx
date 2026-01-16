@@ -1,12 +1,13 @@
 // Settings.tsx - 설정 페이지
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Users, Volume2, Palette, LogOut, Brain, Bell, Moon, Clock, BellOff } from 'lucide-react';
+import { ArrowLeft, Users, Volume2, Palette, LogOut, Brain, Bell, Moon, Clock, BellOff, Sun, Monitor } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUserPreferencesStore } from '../stores/userPreferencesStore';
 import { useAuthStore } from '../stores/authStore';
 import { useLiftStore } from '../stores/liftStore';
 import { useAlfredoStore } from '../stores/alfredoStore';
 import { useNotificationSettingsStore } from '../stores/notificationSettingsStore';
+import { useThemeStore, Theme } from '../stores/themeStore';
 import {
   DomainSwitcher,
   UnderstandingCard,
@@ -22,6 +23,7 @@ const Settings = () => {
   const { addLift } = useLiftStore();
   const { initialize: initAlfredo, preferences: alfredoPrefs, isLoading: alfredoLoading } = useAlfredoStore();
   const notificationSettings = useNotificationSettingsStore();
+  const { theme, setTheme } = useThemeStore();
 
   const [currentRoleBlend, setCurrentRoleBlend] = useState(roleBlend);
   const [currentInterventionLevel, setCurrentInterventionLevel] = useState(interventionLevel);
@@ -238,6 +240,37 @@ const Settings = () => {
                   <div className="text-xs text-gray-600">{tone.desc}</div>
                 </div>
               </label>
+            ))}
+          </div>
+        </section>
+
+        {/* Theme Section */}
+        <section className="bg-white dark:bg-neutral-800 rounded-xl p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <Moon className="w-5 h-5 text-[#A996FF]" />
+            <h2 className="text-base font-semibold">화면 테마</h2>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { value: 'light' as Theme, label: '라이트', icon: Sun },
+              { value: 'dark' as Theme, label: '다크', icon: Moon },
+              { value: 'system' as Theme, label: '시스템', icon: Monitor },
+            ].map(option => (
+              <button
+                key={option.value}
+                onClick={() => setTheme(option.value)}
+                className={`flex flex-col items-center gap-2 p-3 rounded-lg transition-colors ${
+                  theme === option.value
+                    ? 'bg-[#A996FF]/10 border-2 border-[#A996FF]'
+                    : 'bg-gray-100 dark:bg-neutral-700 border-2 border-transparent hover:bg-gray-200 dark:hover:bg-neutral-600'
+                }`}
+              >
+                <option.icon size={20} className={theme === option.value ? 'text-[#A996FF]' : 'text-gray-500 dark:text-gray-400'} />
+                <span className={`text-sm ${theme === option.value ? 'text-[#A996FF] font-medium' : 'text-gray-600 dark:text-gray-300'}`}>
+                  {option.label}
+                </span>
+              </button>
             ))}
           </div>
         </section>
