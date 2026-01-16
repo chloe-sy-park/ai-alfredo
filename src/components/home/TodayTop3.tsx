@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Check, Plus, X, GripVertical } from 'lucide-react';
-import { 
-  Top3Item, 
-  getTodayTop3, 
-  addTop3Item, 
-  toggleTop3Complete, 
+import { Check, Plus, X, GripVertical, MessageCircle } from 'lucide-react';
+import {
+  Top3Item,
+  getTodayTop3,
+  addTop3Item,
   deleteTop3Item,
   saveTop3,
   getTop3Progress
@@ -12,7 +11,7 @@ import {
 import Card from '../common/Card';
 import Button from '../common/Button';
 import RingProgress from '../common/RingProgress';
-import { SuccessCheckmark, CelebrationParticles } from '../common/SuccessFeedback';
+import { CelebrationParticles } from '../common/SuccessFeedback';
 
 interface TodayTop3Props {
   onFocusSelect?: (item: Top3Item) => void;
@@ -23,7 +22,6 @@ export default function TodayTop3({ onFocusSelect }: TodayTop3Props) {
   var [isAdding, setIsAdding] = useState(false);
   var [newTitle, setNewTitle] = useState('');
   var [dragIndex, setDragIndex] = useState<number | null>(null);
-  var [showSuccess, setShowSuccess] = useState(false);
   var [justCompletedAll, setJustCompletedAll] = useState(false);
   var [previousProgress, setPreviousProgress] = useState(0);
 
@@ -56,7 +54,7 @@ export default function TodayTop3({ onFocusSelect }: TodayTop3Props) {
 
   function handleAdd() {
     if (!newTitle.trim()) return;
-    
+
     var result = addTop3Item(newTitle.trim());
     if (result) {
       loadItems();
@@ -65,18 +63,8 @@ export default function TodayTop3({ onFocusSelect }: TodayTop3Props) {
     }
   }
 
-  function handleToggle(id: string) {
-    var item = items.find(function(i) { return i.id === id; });
-    var wasIncomplete = item && !item.completed;
-    
-    toggleTop3Complete(id);
-    loadItems();
-    
-    // 완료 하는 경우 성공 피드백
-    if (wasIncomplete) {
-      setShowSuccess(true);
-    }
-  }
+  // PRD R4: 완료는 집중 세션 종료 또는 채팅으로만 처리
+  // 직접 체크박스 토글 제거됨
 
   function handleDelete(id: string) {
     deleteTop3Item(id);
@@ -185,22 +173,19 @@ export default function TodayTop3({ onFocusSelect }: TodayTop3Props) {
                 <span className={'text-[10px] font-semibold px-3 py-1 rounded-full flex-shrink-0 ' + style.badge}>
                   {style.label}
                 </span>
-                
-                {/* 체크박스 */}
-                <button
-                  onClick={function() { handleToggle(item.id); }}
+
+                {/* PRD R4: 완료 상태 표시 (읽기 전용) */}
+                <div
                   className={[
-                    'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all',
-                    item.completed 
-                      ? 'bg-[#4ADE80] border-[#4ADE80] text-white scale-110' 
-                      : idx === 0 
-                        ? 'border-[#FFD700] hover:bg-[#FFD700]/10 active:scale-95'
-                        : 'border-[#D4D4D4] hover:border-[#A996FF] active:scale-95',
+                    'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0',
+                    item.completed
+                      ? 'bg-[#4ADE80] border-[#4ADE80] text-white'
+                      : 'border-[#E5E5E5] bg-white',
                   ].join(' ')}
                 >
-                  {item.completed && <Check size={12} className="animate-scale-in" />}
-                </button>
-                
+                  {item.completed && <Check size={12} />}
+                </div>
+
                 {/* 제목 */}
                 <span 
                   className={[
@@ -211,7 +196,7 @@ export default function TodayTop3({ onFocusSelect }: TodayTop3Props) {
                   {item.title}
                 </span>
                 
-                {/* 집중 버튼 (1순위만 골드) */}
+                {/* 집중 버튼 - PRD R4: 주요 액션은 "집중"으로 */}
                 {!item.completed && onFocusSelect && (
                   <Button
                     variant={idx === 0 ? 'primary' : 'ghost'}
@@ -221,6 +206,10 @@ export default function TodayTop3({ onFocusSelect }: TodayTop3Props) {
                   >
                     집중
                   </Button>
+                )}
+                {/* 완료된 항목 표시 */}
+                {item.completed && (
+                  <span className="text-xs text-[#4ADE80] font-medium px-2">완료</span>
                 )}
                 
                 {/* 삭제 버튼 */}
@@ -278,15 +267,18 @@ export default function TodayTop3({ onFocusSelect }: TodayTop3Props) {
             <p className="text-xs text-[#999999]">적을수록 집중하기 좋아요 🎯</p>
           </div>
         )}
+
+        {/* PRD R4: 완료는 채팅으로 안내 */}
+        {items.length > 0 && items.some(function(i) { return !i.completed; }) && (
+          <div className="flex items-center justify-center gap-1.5 pt-3 border-t border-[#F0F0F0] mt-3">
+            <MessageCircle size={12} className="text-[#A996FF]" />
+            <span className="text-[11px] text-[#999999]">
+              완료하려면 채팅에서 "1번 완료" 라고 말해보세요
+            </span>
+          </div>
+        )}
       </Card>
 
-      {/* 성공 피드백 */}
-      <SuccessCheckmark 
-        show={showSuccess} 
-        onComplete={function() { setShowSuccess(false); }}
-        message="잘하셨어요!"
-      />
-      
       {/* 100% 달성 축하 */}
       <CelebrationParticles trigger={justCompletedAll} />
     </>

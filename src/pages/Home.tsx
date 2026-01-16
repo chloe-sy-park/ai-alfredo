@@ -9,10 +9,11 @@ import { FocusItem, setFocusFromTop3, getCurrentFocus } from '../services/focusN
 import { getWeather, WeatherData } from '../services/weather';
 import { hasSeenEntryToday, markEntryAsSeen, updateVisit } from '../services/visit';
 import { generateBriefing, WeatherData as BriefingWeatherData } from '../services/briefing';
+import { usePostAction } from '../stores/postActionStore';
 
 // Components
 import { PageHeader } from '../components/layout';
-import { ModeCards, MoreSheet } from '../components/home';
+import { ModeCards, MoreSheet, ModeSwitch, ChatLauncher, BalanceHint } from '../components/home';
 import BriefingCard from '../components/home/BriefingCard';
 import TodayTimeline from '../components/home/TodayTimeline';
 import ConditionQuick from '../components/home/ConditionQuick';
@@ -43,6 +44,7 @@ export default function Home() {
   const [showDailyEntry, setShowDailyEntry] = useState(false);
   const [briefing, setBriefing] = useState({ headline: '', subline: '' });
   const [homeMode, setHomeMode] = useState<HomeMode>('all');
+  const postAction = usePostAction();
 
   // URL 쿼리 파라미터에서 mode 확인
   useEffect(() => {
@@ -166,17 +168,24 @@ export default function Home() {
   // 컨디션 변경 핸들러
   function handleConditionChange(level: ConditionLevel) {
     setCurrentCondition(level);
+    postAction.onConditionUpdated(level);
   }
 
   // Top3에서 집중 선택
   function handleFocusSelect(item: Top3Item) {
     var focusItem = setFocusFromTop3(item.id, item.title);
     setCurrentFocus(focusItem);
+    postAction.onFocusSet(item.title);
   }
 
   // 집중 변경
   function handleFocusChange(focus: FocusItem | null) {
     setCurrentFocus(focus);
+    if (focus) {
+      postAction.onFocusSet(focus.title);
+    } else {
+      postAction.onFocusCleared();
+    }
   }
 
   // Daily Entry 완료
@@ -277,24 +286,35 @@ export default function Home() {
       <PageHeader />
 
       {/* 메인 컨텐츠 */}
-      <div className="max-w-[640px] mx-auto px-6 py-4 space-y-4">
+      <div className="max-w-[640px] mx-auto px-4 sm:px-6 py-4 space-y-4">
         
+        {/* PRD: ModeSwitch - ALL/WORK/LIFE 탭 전환 */}
+        <ModeSwitch
+          activeMode={homeMode}
+          onChange={function(mode) {
+            setHomeMode(mode);
+            postAction.onModeChanged(mode);
+          }}
+        />
+
         {/* 인사 */}
         <div className="animate-fade-in">
           <ModeBadge />
-          <p className="text-sm text-[#999999]">{getGreeting()}</p>
-          <h1 className="text-xl font-bold text-[#1A1A1A]">
+          <p className="text-sm sm:text-base text-[#999999]">{getGreeting()}</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#1A1A1A] dark:text-white">
             {user?.name || 'Boss'}님
           </h1>
         </div>
 
-        {/* 모드 카드 - Work/Life 가로 2개 */}
-        <ModeCards
-          workCount={workCount}
-          lifeCount={lifeCount}
-          workStatus={calendarEvents.length + '개 일정'}
-          lifeStatus={'컨디션 ' + conditionStatus}
-        />
+        {/* 모드 카드 - Work/Life 가로 2개 (ALL 모드에서만) */}
+        {homeMode === 'all' && (
+          <ModeCards
+            workCount={workCount}
+            lifeCount={lifeCount}
+            workStatus={calendarEvents.length + '개 일정'}
+            lifeStatus={'컨디션 ' + conditionStatus}
+          />
+        )}
 
         {/* 알프레도 이해도 위젯 */}
         {understanding && <MiniUnderstandingWidget />}
@@ -314,6 +334,18 @@ export default function Home() {
             subline={briefing.subline}
             intensity={intensity}
             onMore={function() { setIsMoreSheetOpen(true); }}
+          />
+        )}
+
+        {/* PRD: BalanceHint (mini) - ALL 모드에서 균형 표시 */}
+        {homeMode === 'all' && (
+          <BalanceHint
+            workPercent={workCount > 0 || lifeCount > 0
+              ? Math.round((workCount / (workCount + lifeCount)) * 100)
+              : 50}
+            lifePercent={workCount > 0 || lifeCount > 0
+              ? Math.round((lifeCount / (workCount + lifeCount)) * 100)
+              : 50}
           />
         )}
 
@@ -342,6 +374,9 @@ export default function Home() {
         whatChanged={moreContent.whatChanged}
         tradeOff={moreContent.tradeOff}
       />
+
+      {/* PRD R4: ChatLauncher floating - 조정은 오직 채팅으로만 */}
+      <ChatLauncher variant="floating" />
     </div>
   );
 }

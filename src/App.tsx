@@ -3,11 +3,13 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
 import { useDrawerStore } from './stores/drawerStore';
 import { useAlfredoStore } from './stores/alfredoStore';
+import { usePostActionStore } from './stores/postActionStore';
 import { lazy, Suspense, useEffect } from 'react';
 
 // Common Components
 import FloatingBar from './components/common/FloatingBar';
 import Drawer from './components/common/Drawer';
+import { PostActionToast } from './components/common';
 import { BodyDoublingButton } from './components/body-doubling/BodyDoublingButton';
 import { NudgeBubble } from './components/nudge/NudgeBubble';
 import { NudgeManager } from './components/nudge/NudgeManager';
@@ -53,6 +55,7 @@ function App() {
   const user = useAuthStore(state => state.user);
   const { isOpen: isDrawerOpen, close: closeDrawer } = useDrawerStore();
   const { initialize: initAlfredo, preferences: alfredoPrefs } = useAlfredoStore();
+  const { currentBriefing, dismissBriefing } = usePostActionStore();
 
   // 알프레도 스토어 초기화 (로그인 후)
   useEffect(() => {
@@ -118,6 +121,12 @@ function App() {
 
       {/* 알림 패널 */}
       <NotificationPanel />
+
+      {/* PRD: PostAction 브리핑 토스트 */}
+      <PostActionToast
+        briefing={currentBriefing}
+        onDismiss={dismissBriefing}
+      />
 
       {/* 기타 플로팅 요소들 */}
       <BodyDoublingButton />

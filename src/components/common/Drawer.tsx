@@ -71,9 +71,9 @@ const Drawer: React.FC<DrawerProps> = ({ isOpen, onClose }) => {
         key={item.path}
         onClick={() => handleNavigation(item.path)}
         className={`
-          w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all
-          ${isActive 
-            ? 'bg-[#F5F3FF] text-[#A996FF]' 
+          w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all min-h-[48px]
+          ${isActive
+            ? 'bg-[#F5F3FF] text-[#A996FF]'
             : 'text-gray-700 hover:bg-gray-50'
           }
         `}
@@ -107,15 +107,15 @@ const Drawer: React.FC<DrawerProps> = ({ isOpen, onClose }) => {
       />
       
       {/* 드로어 패널 */}
-      <div 
+      <div
         className={`
-          fixed top-0 right-0 h-full w-72 bg-white z-50 shadow-2xl
-          transform transition-transform duration-300 ease-out
+          fixed top-0 right-0 h-full w-72 sm:w-80 max-w-[80vw] bg-white z-50 shadow-2xl
+          transform transition-transform duration-300 ease-out safe-area-top safe-area-bottom
           ${isOpen ? 'translate-x-0' : 'translate-x-full'}
         `}
       >
         {/* 헤더 */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+        <div className="flex items-center justify-between p-4 border-b border-gray-100 safe-area-top">
           <div className="flex items-center gap-3">
             <div className="text-3xl">🐧</div>
             <div>
@@ -123,9 +123,9 @@ const Drawer: React.FC<DrawerProps> = ({ isOpen, onClose }) => {
               <p className="text-xs text-gray-500">함께한 지 14일째</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            className="w-11 h-11 rounded-full hover:bg-gray-100 transition-colors flex items-center justify-center touch-target"
           >
             <X className="w-5 h-5 text-gray-500" />
           </button>
@@ -149,7 +149,7 @@ const Drawer: React.FC<DrawerProps> = ({ isOpen, onClose }) => {
         </div>
         
         {/* 하단 정보 */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100 bg-gray-50">
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100 bg-gray-50 safe-area-bottom">
           <p className="text-xs text-gray-400 text-center">
             AlFredo v1.0.0
           </p>

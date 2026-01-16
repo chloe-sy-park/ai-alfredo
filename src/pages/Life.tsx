@@ -1,181 +1,193 @@
 import { useState, useEffect } from 'react';
 import { PageHeader } from '../components/layout';
-import { WellbeingStatus, StatusCards, GentleNudge, LifeTrends } from '../components/life';
-import { HabitManager, HabitStats, WeeklyHabitView } from '../components/habits';
+import { Heart } from 'lucide-react';
 import { ConditionLevel, getTodayCondition } from '../services/condition';
-import { Heart, Plus, CheckCircle2, Circle, Flame, Settings } from 'lucide-react';
-import { getHabits, getTodayLogs, getRecentLogs, toggleHabitComplete, getStreak, Habit, HabitLog } from '../services/habits';
+import { getTop3, Top3Item } from '../services/top3';
+import { getRelationships, Relationship } from '../services/relationships';
+
+// Home 컴포넌트 재사용 (PRD 구조)
+import BriefingCard from '../components/home/BriefingCard';
+import PriorityStack from '../components/home/PriorityStack';
+import RelationshipReminder from '../components/home/RelationshipReminder';
+import LifeFactors from '../components/home/LifeFactors';
+import { MoreSheet } from '../components/home';
+import { LifeTrends } from '../components/life';
 
 export default function Life() {
   var [condition, setCondition] = useState<ConditionLevel | null>(null);
-  var [habits, setHabits] = useState<Habit[]>([]);
-  var [todayLogs, setTodayLogs] = useState<HabitLog[]>([]);
-  var [recentLogs, setRecentLogs] = useState<HabitLog[]>([]);
-  var [showAllHabits, setShowAllHabits] = useState(false);
-  var [showHabitManager, setShowHabitManager] = useState(false);
-  var [showWeeklyView, setShowWeeklyView] = useState(false);
+  var [briefing, setBriefing] = useState({ headline: '', subline: '' });
+  var [lifePriorities, setLifePriorities] = useState<Top3Item[]>([]);
+  var [relationships, setRelationships] = useState<Relationship[]>([]);
+  var [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
 
   useEffect(function() {
     loadData();
   }, []);
 
   function loadData() {
-    // 오늘 컨디션 로드
+    // 컨디션 로드
     var todayCondition = getTodayCondition();
     if (todayCondition) {
       setCondition(todayCondition.level);
     }
 
-    // 습관 데이터 로드
-    setHabits(getHabits());
-    setTodayLogs(getTodayLogs());
-    setRecentLogs(getRecentLogs(7));
+    // Life 우선순위 (개인 항목만 필터)
+    var allItems = getTop3();
+    var lifeItems = allItems.filter(function(item) {
+      return item.isPersonal === true;
+    });
+    setLifePriorities(lifeItems);
+
+    // 관계 데이터 로드
+    var relationshipData = getRelationships();
+    setRelationships(relationshipData.slice(0, 3)); // Top 3만
+
+    // Life 모드에 맞는 브리핑 메시지
+    var now = new Date();
+    var hour = now.getHours();
+    var lifeHeadline = '';
+    var lifeSubline = '';
+
+    if (hour < 12) {
+      lifeHeadline = '오늘은 나를 위한 하루예요';
+      lifeSubline = '작은 것부터 챙겨볼까요';
+    } else if (hour < 18) {
+      lifeHeadline = '잠시 멈추고 숨 돌리세요';
+      lifeSubline = '일과 삶의 균형이 중요해요';
+    } else {
+      lifeHeadline = '하루를 마무리하는 시간';
+      lifeSubline = '오늘의 나에게 수고했다고 말해주세요';
+    }
+
+    // 컨디션에 따른 메시지 조정
+    if (condition === 'bad') {
+      lifeHeadline = '오늘은 쉬어가도 괜찮아요';
+      lifeSubline = '컨디션이 좋지 않을 땐 무리하지 마세요';
+    } else if (condition === 'great') {
+      lifeHeadline = '좋은 컨디션이네요!';
+      lifeSubline = '이 에너지로 의미 있는 하루를 만들어봐요';
+    }
+
+    setBriefing({
+      headline: lifeHeadline,
+      subline: lifeSubline
+    });
   }
 
-  function handleToggleHabit(habitId: string) {
-    toggleHabitComplete(habitId);
-    loadData();
+  // PriorityStack용 데이터 변환
+  var priorityItems = lifePriorities.map(function(item) {
+    return {
+      id: item.id,
+      title: item.title,
+      sourceTag: 'LIFE' as const,
+      meta: item.completed ? '완료' : undefined,
+      status: item.completed ? 'done' as const : 'pending' as const
+    };
+  });
+
+  // RelationshipReminder용 데이터 변환
+  var relationshipItems = relationships.map(function(rel) {
+    return {
+      id: rel.id,
+      name: rel.name,
+      reason: rel.lastContactDate
+        ? '마지막 연락: ' + new Date(rel.lastContactDate).toLocaleDateString('ko-KR')
+        : '연락해보세요'
+    };
+  });
+
+  // LifeFactors 데이터
+  var lifeFactorItems = [
+    {
+      id: 'condition',
+      label: '컨디션',
+      statusText: condition
+        ? { great: '아주 좋음', good: '좋음', normal: '보통', bad: '좋지 않음' }[condition]
+        : '미설정',
+      signal: condition === 'great' ? 'up' as const
+        : condition === 'bad' ? 'down' as const
+        : 'steady' as const
+    },
+    {
+      id: 'balance',
+      label: '균형',
+      statusText: lifePriorities.length > 0 ? '관리 중' : '여유로움',
+      signal: 'steady' as const
+    },
+    {
+      id: 'relationships',
+      label: '관계',
+      statusText: relationships.length + '명 케어',
+      signal: relationships.length > 0 ? 'up' as const : 'steady' as const
+    },
+    {
+      id: 'rest',
+      label: '휴식',
+      statusText: condition === 'bad' ? '필요함' : '적당함',
+      signal: condition === 'bad' ? 'down' as const : 'steady' as const
+    }
+  ];
+
+  // MoreSheet 콘텐츠
+  function getMoreContent() {
+    return {
+      why: '라이프 영역의 균형을 위해 분석했어요.',
+      whatChanged: '컨디션과 관계 데이터를 기반으로 판단했어요.',
+      tradeOff: '일에 치여 소중한 것들을 놓치지 마세요.'
+    };
   }
 
-  function isHabitCompleted(habitId: string): boolean {
-    var log = todayLogs.find(function(l) { return l.habitId === habitId; });
-    return log ? log.completed : false;
-  }
-
-  // 표시할 습관 수 제한 (3개)
-  var displayHabits = showAllHabits ? habits : habits.slice(0, 3);
+  var moreContent = getMoreContent();
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5]">
+    <div className="min-h-screen bg-[#F5F5F5] dark:bg-gray-900">
       <PageHeader />
-      
+
       <div className="max-w-[640px] mx-auto px-4 py-4 space-y-4">
-        
         {/* 페이지 타이틀 */}
         <div className="flex items-center gap-2">
           <Heart size={20} className="text-pink-500" />
-          <h1 className="text-lg font-bold text-[#1A1A1A]">라이프</h1>
+          <h1 className="text-lg font-bold text-[#1A1A1A] dark:text-white">라이프</h1>
         </div>
-        
-        {/* 웰빙 상태 */}
-        <WellbeingStatus condition={condition} />
-        
-        {/* 상태 카드 - 이제 습관 완료율 포함 */}
-        <StatusCards />
-        
-        {/* 습관 통계 */}
-        {habits.length > 0 && <HabitStats habits={habits} logs={recentLogs} />}
 
-        {/* 간단한 습관 체크리스트 */}
-        {habits.length > 0 && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-[#1A1A1A] dark:text-white">오늘의 습관</h3>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={function() { setShowWeeklyView(!showWeeklyView); }}
-                  className="text-sm text-[#A996FF] hover:text-[#8B7BE8]"
-                >
-                  {showWeeklyView ? '간단히' : '주간 현황'}
-                </button>
-                <button
-                  onClick={function() { setShowHabitManager(true); }}
-                  className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                >
-                  <Settings size={16} className="text-gray-400" />
-                </button>
-              </div>
-            </div>
+        {/* 1. BriefingCard - PRD R1: 브리핑은 항상 있다 */}
+        <BriefingCard
+          headline={briefing.headline}
+          subline={briefing.subline}
+          onMore={function() { setIsMoreSheetOpen(true); }}
+        />
 
-            {showWeeklyView ? (
-              <div className="space-y-3">
-                {habits.map(function(habit) {
-                  return (
-                    <WeeklyHabitView key={habit.id} habit={habit} logs={recentLogs} />
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {displayHabits.map(function(habit) {
-                  var completed = isHabitCompleted(habit.id);
-                  var streak = getStreak(habit.id);
-                  return (
-                    <button
-                      key={habit.id}
-                      onClick={function() { handleToggleHabit(habit.id); }}
-                      className="w-full flex items-center gap-3 p-2 hover:bg-[#FAFAFA] dark:hover:bg-gray-700 rounded-lg transition-colors"
-                    >
-                      {completed ? (
-                        <CheckCircle2 size={20} className="text-[#A996FF]" />
-                      ) : (
-                        <Circle size={20} className="text-[#E5E5E5] dark:text-gray-600" />
-                      )}
-                      <span className="text-base">{habit.icon}</span>
-                      <span className={`flex-1 text-left ${
-                        completed ? 'text-[#999999] dark:text-gray-500 line-through' : 'text-[#1A1A1A] dark:text-white'
-                      }`}>
-                        {habit.title}
-                      </span>
-                      {streak > 0 && (
-                        <div className="flex items-center gap-1 text-orange-500">
-                          <Flame size={14} />
-                          <span className="text-xs font-bold">{streak}</span>
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-
-                {habits.length > 3 && !showAllHabits && (
-                  <button
-                    onClick={function() { setShowAllHabits(true); }}
-                    className="w-full py-2 text-sm text-[#999999] dark:text-gray-500 hover:text-[#666666] dark:hover:text-gray-400"
-                  >
-                    {habits.length - 3}개 더보기
-                  </button>
-                )}
-
-                {habits.length > 3 && showAllHabits && (
-                  <button
-                    onClick={function() { setShowAllHabits(false); }}
-                    className="w-full py-2 text-sm text-[#999999] dark:text-gray-500 hover:text-[#666666] dark:hover:text-gray-400"
-                  >
-                    접기
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+        {/* 2. PriorityStack - PRD R5: 우선순위는 순서다 */}
+        {priorityItems.length > 0 && (
+          <PriorityStack
+            items={priorityItems}
+            count={3}
+            onMore={function() { setIsMoreSheetOpen(true); }}
+          />
         )}
-        
-        {/* 부드러운 넛지 - 이제 스마트하게 작동 */}
-        <GentleNudge />
-        
-        {/* 라이프 트렌드 */}
+
+        {/* 3. RelationshipReminder - PRD 명세 */}
+        {relationshipItems.length > 0 && (
+          <RelationshipReminder
+            items={relationshipItems}
+          />
+        )}
+
+        {/* 4. LifeFactors - PRD 명세 */}
+        <LifeFactors items={lifeFactorItems} />
+
+        {/* 5. Timeline (LifeTrends) - PRD 명세 */}
         <LifeTrends />
-        
-        {/* 빠른 액션 */}
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={function() { setShowHabitManager(true); }}
-            className="py-3 bg-white dark:bg-gray-800 rounded-xl text-[#666666] dark:text-gray-400 hover:bg-[#F5F5F5] dark:hover:bg-gray-700 transition-colors"
-          >
-            <Plus size={16} className="inline mr-1" />
-            습관 추가
-          </button>
-          <button className="py-3 bg-white dark:bg-gray-800 rounded-xl text-[#666666] dark:text-gray-400 hover:bg-[#F5F5F5] dark:hover:bg-gray-700 transition-colors">
-            연락처 관리
-          </button>
-        </div>
       </div>
 
-      {/* 습관 관리 모달 */}
-      <HabitManager
-        isOpen={showHabitManager}
-        onClose={function() { setShowHabitManager(false); }}
-        habits={habits}
-        onUpdate={loadData}
+      {/* 더보기 시트 - PRD R3: 확장은 오직 "더 보기" */}
+      <MoreSheet
+        isOpen={isMoreSheetOpen}
+        onClose={function() { setIsMoreSheetOpen(false); }}
+        title="알프레도의 판단 근거"
+        why={moreContent.why}
+        whatChanged={moreContent.whatChanged}
+        tradeOff={moreContent.tradeOff}
       />
     </div>
   );
