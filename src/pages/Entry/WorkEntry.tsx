@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Briefcase, Target, Layers, ArrowRight } from 'lucide-react';
 import EntryLayout from './components/EntryLayout';
 import { useAuthStore } from '../../stores/authStore';
+import LoadingState from '../../components/common/LoadingState';
 
 interface WorkStatus {
   emoji: string;
@@ -50,9 +51,7 @@ export default function WorkEntry() {
   if (isLoading) {
     return (
       <EntryLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-pulse text-gray-400">알프레도가 준비 중...</div>
-        </div>
+        <LoadingState variant="spinner" message="알프레도가 준비 중..." />
       </EntryLayout>
     );
   }

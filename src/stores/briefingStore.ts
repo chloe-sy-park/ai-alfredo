@@ -1,36 +1,91 @@
 // briefingStore.ts
 import { create } from 'zustand';
+import { getTodayEvents, CalendarEvent } from '../services/calendar/calendarService';
+import { getTasks, Task } from '../services/tasks';
+import { getTodayCondition, ConditionLevel } from '../services/condition/conditionService';
+import { generateBriefing, BriefingOutput, BriefingContext } from '../services/briefing';
 
 interface BriefingState {
   lastUpdated: Date | null;
   isLoading: boolean;
+  error: string | null;
+  briefing: BriefingOutput | null;
+  todayCalendar: CalendarEvent[];
+  incompleteTasks: Task[];
+  condition: ConditionLevel | undefined;
   refreshBriefing: () => Promise<void>;
+  clearError: () => void;
 }
 
-export const useBriefingStore = create<BriefingState>((set) => ({
+// 요일 배열
+var DAYS_KO = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+
+export const useBriefingStore = create<BriefingState>((set, get) => ({
   lastUpdated: null,
   isLoading: false,
-  
+  error: null,
+  briefing: null,
+  todayCalendar: [],
+  incompleteTasks: [],
+  condition: undefined,
+
   refreshBriefing: async () => {
-    set({ isLoading: true });
-    
+    // 이미 로딩 중이면 중복 실행 방지
+    if (get().isLoading) return;
+
+    set({ isLoading: true, error: null });
+
     try {
-      // TODO: 실제 브리핑 갱신 로직 구현
-      // - 캘린더 이벤트 가져오기
-      // - 미완료 태스크 가져오기
-      // - 현재 컨디션 가져오기
-      // - AI 브리핑 생성
-      
-      console.log('브리핑 갱신 중...');
-      
-      // 임시로 2초 대기
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      set({ lastUpdated: new Date() });
+      // 1. 캘린더 이벤트 가져오기
+      var todayCalendar: CalendarEvent[] = [];
+      try {
+        todayCalendar = await getTodayEvents();
+      } catch (e) {
+        console.warn('[BriefingStore] 캘린더 로드 실패:', e);
+      }
+
+      // 2. 미완료 태스크 가져오기
+      var allTasks = getTasks();
+      var incompleteTasks = allTasks.filter(function(t: Task) {
+        return t.status !== 'done';
+      });
+
+      // 3. 오늘 컨디션 가져오기
+      var conditionRecord = getTodayCondition();
+      var condition: ConditionLevel | undefined = conditionRecord?.level;
+
+      // 4. 브리핑 컨텍스트 구성
+      var now = new Date();
+      var context: BriefingContext = {
+        currentTime: now,
+        dayOfWeek: DAYS_KO[now.getDay()],
+        todayCalendar: todayCalendar,
+        incompleteTasks: incompleteTasks,
+        condition: condition
+      };
+
+      // 5. 브리핑 생성
+      var briefing = generateBriefing(context);
+
+      set({
+        lastUpdated: new Date(),
+        briefing: briefing,
+        todayCalendar: todayCalendar,
+        incompleteTasks: incompleteTasks,
+        condition: condition
+      });
+
+      console.log('[BriefingStore] 브리핑 갱신 완료:', briefing.headline);
     } catch (error) {
-      console.error('브리핑 갱신 실패:', error);
+      var errorMessage = error instanceof Error ? error.message : '브리핑 갱신 실패';
+      console.error('[BriefingStore] 브리핑 갱신 실패:', error);
+      set({ error: errorMessage });
     } finally {
       set({ isLoading: false });
     }
+  },
+
+  clearError: () => {
+    set({ error: null });
   }
 }));

@@ -5,6 +5,7 @@ import { useAlfredoStore } from '../stores/alfredoStore';
 import { getTodayEvents, isGoogleAuthenticated, CalendarEvent } from '../services/calendar';
 import { ConditionLevel, getTodayCondition } from '../services/condition';
 import { Top3Item, getTop3 } from '../services/top3';
+import { getTasks, Task } from '../services/tasks';
 import { FocusItem, setFocusFromTop3, getCurrentFocus } from '../services/focusNow';
 import { getWeather, WeatherData } from '../services/weather';
 import { hasSeenEntryToday, markEntryAsSeen, updateVisit } from '../services/visit';
@@ -130,12 +131,19 @@ export default function Home() {
     // 브리핑 생성 (모드에 따라 다른 메시지)
     var now = new Date();
     var days = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+
+    // 미완료 태스크 가져오기
+    var allTasks = getTasks();
+    var incompleteTasks = allTasks.filter(function(t: Task) {
+      return t.status !== 'done';
+    });
+
     var briefingData = generateBriefing({
       currentTime: now,
       dayOfWeek: days[now.getDay()],
       weather: convertWeatherForBriefing(weather),
       todayCalendar: calendarEvents,
-      incompleteTasks: [], // TODO: tasks 서비스 연동
+      incompleteTasks: incompleteTasks,
       condition: currentCondition || undefined
     });
     
