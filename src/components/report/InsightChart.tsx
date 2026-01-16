@@ -6,7 +6,7 @@
 
 import { TrendingUp, TrendingDown, Minus, BarChart3 } from 'lucide-react';
 
-type ChartType = 'balance' | 'trend' | 'comparison' | 'progress';
+type ChartType = 'balance' | 'trend' | 'comparison' | 'progress' | 'timePattern';
 
 interface BalanceData {
   work: number;
@@ -30,10 +30,15 @@ interface ProgressData {
   label: string;
 }
 
+interface TimePatternData {
+  slots: { hour: string; label: string; count: number; intensity: 'low' | 'medium' | 'high' }[];
+  peakTime?: string;
+}
+
 interface InsightChartProps {
   type: ChartType;
   title?: string;
-  data: BalanceData | TrendData[] | ComparisonData | ProgressData;
+  data: BalanceData | TrendData[] | ComparisonData | ProgressData | TimePatternData;
   height?: number;
 }
 
@@ -208,6 +213,65 @@ function ProgressChart({ data, height = 120 }: { data: ProgressData; height: num
   );
 }
 
+// 시간대 패턴 차트
+function TimePatternChart({ data, height = 120 }: { data: TimePatternData; height: number }) {
+  var maxCount = Math.max(...data.slots.map(function(s) { return s.count; }), 1);
+
+  function getIntensityColor(intensity: 'low' | 'medium' | 'high') {
+    switch (intensity) {
+      case 'high': return 'bg-[#A996FF]';
+      case 'medium': return 'bg-[#C7BEFF]';
+      case 'low': return 'bg-[#E5E0FF]';
+      default: return 'bg-[#E5E5E5]';
+    }
+  }
+
+  return (
+    <div style={{ minHeight: height }} className="space-y-4">
+      {/* 시간대 바 차트 */}
+      <div className="flex items-end justify-between gap-1 h-20">
+        {data.slots.map(function(slot, index) {
+          var barHeight = slot.count > 0 ? Math.max((slot.count / maxCount) * 100, 15) : 8;
+          return (
+            <div key={index} className="flex-1 flex flex-col items-center gap-1">
+              <div
+                className={'w-full rounded-t transition-all duration-300 ' + getIntensityColor(slot.intensity)}
+                style={{ height: barHeight + '%', minHeight: '4px' }}
+                title={slot.label + ': ' + slot.count + '회'}
+              />
+              <span className="text-[10px] text-[#999999]">{slot.hour}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* 피크 타임 표시 */}
+      {data.peakTime && (
+        <div className="flex items-center justify-center gap-2 py-2 bg-[#F8F8FF] rounded-lg">
+          <span className="text-xs text-[#666666]">가장 활발한 시간대</span>
+          <span className="text-sm font-semibold text-[#A996FF]">{data.peakTime}</span>
+        </div>
+      )}
+
+      {/* 범례 */}
+      <div className="flex items-center justify-center gap-4 text-[10px] text-[#999999]">
+        <div className="flex items-center gap-1">
+          <div className="w-2 h-2 rounded bg-[#E5E0FF]" />
+          <span>적음</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-2 h-2 rounded bg-[#C7BEFF]" />
+          <span>보통</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-2 h-2 rounded bg-[#A996FF]" />
+          <span>많음</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function InsightChart({ type, title, data, height = 120 }: InsightChartProps) {
   function renderChart() {
     switch (type) {
@@ -219,6 +283,8 @@ export default function InsightChart({ type, title, data, height = 120 }: Insigh
         return <ComparisonChart data={data as ComparisonData} height={height} />;
       case 'progress':
         return <ProgressChart data={data as ProgressData} height={height} />;
+      case 'timePattern':
+        return <TimePatternChart data={data as TimePatternData} height={height} />;
       default:
         return null;
     }
@@ -238,4 +304,5 @@ export default function InsightChart({ type, title, data, height = 120 }: Insigh
 }
 
 // Named exports for type-specific usage
-export { BalanceChart, TrendChart, ComparisonChart, ProgressChart };
+export { BalanceChart, TrendChart, ComparisonChart, ProgressChart, TimePatternChart };
+export type { TimePatternData };

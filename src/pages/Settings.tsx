@@ -1,6 +1,6 @@
-// Settings.tsx - 설정 페이지
+// Settings.tsx - 설정 페이지 (카테고리 분리 구조)
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Users, Volume2, Palette, LogOut, Brain, Bell, Moon, Clock, BellOff, Sun, Monitor, Sliders } from 'lucide-react';
+import { ArrowLeft, Users, Volume2, Palette, LogOut, Brain, Bell, Moon, Clock, BellOff, Sun, Monitor, Sliders, Settings2, Smartphone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUserPreferencesStore } from '../stores/userPreferencesStore';
 import { useAuthStore } from '../stores/authStore';
@@ -17,6 +17,22 @@ import {
 } from '../components/alfredo';
 import { PenguinPersonalitySliders } from '../components/settings';
 
+// 설정 카테고리 정의
+type SettingsCategory = 'alfredo' | 'app' | 'nurture' | 'account';
+
+interface CategoryTab {
+  id: SettingsCategory;
+  label: string;
+  icon: React.ElementType;
+}
+
+var CATEGORY_TABS: CategoryTab[] = [
+  { id: 'alfredo', label: '알프레도', icon: Users },
+  { id: 'app', label: '앱 설정', icon: Smartphone },
+  { id: 'nurture', label: '육성', icon: Brain },
+  { id: 'account', label: '계정', icon: Settings2 },
+];
+
 const Settings = () => {
   const navigate = useNavigate();
   const { roleBlend, interventionLevel, updatePreferences } = useUserPreferencesStore();
@@ -29,6 +45,7 @@ const Settings = () => {
   const [currentRoleBlend, setCurrentRoleBlend] = useState(roleBlend);
   const [currentInterventionLevel, setCurrentInterventionLevel] = useState(interventionLevel);
   const [selectedTone, setSelectedTone] = useState('formal');
+  const [activeCategory, setActiveCategory] = useState<SettingsCategory>('alfredo');
 
   // 알프레도 스토어 초기화
   useEffect(() => {
@@ -117,6 +134,397 @@ const Settings = () => {
     alert('샘플 Lift 데이터가 생성되었습니다!');
   };
   
+  // 카테고리별 컨텐츠 렌더링
+  function renderCategoryContent() {
+    switch (activeCategory) {
+      case 'alfredo':
+        return (
+          <div className="space-y-6">
+            {/* Role Blend Section */}
+            <section className="bg-white rounded-xl p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <Users className="w-5 h-5 text-[#A996FF]" />
+                <h2 className="text-base font-semibold">알프레도의 역할</h2>
+              </div>
+
+              <div className="mb-4">
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="text-gray-600">현재: {getRoleBlendLabel(currentRoleBlend)}</span>
+                  <span className="text-[#A996FF] font-medium">{currentRoleBlend}%</span>
+                </div>
+
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={currentRoleBlend}
+                  onChange={(e) => setCurrentRoleBlend(Number(e.target.value))}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                  style={{
+                    background: `linear-gradient(to right, #A996FF 0%, #A996FF ${currentRoleBlend}%, #E5E7EB ${currentRoleBlend}%, #E5E7EB 100%)`
+                  }}
+                />
+
+                <div className="flex justify-between text-xs text-gray-500 mt-2">
+                  <span>의사</span>
+                  <span>집사</span>
+                </div>
+              </div>
+
+              <p className="text-sm text-gray-600">
+                {currentRoleBlend <= 30 && '자세한 분석과 논리적인 판단을 제공합니다.'}
+                {currentRoleBlend > 30 && currentRoleBlend <= 70 && '분석과 실행 지원을 균형있게 제공합니다.'}
+                {currentRoleBlend > 70 && '빠른 실행과 효율적인 관리에 집중합니다.'}
+              </p>
+            </section>
+
+            {/* Intervention Level Section */}
+            <section className="bg-white rounded-xl p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <Volume2 className="w-5 h-5 text-[#A996FF]" />
+                <h2 className="text-base font-semibold">개입 수준</h2>
+              </div>
+
+              <div className="mb-4">
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="text-gray-600">현재: {getInterventionLabel(currentInterventionLevel)}</span>
+                  <span className="text-[#A996FF] font-medium">{currentInterventionLevel}%</span>
+                </div>
+
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={currentInterventionLevel}
+                  onChange={(e) => setCurrentInterventionLevel(Number(e.target.value))}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                  style={{
+                    background: `linear-gradient(to right, #A996FF 0%, #A996FF ${currentInterventionLevel}%, #E5E7EB ${currentInterventionLevel}%, #E5E7EB 100%)`
+                  }}
+                />
+
+                <div className="flex justify-between text-xs text-gray-500 mt-2">
+                  <span>적게</span>
+                  <span>많이</span>
+                </div>
+              </div>
+
+              <p className="text-sm text-gray-600">
+                {currentInterventionLevel <= 30 && '필요할 때만 조심스럽게 개입합니다.'}
+                {currentInterventionLevel > 30 && currentInterventionLevel <= 70 && '중요한 순간에 적절히 개입합니다.'}
+                {currentInterventionLevel > 70 && '적극적으로 도움을 제공합니다.'}
+              </p>
+            </section>
+
+            {/* Tone Section */}
+            <section className="bg-white rounded-xl p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <Palette className="w-5 h-5 text-[#A996FF]" />
+                <h2 className="text-base font-semibold">대화 톤</h2>
+              </div>
+
+              <div className="space-y-2">
+                {[
+                  { value: 'casual', label: '친근함', desc: '친구처럼 편하게' },
+                  { value: 'formal', label: '정중함', desc: '전문가답게 신중하게' },
+                  { value: 'motivating', label: '격려', desc: '긍정적이고 응원하는' },
+                  { value: 'analytical', label: '분석적', desc: '논리적이고 체계적인' }
+                ].map(tone => (
+                  <label
+                    key={tone.value}
+                    className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                      selectedTone === tone.value ? 'bg-[#A996FF]/10' : 'hover:bg-gray-100'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="tone"
+                      value={tone.value}
+                      checked={selectedTone === tone.value}
+                      onChange={(e) => setSelectedTone(e.target.value)}
+                      className="mt-1"
+                    />
+                    <div className="flex-1">
+                      <div className="font-medium text-sm">{tone.label}</div>
+                      <div className="text-xs text-gray-600">{tone.desc}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </section>
+
+            {/* 펭귄 성격 설정 (4축 슬라이더) */}
+            <section className="bg-white rounded-xl p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <Sliders className="w-5 h-5 text-[#A996FF]" />
+                <h2 className="text-base font-semibold">성격 설정</h2>
+              </div>
+              <PenguinPersonalitySliders />
+            </section>
+
+            {/* Save Button */}
+            <button
+              onClick={handleSaveSettings}
+              className="w-full bg-[#A996FF] text-white py-3 rounded-xl font-medium hover:bg-[#9080E6] transition-colors"
+            >
+              설정 저장
+            </button>
+          </div>
+        );
+
+      case 'app':
+        return (
+          <div className="space-y-6">
+            {/* Theme Section */}
+            <section className="bg-white dark:bg-neutral-800 rounded-xl p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <Moon className="w-5 h-5 text-[#A996FF]" />
+                <h2 className="text-base font-semibold">화면 테마</h2>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { value: 'light' as Theme, label: '라이트', icon: Sun },
+                  { value: 'dark' as Theme, label: '다크', icon: Moon },
+                  { value: 'system' as Theme, label: '시스템', icon: Monitor },
+                ].map(option => (
+                  <button
+                    key={option.value}
+                    onClick={() => setTheme(option.value)}
+                    className={`flex flex-col items-center gap-2 p-3 rounded-lg transition-colors ${
+                      theme === option.value
+                        ? 'bg-[#A996FF]/10 border-2 border-[#A996FF]'
+                        : 'bg-gray-100 dark:bg-neutral-700 border-2 border-transparent hover:bg-gray-200 dark:hover:bg-neutral-600'
+                    }`}
+                  >
+                    <option.icon size={20} className={theme === option.value ? 'text-[#A996FF]' : 'text-gray-500 dark:text-gray-400'} />
+                    <span className={`text-sm ${theme === option.value ? 'text-[#A996FF] font-medium' : 'text-gray-600 dark:text-gray-300'}`}>
+                      {option.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {/* Notification Settings Section */}
+            <section className="bg-white rounded-xl p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <Bell className="w-5 h-5 text-[#A996FF]" />
+                  <h2 className="text-base font-semibold">알림 설정</h2>
+                </div>
+                <button
+                  onClick={() => notificationSettings.toggleNotification('enabled')}
+                  className={`relative w-12 h-6 rounded-full transition-colors ${
+                    notificationSettings.enabled ? 'bg-[#A996FF]' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                      notificationSettings.enabled ? 'left-7' : 'left-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {notificationSettings.enabled && (
+                <div className="space-y-4">
+                  {/* 알림 종류 토글 */}
+                  <div className="space-y-3">
+                    {[
+                      { key: 'morningBriefing' as const, label: '아침 브리핑', desc: '오늘의 일정과 할일 요약' },
+                      { key: 'taskReminders' as const, label: '태스크 리마인더', desc: '마감 전 알림' },
+                      { key: 'meetingReminders' as const, label: '미팅 리마인더', desc: '미팅 시작 전 알림' },
+                      { key: 'breakReminders' as const, label: '휴식 알림', desc: '집중 후 휴식 권유' },
+                      { key: 'alfredoNudges' as const, label: '알프레도 넛지', desc: '도움이 될 만한 제안' },
+                    ].map(item => (
+                      <div key={item.key} className="flex items-center justify-between py-2">
+                        <div>
+                          <div className="text-sm font-medium">{item.label}</div>
+                          <div className="text-xs text-gray-500">{item.desc}</div>
+                        </div>
+                        <button
+                          onClick={() => notificationSettings.toggleNotification(item.key)}
+                          className={`relative w-10 h-5 rounded-full transition-colors ${
+                            notificationSettings[item.key] ? 'bg-[#A996FF]' : 'bg-gray-300'
+                          }`}
+                        >
+                          <span
+                            className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
+                              notificationSettings[item.key] ? 'left-5' : 'left-0.5'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 조용한 시간 */}
+                  <div className="border-t pt-4 mt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Moon size={16} className="text-gray-500" />
+                        <span className="text-sm font-medium">조용한 시간</span>
+                      </div>
+                      <button
+                        onClick={() => notificationSettings.toggleNotification('quietHoursEnabled')}
+                        className={`relative w-10 h-5 rounded-full transition-colors ${
+                          notificationSettings.quietHoursEnabled ? 'bg-[#A996FF]' : 'bg-gray-300'
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
+                            notificationSettings.quietHoursEnabled ? 'left-5' : 'left-0.5'
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    {notificationSettings.quietHoursEnabled && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <input
+                          type="time"
+                          value={notificationSettings.quietHoursStart}
+                          onChange={(e) => notificationSettings.setQuietHours(e.target.value, notificationSettings.quietHoursEnd)}
+                          className="px-2 py-1 border rounded-lg text-sm"
+                        />
+                        <span className="text-gray-500">~</span>
+                        <input
+                          type="time"
+                          value={notificationSettings.quietHoursEnd}
+                          onChange={(e) => notificationSettings.setQuietHours(notificationSettings.quietHoursStart, e.target.value)}
+                          className="px-2 py-1 border rounded-lg text-sm"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 아침 브리핑 시간 */}
+                  {notificationSettings.morningBriefing && (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Clock size={16} className="text-gray-500" />
+                        <span className="text-sm">아침 브리핑 시간</span>
+                      </div>
+                      <input
+                        type="time"
+                        value={notificationSettings.morningBriefingTime}
+                        onChange={(e) => notificationSettings.setMorningBriefingTime(e.target.value)}
+                        className="px-2 py-1 border rounded-lg text-sm"
+                      />
+                    </div>
+                  )}
+
+                  {/* 미팅 리마인더 시간 */}
+                  {notificationSettings.meetingReminders && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">미팅 알림</span>
+                      <select
+                        value={notificationSettings.meetingReminderMinutes}
+                        onChange={(e) => notificationSettings.setMeetingReminderMinutes(Number(e.target.value))}
+                        className="px-2 py-1 border rounded-lg text-sm"
+                      >
+                        <option value={5}>5분 전</option>
+                        <option value={10}>10분 전</option>
+                        <option value={15}>15분 전</option>
+                        <option value={30}>30분 전</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {/* 푸시 구독 상태 */}
+                  {!notificationSettings.pushSubscribed && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-start gap-2">
+                      <BellOff size={16} className="text-yellow-600 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-yellow-800 font-medium">푸시 알림 미등록</p>
+                        <p className="text-xs text-yellow-700 mt-1">브라우저 알림을 허용하면 앱을 닫아도 알림을 받을 수 있어요</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+          </div>
+        );
+
+      case 'nurture':
+        return (
+          <div className="space-y-6">
+            {alfredoLoading ? (
+              <div className="text-center py-8">
+                <div className="text-3xl animate-bounce mb-2">🐧</div>
+                <p className="text-sm text-gray-500">알프레도 불러오는 중...</p>
+              </div>
+            ) : (
+              <>
+                {/* 영역 전환 */}
+                <DomainSwitcher />
+
+                {/* 이해도 카드 */}
+                <UnderstandingCard />
+
+                {/* 주간 리포트 */}
+                <WeeklyReportCard />
+
+                {/* 파악 중인 것 */}
+                <PendingLearningsList />
+
+                {/* 학습 목록 */}
+                <LearningsList />
+              </>
+            )}
+          </div>
+        );
+
+      case 'account':
+        return (
+          <div className="space-y-6">
+            {/* 계정 정보 */}
+            <section className="bg-white rounded-xl p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <Settings2 className="w-5 h-5 text-[#A996FF]" />
+                <h2 className="text-base font-semibold">계정 정보</h2>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="w-10 h-10 bg-[#A996FF] rounded-full flex items-center justify-center text-white font-semibold">
+                  {user?.email?.charAt(0).toUpperCase() || 'U'}
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{user?.email || '로그인 필요'}</p>
+                  <p className="text-xs text-gray-500">알프레도 사용자</p>
+                </div>
+              </div>
+            </section>
+
+            {/* Development Tools */}
+            <section className="bg-yellow-50 rounded-xl p-5 border border-yellow-200">
+              <h3 className="text-sm font-semibold text-yellow-800 mb-3">개발자 도구</h3>
+              <button
+                onClick={generateSampleLifts}
+                className="w-full bg-yellow-600 text-white py-2 rounded-lg font-medium hover:bg-yellow-700 transition-colors text-sm"
+              >
+                샘플 Lift 데이터 생성
+              </button>
+              <p className="text-xs text-yellow-700 mt-2">
+                Report 테스트를 위한 샘플 데이터를 생성합니다.
+              </p>
+            </section>
+
+            {/* Logout */}
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center justify-center gap-2 bg-red-50 text-red-600 py-3 rounded-xl font-medium hover:bg-red-100 transition-colors"
+            >
+              <LogOut className="w-5 h-5" />
+              로그아웃
+            </button>
+          </div>
+        );
+    }
+  }
+
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Header */}
@@ -129,364 +537,33 @@ const Settings = () => {
         </button>
         <h1 className="text-lg font-semibold">설정</h1>
       </header>
-      
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {/* Role Blend Section */}
-        <section className="bg-white rounded-xl p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <Users className="w-5 h-5 text-[#A996FF]" />
-            <h2 className="text-base font-semibold">알프레도의 역할</h2>
-          </div>
-          
-          <div className="mb-4">
-            <div className="flex justify-between text-sm mb-2">
-              <span className="text-gray-600">현재: {getRoleBlendLabel(currentRoleBlend)}</span>
-              <span className="text-[#A996FF] font-medium">{currentRoleBlend}%</span>
-            </div>
-            
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={currentRoleBlend}
-              onChange={(e) => setCurrentRoleBlend(Number(e.target.value))}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-              style={{
-                background: `linear-gradient(to right, #A996FF 0%, #A996FF ${currentRoleBlend}%, #E5E7EB ${currentRoleBlend}%, #E5E7EB 100%)`
-              }}
-            />
-            
-            <div className="flex justify-between text-xs text-gray-500 mt-2">
-              <span>의사</span>
-              <span>집사</span>
-            </div>
-          </div>
-          
-          <p className="text-sm text-gray-600">
-            {currentRoleBlend <= 30 && '자세한 분석과 논리적인 판단을 제공합니다.'}
-            {currentRoleBlend > 30 && currentRoleBlend <= 70 && '분석과 실행 지원을 균형있게 제공합니다.'}
-            {currentRoleBlend > 70 && '빠른 실행과 효율적인 관리에 집중합니다.'}
-          </p>
-        </section>
-        
-        {/* Intervention Level Section */}
-        <section className="bg-white rounded-xl p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <Volume2 className="w-5 h-5 text-[#A996FF]" />
-            <h2 className="text-base font-semibold">개입 수준</h2>
-          </div>
-          
-          <div className="mb-4">
-            <div className="flex justify-between text-sm mb-2">
-              <span className="text-gray-600">현재: {getInterventionLabel(currentInterventionLevel)}</span>
-              <span className="text-[#A996FF] font-medium">{currentInterventionLevel}%</span>
-            </div>
-            
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={currentInterventionLevel}
-              onChange={(e) => setCurrentInterventionLevel(Number(e.target.value))}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-              style={{
-                background: `linear-gradient(to right, #A996FF 0%, #A996FF ${currentInterventionLevel}%, #E5E7EB ${currentInterventionLevel}%, #E5E7EB 100%)`
-              }}
-            />
-            
-            <div className="flex justify-between text-xs text-gray-500 mt-2">
-              <span>적게</span>
-              <span>많이</span>
-            </div>
-          </div>
-          
-          <p className="text-sm text-gray-600">
-            {currentInterventionLevel <= 30 && '필요할 때만 조심스럽게 개입합니다.'}
-            {currentInterventionLevel > 30 && currentInterventionLevel <= 70 && '중요한 순간에 적절히 개입합니다.'}
-            {currentInterventionLevel > 70 && '적극적으로 도움을 제공합니다.'}
-          </p>
-        </section>
-        
-        {/* Tone Section */}
-        <section className="bg-white rounded-xl p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <Palette className="w-5 h-5 text-[#A996FF]" />
-            <h2 className="text-base font-semibold">대화 톤</h2>
-          </div>
-          
-          <div className="space-y-2">
-            {[
-              { value: 'casual', label: '친근함', desc: '친구처럼 편하게' },
-              { value: 'formal', label: '정중함', desc: '전문가답게 신중하게' },
-              { value: 'motivating', label: '격려', desc: '긍정적이고 응원하는' },
-              { value: 'analytical', label: '분석적', desc: '논리적이고 체계적인' }
-            ].map(tone => (
-              <label
-                key={tone.value}
-                className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                  selectedTone === tone.value ? 'bg-[#A996FF]/10' : 'hover:bg-gray-100'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="tone"
-                  value={tone.value}
-                  checked={selectedTone === tone.value}
-                  onChange={(e) => setSelectedTone(e.target.value)}
-                  className="mt-1"
-                />
-                <div className="flex-1">
-                  <div className="font-medium text-sm">{tone.label}</div>
-                  <div className="text-xs text-gray-600">{tone.desc}</div>
-                </div>
-              </label>
-            ))}
-          </div>
-        </section>
 
-        {/* Theme Section */}
-        <section className="bg-white dark:bg-neutral-800 rounded-xl p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <Moon className="w-5 h-5 text-[#A996FF]" />
-            <h2 className="text-base font-semibold">화면 테마</h2>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { value: 'light' as Theme, label: '라이트', icon: Sun },
-              { value: 'dark' as Theme, label: '다크', icon: Moon },
-              { value: 'system' as Theme, label: '시스템', icon: Monitor },
-            ].map(option => (
+      {/* Category Tabs */}
+      <div className="bg-white border-b px-4">
+        <div className="flex gap-1">
+          {CATEGORY_TABS.map(tab => {
+            var TabIcon = tab.icon;
+            return (
               <button
-                key={option.value}
-                onClick={() => setTheme(option.value)}
-                className={`flex flex-col items-center gap-2 p-3 rounded-lg transition-colors ${
-                  theme === option.value
-                    ? 'bg-[#A996FF]/10 border-2 border-[#A996FF]'
-                    : 'bg-gray-100 dark:bg-neutral-700 border-2 border-transparent hover:bg-gray-200 dark:hover:bg-neutral-600'
+                key={tab.id}
+                onClick={() => setActiveCategory(tab.id)}
+                className={`flex-1 flex flex-col items-center gap-1 py-3 px-2 text-xs font-medium transition-colors ${
+                  activeCategory === tab.id
+                    ? 'text-[#A996FF] border-b-2 border-[#A996FF]'
+                    : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                <option.icon size={20} className={theme === option.value ? 'text-[#A996FF]' : 'text-gray-500 dark:text-gray-400'} />
-                <span className={`text-sm ${theme === option.value ? 'text-[#A996FF] font-medium' : 'text-gray-600 dark:text-gray-300'}`}>
-                  {option.label}
-                </span>
+                <TabIcon size={18} />
+                {tab.label}
               </button>
-            ))}
-          </div>
-        </section>
+            );
+          })}
+        </div>
+      </div>
 
-        {/* Notification Settings Section */}
-        <section className="bg-white rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <Bell className="w-5 h-5 text-[#A996FF]" />
-              <h2 className="text-base font-semibold">알림 설정</h2>
-            </div>
-            <button
-              onClick={() => notificationSettings.toggleNotification('enabled')}
-              className={`relative w-12 h-6 rounded-full transition-colors ${
-                notificationSettings.enabled ? 'bg-[#A996FF]' : 'bg-gray-300'
-              }`}
-            >
-              <span
-                className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                  notificationSettings.enabled ? 'left-7' : 'left-1'
-                }`}
-              />
-            </button>
-          </div>
-
-          {notificationSettings.enabled && (
-            <div className="space-y-4">
-              {/* 알림 종류 토글 */}
-              <div className="space-y-3">
-                {[
-                  { key: 'morningBriefing' as const, label: '아침 브리핑', desc: '오늘의 일정과 할일 요약' },
-                  { key: 'taskReminders' as const, label: '태스크 리마인더', desc: '마감 전 알림' },
-                  { key: 'meetingReminders' as const, label: '미팅 리마인더', desc: '미팅 시작 전 알림' },
-                  { key: 'breakReminders' as const, label: '휴식 알림', desc: '집중 후 휴식 권유' },
-                  { key: 'alfredoNudges' as const, label: '알프레도 넛지', desc: '도움이 될 만한 제안' },
-                ].map(item => (
-                  <div key={item.key} className="flex items-center justify-between py-2">
-                    <div>
-                      <div className="text-sm font-medium">{item.label}</div>
-                      <div className="text-xs text-gray-500">{item.desc}</div>
-                    </div>
-                    <button
-                      onClick={() => notificationSettings.toggleNotification(item.key)}
-                      className={`relative w-10 h-5 rounded-full transition-colors ${
-                        notificationSettings[item.key] ? 'bg-[#A996FF]' : 'bg-gray-300'
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
-                          notificationSettings[item.key] ? 'left-5' : 'left-0.5'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              {/* 조용한 시간 */}
-              <div className="border-t pt-4 mt-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Moon size={16} className="text-gray-500" />
-                    <span className="text-sm font-medium">조용한 시간</span>
-                  </div>
-                  <button
-                    onClick={() => notificationSettings.toggleNotification('quietHoursEnabled')}
-                    className={`relative w-10 h-5 rounded-full transition-colors ${
-                      notificationSettings.quietHoursEnabled ? 'bg-[#A996FF]' : 'bg-gray-300'
-                    }`}
-                  >
-                    <span
-                      className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
-                        notificationSettings.quietHoursEnabled ? 'left-5' : 'left-0.5'
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                {notificationSettings.quietHoursEnabled && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <input
-                      type="time"
-                      value={notificationSettings.quietHoursStart}
-                      onChange={(e) => notificationSettings.setQuietHours(e.target.value, notificationSettings.quietHoursEnd)}
-                      className="px-2 py-1 border rounded-lg text-sm"
-                    />
-                    <span className="text-gray-500">~</span>
-                    <input
-                      type="time"
-                      value={notificationSettings.quietHoursEnd}
-                      onChange={(e) => notificationSettings.setQuietHours(notificationSettings.quietHoursStart, e.target.value)}
-                      className="px-2 py-1 border rounded-lg text-sm"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* 아침 브리핑 시간 */}
-              {notificationSettings.morningBriefing && (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Clock size={16} className="text-gray-500" />
-                    <span className="text-sm">아침 브리핑 시간</span>
-                  </div>
-                  <input
-                    type="time"
-                    value={notificationSettings.morningBriefingTime}
-                    onChange={(e) => notificationSettings.setMorningBriefingTime(e.target.value)}
-                    className="px-2 py-1 border rounded-lg text-sm"
-                  />
-                </div>
-              )}
-
-              {/* 미팅 리마인더 시간 */}
-              {notificationSettings.meetingReminders && (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">미팅 알림</span>
-                  <select
-                    value={notificationSettings.meetingReminderMinutes}
-                    onChange={(e) => notificationSettings.setMeetingReminderMinutes(Number(e.target.value))}
-                    className="px-2 py-1 border rounded-lg text-sm"
-                  >
-                    <option value={5}>5분 전</option>
-                    <option value={10}>10분 전</option>
-                    <option value={15}>15분 전</option>
-                    <option value={30}>30분 전</option>
-                  </select>
-                </div>
-              )}
-
-              {/* 푸시 구독 상태 */}
-              {!notificationSettings.pushSubscribed && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-start gap-2">
-                  <BellOff size={16} className="text-yellow-600 mt-0.5" />
-                  <div>
-                    <p className="text-sm text-yellow-800 font-medium">푸시 알림 미등록</p>
-                    <p className="text-xs text-yellow-700 mt-1">브라우저 알림을 허용하면 앱을 닫아도 알림을 받을 수 있어요</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </section>
-
-        {/* Save Button */}
-        <button
-          onClick={handleSaveSettings}
-          className="w-full bg-[#A996FF] text-white py-3 rounded-xl font-medium hover:bg-[#9080E6] transition-colors"
-        >
-          설정 저장
-        </button>
-
-        {/* 펭귄 성격 설정 (4축 슬라이더) */}
-        <section className="bg-white rounded-xl p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <Sliders className="w-5 h-5 text-[#A996FF]" />
-            <h2 className="text-base font-semibold">알프레도 성격 설정</h2>
-          </div>
-          <PenguinPersonalitySliders />
-        </section>
-
-        {/* Alfredo 육성 시스템 섹션 */}
-        <section className="bg-white rounded-xl p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <Brain className="w-5 h-5 text-[#A996FF]" />
-            <h2 className="text-base font-semibold">알프레도 육성</h2>
-          </div>
-
-          {alfredoLoading ? (
-            <div className="text-center py-8">
-              <div className="text-3xl animate-bounce mb-2">🐧</div>
-              <p className="text-sm text-gray-500">알프레도 불러오는 중...</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* 영역 전환 */}
-              <DomainSwitcher />
-
-              {/* 이해도 카드 */}
-              <UnderstandingCard />
-
-              {/* 주간 리포트 */}
-              <WeeklyReportCard />
-
-              {/* 파악 중인 것 */}
-              <PendingLearningsList />
-
-              {/* 학습 목록 */}
-              <LearningsList />
-            </div>
-          )}
-        </section>
-        
-        {/* Development Tools */}
-        <section className="bg-yellow-50 rounded-xl p-5 border border-yellow-200">
-          <h3 className="text-sm font-semibold text-yellow-800 mb-3">개발자 도구</h3>
-          <button
-            onClick={generateSampleLifts}
-            className="w-full bg-yellow-600 text-white py-2 rounded-lg font-medium hover:bg-yellow-700 transition-colors text-sm"
-          >
-            샘플 Lift 데이터 생성
-          </button>
-          <p className="text-xs text-yellow-700 mt-2">
-            Report 테스트를 위한 샘플 데이터를 생성합니다.
-          </p>
-        </section>
-        
-        {/* Logout */}
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 text-red-600 py-3 font-medium"
-        >
-          <LogOut className="w-5 h-5" />
-          로그아웃
-        </button>
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {renderCategoryContent()}
       </div>
       
       <style>

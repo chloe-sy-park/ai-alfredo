@@ -298,8 +298,8 @@ function generateSubline(intensity: DayIntensity, context: BriefingContext, _ton
 
 // 판단 근거 생성
 function generateReasoning(intensity: DayIntensity, _context: BriefingContext): string {
-  var reasons = [];
-  
+  var reasons: string[] = [];
+
   // 주요 팩터 설명
   intensity.factors.forEach(function(factor) {
     if (factor.includes('meetings:')) {
@@ -308,18 +308,165 @@ function generateReasoning(intensity: DayIntensity, _context: BriefingContext): 
     } else if (factor === 'back-to-back meetings') {
       reasons.push('연속된 미팅');
     } else if (factor.includes('urgent tasks:')) {
-      var count = factor.split(': ')[1];
-      reasons.push('긴급한 일 ' + count + '개');
+      var taskCount = factor.split(': ')[1];
+      reasons.push('긴급한 일 ' + taskCount + '개');
     } else if (factor === 'condition: bad') {
       reasons.push('컨디션이 좋지 않음');
     }
   });
-  
+
   if (reasons.length === 0) {
     reasons.push('평범한 일정');
   }
-  
+
   return reasons.join(', ') + '을 고려했어요.';
+}
+
+// ========================================
+// PRD Phase 3: 판단 설명 (Default: 1줄 요약 + Expand: 상세 근거)
+// 알프레도는 "정리하는 멘토" - 설명 과잉 ❌, 설명 안함 ❌
+// ========================================
+
+export interface JudgmentExplanation {
+  why: string;          // 💡 Why this is #1 - 왜 이것이 최우선인지
+  whatChanged: string;  // 🔄 What changed today - 오늘 바뀐 점
+  tradeOff: string;     // ⚖️ Trade-off - 선택의 트레이드오프
+}
+
+// 판단 설명 생성 (MoreSheet용)
+export function generateJudgmentExplanation(context: BriefingContext): JudgmentExplanation {
+  var intensity = assessDayIntensity(context);
+  var hour = context.currentTime.getHours();
+
+  // 1. Why this is #1 - 현재 판단의 핵심 이유
+  var why = generateWhyExplanation(intensity, context, hour);
+
+  // 2. What changed today - 오늘의 변화 요소
+  var whatChanged = generateWhatChangedExplanation(intensity, context);
+
+  // 3. Trade-off - 이 선택의 트레이드오프
+  var tradeOff = generateTradeOffExplanation(intensity, context);
+
+  return { why: why, whatChanged: whatChanged, tradeOff: tradeOff };
+}
+
+// Why 설명 생성
+function generateWhyExplanation(intensity: DayIntensity, context: BriefingContext, hour: number): string {
+  // 컨디션이 안 좋으면 이게 최우선
+  if (context.condition === 'bad') {
+    return '지금 컨디션이 좋지 않아요. 무리하면 내일까지 영향이 가기 때문에, 오늘은 에너지 관리가 가장 중요해요. 급한 건 최소한만 하고 회복에 집중하는 게 결국 더 생산적이에요.';
+  }
+
+  // 과부하 상태
+  if (intensity.level === 'overloaded') {
+    var meetingFactor = intensity.factors.find(function(f) { return f.includes('meetings:'); });
+    var taskFactor = intensity.factors.find(function(f) { return f.includes('urgent tasks:'); });
+
+    if (meetingFactor && taskFactor) {
+      return '미팅도 많고 처리해야 할 급한 일도 있어요. 전부 다 하려면 무리가 갈 수 있어서, 가장 중요한 3가지에만 집중하는 게 나아요. 나머지는 내일로 미뤄도 괜찮아요.';
+    } else if (meetingFactor) {
+      return '오늘 미팅이 정말 많아요. 미팅 사이에 처리할 시간이 거의 없기 때문에, 미팅 전에 꼭 준비해야 할 것만 챙기고, 나머지 업무는 내일로 미루는 게 현명해요.';
+    } else {
+      return '처리할 일이 많이 몰려있어요. 다 하려고 하면 집중력이 분산되니까, 오늘 꼭 끝내야 하는 것 위주로 정리하는 게 좋아요.';
+    }
+  }
+
+  // 바쁜 상태
+  if (intensity.level === 'heavy') {
+    if (intensity.factors.includes('back-to-back meetings')) {
+      return '연속된 미팅이 있어서 정신없을 수 있어요. 미팅 사이에 5분이라도 정리하는 시간을 두면 훨씬 나아요.';
+    }
+    return '바쁜 하루지만 불가능한 수준은 아니에요. 페이스 조절만 잘 하면 충분히 소화할 수 있어요.';
+  }
+
+  // 여유로운 상태
+  if (intensity.level === 'light') {
+    if (hour < 12) {
+      return '오늘은 일정이 많지 않아요. 이럴 때 미뤄둔 일을 처리하거나, 내일을 미리 준비해두면 좋아요.';
+    }
+    return '여유로운 오후예요. 급한 게 없을 때 장기적인 일을 조금씩 진행해보세요.';
+  }
+
+  // 일반 상태
+  if (hour < 12) {
+    return '오전은 집중력이 가장 좋은 시간이에요. 중요한 일을 먼저 처리하면 오후가 훨씬 편해져요.';
+  } else if (hour < 18) {
+    return '오후에는 집중력이 조금 떨어질 수 있어요. 루틴한 일이나 미팅을 배치하면 좋아요.';
+  }
+  return '하루 마무리 시간이에요. 내일 시작을 위해 오늘 한 일을 정리하고 내일 계획을 살펴보면 좋아요.';
+}
+
+// What Changed 설명 생성
+function generateWhatChangedExplanation(intensity: DayIntensity, context: BriefingContext): string {
+  var changes: string[] = [];
+
+  // 미팅 수 변화 분석
+  var meetingCount = context.todayCalendar.filter(function(e) {
+    return e.title.includes('미팅') || e.title.includes('회의');
+  }).length;
+
+  if (meetingCount > 3) {
+    changes.push('오늘 미팅이 ' + meetingCount + '개로 평소보다 많아요');
+  } else if (meetingCount === 0) {
+    changes.push('오늘은 미팅이 없어서 집중하기 좋은 날이에요');
+  }
+
+  // 컨디션 변화
+  if (context.condition === 'bad') {
+    changes.push('컨디션이 평소보다 좋지 않네요');
+  } else if (context.condition === 'great') {
+    changes.push('컨디션이 좋아서 더 많은 걸 할 수 있어요');
+  }
+
+  // 연속 미팅
+  if (intensity.factors.includes('back-to-back meetings')) {
+    changes.push('연속 미팅이 있어서 쉴 틈이 부족해요');
+  }
+
+  // 긴급 태스크
+  var urgentFactor = intensity.factors.find(function(f) { return f.includes('urgent tasks:'); });
+  if (urgentFactor) {
+    var urgentCount = urgentFactor.split(': ')[1];
+    changes.push('급히 처리해야 할 일이 ' + urgentCount + '개 있어요');
+  }
+
+  // 빈 시간
+  var freeTimeFactor = intensity.factors.find(function(f) { return f.includes('low free time:'); });
+  if (freeTimeFactor) {
+    changes.push('일정 사이 여유 시간이 거의 없어요');
+  }
+
+  if (changes.length === 0) {
+    return '오늘은 특별히 변한 게 없어요. 평소처럼 진행하면 돼요.';
+  }
+
+  return changes.join('. ') + '.';
+}
+
+// Trade-off 설명 생성
+function generateTradeOffExplanation(intensity: DayIntensity, context: BriefingContext): string {
+  // 컨디션 안 좋을 때
+  if (context.condition === 'bad') {
+    return '지금 무리하면 더 많은 걸 할 수 있지만, 내일 컨디션이 더 나빠질 수 있어요. 장기적으로는 오늘 쉬는 게 더 나은 선택이에요.';
+  }
+
+  // 과부하 상태
+  if (intensity.level === 'overloaded') {
+    return '모든 걸 다 하려면 퀄리티가 떨어지거나 야근이 불가피해요. 중요한 것에 집중하면 일부는 못 하지만, 전체적인 결과는 더 좋아요.';
+  }
+
+  // 바쁜 상태
+  if (intensity.level === 'heavy') {
+    return '빡빡하게 다 채우면 시간은 효율적이지만 정신적으로 지칠 수 있어요. 중간중간 쉬면 총량은 줄어도 지속 가능해요.';
+  }
+
+  // 여유로운 상태
+  if (intensity.level === 'light') {
+    return '여유가 있다고 쉬기만 하면 편하지만, 미래 준비가 안 돼요. 지금 조금 투자하면 나중에 더 여유로워져요.';
+  }
+
+  // 일반 상태
+  return '지금 판단은 균형을 맞춘 거예요. 더 공격적으로 가면 빨라지지만 리스크가 커지고, 보수적으로 가면 안전하지만 느려져요.';
 }
 
 // 히스토리 입력 타입
