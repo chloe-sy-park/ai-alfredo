@@ -1,8 +1,8 @@
 // Google OAuth Service
 // Handles Google authentication flow (Calendar, Gmail, Drive)
 // 토큰 저장소: authStore (단일 source of truth)
+// Vercel API 엔드포인트 사용 (CORS 문제 해결)
 
-import { authApi } from '../../lib/api';
 import { useAuthStore } from '../../stores/authStore';
 
 export interface GoogleUser {
@@ -43,40 +43,56 @@ export function getGoogleToken(): string | null {
   return state.googleAccessToken;
 }
 
-// Start OAuth flow - redirect to Google
+// Start OAuth flow - redirect to Google (Vercel API 사용)
 export async function startGoogleAuth(): Promise<void> {
   try {
     const redirectUri = window.location.origin + '/auth/callback';
-    const response = await authApi.getGoogleAuthUrl(redirectUri);
 
-    if (!response.success || !response.data) {
+    // Vercel API 엔드포인트 호출
+    const response = await fetch('/api/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ redirect_uri: redirectUri }),
+    });
+
+    if (!response.ok) {
       throw new Error('Failed to get auth URL');
     }
 
-    // Store state for CSRF verification
-    sessionStorage.setItem('oauth_state', response.data.state);
+    const data = await response.json();
 
     // Redirect to Google OAuth
-    window.location.href = response.data.auth_url;
+    window.location.href = data.authUrl;
   } catch (error) {
     console.error('Failed to start Google auth:', error);
     throw error;
   }
 }
 
-// Handle OAuth callback - exchange code for tokens
+// Handle OAuth callback - exchange code for tokens (Vercel API 사용)
 export async function handleGoogleCallback(code: string): Promise<{ user: GoogleUser; tokens: GoogleTokens }> {
   try {
     const redirectUri = window.location.origin + '/auth/callback';
-    const response = await authApi.handleCallback(code, redirectUri);
 
-    if (!response.success || !response.data) {
-      throw new Error(response.error?.message || 'Token exchange failed');
+    // Vercel API 엔드포인트 호출
+    const response = await fetch('/api/auth/callback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, redirect_uri: redirectUri }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Token exchange failed');
     }
 
-    const { user, session } = response.data;
+    const data = await response.json();
 
-    const expiresAt = Date.now() + 3600 * 1000; // 1시간 후
+    if (!data.success) {
+      throw new Error(data.error || 'Token exchange failed');
+    }
+
+    const { user, tokens } = data;
 
     // Update auth store (단일 source of truth)
     const authStore = useAuthStore.getState();
@@ -85,14 +101,14 @@ export async function handleGoogleCallback(code: string): Promise<{ user: Google
         id: user.id,
         email: user.email,
         name: user.name,
-        picture: user.avatar_url,
+        picture: user.picture,
       },
       {
-        access: session?.access_token || '',
-        refresh: session?.refresh_token || '',
-        googleAccess: session?.access_token,
-        googleRefresh: session?.refresh_token,
-        googleExpiry: expiresAt,
+        access: tokens.accessToken,
+        refresh: tokens.refreshToken || '',
+        googleAccess: tokens.accessToken,
+        googleRefresh: tokens.refreshToken,
+        googleExpiry: tokens.expiresAt,
       }
     );
 
@@ -100,15 +116,15 @@ export async function handleGoogleCallback(code: string): Promise<{ user: Google
       id: user.id,
       email: user.email,
       name: user.name,
-      avatar_url: user.avatar_url,
+      avatar_url: user.picture,
     };
 
     return {
       user: googleUser,
       tokens: {
-        accessToken: session?.access_token || '',
-        refreshToken: session?.refresh_token,
-        expiresAt: expiresAt,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        expiresAt: tokens.expiresAt,
       },
     };
   } catch (error) {

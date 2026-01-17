@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { code } = req.body;
+  const { code, redirect_uri } = req.body;
 
   if (!code) {
     return res.status(400).json({ error: 'Authorization code is required' });
@@ -25,9 +25,14 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Google OAuth credentials not configured' });
   }
 
-  // 메인 도메인 고정 (google.js와 동일해야 함)
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.my-alfredo.com';
-  const redirectUri = `${baseUrl}/auth/callback`;
+  // 클라이언트에서 전달된 redirect_uri 사용, 없으면 origin 기반으로 생성
+  let redirectUri;
+  if (redirect_uri) {
+    redirectUri = redirect_uri;
+  } else {
+    const origin = req.headers.origin || 'https://ai-alfredo.vercel.app';
+    redirectUri = `${origin}/auth/callback`;
+  }
 
   console.log('Token exchange redirect_uri:', redirectUri);
 
