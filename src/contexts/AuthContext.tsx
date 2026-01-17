@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { onAuthStateChange, signOut as supabaseSignOut } from '../lib/supabase';
-import { authApi } from '../lib/api';
 import type { User } from '../types/database';
 
 // 인증 상태 타입
@@ -96,18 +95,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
   }, []);
 
-  // Google 로그인 시작
+  // Google 로그인 시작 (Vercel API 사용)
   const signInWithGoogle = useCallback(async (redirectUri?: string) => {
     try {
-      const response = await authApi.getGoogleAuthUrl(redirectUri);
-      
-      if (response.success && response.data?.auth_url) {
-        // state 저장 (CSRF 방지)
-        localStorage.setItem('oauth_state', response.data.state);
+      const finalRedirectUri = redirectUri || window.location.origin + '/auth/callback';
+
+      // Vercel API 엔드포인트 호출
+      const response = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ redirect_uri: finalRedirectUri }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get auth URL');
+      }
+
+      const data = await response.json();
+
+      if (data.authUrl) {
         // Google 로그인 페이지로 리다이렉트
-        window.location.href = response.data.auth_url;
+        window.location.href = data.authUrl;
       } else {
-        throw new Error(response.error?.message || 'Failed to get auth URL');
+        throw new Error('Failed to get auth URL');
       }
     } catch (error) {
       console.error('Google 로그인 오류:', error);
@@ -115,21 +125,40 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
-  // OAuth 콜백 처리
+  // OAuth 콜백 처리 (Vercel API 사용)
   const handleOAuthCallback = useCallback(async (code: string, redirectUri?: string) => {
     try {
       setState(prev => ({ ...prev, isLoading: true }));
 
-      const response = await authApi.handleCallback(code, redirectUri);
+      const finalRedirectUri = redirectUri || window.location.origin + '/auth/callback';
 
-      if (response.success && response.data) {
-        const { user, session } = response.data;
+      // Vercel API 엔드포인트 호출
+      const response = await fetch('/api/auth/callback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, redirect_uri: finalRedirectUri }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Authentication failed');
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.user) {
+        const { user, tokens } = data;
+
+        // 세션 형태로 변환
+        const session = {
+          access_token: tokens.accessToken,
+          refresh_token: tokens.refreshToken,
+          expires_at: Math.floor(tokens.expiresAt / 1000),
+        };
 
         // 로컬 스토리지에 저장
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
-        if (session) {
-          localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
-        }
+        localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
 
         setState({
           user,
@@ -138,7 +167,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           isAuthenticated: true,
         });
       } else {
-        throw new Error(response.error?.message || 'Authentication failed');
+        throw new Error(data.error || 'Authentication failed');
       }
     } catch (error) {
       console.error('OAuth 콜백 처리 오류:', error);
@@ -150,7 +179,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // 로그아웃
   const signOut = useCallback(async () => {
     try {
-      await authApi.logout();
       await supabaseSignOut();
     } catch (error) {
       console.error('로그아웃 오류:', error);
@@ -158,7 +186,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       localStorage.removeItem(USER_STORAGE_KEY);
       localStorage.removeItem(SESSION_STORAGE_KEY);
       localStorage.removeItem('oauth_state');
-      
+      localStorage.removeItem('auth-storage'); // Zustand persist 데이터도 제거
+
       setState({
         user: null,
         session: null,
@@ -176,40 +205,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
 
     try {
-      // 세션 만료 확인 및 토큰 갱신
+      // 세션 만료 확인
       if (state.session.expires_at && state.session.expires_at * 1000 < Date.now()) {
-        // 토큰 만료됨 - 갱신 시도
-        if (state.session.refresh_token) {
-          var refreshResponse = await authApi.refreshToken(state.session.refresh_token);
-          if (refreshResponse.success && refreshResponse.data) {
-            var newSession = {
-              ...state.session,
-              access_token: refreshResponse.data.access_token,
-              refresh_token: refreshResponse.data.refresh_token,
-              expires_at: refreshResponse.data.expires_at
-            };
-            localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(newSession));
-            setState(function(prev) {
-              return { ...prev, session: newSession };
-            });
-          }
-        }
+        // 토큰 만료됨 - 로그아웃 처리
+        console.log('세션 만료됨, 재로그인 필요');
+        await signOut();
+        return;
       }
 
-      // 사용자 정보 조회 시도
-      var userResponse = await authApi.getMe();
-      if (userResponse.success && userResponse.data?.user) {
-        var updatedUser = userResponse.data.user;
-        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
-        setState(function(prev) {
-          return { ...prev, user: updatedUser };
-        });
-        console.log('사용자 정보 새로고침 완료');
-      }
+      console.log('사용자 정보 새로고침 완료');
     } catch (error) {
       console.error('사용자 정보 새로고침 오류:', error);
     }
-  }, [state.isAuthenticated, state.session]);
+  }, [state.isAuthenticated, state.session, signOut]);
 
   const value: AuthContextType = {
     ...state,
