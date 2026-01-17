@@ -1,5 +1,8 @@
 // Google OAuth Service
-// Handles Google Calendar authentication flow
+// Handles Google authentication flow (Calendar, Gmail, Drive)
+
+import { authApi } from '../../lib/api';
+import { useAuthStore } from '../../stores/authStore';
 
 const GOOGLE_TOKEN_KEY = 'google_access_token';
 const GOOGLE_REFRESH_TOKEN_KEY = 'google_refresh_token';
@@ -10,7 +13,7 @@ export interface GoogleUser {
   id: string;
   email: string;
   name: string;
-  picture?: string;
+  avatar_url?: string;
 }
 
 export interface GoogleTokens {
@@ -19,13 +22,13 @@ export interface GoogleTokens {
   expiresAt: number;
 }
 
-// Check if Google Calendar is connected
+// Check if Google is connected
 export function isGoogleConnected(): boolean {
   const token = localStorage.getItem(GOOGLE_TOKEN_KEY);
   const expiry = localStorage.getItem(GOOGLE_TOKEN_EXPIRY_KEY);
-  
+
   if (!token || !expiry) return false;
-  
+
   // Check if token is expired (with 5 min buffer)
   const isExpired = Date.now() > (parseInt(expiry) - 5 * 60 * 1000);
   return !isExpired;
@@ -35,7 +38,7 @@ export function isGoogleConnected(): boolean {
 export function getGoogleUser(): GoogleUser | null {
   const userJson = localStorage.getItem(GOOGLE_USER_KEY);
   if (!userJson) return null;
-  
+
   try {
     return JSON.parse(userJson);
   } catch {
@@ -52,16 +55,18 @@ export function getGoogleToken(): string | null {
 // Start OAuth flow - redirect to Google
 export async function startGoogleAuth(): Promise<void> {
   try {
-    const response = await fetch('/api/auth/google');
-    
-    if (!response.ok) {
+    const redirectUri = window.location.origin + '/auth/callback';
+    const response = await authApi.getGoogleAuthUrl(redirectUri);
+
+    if (!response.success || !response.data) {
       throw new Error('Failed to get auth URL');
     }
-    
-    const data = await response.json();
-    
+
+    // Store state for CSRF verification
+    sessionStorage.setItem('oauth_state', response.data.state);
+
     // Redirect to Google OAuth
-    window.location.href = data.authUrl;
+    window.location.href = response.data.auth_url;
   } catch (error) {
     console.error('Failed to start Google auth:', error);
     throw error;
@@ -71,35 +76,57 @@ export async function startGoogleAuth(): Promise<void> {
 // Handle OAuth callback - exchange code for tokens
 export async function handleGoogleCallback(code: string): Promise<{ user: GoogleUser; tokens: GoogleTokens }> {
   try {
-    const response = await fetch('/api/auth/callback', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ code }),
-    });
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Token exchange failed');
+    const redirectUri = window.location.origin + '/auth/callback';
+    const response = await authApi.handleCallback(code, redirectUri);
+
+    if (!response.success || !response.data) {
+      throw new Error(response.error?.message || 'Token exchange failed');
     }
-    
-    const data = await response.json();
-    
-    // Store tokens
-    localStorage.setItem(GOOGLE_TOKEN_KEY, data.tokens.accessToken);
-    localStorage.setItem(GOOGLE_TOKEN_EXPIRY_KEY, data.tokens.expiresAt.toString());
-    
-    if (data.tokens.refreshToken) {
-      localStorage.setItem(GOOGLE_REFRESH_TOKEN_KEY, data.tokens.refreshToken);
+
+    const { user, session } = response.data;
+
+    // Store tokens in localStorage
+    if (session?.access_token) {
+      localStorage.setItem(GOOGLE_TOKEN_KEY, session.access_token);
+      localStorage.setItem(GOOGLE_TOKEN_EXPIRY_KEY, (Date.now() + 3600 * 1000).toString());
+
+      if (session.refresh_token) {
+        localStorage.setItem(GOOGLE_REFRESH_TOKEN_KEY, session.refresh_token);
+      }
     }
-    
+
     // Store user info
-    localStorage.setItem(GOOGLE_USER_KEY, JSON.stringify(data.user));
-    
+    const googleUser: GoogleUser = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      avatar_url: user.avatar_url,
+    };
+    localStorage.setItem(GOOGLE_USER_KEY, JSON.stringify(googleUser));
+
+    // Update auth store
+    const authStore = useAuthStore.getState();
+    authStore.setAuth(
+      {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        picture: user.avatar_url,
+      },
+      {
+        access: session?.access_token || '',
+        refresh: session?.refresh_token || '',
+        googleAccess: session?.access_token,
+      }
+    );
+
     return {
-      user: data.user,
-      tokens: data.tokens,
+      user: googleUser,
+      tokens: {
+        accessToken: session?.access_token || '',
+        refreshToken: session?.refresh_token,
+        expiresAt: Date.now() + 3600 * 1000,
+      },
     };
   } catch (error) {
     console.error('Google callback failed:', error);
@@ -107,7 +134,7 @@ export async function handleGoogleCallback(code: string): Promise<{ user: Google
   }
 }
 
-// Disconnect Google Calendar
+// Disconnect Google
 export function disconnectGoogle(): void {
   localStorage.removeItem(GOOGLE_TOKEN_KEY);
   localStorage.removeItem(GOOGLE_REFRESH_TOKEN_KEY);

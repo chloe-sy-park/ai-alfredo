@@ -12,6 +12,8 @@ interface BriefingCardProps {
   headline: string;
   subline?: string;
   intensity?: IntensityLevel;
+  emailSummary?: string;
+  hasImportantEmail?: boolean;
   onMore?: () => void;
   onFeedback?: (type: FeedbackType) => void;
 }
@@ -97,6 +99,8 @@ export default function BriefingCard({
   headline,
   subline,
   intensity,
+  emailSummary,
+  hasImportantEmail,
   onMore,
   onFeedback,
 }: BriefingCardProps) {
@@ -149,8 +153,14 @@ export default function BriefingCard({
           )}
           {/* Phase 6: 브리핑 진화 레벨 표시 */}
           {evolutionLevel.level > 1 && (
-            <span className="text-[10px] px-2 py-0.5 bg-[#F0F0FF] text-[#A996FF] rounded-full">
+            <span className="text-[10px] px-2 py-0.5 bg-[#F0F0FF] text-[#A996FF] rounded-full dark:bg-[#A996FF]/20">
               {evolutionLevel.description}
+            </span>
+          )}
+          {/* 중요 메일 배지 */}
+          {hasImportantEmail && (
+            <span className="text-[10px] px-2 py-0.5 bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded-full">
+              📧 중요 메일
             </span>
           )}
         </div>
@@ -162,9 +172,24 @@ export default function BriefingCard({
 
         {/* 서브라인 */}
         {subline && (
-          <p className="text-sm text-[#666666] leading-relaxed animate-fade-in animation-delay-150">
+          <p className="text-sm text-[#666666] dark:text-neutral-400 leading-relaxed animate-fade-in animation-delay-150">
             {subline}
           </p>
+        )}
+
+        {/* 이메일 요약 */}
+        {emailSummary && (
+          <div className="mt-2 p-3 bg-[#F5F5F5] dark:bg-neutral-800 rounded-lg animate-fade-in animation-delay-150">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-sm">📬</span>
+              <span className="text-xs font-medium text-[#666666] dark:text-neutral-400">
+                메일 요약
+              </span>
+            </div>
+            <p className="text-sm text-[#1A1A1A] dark:text-white leading-relaxed">
+              {emailSummary}
+            </p>
+          </div>
         )}
 
         {/* 피드백 버튼 */}

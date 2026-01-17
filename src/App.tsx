@@ -15,6 +15,7 @@ import { NudgeBubble } from './components/nudge/NudgeBubble';
 import { NudgeManager } from './components/nudge/NudgeManager';
 import ReflectButton from './components/common/ReflectButton';
 import { NotificationPanel } from './components/notification';
+import { ShopModal, InventoryModal } from './components/penguin';
 
 // Pages - Lazy Loaded
 const Login = lazy(() => import('./pages/Login'));
@@ -143,6 +144,10 @@ function App() {
       <NudgeBubble />
       <NudgeManager />
       <ReflectButton />
+
+      {/* 펭귄 게이미피케이션 모달 */}
+      <ShopModal />
+      <InventoryModal />
     </div>
   );
 }
