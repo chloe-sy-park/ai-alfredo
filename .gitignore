@@ -33,5 +33,10 @@ pnpm-debug.log*
 # Testing
 coverage
 
+# Playwright
+e2e/.auth/
+playwright-report/
+test-results/
+
 # Vercel
 .vercel
