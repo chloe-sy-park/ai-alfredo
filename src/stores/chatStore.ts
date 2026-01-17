@@ -12,11 +12,13 @@ import {
 } from '../services/safety';
 import { useAlfredoStore } from './alfredoStore';
 import { useLiftStore } from './liftStore';
+import { useToneStore } from './toneStore';
 import { triggerLiveBriefingUpdate } from './liveBriefingStore';
 import {
   extractLearningsFromMessage,
   detectFeedbackSentiment
 } from '../services/alfredo/learningExtractor';
+import { conversationsApi, ChatContext as ApiChatContext } from '../lib/api';
 
 // Date 객체 안전 변환 헬퍼 (persist 후 string -> Date 변환)
 const toDate = (value: Date | string | undefined): Date => {
@@ -158,10 +160,33 @@ export const useChatStore = create<ChatStore>()(
           safetyLevel: safetyResult.emotion.level
         };
 
-        // 4. 알프레도 응답 생성
-        let alfredoResponse;
+        // 기존 메시지들의 timestamp도 Date 객체로 변환
+        const existingMessages = currentSession.messages.map(msg => ({
+          ...msg,
+          timestamp: toDate(msg.timestamp)
+        }));
 
-        // 위기 상황이면 안전 응답을 우선
+        // 사용자 메시지 먼저 추가 (UI에 즉시 표시)
+        set({
+          currentSession: {
+            ...currentSession,
+            messages: [...existingMessages, userMessage],
+            lastActivity: new Date(),
+            startedAt: toDate(currentSession.startedAt),
+          }
+        });
+
+        // 4. 알프레도 응답 생성
+        let alfredoResponse: {
+          full: string;
+          understanding: string;
+          summary: string;
+          judgement: JudgementReflection;
+          insights: DNAInsight[];
+          isSafetyResponse?: boolean;
+        };
+
+        // 위기 상황이면 안전 응답을 우선 (API 호출 없이 즉시 응답)
         if (safetyResult.emotion.level === 'crisis' || safetyResult.emotion.level === 'care') {
           alfredoResponse = {
             full: safetyResult.safetyResponse || '',
@@ -178,8 +203,8 @@ export const useChatStore = create<ChatStore>()(
             isSafetyResponse: true
           };
         } else {
-          // 일반 응답 생성 (임시 로직)
-          alfredoResponse = await generateAlfredoResponse(content, entryContext, safetyResult);
+          // Claude API 호출 (SSE 스트리밍)
+          alfredoResponse = await callClaudeAPI(content, entryContext, safetyResult, get, set);
         }
 
         const alfredoMessage: ChatMessage = {
@@ -196,12 +221,6 @@ export const useChatStore = create<ChatStore>()(
           isSafetyMessage: safetyResult.emotion.level !== 'normal',
           crisisResources: safetyResult.crisisResources
         };
-
-        // 기존 메시지들의 timestamp도 Date 객체로 변환
-        const existingMessages = currentSession.messages.map(msg => ({
-          ...msg,
-          timestamp: toDate(msg.timestamp)
-        }));
 
         // === Lift 기록 (판단 변경 시) ===
         if (alfredoResponse.judgement && alfredoResponse.judgement.type !== 'maintain') {
@@ -236,10 +255,14 @@ export const useChatStore = create<ChatStore>()(
           }
         }
 
-        // 세션 업데이트
+        // 세션 업데이트 (알프레도 응답 추가)
+        const currentMessages = get().currentSession?.messages || [];
         const updatedSession: ChatSession = {
           ...currentSession,
-          messages: [...existingMessages, userMessage, alfredoMessage],
+          messages: [...currentMessages.map(msg => ({
+            ...msg,
+            timestamp: toDate(msg.timestamp)
+          })), alfredoMessage],
           lastActivity: new Date(),
           startedAt: toDate(currentSession.startedAt),
           insights: [
@@ -381,115 +404,219 @@ export const useChatStore = create<ChatStore>()(
   )
 );
 
-// 알프레도 응답 생성 (임시 구현)
-async function generateAlfredoResponse(
+// Claude API 호출 함수
+async function callClaudeAPI(
   userInput: string,
   context: ChatContext,
-  safetyResult?: { emotion: { level: SafetyLevel }; safetyResponse?: string; boundary: { type: string; alternativeResponse?: string } }
-) {
-  // 실제로는 Claude API 호출하겠지만, 지금은 패턴 기반 응답
-
+  safetyResult: { emotion: { level: SafetyLevel }; safetyResponse?: string; boundary: { type: string; alternativeResponse?: string } },
+  get: () => ChatStore,
+  set: (partial: Partial<ChatStore>) => void
+): Promise<{
+  full: string;
+  understanding: string;
+  summary: string;
+  judgement: JudgementReflection;
+  insights: DNAInsight[];
+}> {
   // 알프레도 학습 컨텍스트 가져오기
   const alfredoStore = useAlfredoStore.getState();
+  const toneStore = useToneStore.getState();
   const learnings = alfredoStore.learnings || [];
-  const understanding_score = alfredoStore.understanding?.understandingScore || 10;
 
-  // 학습 기반 응답 조정 (Claude API 연동 시 사용)
-  // const currentDomain = alfredoStore.preferences?.currentDomain || 'work';
-  // const learningsContext = formatLearningsForPrompt(
-  //   learnings.filter(l => l.isActive && l.confidence > 40).slice(0, 5)
-  // );
-  void learnings; // TODO: Claude API 연동 시 사용
-
-  let understanding = '네, 이해했어요. ';
-  let summary = '';
-  let judgement: JudgementReflection = {
-    type: 'maintain',
-    message: '지금 기준은 유지할게요.',
-    confidence: 0.8
+  // API 컨텍스트 구성
+  const apiContext: ApiChatContext = {
+    tone: {
+      preset: toneStore.preset,
+      axes: toneStore.axes,
+    },
+    learnings: learnings
+      .filter(l => l.isActive && l.confidence > 40)
+      .slice(0, 5)
+      .map(l => ({
+        type: l.learningType,
+        summary: l.summary,
+        confidence: l.confidence,
+      })),
+    entry: context.entry,
+    safetyLevel: safetyResult.emotion.level,
   };
-  const insights: DNAInsight[] = [];
 
-  // 이해도가 높을수록 더 개인화된 응답
-  if (understanding_score >= 50) {
-    understanding = '네, 알겠어요. ';
-  }
-  if (understanding_score >= 70) {
-    understanding = '네, 잘 알겠어요. ';
-  }
-
-  // 경계 주제 감지 시 대체 응답 사용
-  if (safetyResult?.boundary.type !== 'safe' && safetyResult?.boundary.alternativeResponse) {
-    understanding = '음, 그런 고민이 있으시군요.';
-    summary = '';
-    judgement = {
-      type: 'consider',
-      message: safetyResult.boundary.alternativeResponse,
-      confidence: 0.9
+  // 경계 주제 감지 시 대체 응답 사용 (API 호출 없이)
+  if (safetyResult.boundary.type !== 'safe' && safetyResult.boundary.alternativeResponse) {
+    return {
+      full: `음, 그런 고민이 있으시군요.\n\n${safetyResult.boundary.alternativeResponse}`,
+      understanding: '음, 그런 고민이 있으시군요.',
+      summary: '',
+      judgement: {
+        type: 'consider',
+        message: safetyResult.boundary.alternativeResponse,
+        confidence: 0.9
+      },
+      insights: []
     };
-
-    const full = `${understanding}\n\n${judgement.message}`;
-    return { full, understanding, summary, judgement, insights };
   }
 
-  // Watch 레벨일 때 더 부드러운 톤
-  if (safetyResult?.emotion.level === 'watch') {
-    if (safetyResult.safetyResponse) {
-      understanding = safetyResult.safetyResponse.split('\n')[0] || '요즘 좀 힘드시죠.';
-      summary = '';
-      judgement = {
+  // Watch 레벨일 때 더 부드러운 톤 (API 호출 없이)
+  if (safetyResult.emotion.level === 'watch' && safetyResult.safetyResponse) {
+    const understanding = safetyResult.safetyResponse.split('\n')[0] || '요즘 좀 힘드시죠.';
+    return {
+      full: `${understanding}\n\n필요하시면 언제든 말씀해주세요. 옆에 있을게요.`,
+      understanding,
+      summary: '',
+      judgement: {
         type: 'consider',
         message: '필요하시면 언제든 말씀해주세요. 옆에 있을게요.',
         confidence: 0.9
-      };
-
-      const full = `${understanding}\n\n${judgement.message}`;
-      return { full, understanding, summary, judgement, insights };
-    }
+      },
+      insights: []
+    };
   }
 
-  // 컨텍스트별 응답
-  if (context.entry === 'priority') {
-    understanding += userInput.includes('중요') ?
-      '우선순위에 대한 생각을 공유해주셨네요.' :
-      '지금 상황을 설명해주셨네요.';
+  // Claude API 호출 (SSE 스트리밍)
+  return new Promise((resolve) => {
+    let fullResponse = '';
+    const { currentSession } = get();
+    const conversationId = currentSession?.id;
 
-    if (userInput.includes('미팅') || userInput.includes('회의')) {
-      summary = '미팅 준비와 관련된 우선순위 조정이 필요하신 것 같아요.';
-      judgement = {
-        type: 'apply',
-        message: '미팅 관련 작업을 상위로 올려둘게요.',
-        changes: ['미팅 준비를 Top 1으로 조정'],
-        confidence: 0.9
-      };
-    }
-  } else if (context.entry === 'manual') {
-    understanding += '무엇을 도와드릴까요?';
+    conversationsApi.sendMessage(
+      userInput,
+      conversationId,
+      // onMessage: 스트리밍 텍스트 수신
+      (data) => {
+        if (data.text) {
+          fullResponse += data.text;
 
-    if (userInput.includes('안녕') || userInput.includes('하이')) {
-      summary = '반가워요! 오늘 하루도 함께해요.';
-      judgement = {
-        type: 'maintain',
-        message: '오늘도 좋은 하루 보내세요!',
-        confidence: 1.0
-      };
-    } else if (userInput.includes('피곤') || userInput.includes('힘들')) {
-      summary = '오늘 좀 힘드시군요.';
-      judgement = {
-        type: 'consider',
-        message: '오늘은 무리하지 마시고, 가장 중요한 것만 집중해보는 건 어떨까요?',
-        confidence: 0.85
-      };
-    }
+          // 실시간 UI 업데이트 (스트리밍 중)
+          const currentState = get();
+          if (currentState.currentSession) {
+            const streamingMessage: ChatMessage = {
+              id: 'streaming',
+              role: 'alfredo',
+              content: fullResponse,
+              timestamp: new Date(),
+              isStreaming: true
+            };
+
+            const messagesWithoutStreaming = currentState.currentSession.messages.filter(
+              m => m.id !== 'streaming'
+            );
+
+            set({
+              currentSession: {
+                ...currentState.currentSession,
+                messages: [...messagesWithoutStreaming, streamingMessage]
+              }
+            });
+          }
+        }
+      },
+      // onError
+      (error) => {
+        console.error('Claude API Error:', error);
+        // Fallback to pattern-based response
+        resolve(generateFallbackResponse(userInput, context));
+      },
+      // onComplete
+      () => {
+        // 스트리밍 완료 - 스트리밍 메시지 제거
+        const currentState = get();
+        if (currentState.currentSession) {
+          const messagesWithoutStreaming = currentState.currentSession.messages.filter(
+            m => m.id !== 'streaming'
+          );
+          set({
+            currentSession: {
+              ...currentState.currentSession,
+              messages: messagesWithoutStreaming
+            }
+          });
+        }
+
+        // 응답 파싱 및 반환
+        resolve(parseClaudeResponse(fullResponse, userInput, context));
+      },
+      // context
+      apiContext
+    );
+  });
+}
+
+// Claude 응답 파싱
+function parseClaudeResponse(
+  response: string,
+  _userInput: string,
+  _context: ChatContext
+): {
+  full: string;
+  understanding: string;
+  summary: string;
+  judgement: JudgementReflection;
+  insights: DNAInsight[];
+} {
+  // 응답에서 첫 문장을 understanding으로 사용
+  const sentences = response.split(/[.!?]\s+/);
+  const understanding = sentences[0] ? sentences[0] + '.' : '네, 알겠어요.';
+
+  // 판단 타입 추론 (키워드 기반)
+  let judgementType: 'apply' | 'consider' | 'maintain' = 'maintain';
+  let confidence = 0.8;
+
+  if (response.includes('해드릴게요') || response.includes('조정해') || response.includes('변경해')) {
+    judgementType = 'apply';
+    confidence = 0.9;
+  } else if (response.includes('어떨까요') || response.includes('고려해') || response.includes('생각해')) {
+    judgementType = 'consider';
+    confidence = 0.85;
   }
-
-  const full = `${understanding}\n\n${summary}\n\n${judgement.message}`;
 
   return {
-    full,
+    full: response,
     understanding,
-    summary,
-    judgement,
-    insights
+    summary: '',
+    judgement: {
+      type: judgementType,
+      message: response,
+      confidence
+    },
+    insights: []
+  };
+}
+
+// Fallback 응답 생성 (API 실패 시)
+function generateFallbackResponse(
+  userInput: string,
+  context: ChatContext
+): {
+  full: string;
+  understanding: string;
+  summary: string;
+  judgement: JudgementReflection;
+  insights: DNAInsight[];
+} {
+  const toneStore = useToneStore.getState();
+  const greeting = toneStore.getMessage('greeting');
+
+  let response = '네, 이해했어요. ';
+
+  if (userInput.includes('안녕') || userInput.includes('하이')) {
+    response = `${greeting} 무엇을 도와드릴까요?`;
+  } else if (userInput.includes('피곤') || userInput.includes('힘들')) {
+    response = '오늘 좀 힘드시군요. 무리하지 마시고 가장 중요한 것만 집중해보는 건 어떨까요?';
+  } else if (context.entry === 'priority') {
+    response = '우선순위에 대해 이야기하고 싶으신 거군요. 어떤 부분이 고민되세요?';
+  } else {
+    response = '네, 알겠어요. 어떻게 도와드릴까요?';
+  }
+
+  return {
+    full: response,
+    understanding: '네, 알겠어요.',
+    summary: '',
+    judgement: {
+      type: 'maintain',
+      message: response,
+      confidence: 0.7
+    },
+    insights: []
   };
 }
