@@ -3,7 +3,8 @@ import { create } from 'zustand';
 import { getTodayEvents, CalendarEvent } from '../services/calendar/calendarService';
 import { getTasks, Task } from '../services/tasks';
 import { getTodayCondition, ConditionLevel } from '../services/condition/conditionService';
-import { generateBriefing, BriefingOutput, BriefingContext } from '../services/briefing';
+import { generateBriefing, BriefingOutput, BriefingContext, EmailBriefingInfo } from '../services/briefing';
+import { getEmailBriefing } from '../services/gmail/gmailService';
 
 interface BriefingState {
   lastUpdated: Date | null;
@@ -54,14 +55,26 @@ export const useBriefingStore = create<BriefingState>((set, get) => ({
       var conditionRecord = getTodayCondition();
       var condition: ConditionLevel | undefined = conditionRecord?.level;
 
-      // 4. 브리핑 컨텍스트 구성
+      // 4. 이메일 브리핑 가져오기 (Gmail 연동된 경우)
+      var emailBriefing: EmailBriefingInfo | undefined;
+      try {
+        var emailResult = await getEmailBriefing();
+        if (emailResult) {
+          emailBriefing = emailResult;
+        }
+      } catch (e) {
+        console.warn('[BriefingStore] 이메일 브리핑 로드 실패:', e);
+      }
+
+      // 5. 브리핑 컨텍스트 구성
       var now = new Date();
       var context: BriefingContext = {
         currentTime: now,
         dayOfWeek: DAYS_KO[now.getDay()],
         todayCalendar: todayCalendar,
         incompleteTasks: incompleteTasks,
-        condition: condition
+        condition: condition,
+        emailBriefing: emailBriefing
       };
 
       // 5. 브리핑 생성

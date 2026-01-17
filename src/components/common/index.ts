@@ -8,3 +8,4 @@ export { default as PostActionToast } from './PostActionToast';
 export * from './Skeleton';
 export * from './SuccessFeedback';
 export * from './Toast';
+export * from './SyncStatusIndicator';

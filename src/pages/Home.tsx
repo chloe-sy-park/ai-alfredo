@@ -29,6 +29,7 @@ import DailyEntry from '../components/home/DailyEntry';
 import { calculateIntensity } from '../components/common/IntensityBadge';
 import { SkeletonCard, SkeletonBriefing } from '../components/common/Skeleton';
 import { MiniUnderstandingWidget } from '../components/alfredo';
+import { PenguinWidget } from '../components/penguin';
 
 type IntensityLevel = 'light' | 'normal' | 'heavy' | 'overloaded';
 type HomeMode = 'all' | 'work' | 'life';
@@ -46,7 +47,12 @@ export default function Home() {
   const [top3Items, setTop3Items] = useState<Top3Item[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDailyEntry, setShowDailyEntry] = useState(false);
-  const [briefing, setBriefing] = useState({ headline: '', subline: '' });
+  const [briefing, setBriefing] = useState<{
+    headline: string;
+    subline: string;
+    emailSummary?: string;
+    hasImportantEmail?: boolean;
+  }>({ headline: '', subline: '' });
   const [homeMode, setHomeMode] = useState<HomeMode>('all');
   const postAction = usePostAction();
   const liftStore = useLiftStore();
@@ -155,17 +161,23 @@ export default function Home() {
     if (homeMode === 'work') {
       setBriefing({
         headline: '업무에 집중하는 하루를 만들어볼까요',
-        subline: briefingData.subline
+        subline: briefingData.subline,
+        emailSummary: briefingData.emailSummary,
+        hasImportantEmail: briefingData.hasImportantEmail
       });
     } else if (homeMode === 'life') {
       setBriefing({
         headline: '오늘은 나를 위한 시간이에요',
-        subline: '일과 삶의 균형을 맞춰봐요'
+        subline: '일과 삶의 균형을 맞춰봐요',
+        emailSummary: briefingData.emailSummary,
+        hasImportantEmail: briefingData.hasImportantEmail
       });
     } else {
       setBriefing({
         headline: briefingData.headline,
-        subline: briefingData.subline
+        subline: briefingData.subline,
+        emailSummary: briefingData.emailSummary,
+        hasImportantEmail: briefingData.hasImportantEmail
       });
     }
     
@@ -416,6 +428,8 @@ export default function Home() {
                 headline={briefing.headline}
                 subline={briefing.subline}
                 intensity={intensity}
+                emailSummary={briefing.emailSummary}
+                hasImportantEmail={briefing.hasImportantEmail}
                 onMore={function() { setIsMoreSheetOpen(true); }}
                 onFeedback={function(type) {
                   if (type === 'helpful') postAction.onBriefingFeedback('positive');
@@ -444,6 +458,8 @@ export default function Home() {
                 headline={briefing.headline}
                 subline={briefing.subline}
                 intensity={intensity}
+                emailSummary={briefing.emailSummary}
+                hasImportantEmail={briefing.hasImportantEmail}
                 onMore={function() { setIsMoreSheetOpen(true); }}
                 onFeedback={function(type) {
                   if (type === 'helpful') postAction.onBriefingFeedback('positive');
@@ -453,13 +469,16 @@ export default function Home() {
               />
             )}
 
-            {/* 3. 오늘의 Top 3 (개인만) */}
+            {/* 3. 펭귄 위젯 (게이미피케이션) */}
+            <PenguinWidget />
+
+            {/* 4. 오늘의 Top 3 (개인만) */}
             <TodayTop3 onFocusSelect={handleFocusSelect} />
 
-            {/* 4. 날씨 카드 */}
+            {/* 5. 날씨 카드 */}
             {isLoading ? <SkeletonCard /> : <WeatherCard />}
 
-            {/* 5. 기억해야할거 */}
+            {/* 6. 기억해야할거 */}
             <QuickMemoCard />
           </>
         )}
@@ -484,6 +503,8 @@ export default function Home() {
                 headline={briefing.headline}
                 subline={briefing.subline}
                 intensity={intensity}
+                emailSummary={briefing.emailSummary}
+                hasImportantEmail={briefing.hasImportantEmail}
                 onMore={function() { setIsMoreSheetOpen(true); }}
                 onFeedback={function(type) {
                   if (type === 'helpful') postAction.onBriefingFeedback('positive');
@@ -511,6 +532,9 @@ export default function Home() {
 
             {/* 오늘의 Top 3 */}
             <TodayTop3 onFocusSelect={handleFocusSelect} />
+
+            {/* 펭귄 위젯 (게이미피케이션) */}
+            <PenguinWidget />
 
             {/* 기억해야할거 */}
             <QuickMemoCard />
