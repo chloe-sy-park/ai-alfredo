@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   // CORS 헤더 설정
   if (setCorsHeaders(req, res)) return;
 
-  if (req.method !== 'GET') {
+  if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
@@ -19,9 +19,17 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Google Client ID not configured' });
   }
 
-  // 메인 도메인 고정 (환경변수 우선, 없으면 하드코딩)
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.my-alfredo.com';
-  const redirectUri = `${baseUrl}/auth/callback`;
+  // 클라이언트에서 전달된 redirect_uri 사용, 없으면 origin 기반으로 생성
+  let redirectUri;
+  if (req.method === 'POST' && req.body?.redirect_uri) {
+    redirectUri = req.body.redirect_uri;
+  } else if (req.query?.redirect_uri) {
+    redirectUri = req.query.redirect_uri;
+  } else {
+    // origin 헤더에서 추출
+    const origin = req.headers.origin || 'https://ai-alfredo.vercel.app';
+    redirectUri = `${origin}/auth/callback`;
+  }
 
   console.log('OAuth redirect_uri:', redirectUri);
 
@@ -30,7 +38,9 @@ export default async function handler(req, res) {
     'email',
     'profile',
     'https://www.googleapis.com/auth/calendar.readonly',
-    'https://www.googleapis.com/auth/calendar.events.readonly'
+    'https://www.googleapis.com/auth/calendar.events.readonly',
+    'https://www.googleapis.com/auth/gmail.readonly',
+    'https://www.googleapis.com/auth/drive.readonly',
   ].join(' ');
 
   // 보안 강화: crypto.randomUUID() 사용
