@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { PageHeader } from '../components/layout';
 import {
   WorkBriefing,
@@ -11,89 +11,52 @@ import {
   MeetingMinutesCard,
   MeetingMinutes
 } from '../components/work';
-import { getTasksByCategory, Task } from '../services/tasks';
+import { Task } from '../services/tasks';
 import { usePostAction } from '../stores/postActionStore';
-import { getTodayEvents, CalendarEvent } from '../services/calendar';
-import { getActiveProjects, Project, updateProjectTaskCounts } from '../services/projects';
+import { useWorkStore } from '../stores/workStore';
+import { Project } from '../services/projects';
 import { Briefcase, Plus, LayoutGrid, List } from 'lucide-react';
 import PriorityStack from '../components/home/PriorityStack';
 import ProjectPulse from '../components/home/ProjectPulse';
 import ActionCard from '../components/home/ActionCard';
+import { useState } from 'react';
 
 export default function Work() {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [focusTask, setFocusTask] = useState<Task | null>(null);
-  const [viewMode, setViewMode] = useState<'project' | 'list'>('project');
-  const [showTaskModal, setShowTaskModal] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [defaultProjectId, setDefaultProjectId] = useState<string>('');
+  // Zustand Store 사용
+  const {
+    tasks,
+    projects,
+    events,
+    focusTask,
+    viewMode,
+    showTaskModal,
+    editingTask,
+    defaultProjectId,
+    isLoading,
+    loadData,
+    setFocusTask,
+    setViewMode,
+    openTaskModal,
+    closeTaskModal,
+    getTasksByProject,
+    getPriorityItems,
+    getProjectPulseData,
+  } = useWorkStore();
+
   const [meetingMinutes, setMeetingMinutes] = useState<MeetingMinutes | null>(null);
   const postAction = usePostAction();
 
   // 데이터 로드
   useEffect(() => {
     loadData();
-  }, []);
-
-  const loadData = () => {
-    // 태스크 로드
-    const workTasks = getTasksByCategory('work');
-    setTasks(workTasks);
-
-    // 프로젝트 로드
-    const activeProjects = getActiveProjects();
-    setProjects(activeProjects);
-
-    // 프로젝트별 태스크 수 업데이트
-    const taskCounts: Record<string, number> = {};
-    workTasks.forEach((task) => {
-      const projectId = task.projectId || 'project_default';
-      taskCounts[projectId] = (taskCounts[projectId] || 0) + 1;
-    });
-    updateProjectTaskCounts(taskCounts);
-
-    // 포커스 태스크 선택 (우선순위 높은 미완료 태스크)
-    const pendingTasks = workTasks.filter((t) => t.status !== 'done');
-    const highPriorityTasks = pendingTasks.filter((t) => t.priority === 'high');
-    const nextTask = highPriorityTasks[0] || pendingTasks[0] || null;
-    setFocusTask(nextTask);
-
-    // 캘린더 이벤트
-    getTodayEvents().then(setEvents).catch(() => {});
-  };
-
-  // 프로젝트별 태스크 그룹핑
-  const getTasksByProjects = (): Record<string, Task[]> => {
-    const grouped: Record<string, Task[]> = {};
-
-    // 모든 프로젝트에 빈 배열 초기화
-    projects.forEach((project) => {
-      grouped[project.id] = [];
-    });
-
-    // 태스크 분배
-    tasks.forEach((task) => {
-      const projectId = task.projectId || 'project_default';
-      if (!grouped[projectId]) {
-        grouped[projectId] = [];
-      }
-      grouped[projectId].push(task);
-    });
-
-    return grouped;
-  };
+  }, [loadData]);
 
   const handleTaskClick = (task: Task) => {
-    setEditingTask(task);
-    setShowTaskModal(true);
+    openTaskModal(task.projectId, task);
   };
 
   const handleAddTask = (projectId?: string) => {
-    setDefaultProjectId(projectId || 'project_default');
-    setEditingTask(null);
-    setShowTaskModal(true);
+    openTaskModal(projectId);
   };
 
   const handleSaveTask = (task: Task) => {
@@ -106,56 +69,19 @@ export default function Work() {
     console.log('Edit project:', project);
   };
 
-  // PRD: ProjectPulse용 데이터 변환
-  const getProjectPulseData = () => {
-    return projects.map((project) => {
-      const projectTasks = tasks.filter((t) => t.projectId === project.id);
-      const pendingCount = projectTasks.filter((t) => t.status !== 'done').length;
-      const highPriorityPending = projectTasks.filter(
-        (t) => t.status !== 'done' && t.priority === 'high'
-      ).length;
-
-      // 신호등 결정: 긴급 미완료 있으면 red, 미완료 많으면 yellow, 아니면 green
-      let signal: 'green' | 'yellow' | 'red' = 'green';
-      if (highPriorityPending > 0) {
-        signal = 'red';
-      } else if (pendingCount > 3) {
-        signal = 'yellow';
-      }
-
-      return {
-        id: project.id,
-        name: project.name,
-        signal: signal
-      };
-    });
-  };
-
-  // PRD R5: 우선순위는 순서다 - 업무 태스크를 우선순위로 변환
-  const getWorkPriorityItems = () => {
-    // 미완료 태스크만, 우선순위 높은 것 먼저
-    const pendingTasks = tasks.filter((t) => t.status !== 'done');
-
-    // 우선순위 정렬: high > medium > low
-    const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
-    pendingTasks.sort((a, b) => {
-      return (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2);
-    });
-
-    // Top 3만 반환
-    return pendingTasks.slice(0, 3).map((task) => ({
-      id: task.id,
-      title: task.title,
-      sourceTag: 'WORK' as const,
-      meta: task.priority === 'high' ? '긴급' : task.dueDate ? '마감' : undefined,
-      status: task.status === 'in_progress' ? 'in-progress' as const : 'pending' as const
-    }));
-  };
+  // 로딩 상태
+  if (isLoading && tasks.length === 0) {
+    return (
+      <div className="min-h-screen bg-background dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-text-muted dark:text-gray-400">로딩 중...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background dark:bg-gray-900">
       <PageHeader />
-      
+
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-4">
         {/* 페이지 헤더 */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
@@ -163,7 +89,7 @@ export default function Work() {
             <Briefcase size={24} className="text-primary" />
             <h1 className="text-xl sm:text-2xl font-bold text-text-primary dark:text-white">Work</h1>
           </div>
-          
+
           <div className="flex items-center gap-2">
             {/* 보기 모드 전환 */}
             <div className="bg-white dark:bg-gray-800 rounded-lg p-1 flex" role="group" aria-label="보기 모드 선택">
@@ -203,7 +129,7 @@ export default function Work() {
             </button>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* 메인 컨텐츠 (2열) */}
           <div className="lg:col-span-2 space-y-4">
@@ -211,9 +137,9 @@ export default function Work() {
             <WorkBriefing tasks={tasks} events={events} />
 
             {/* PRD R5: 오늘의 우선순위 (순서로 표시) */}
-            {getWorkPriorityItems().length > 0 && (
+            {getPriorityItems().length > 0 && (
               <PriorityStack
-                items={getWorkPriorityItems()}
+                items={getPriorityItems()}
                 count={3}
               />
             )}
@@ -242,7 +168,7 @@ export default function Work() {
             {viewMode === 'project' ? (
               <div className="space-y-4">
                 {projects.map((project) => {
-                  const projectTasks = getTasksByProjects()[project.id] || [];
+                  const projectTasks = getTasksByProject()[project.id] || [];
                   return (
                     <div key={project.id} id={`project-${project.id}`}>
                       <ProjectTaskGroup
@@ -263,7 +189,7 @@ export default function Work() {
               </div>
             )}
           </div>
-          
+
           {/* 사이드바 (1열) */}
           <div className="space-y-4">
             {/* 집중 타이머 */}
@@ -309,11 +235,7 @@ export default function Work() {
       {/* 태스크 모달 */}
       <TaskModal
         isOpen={showTaskModal}
-        onClose={() => {
-          setShowTaskModal(false);
-          setEditingTask(null);
-          setDefaultProjectId('');
-        }}
+        onClose={closeTaskModal}
         onSave={handleSaveTask}
         task={editingTask}
         defaultProjectId={defaultProjectId}

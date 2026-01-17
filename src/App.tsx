@@ -9,7 +9,7 @@ import { lazy, Suspense, useEffect } from 'react';
 // Common Components
 import FloatingBar from './components/common/FloatingBar';
 import Drawer from './components/common/Drawer';
-import { PostActionToast } from './components/common';
+import { PostActionToast, ErrorBoundary } from './components/common';
 import { BodyDoublingButton } from './components/body-doubling/BodyDoublingButton';
 import { NudgeBubble } from './components/nudge/NudgeBubble';
 import { NudgeManager } from './components/nudge/NudgeManager';
@@ -97,53 +97,55 @@ function App() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
-      <Suspense fallback={<PageLoader />}>
-        <div className="flex-1 pb-24">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/calendar" element={<Calendar />} />
-            <Route path="/work" element={<WorkOS />} />
-            <Route path="/life" element={<LifeOS />} />
-            <Route path="/finance" element={<Finance />} />
-            <Route path="/chat" element={<Chat />} />
-            <Route path="/report" element={<Report />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/body-doubling" element={<BodyDoubling />} />
-            <Route path="/integrations" element={<Integrations />} />
-            <Route path="/help" element={<Help />} />
+    <ErrorBoundary>
+      <div className="flex flex-col min-h-screen bg-gray-50">
+        <Suspense fallback={<PageLoader />}>
+          <div className="flex-1 pb-24">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/calendar" element={<Calendar />} />
+              <Route path="/work" element={<WorkOS />} />
+              <Route path="/life" element={<LifeOS />} />
+              <Route path="/finance" element={<Finance />} />
+              <Route path="/chat" element={<Chat />} />
+              <Route path="/report" element={<Report />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/body-doubling" element={<BodyDoubling />} />
+              <Route path="/integrations" element={<Integrations />} />
+              <Route path="/help" element={<Help />} />
 
-            {/* Entry Routes */}
-            <Route path="/entry" element={<Entry />} />
-            <Route path="/entry/work" element={<WorkEntry />} />
-            <Route path="/entry/life" element={<LifeEntry />} />
-            
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </div>
-      </Suspense>
-      
-      {/* 플로팅 바 (채팅 입력 + 퀵액션) */}
-      <FloatingBar />
-      
-      {/* 드로어 메뉴 */}
-      <Drawer isOpen={isDrawerOpen} onClose={closeDrawer} />
+              {/* Entry Routes */}
+              <Route path="/entry" element={<Entry />} />
+              <Route path="/entry/work" element={<WorkEntry />} />
+              <Route path="/entry/life" element={<LifeEntry />} />
 
-      {/* 알림 패널 */}
-      <NotificationPanel />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </div>
+        </Suspense>
 
-      {/* PRD: PostAction 브리핑 토스트 */}
-      <PostActionToast
-        briefing={currentBriefing}
-        onDismiss={dismissBriefing}
-      />
+        {/* 플로팅 바 (채팅 입력 + 퀵액션) */}
+        <FloatingBar />
 
-      {/* 기타 플로팅 요소들 */}
-      <BodyDoublingButton />
-      <NudgeBubble />
-      <NudgeManager />
-      <ReflectButton />
-    </div>
+        {/* 드로어 메뉴 */}
+        <Drawer isOpen={isDrawerOpen} onClose={closeDrawer} />
+
+        {/* 알림 패널 */}
+        <NotificationPanel />
+
+        {/* PRD: PostAction 브리핑 토스트 */}
+        <PostActionToast
+          briefing={currentBriefing}
+          onDismiss={dismissBriefing}
+        />
+
+        {/* 기타 플로팅 요소들 */}
+        <BodyDoublingButton />
+        <NudgeBubble />
+        <NudgeManager />
+        <ReflectButton />
+      </div>
+    </ErrorBoundary>
   );
 }
 

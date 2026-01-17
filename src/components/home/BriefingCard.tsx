@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo, useCallback } from 'react';
 import { AlfredoCard } from '../common/Card';
 import IntensityBadge from '../common/IntensityBadge';
 import { useBriefingEvolutionStore } from '../../stores/briefingEvolutionStore';
@@ -93,7 +93,7 @@ const getToneFeedbackResponses = (
   return responses[preset];
 };
 
-export default function BriefingCard({
+const BriefingCard = memo(function BriefingCard({
   headline,
   subline,
   intensity,
@@ -114,7 +114,7 @@ export default function BriefingCard({
   const liveBriefingStore = useLiveBriefingStore();
   const evolutionLevel = evolutionStore.getEvolutionLevel();
 
-  function handleFeedback(type: FeedbackType) {
+  const handleFeedback = useCallback((type: FeedbackType) => {
     setSelectedFeedback(type);
     setShowResponse(true);
     onFeedback?.(type);
@@ -137,7 +137,7 @@ export default function BriefingCard({
     setTimeout(() => {
       setShowResponse(false);
     }, 3000);
-  }
+  }, [onFeedback, evolutionStore, liveBriefingStore.briefing.status]);
 
   return (
     <AlfredoCard onMore={onMore} className="animate-slide-down">
@@ -199,4 +199,6 @@ export default function BriefingCard({
       </div>
     </AlfredoCard>
   );
-}
+});
+
+export default BriefingCard;
