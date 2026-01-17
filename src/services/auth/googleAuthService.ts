@@ -1,13 +1,9 @@
 // Google OAuth Service
 // Handles Google authentication flow (Calendar, Gmail, Drive)
+// 토큰 저장소: authStore (단일 source of truth)
 
 import { authApi } from '../../lib/api';
 import { useAuthStore } from '../../stores/authStore';
-
-const GOOGLE_TOKEN_KEY = 'google_access_token';
-const GOOGLE_REFRESH_TOKEN_KEY = 'google_refresh_token';
-const GOOGLE_TOKEN_EXPIRY_KEY = 'google_token_expiry';
-const GOOGLE_USER_KEY = 'google_user';
 
 export interface GoogleUser {
   id: string;
@@ -22,34 +18,29 @@ export interface GoogleTokens {
   expiresAt: number;
 }
 
-// Check if Google is connected
+// Check if Google is connected (authStore 사용)
 export function isGoogleConnected(): boolean {
-  const token = localStorage.getItem(GOOGLE_TOKEN_KEY);
-  const expiry = localStorage.getItem(GOOGLE_TOKEN_EXPIRY_KEY);
-
-  if (!token || !expiry) return false;
-
-  // Check if token is expired (with 5 min buffer)
-  const isExpired = Date.now() > (parseInt(expiry) - 5 * 60 * 1000);
-  return !isExpired;
+  return useAuthStore.getState().isGoogleTokenValid();
 }
 
-// Get stored Google user info
+// Get stored Google user info (authStore에서 가져옴)
 export function getGoogleUser(): GoogleUser | null {
-  const userJson = localStorage.getItem(GOOGLE_USER_KEY);
-  if (!userJson) return null;
+  const user = useAuthStore.getState().user;
+  if (!user) return null;
 
-  try {
-    return JSON.parse(userJson);
-  } catch {
-    return null;
-  }
+  return {
+    id: user.id || '',
+    email: user.email,
+    name: user.name || '',
+    avatar_url: user.picture,
+  };
 }
 
-// Get Google access token
+// Get Google access token (authStore에서 가져옴)
 export function getGoogleToken(): string | null {
-  if (!isGoogleConnected()) return null;
-  return localStorage.getItem(GOOGLE_TOKEN_KEY);
+  const state = useAuthStore.getState();
+  if (!state.isGoogleTokenValid()) return null;
+  return state.googleAccessToken;
 }
 
 // Start OAuth flow - redirect to Google
@@ -85,26 +76,9 @@ export async function handleGoogleCallback(code: string): Promise<{ user: Google
 
     const { user, session } = response.data;
 
-    // Store tokens in localStorage
-    if (session?.access_token) {
-      localStorage.setItem(GOOGLE_TOKEN_KEY, session.access_token);
-      localStorage.setItem(GOOGLE_TOKEN_EXPIRY_KEY, (Date.now() + 3600 * 1000).toString());
+    const expiresAt = Date.now() + 3600 * 1000; // 1시간 후
 
-      if (session.refresh_token) {
-        localStorage.setItem(GOOGLE_REFRESH_TOKEN_KEY, session.refresh_token);
-      }
-    }
-
-    // Store user info
-    const googleUser: GoogleUser = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      avatar_url: user.avatar_url,
-    };
-    localStorage.setItem(GOOGLE_USER_KEY, JSON.stringify(googleUser));
-
-    // Update auth store
+    // Update auth store (단일 source of truth)
     const authStore = useAuthStore.getState();
     authStore.setAuth(
       {
@@ -117,15 +91,24 @@ export async function handleGoogleCallback(code: string): Promise<{ user: Google
         access: session?.access_token || '',
         refresh: session?.refresh_token || '',
         googleAccess: session?.access_token,
+        googleRefresh: session?.refresh_token,
+        googleExpiry: expiresAt,
       }
     );
+
+    const googleUser: GoogleUser = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      avatar_url: user.avatar_url,
+    };
 
     return {
       user: googleUser,
       tokens: {
         accessToken: session?.access_token || '',
         refreshToken: session?.refresh_token,
-        expiresAt: Date.now() + 3600 * 1000,
+        expiresAt: expiresAt,
       },
     };
   } catch (error) {
@@ -134,12 +117,10 @@ export async function handleGoogleCallback(code: string): Promise<{ user: Google
   }
 }
 
-// Disconnect Google
+// Disconnect Google (authStore 클리어)
 export function disconnectGoogle(): void {
-  localStorage.removeItem(GOOGLE_TOKEN_KEY);
-  localStorage.removeItem(GOOGLE_REFRESH_TOKEN_KEY);
-  localStorage.removeItem(GOOGLE_TOKEN_EXPIRY_KEY);
-  localStorage.removeItem(GOOGLE_USER_KEY);
+  const authStore = useAuthStore.getState();
+  authStore.clearAuth();
 }
 
 // Export for calendar service compatibility

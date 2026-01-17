@@ -68,7 +68,8 @@ export function useSpeechRecognition(
   // Refs
   const recognitionRef = useRef<ReturnType<typeof createWebSpeechRecognition>>(null);
   const recorderRef = useRef<AudioRecorder | null>(null);
-  const isSupported = isWebSpeechSupported() || !!whisperApiKey;
+  // Whisper는 백엔드에서 처리하므로 항상 지원됨
+  const isSupported = isWebSpeechSupported() || true;
 
   // 권한 상태 체크
   useEffect(() => {
@@ -194,12 +195,9 @@ export function useSpeechRecognition(
       const audioBlob = await recorderRef.current.stop();
       setIsRecording(false);
 
-      if (!whisperApiKey) {
-        throw new Error('Whisper API 키가 설정되지 않았어요');
-      }
-
       const langCode = language.split('-')[0]; // 'ko-KR' -> 'ko'
-      const result = await transcribeWithWhisper(audioBlob, whisperApiKey, langCode);
+      // API 키는 백엔드에서 관리하므로 전달하지 않음
+      const result = await transcribeWithWhisper(audioBlob, undefined, langCode);
 
       setTranscript(result.text);
       setInterimTranscript('');

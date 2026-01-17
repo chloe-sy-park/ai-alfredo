@@ -168,30 +168,26 @@ export function createWebSpeechRecognition(
 
 /**
  * Whisper API 기반 음성 전사
- * 녹음된 오디오를 API로 전송
+ * 녹음된 오디오를 백엔드 API로 전송 (API 키는 서버에서 관리)
  */
 export async function transcribeWithWhisper(
   audioBlob: Blob,
-  apiKey: string,
+  _apiKey?: string, // deprecated - 서버에서 API 키 관리
   language: string = 'ko'
 ): Promise<TranscriptionResult> {
   const formData = new FormData();
   formData.append('file', audioBlob, 'audio.webm');
-  formData.append('model', 'whisper-1');
   formData.append('language', language);
-  formData.append('response_format', 'json');
 
-  const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+  // 백엔드 API 호출 (API 키는 서버에서 관리)
+  const response = await fetch('/api/transcribe', {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-    },
     body: formData,
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: { message: 'Unknown error' } }));
-    throw new Error(error.error?.message || `HTTP ${response.status}`);
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `HTTP ${response.status}`);
   }
 
   const data = await response.json();

@@ -1,21 +1,19 @@
 // Vercel Serverless Function - Google OAuth URL 생성
 // GET /api/auth/google
 
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+import { setCorsHeaders } from '../_cors.js';
+import crypto from 'crypto';
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+export default async function handler(req, res) {
+  // CORS 헤더 설정
+  if (setCorsHeaders(req, res)) return;
 
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   const clientId = process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID;
-  
+
   if (!clientId) {
     console.error('Missing GOOGLE_CLIENT_ID env var');
     return res.status(500).json({ error: 'Google Client ID not configured' });
@@ -35,7 +33,8 @@ export default async function handler(req, res) {
     'https://www.googleapis.com/auth/calendar.events.readonly'
   ].join(' ');
 
-  const state = Math.random().toString(36).substring(2) + Date.now().toString(36);
+  // 보안 강화: crypto.randomUUID() 사용
+  const state = crypto.randomUUID();
 
   const params = new URLSearchParams({
     client_id: clientId,

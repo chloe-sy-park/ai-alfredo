@@ -2,17 +2,13 @@
 // POST /api/gmail (메인 API)
 // GET /api/gmail (서비스 워커 호환용)
 
+import { setCorsHeaders } from './_cors.js';
+
 const GMAIL_API_BASE = 'https://www.googleapis.com/gmail/v1';
 
 export default async function handler(req, res) {
-  // CORS 헤더
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  // CORS 헤더 설정
+  if (setCorsHeaders(req, res)) return;
 
   // GET 요청 - 서비스 워커 캐싱 호환용 (빈 응답)
   if (req.method === 'GET') {
