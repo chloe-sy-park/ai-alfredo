@@ -1,10 +1,11 @@
 // Weather API - OpenWeatherMap proxy
 
+import { setCorsHeaders } from './_cors.js';
+
 export default async function handler(req, res) {
-  // CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET');
-  
+  // CORS 헤더 설정
+  if (setCorsHeaders(req, res)) return;
+
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

@@ -1,6 +1,8 @@
 // Vercel Serverless Function - 알프레도 채팅 (Claude)
 // POST /api/chat
 
+import { setCorsHeaders } from './_cors.js';
+
 const ALFREDO_SYSTEM_PROMPT = `당신은 "알프레도"입니다. ADHD 친화적 AI 버틀러 펭귄이에요.
 
 ## 핵심 정체성
@@ -220,14 +222,8 @@ function buildSystemPrompt(context) {
 }
 
 export default async function handler(req, res) {
-  // CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  // CORS 헤더 설정
+  if (setCorsHeaders(req, res)) return;
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });

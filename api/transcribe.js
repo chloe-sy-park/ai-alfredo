@@ -1,6 +1,8 @@
 // Vercel Serverless Function - 음성 → 텍스트 변환
 // POST /api/transcribe
 
+import { setCorsHeaders } from './_cors.js';
+
 export const config = {
   api: {
     bodyParser: false, // 파일 업로드를 위해 비활성화
@@ -8,14 +10,8 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  // CORS 헤더
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  // CORS 헤더 설정
+  if (setCorsHeaders(req, res)) return;
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });

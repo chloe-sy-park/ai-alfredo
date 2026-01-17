@@ -2,9 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 import { Send, Mic, MicOff, Loader2, Zap, Radio } from 'lucide-react';
 import { useSpeechRecognition, isWebSpeechSupported } from '../../services/speech';
 
-// Whisper API 키 (환경 변수에서)
-const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
-
 // 음성 인식 모드: web-speech (실시간) 또는 whisper (녹음 후 변환)
 type SpeechMode = 'web-speech' | 'whisper';
 
@@ -27,7 +24,7 @@ export default function ChatInput({
 
   // 사용 가능한 모드 확인
   const webSpeechAvailable = isWebSpeechSupported();
-  const whisperAvailable = !!OPENAI_API_KEY;
+  const whisperAvailable = true; // Whisper는 백엔드에서 처리 (항상 사용 가능)
   const bothAvailable = webSpeechAvailable && whisperAvailable;
 
   // 사용자 선택 모드 (localStorage에 저장)
@@ -68,7 +65,7 @@ export default function ChatInput({
     provider: speechMode,
     language: 'ko-KR',
     continuous: false,
-    whisperApiKey: OPENAI_API_KEY,
+    // whisperApiKey는 더 이상 필요 없음 (백엔드에서 관리)
     onTranscript: (text) => {
       setMessage((prev) => (prev ? prev + ' ' + text : text));
     },
