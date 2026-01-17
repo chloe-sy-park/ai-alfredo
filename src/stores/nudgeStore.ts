@@ -12,7 +12,9 @@ import {
   markAsRead,
   markAction,
   createContextualNudge,
-  INTENSITY_PRESETS
+  INTENSITY_PRESETS,
+  sendNudgeAsPush,
+  isPushEnabled
 } from '../services/nudge';
 
 interface NudgeState {
@@ -28,11 +30,15 @@ interface NudgeState {
   // 스케줄러 상태
   isSchedulerActive: boolean;
 
+  // 푸시 알림 함께 전송 여부
+  sendPushWithNudge: boolean;
+
   // Actions
-  showNudge: (nudge: Nudge) => void;
+  showNudge: (nudge: Nudge, options?: { skipPush?: boolean }) => void;
   hideNudge: (id: string) => void;
   clearAllNudges: () => void;
   getActiveNudge: () => Nudge | null;
+  setSendPushWithNudge: (enabled: boolean) => void;
 
   // 넛지 체크
   checkNudges: (context: TriggerContext) => void;
@@ -57,8 +63,9 @@ export const useNudgeStore = create<NudgeState>((set, get) => ({
   history: [],
   settings: INTENSITY_PRESETS.balanced,
   isSchedulerActive: false,
+  sendPushWithNudge: true,
 
-  showNudge: (nudge) => {
+  showNudge: (nudge, options) => {
     set((state) => ({
       activeNudges: [...state.activeNudges, nudge],
       history: [...state.history.slice(-49), nudge]  // 최근 50개 유지
@@ -70,6 +77,19 @@ export const useNudgeStore = create<NudgeState>((set, get) => ({
         get().hideNudge(nudge.id);
       }, nudge.autoHide);
     }
+
+    // 푸시 알림 전송 (옵션에 따라)
+    const { sendPushWithNudge } = get();
+    if (sendPushWithNudge && !options?.skipPush && isPushEnabled()) {
+      // 앱이 포그라운드에 있으면 푸시 스킵 (문서 숨김 상태일 때만 푸시)
+      if (document.hidden) {
+        sendNudgeAsPush(nudge).catch(console.error);
+      }
+    }
+  },
+
+  setSendPushWithNudge: (enabled) => {
+    set({ sendPushWithNudge: enabled });
   },
 
   hideNudge: (id) => {

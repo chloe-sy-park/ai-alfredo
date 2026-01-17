@@ -71,6 +71,14 @@ export {
   INTENSITY_PRESETS
 } from './scheduler';
 
+// Push Integration
+export {
+  sendNudgeAsPush,
+  scheduleNudgeAsPush,
+  cancelScheduledNudgePush,
+  isPushEnabled
+} from './pushIntegration';
+
 // === 편의 함수 ===
 import type { Nudge, TriggerContext, NotificationSettings } from './types';
 import { runAllTriggers, addToHistory } from './scheduler';
