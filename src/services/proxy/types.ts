@@ -46,6 +46,7 @@ export interface ProxyAction {
     taskIds?: string[];
     eventIds?: string[];
     timeSlot?: { start: string; end: string };
+    scoreBreakdowns?: ScoreBreakdown[];  // 우선순위 점수 상세
   };
 
   // 상태
@@ -82,13 +83,24 @@ export interface TimeProtection {
   priority: number;
 }
 
+// 점수 상세 (투명성용)
+export interface ScoreBreakdown {
+  deadline: number;
+  starred: number;
+  waiting: number;
+  duration: number;
+  deferred: number;
+  scheduled: number;
+}
+
 // 우선순위 추천
 export interface PriorityRecommendation {
   taskId: string;
   rank: number;          // 1, 2, 3
   confidence: number;    // 0-1
   reasoning: string;
-  factors: string[];     // ['deadline: today', 'high_priority', 'estimated: 30min']
+  factors: string[];     // ['deadline: today', 'starred', 'waiting: boss']
+  scoreBreakdown?: ScoreBreakdown;  // 점수 투명성 (선택적)
 }
 
 // 패턴 감지

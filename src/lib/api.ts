@@ -365,6 +365,31 @@ export const penguinApi = {
 };
 
 // ========== Conversations API ==========
+export interface ChatContext {
+  tone?: {
+    preset: string;
+    axes: {
+      warmth: number;
+      proactivity: number;
+      directness: number;
+      humor: number;
+      pressure: number;
+    };
+  };
+  dna?: {
+    chronotype?: string;
+    peakHours?: string[];
+    stressLevel?: string;
+  };
+  learnings?: Array<{
+    type: string;
+    summary: string;
+    confidence: number;
+  }>;
+  entry?: string;
+  safetyLevel?: string;
+}
+
 export const conversationsApi = {
   list: (params?: { page?: string; limit?: string }) => api.get<any[]>('/conversations', params),
 
@@ -375,11 +400,16 @@ export const conversationsApi = {
     conversationId?: string,
     onMessage?: (data: { text?: string; done?: boolean; conversation_id?: string }) => void,
     onError?: (error: Error) => void,
-    onComplete?: () => void
+    onComplete?: () => void,
+    context?: ChatContext
   ) => {
     return api.stream(
       '/conversations/message',
-      { message, conversation_id: conversationId },
+      {
+        message,
+        conversation_id: conversationId,
+        context: context || {}
+      },
       onMessage || (() => {}),
       onError,
       onComplete

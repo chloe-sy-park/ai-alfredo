@@ -1,11 +1,12 @@
 // Settings.tsx - 설정 페이지 (카테고리 분리 구조)
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Users, LogOut, Brain, Bell, Moon, Clock, BellOff, Sun, Monitor, Sliders, Settings2 } from 'lucide-react';
+import { ArrowLeft, Users, LogOut, Brain, Bell, Moon, Clock, BellOff, Sun, Monitor, Sliders, Settings2, Loader2, BellRing } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useAlfredoStore } from '../stores/alfredoStore';
 import { useNotificationSettingsStore } from '../stores/notificationSettingsStore';
 import { useThemeStore, Theme } from '../stores/themeStore';
+import { usePushNotification } from '../hooks/usePushNotification';
 import {
   DomainSwitcher,
   UnderstandingCard,
@@ -36,6 +37,7 @@ const Settings = () => {
   const { initialize: initAlfredo, preferences: alfredoPrefs, isLoading: alfredoLoading } = useAlfredoStore();
   const notificationSettings = useNotificationSettingsStore();
   const { theme, setTheme } = useThemeStore();
+  const pushNotification = usePushNotification();
 
   const [activeCategory, setActiveCategory] = useState<SettingsCategory>('general');
 
@@ -242,15 +244,76 @@ const Settings = () => {
                   )}
 
                   {/* 푸시 구독 상태 */}
-                  {!notificationSettings.pushSubscribed && (
-                    <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 flex items-start gap-2" role="alert">
-                      <BellOff size={16} className="text-yellow-600 dark:text-yellow-400 mt-0.5" aria-hidden="true" />
-                      <div>
-                        <p className="text-sm text-yellow-800 dark:text-yellow-200 font-medium">푸시 알림 미등록</p>
-                        <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">브라우저 알림을 허용하면 앱을 닫아도 알림을 받을 수 있어요</p>
+                  <div className="border-t border-neutral-200 dark:border-gray-700 pt-4 mt-4">
+                    {pushNotification.isSupported ? (
+                      pushNotification.isSubscribed ? (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <BellRing size={16} className="text-green-500" aria-hidden="true" />
+                            <div>
+                              <span className="text-sm text-text-primary dark:text-white">푸시 알림 활성</span>
+                              <p className="text-xs text-text-muted dark:text-gray-400">앱을 닫아도 알림을 받아요</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => pushNotification.unsubscribe()}
+                            disabled={pushNotification.isLoading}
+                            className="px-3 py-1.5 text-xs text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
+                          >
+                            {pushNotification.isLoading ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              '해제'
+                            )}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="flex items-start gap-2">
+                            <BellOff size={16} className="text-yellow-600 dark:text-yellow-400 mt-0.5" aria-hidden="true" />
+                            <div>
+                              <p className="text-sm text-text-primary dark:text-white font-medium">푸시 알림 미등록</p>
+                              <p className="text-xs text-text-muted dark:text-gray-400 mt-1">
+                                브라우저 알림을 허용하면 앱을 닫아도 알림을 받을 수 있어요
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => pushNotification.subscribe()}
+                            disabled={pushNotification.isLoading || pushNotification.permission === 'denied'}
+                            className="w-full py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                          >
+                            {pushNotification.isLoading ? (
+                              <>
+                                <Loader2 size={16} className="animate-spin" />
+                                등록 중...
+                              </>
+                            ) : pushNotification.permission === 'denied' ? (
+                              '알림 권한이 차단됨'
+                            ) : (
+                              <>
+                                <Bell size={16} />
+                                푸시 알림 활성화
+                              </>
+                            )}
+                          </button>
+                          {pushNotification.error && (
+                            <p className="text-xs text-red-500">{pushNotification.error}</p>
+                          )}
+                          {pushNotification.permission === 'denied' && (
+                            <p className="text-xs text-text-muted dark:text-gray-400">
+                              브라우저 설정에서 알림 권한을 허용해주세요
+                            </p>
+                          )}
+                        </div>
+                      )
+                    ) : (
+                      <div className="flex items-center gap-2 text-text-muted dark:text-gray-400">
+                        <BellOff size={16} />
+                        <span className="text-sm">이 브라우저는 푸시 알림을 지원하지 않습니다</span>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               )}
             </section>

@@ -26,6 +26,15 @@ export interface Task {
   googleTaskId?: string;
   googleTaskListId?: string;
   lastSyncedAt?: string;
+  // === 우선순위 기준 확장 필드 (docs/05-priority-logic.md) ===
+  // 중요 표시 (⭐)
+  starred?: boolean;
+  // 누군가 기다림 (👤)
+  waitingFor?: 'external' | 'boss' | 'team' | null;
+  // 반복 미룸 횟수 (🔄)
+  deferCount?: number;
+  // 오늘 예정 날짜 (📅)
+  scheduledDate?: string;
 }
 
 export interface RecurrenceRule {

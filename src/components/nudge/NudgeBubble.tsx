@@ -49,14 +49,14 @@ export const NudgeBubble: React.FC = () => {
           
           {/* 메시지 */}
           <p className="text-gray-700 text-sm leading-relaxed mb-3">
-            {nudge.message}
+            {nudge.body}
           </p>
-          
+
           {/* 액션 버튼 */}
-          {nudge.action && (
+          {nudge.actions && nudge.actions.length > 0 && (
             <button
               onClick={() => {
-                nudge.action?.handler();
+                nudge.actions?.[0]?.handler?.();
                 hideNudge(nudge.id);
               }}
               className="
@@ -67,7 +67,7 @@ export const NudgeBubble: React.FC = () => {
                 flex items-center justify-center gap-1
               "
             >
-              {nudge.action.label}
+              {nudge.actions[0].label}
               <ChevronRight className="w-4 h-4" />
             </button>
           )}

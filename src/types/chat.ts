@@ -22,6 +22,9 @@ export interface ChatMessage {
   safetyLevel?: SafetyLevel;
   isSafetyMessage?: boolean;
   crisisResources?: CrisisResource[];
+
+  // 스트리밍 상태
+  isStreaming?: boolean;
 }
 
 export interface JudgementReflection {

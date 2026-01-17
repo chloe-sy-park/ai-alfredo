@@ -6,30 +6,67 @@ import { successResponse, errorResponse, ErrorCodes } from '../_shared/response.
 const CLAUDE_API_KEY = Deno.env.get('CLAUDE_API_KEY')!;
 const CLAUDE_MODEL = 'claude-sonnet-4-20250514';
 
+// 톤 프리셋별 성격 설명
+const TONE_DESCRIPTIONS: Record<string, string> = {
+  friendly: '포근한 친구처럼 따뜻하고 감정적으로 공감하며, 이모지를 자주 사용합니다.',
+  butler: '믿음직한 집사처럼 정중하고 균형잡힌 톤으로 대화합니다.',
+  secretary: '담백한 비서처럼 효율적이고 간결하게 핵심만 전달합니다.',
+  coach: '열정적인 코치처럼 에너지 넘치고 동기부여하는 톤입니다.',
+  trainer: '독한 트레이너처럼 직설적이고 압박하는 톤입니다.',
+};
+
 // 시스템 프롬프트 생성
-function buildSystemPrompt(userContext: any) {
-  return `당신은 알프레도, ADHD 친화적 AI 버틀러입니다. 보라색 펭귄 캐릭터이며, 따뜻하고 격려하는 톤으로 사용자를 돕습니다.
+function buildSystemPrompt(userContext: any, chatContext?: any) {
+  // 톤 설정 가져오기
+  const tone = chatContext?.tone || { preset: 'butler', axes: { warmth: 3, proactivity: 3, directness: 3, humor: 2, pressure: 2 } };
+  const toneDescription = TONE_DESCRIPTIONS[tone.preset] || TONE_DESCRIPTIONS.butler;
 
-## 핵심 성격
-- 친근하고 따뜻한 버틀러 ("~해드릴까요?", "~하시겠어요?")
-- ADHD 사용자 이해 (압도 방지, 단순화, 격려)
-- 한국어로 대화 (존댓말 사용)
+  // 학습 정보 포맷팅
+  const learningsText = chatContext?.learnings?.length > 0
+    ? chatContext.learnings.map((l: any) => `- ${l.type}: ${l.summary} (신뢰도: ${l.confidence}%)`).join('\n')
+    : '아직 학습된 정보가 없습니다.';
 
-## 현재 사용자 컨텍스트
+  // 진입 컨텍스트에 따른 대화 초점
+  const entryFocus = {
+    priority: '우선순위 조정에 대한 대화입니다. 사용자의 현재 상황을 이해하고 우선순위 제안을 해주세요.',
+    more: '판단 근거에 대한 논의입니다. 알프레도의 판단이 맞는지 사용자와 대화해주세요.',
+    pattern: '패턴 변화에 대한 대화입니다. 최근 사용자의 변화를 파악해주세요.',
+    briefing: '브리핑에 대한 피드백입니다. 브리핑 내용에 대해 대화해주세요.',
+    manual: '자유로운 대화입니다. 사용자가 원하는 것을 도와주세요.',
+  }[chatContext?.entry || 'manual'] || '사용자를 도와주세요.';
+
+  return `당신은 알프레도, ADHD 친화적 AI 버틀러입니다. 보라색 펭귄 캐릭터입니다.
+
+## 현재 톤 설정: ${tone.preset}
+${toneDescription}
+
+톤 세부 축:
+- 따뜻함: ${tone.axes.warmth}/5
+- 적극성: ${tone.axes.proactivity}/5
+- 직접성: ${tone.axes.directness}/5
+- 유머: ${tone.axes.humor}/5
+- 압박감: ${tone.axes.pressure}/5
+
+## 대화 초점
+${entryFocus}
+
+## 사용자에 대해 배운 것
+${learningsText}
+
+## 현재 사용자 상태
 ${userContext ? JSON.stringify(userContext, null, 2) : '새로운 사용자입니다.'}
 
-## 대화 원칙
-1. 짧고 명확하게 (3문장 이내 권장)
-2. 한 번에 하나씩 (선택지는 최대 3개)
+## 핵심 원칙
+1. 짧고 명확하게 (3문장 이내)
+2. 한 번에 하나씩 (선택지 최대 3개)
 3. 격려와 인정 우선
 4. 실패해도 괜찮다는 메시지
 5. 구체적 다음 행동 제안
+6. ADHD 친화: 압도 방지, 단순화
 
-## 가능한 함수 호출
-- create_task: 새 태스크 생성
-- complete_task: 태스크 완료
-- get_today_briefing: 오늘 브리핑 조회
-- set_top3: 오늘의 Top 3 설정`;
+## 한국어 대화
+- 존댓말 사용
+- 톤에 맞는 어미 사용 (friendly: ~요, butler: ~입니다, secretary: 간결체, coach: ~해요!, trainer: ~하세요)`;
 }
 
 serve(async (req) => {
@@ -111,7 +148,7 @@ async function createConversation(userId: string) {
 
 // 메시지 전송 (스트리밍)
 async function sendMessage(userId: string, body: any) {
-  const { conversation_id, message } = body;
+  const { conversation_id, message, context: chatContext } = body;
 
   if (!message) {
     return errorResponse(ErrorCodes.MISSING_FIELD, 'Message is required', 400);
@@ -173,7 +210,7 @@ async function sendMessage(userId: string, body: any) {
     body: JSON.stringify({
       model: CLAUDE_MODEL,
       max_tokens: 1024,
-      system: buildSystemPrompt(userContext),
+      system: buildSystemPrompt(userContext, chatContext),
       messages: previousMessages?.map(m => ({
         role: m.role,
         content: m.content,
