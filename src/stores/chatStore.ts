@@ -472,10 +472,34 @@ async function callClaudeAPI(
       content: userInput
     });
 
-    // API 컨텍스트 구성
+    // API 컨텍스트 구성 - 캘린더, DNA 인사이트 포함
+    // 캘린더 이벤트 가져오기 (비동기)
+    let calendarEvents: { id: string; title: string; start: string; end: string }[] = [];
+    try {
+      const events = await getTodayEvents();
+      calendarEvents = events.map(e => ({
+        id: e.id,
+        title: e.title,
+        start: e.start,
+        end: e.end
+      }));
+    } catch (err) {
+      console.error('Failed to fetch calendar events for chat context:', err);
+    }
+
+    // DNA 인사이트 (누적된 것)
+    const { accumulatedInsights } = get();
+    const dnaInsights = accumulatedInsights.length > 0 ? accumulatedInsights.map(insight => ({
+      type: insight.type,
+      inference: insight.inference,
+      confidence: insight.confidence
+    })) : undefined;
+
     const apiContext = {
       entry: context.entry,
       safetyLevel: safetyResult.emotion.level,
+      events: calendarEvents,
+      dna: dnaInsights,
     };
 
     // Vercel /api/chat 호출
