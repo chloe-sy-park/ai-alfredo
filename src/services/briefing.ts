@@ -4,6 +4,13 @@ import { CalendarEvent } from './calendar/calendarService';
 import { ConditionLevel } from './condition/conditionService';
 import { Task } from './tasks';
 
+// 이메일 브리핑 정보 타입
+export interface EmailBriefingInfo {
+  summary: string;
+  hasImportant: boolean;
+  count: number;
+}
+
 export interface BriefingContext {
   currentTime: Date;
   dayOfWeek: string;
@@ -12,6 +19,7 @@ export interface BriefingContext {
   incompleteTasks: Task[];
   condition?: ConditionLevel;
   userPattern?: UserPattern;
+  emailBriefing?: EmailBriefingInfo; // 이메일 브리핑 정보 추가
 }
 
 export interface UserPattern {
@@ -29,6 +37,8 @@ export interface BriefingOutput {
   reasoning: string;     // 판단 근거
   tone: BriefingTone;    // 메시지 톤
   priority?: string;     // 오늘의 우선순위 힌트
+  emailSummary?: string; // 이메일 요약 (Gmail 연동 시)
+  hasImportantEmail?: boolean; // 중요 이메일 존재 여부
 }
 
 export interface DayIntensity {
@@ -205,27 +215,46 @@ function decideTone(intensity: DayIntensity, context: BriefingContext): Briefing
 export function generateBriefing(context: BriefingContext): BriefingOutput {
   var intensity = assessDayIntensity(context);
   var tone = decideTone(intensity, context);
-  
+
   // 헤드라인 생성
   var headline = generateHeadline(intensity, context, tone);
   var subline = generateSubline(intensity, context, tone);
-  
+
   // 우선순위 힌트
   var priority: string | undefined;
   if (intensity.level === 'overloaded' || intensity.level === 'heavy') {
     priority = '가장 중요한 3개만 집중하세요';
   }
-  
+
   // 판단 근거
   var reasoning = generateReasoning(intensity, context);
-  
+
+  // 이메일 정보 포함
+  var emailSummary: string | undefined;
+  var hasImportantEmail: boolean | undefined;
+
+  if (context.emailBriefing) {
+    emailSummary = context.emailBriefing.summary;
+    hasImportantEmail = context.emailBriefing.hasImportant;
+
+    // 중요 이메일이 있으면 intensity factor에 추가
+    if (hasImportantEmail) {
+      intensity.factors.push('important emails');
+      if (intensity.score < 80) {
+        intensity.score += 10;
+      }
+    }
+  }
+
   return {
     headline: headline,
     subline: subline,
     intensity: intensity,
     reasoning: reasoning,
     tone: tone,
-    priority: priority
+    priority: priority,
+    emailSummary: emailSummary,
+    hasImportantEmail: hasImportantEmail
   };
 }
 
@@ -312,6 +341,8 @@ function generateReasoning(intensity: DayIntensity, _context: BriefingContext): 
       reasons.push('긴급한 일 ' + taskCount + '개');
     } else if (factor === 'condition: bad') {
       reasons.push('컨디션이 좋지 않음');
+    } else if (factor === 'important emails') {
+      reasons.push('확인이 필요한 메일');
     }
   });
 
