@@ -18,7 +18,6 @@ import {
   extractLearningsFromMessage,
   detectFeedbackSentiment
 } from '../services/alfredo/learningExtractor';
-import { conversationsApi, ChatContext as ApiChatContext } from '../lib/api';
 
 // Date 객체 안전 변환 헬퍼 (persist 후 string -> Date 변환)
 const toDate = (value: Date | string | undefined): Date => {
@@ -404,13 +403,13 @@ export const useChatStore = create<ChatStore>()(
   )
 );
 
-// Claude API 호출 함수
+// Claude API 호출 함수 (Vercel API 사용)
 async function callClaudeAPI(
   userInput: string,
   context: ChatContext,
   safetyResult: { emotion: { level: SafetyLevel }; safetyResponse?: string; boundary: { type: string; alternativeResponse?: string } },
   get: () => ChatStore,
-  set: (partial: Partial<ChatStore>) => void
+  _set: (partial: Partial<ChatStore>) => void
 ): Promise<{
   full: string;
   understanding: string;
@@ -418,29 +417,6 @@ async function callClaudeAPI(
   judgement: JudgementReflection;
   insights: DNAInsight[];
 }> {
-  // 알프레도 학습 컨텍스트 가져오기
-  const alfredoStore = useAlfredoStore.getState();
-  const toneStore = useToneStore.getState();
-  const learnings = alfredoStore.learnings || [];
-
-  // API 컨텍스트 구성
-  const apiContext: ApiChatContext = {
-    tone: {
-      preset: toneStore.preset,
-      axes: toneStore.axes,
-    },
-    learnings: learnings
-      .filter(l => l.isActive && l.confidence > 40)
-      .slice(0, 5)
-      .map(l => ({
-        type: l.learningType,
-        summary: l.summary,
-        confidence: l.confidence,
-      })),
-    entry: context.entry,
-    safetyLevel: safetyResult.emotion.level,
-  };
-
   // 경계 주제 감지 시 대체 응답 사용 (API 호출 없이)
   if (safetyResult.boundary.type !== 'safe' && safetyResult.boundary.alternativeResponse) {
     return {
@@ -472,73 +448,63 @@ async function callClaudeAPI(
     };
   }
 
-  // Claude API 호출 (SSE 스트리밍)
-  return new Promise((resolve) => {
-    let fullResponse = '';
+  // Vercel API 호출
+  try {
     const { currentSession } = get();
-    const conversationId = currentSession?.id;
 
-    conversationsApi.sendMessage(
-      userInput,
-      conversationId,
-      // onMessage: 스트리밍 텍스트 수신
-      (data) => {
-        if (data.text) {
-          fullResponse += data.text;
+    // 이전 대화 내역을 messages 배열로 구성
+    const messages: { role: string; content: string }[] = [];
 
-          // 실시간 UI 업데이트 (스트리밍 중)
-          const currentState = get();
-          if (currentState.currentSession) {
-            const streamingMessage: ChatMessage = {
-              id: 'streaming',
-              role: 'alfredo',
-              content: fullResponse,
-              timestamp: new Date(),
-              isStreaming: true
-            };
+    // 이전 메시지 추가 (최근 10개만)
+    if (currentSession?.messages) {
+      const recentMessages = currentSession.messages.slice(-10);
+      for (const msg of recentMessages) {
+        messages.push({
+          role: msg.role === 'alfredo' ? 'assistant' : 'user',
+          content: msg.content
+        });
+      }
+    }
 
-            const messagesWithoutStreaming = currentState.currentSession.messages.filter(
-              m => m.id !== 'streaming'
-            );
+    // 현재 사용자 메시지 추가
+    messages.push({
+      role: 'user',
+      content: userInput
+    });
 
-            set({
-              currentSession: {
-                ...currentState.currentSession,
-                messages: [...messagesWithoutStreaming, streamingMessage]
-              }
-            });
-          }
-        }
-      },
-      // onError
-      (error) => {
-        console.error('Claude API Error:', error);
-        // Fallback to pattern-based response
-        resolve(generateFallbackResponse(userInput, context));
-      },
-      // onComplete
-      () => {
-        // 스트리밍 완료 - 스트리밍 메시지 제거
-        const currentState = get();
-        if (currentState.currentSession) {
-          const messagesWithoutStreaming = currentState.currentSession.messages.filter(
-            m => m.id !== 'streaming'
-          );
-          set({
-            currentSession: {
-              ...currentState.currentSession,
-              messages: messagesWithoutStreaming
-            }
-          });
-        }
+    // API 컨텍스트 구성
+    const apiContext = {
+      entry: context.entry,
+      safetyLevel: safetyResult.emotion.level,
+    };
 
-        // 응답 파싱 및 반환
-        resolve(parseClaudeResponse(fullResponse, userInput, context));
-      },
-      // context
-      apiContext
-    );
-  });
+    // Vercel /api/chat 호출
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages,
+        context: apiContext
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('Chat API Error:', response.status);
+      return generateFallbackResponse(userInput, context);
+    }
+
+    const data = await response.json();
+
+    if (data.success && data.text) {
+      return parseClaudeResponse(data.text, userInput, context);
+    } else {
+      console.error('Chat API Error:', data.error);
+      return generateFallbackResponse(userInput, context);
+    }
+  } catch (error) {
+    console.error('Claude API Error:', error);
+    return generateFallbackResponse(userInput, context);
+  }
 }
 
 // Claude 응답 파싱
