@@ -1,11 +1,12 @@
 /**
- * PenguinAvatar - 펭귄 아바타 컴포넌트
- * 장착된 아이템에 따라 커스텀 펭귄 표시
+ * PenguinAvatar - 알프레도 아바타 컴포넌트
+ * PNG 이미지 기반 커스텀 아바타
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useEquippedItems, usePenguinLevel } from '../../stores/penguinStore';
+import { getAvatarForSize, getAvatarSrcSet } from '../alfredo/AlfredoAssets';
 
 interface PenguinAvatarProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -21,13 +22,6 @@ const SIZES = {
   xl: 'w-48 h-48',
 };
 
-const TEXT_SIZES = {
-  sm: 'text-xl',
-  md: 'text-3xl',
-  lg: 'text-5xl',
-  xl: 'text-7xl',
-};
-
 export const PenguinAvatar: React.FC<PenguinAvatarProps> = ({
   size = 'md',
   showLevel = false,
@@ -36,14 +30,13 @@ export const PenguinAvatar: React.FC<PenguinAvatarProps> = ({
 }) => {
   const equippedItems = useEquippedItems();
   const levelInfo = usePenguinLevel();
+  const [imageError, setImageError] = useState(false);
 
   // 장착된 아이템별 이모지 오버레이
   const getAccessoryEmoji = () => {
     const hat = equippedItems.find((item) => item.category === 'hat');
     const accessory = equippedItems.find((item) => item.category === 'accessory');
 
-    // 기본 펭귄 + 장착 아이템 조합
-    // 실제 구현에서는 SVG나 이미지를 사용할 수 있음
     if (hat?.name.includes('왕관')) return '👑';
     if (hat?.name.includes('모자')) return '🎩';
     if (accessory?.name.includes('안경')) return '🤓';
@@ -53,6 +46,11 @@ export const PenguinAvatar: React.FC<PenguinAvatarProps> = ({
   };
 
   const accessory = getAccessoryEmoji();
+
+  // 이미지 로드 실패 시 폴백
+  const handleImageError = () => {
+    setImageError(true);
+  };
 
   const avatarContent = (
     <div
@@ -64,13 +62,38 @@ export const PenguinAvatar: React.FC<PenguinAvatarProps> = ({
         flex items-center justify-center
         ${onClick ? 'cursor-pointer hover:scale-105 transition-transform' : ''}
         shadow-lg
+        overflow-hidden
       `}
       onClick={onClick}
     >
-      {/* 펭귄 이모지 */}
-      <span className={TEXT_SIZES[size]} role="img" aria-label="펭귄">
-        🐧
-      </span>
+      {/* 알프레도 PNG 이미지 */}
+      {!imageError ? (
+        <img
+          src={getAvatarForSize(size)}
+          srcSet={getAvatarSrcSet(size)}
+          alt="알프레도"
+          className="w-[85%] h-[85%] object-contain"
+          onError={handleImageError}
+          loading="lazy"
+        />
+      ) : (
+        // 폴백: 이모지
+        <span
+          className={`${
+            size === 'sm'
+              ? 'text-xl'
+              : size === 'md'
+                ? 'text-3xl'
+                : size === 'lg'
+                  ? 'text-5xl'
+                  : 'text-7xl'
+          }`}
+          role="img"
+          aria-label="알프레도"
+        >
+          🐧
+        </span>
+      )}
 
       {/* 장착 아이템 오버레이 */}
       {accessory && (
@@ -117,18 +140,49 @@ export const PenguinAvatar: React.FC<PenguinAvatarProps> = ({
 };
 
 /**
- * 미니 펭귄 - 작은 상태 표시용
+ * 미니 펭귄 - 작은 상태 표시용 (PNG 버전)
  */
 export const MiniPenguin: React.FC<{ onClick?: () => void }> = ({ onClick }) => {
+  const [imageError, setImageError] = useState(false);
+
   return (
     <motion.button
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
-      className="text-2xl hover:animate-bounce"
+      className="w-8 h-8 hover:animate-bounce flex items-center justify-center"
     >
-      🐧
+      {!imageError ? (
+        <img
+          src="/assets/alfredo/avatar/alfredo-avatar-32.png"
+          alt="알프레도"
+          className="w-full h-full object-contain"
+          onError={() => setImageError(true)}
+        />
+      ) : (
+        <span className="text-2xl">🐧</span>
+      )}
     </motion.button>
+  );
+};
+
+/**
+ * 인라인 알프레도 아이콘 - 텍스트 옆에 표시할 때 사용
+ */
+export const InlineAlfredo: React.FC<{ className?: string }> = ({ className = '' }) => {
+  const [imageError, setImageError] = useState(false);
+
+  if (imageError) {
+    return <span className={`inline-block ${className}`}>🐧</span>;
+  }
+
+  return (
+    <img
+      src="/assets/alfredo/avatar/alfredo-avatar-24.png"
+      alt="알프레도"
+      className={`inline-block w-5 h-5 object-contain align-text-bottom ${className}`}
+      onError={() => setImageError(true)}
+    />
   );
 };
 
