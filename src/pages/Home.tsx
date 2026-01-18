@@ -16,7 +16,7 @@ import { useHomeModeStore } from '../stores/homeModeStore';
 
 // Components
 import { PageHeader } from '../components/layout';
-import { MoreSheet, OSProgressBar } from '../components/home';
+import { MoreSheet, OSProgressBar, DecisionMatrix, TodayAgenda } from '../components/home';
 import TodayTimeline from '../components/home/TodayTimeline';
 import TodayTop3 from '../components/home/TodayTop3';
 import FocusNow from '../components/home/FocusNow';
@@ -379,19 +379,25 @@ export default function Home() {
             {/* 1. Hero 브리핑 (최상단) */}
             <BriefingHero mode="work" onMore={function() { setIsMoreSheetOpen(true); }} />
 
-            {/* 2. 오늘의 Top 3 (업무만) */}
+            {/* 2. AI 의사결정 매트릭스 */}
+            <DecisionMatrix condition={currentCondition} />
+
+            {/* 3. Today's Agenda */}
+            <TodayAgenda />
+
+            {/* 4. 오늘의 Top 3 (업무만) */}
             <TodayTop3 onFocusSelect={handleFocusSelect} mode="work" />
 
-            {/* 3. 오늘 타임라인 */}
+            {/* 5. 오늘 타임라인 */}
             <TodayTimeline />
 
-            {/* 4. 지금 집중할거 */}
+            {/* 6. 지금 집중할거 */}
             <FocusNow
               externalFocus={currentFocus}
               onFocusChange={handleFocusChange}
             />
 
-            {/* 5. Work/Life 진행률 바 */}
+            {/* 7. Work/Life 진행률 바 */}
             <OSProgressBar
               workPercent={workCount}
               lifePercent={lifeCount}
@@ -407,13 +413,19 @@ export default function Home() {
             {/* 1. Hero 브리핑 (최상단) */}
             <BriefingHero mode="life" onMore={function() { setIsMoreSheetOpen(true); }} />
 
-            {/* 2. 오늘의 Top 3 (개인만) */}
+            {/* 2. AI 의사결정 매트릭스 */}
+            <DecisionMatrix condition={currentCondition} />
+
+            {/* 3. Today's Agenda */}
+            <TodayAgenda />
+
+            {/* 4. 오늘의 Top 3 (개인만) */}
             <TodayTop3 onFocusSelect={handleFocusSelect} mode="life" />
 
-            {/* 3. 오늘 타임라인 */}
+            {/* 5. 오늘 타임라인 */}
             <TodayTimeline />
 
-            {/* 4. Work/Life 진행률 바 */}
+            {/* 6. Work/Life 진행률 바 */}
             <OSProgressBar
               workPercent={workCount}
               lifePercent={lifeCount}
@@ -429,13 +441,19 @@ export default function Home() {
             {/* 1. Hero 브리핑 (최상단) */}
             <BriefingHero mode="all" onMore={function() { setIsMoreSheetOpen(true); }} />
 
-            {/* 2. 오늘의 Top 3 */}
+            {/* 2. AI 의사결정 매트릭스 */}
+            <DecisionMatrix condition={currentCondition} />
+
+            {/* 3. Today's Agenda */}
+            <TodayAgenda />
+
+            {/* 4. 오늘의 Top 3 */}
             <TodayTop3 onFocusSelect={handleFocusSelect} mode="all" />
 
-            {/* 3. 오늘 타임라인 */}
+            {/* 5. 오늘 타임라인 */}
             <TodayTimeline />
 
-            {/* 4. Work/Life 진행률 바 */}
+            {/* 6. Work/Life 진행률 바 */}
             <OSProgressBar
               workPercent={workCount}
               lifePercent={lifeCount}
@@ -443,7 +461,7 @@ export default function Home() {
               lifeCount={lifeCount}
             />
 
-            {/* 6. 첫 만남 카드 (하단, 오늘 처음 방문 시에만) */}
+            {/* 7. 첫 만남 카드 (하단, 오늘 처음 방문 시에만) */}
             {!hasSeenEntryToday() && (
               <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-xl p-4 border border-primary/10">
                 <p className="text-sm text-[#666666] mb-2">처음 오셨군요!</p>
