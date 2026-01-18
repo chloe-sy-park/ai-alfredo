@@ -29,13 +29,20 @@ interface TimeSlot {
   isEmpty: boolean;
 }
 
+type HomeMode = 'all' | 'work' | 'life';
+
+interface DayScheduleProps {
+  mode?: HomeMode;
+}
+
 /**
  * DaySchedule 컴포넌트
  * - Event와 Task를 통합하여 시간대별로 표시
  * - 알프레도가 빈 시간에 Task 자동 배치
  * - 카테고리별 색상 표시
+ * - Work/Life 모드: 해당 카테고리만 필터링
  */
-export default function DaySchedule() {
+export default function DaySchedule({ mode = 'all' }: DayScheduleProps) {
   const [items, setItems] = useState<ScheduleItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -127,6 +134,34 @@ export default function DaySchedule() {
     return 'life';
   }
 
+  // 모드별 아이템 필터링
+  const getFilteredItems = (): ScheduleItem[] => {
+    if (mode === 'all') return items;
+
+    if (mode === 'work') {
+      // Work 모드: work, finance 카테고리만
+      return items.filter(item => ['work', 'finance'].includes(item.category));
+    }
+
+    if (mode === 'life') {
+      // Life 모드: life, health, social 카테고리만
+      return items.filter(item => ['life', 'health', 'social'].includes(item.category));
+    }
+
+    return items;
+  };
+
+  const filteredItems = getFilteredItems();
+
+  // 모드별 타이틀
+  const getModeTitle = (): string => {
+    switch (mode) {
+      case 'work': return 'Work Schedule';
+      case 'life': return 'Life Schedule';
+      default: return 'Schedule';
+    }
+  };
+
   const handleSync = async () => {
     setIsSyncing(true);
     await loadItems();
@@ -181,12 +216,12 @@ export default function DaySchedule() {
     }
   };
 
-  // 시간대별로 아이템 그룹화
+  // 시간대별로 아이템 그룹화 (필터링된 아이템 사용)
   const getTimeSlots = (): TimeSlot[] => {
     const slots: TimeSlot[] = [];
 
     for (let hour = 6; hour <= 23; hour++) {
-      const hourItems = items.filter(item => {
+      const hourItems = filteredItems.filter(item => {
         if (!item.start) return false;
         const itemHour = new Date(item.start).getHours();
         return itemHour === hour;
@@ -243,9 +278,9 @@ export default function DaySchedule() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Clock size={18} className="text-primary" />
-            <span className="font-semibold text-xs text-primary uppercase tracking-wider">Schedule</span>
+            <span className="font-semibold text-xs text-primary uppercase tracking-wider">{getModeTitle()}</span>
             <span className="px-2 py-0.5 bg-primary/10 rounded-full text-xs font-medium text-primary">
-              {items.length}
+              {filteredItems.length}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -270,10 +305,10 @@ export default function DaySchedule() {
           <RefreshCw size={24} className="mx-auto text-primary animate-spin mb-2" />
           <p className="text-sm text-gray-500 dark:text-gray-400">일정을 불러오는 중...</p>
         </div>
-      ) : items.length === 0 ? (
+      ) : filteredItems.length === 0 ? (
         <div className="p-6 text-center">
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-            오늘 일정이 없어요
+            {mode === 'work' ? '오늘 업무 일정이 없어요' : mode === 'life' ? '오늘 생활 일정이 없어요' : '오늘 일정이 없어요'}
           </p>
           <button
             onClick={() => navigate('/calendar')}
