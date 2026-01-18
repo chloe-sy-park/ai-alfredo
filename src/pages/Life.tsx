@@ -8,13 +8,37 @@ import { getRelationships, Relationship } from '../services/relationships';
 // Life OS 관리용 컴포넌트
 import RelationshipReminder from '../components/home/RelationshipReminder';
 import LifeFactors from '../components/home/LifeFactors';
-import { LifeTrends } from '../components/life';
+import {
+  LifeTrends,
+  WorkLifeTransitionCard,
+  RecoveryModeBanner
+} from '../components/life';
 import Card from '../components/common/Card';
+
+// Emotion/Health 스토어
+import {
+  useEmotionHealthStore,
+  selectEffectiveMode,
+  selectTransitionCard,
+  selectNeedsProtection
+} from '../stores/emotionHealthStore';
 
 export default function Life() {
   const [condition, setCondition] = useState<ConditionLevel | null>(null);
   const [lifePriorities, setLifePriorities] = useState<Top3Item[]>([]);
   const [relationships, setRelationships] = useState<Relationship[]>([]);
+  const [showRecoveryBanner, setShowRecoveryBanner] = useState(true);
+
+  // Emotion/Health 상태
+  const effectiveMode = useEmotionHealthStore(selectEffectiveMode);
+  const transitionCard = useEmotionHealthStore(selectTransitionCard);
+  const needsProtection = useEmotionHealthStore(selectNeedsProtection);
+  const physicalReason = useEmotionHealthStore(function(state) {
+    return state.physicalConstraint.reason;
+  });
+
+  // 보호 모드 여부
+  const isRecoveryMode = effectiveMode === 'protect' || needsProtection;
 
   useEffect(() => {
     loadData();
@@ -92,37 +116,81 @@ export default function Life() {
             color: 'white',
             opacity: 0.8
           }}>
-            관리
+            {isRecoveryMode ? '회복' : '관리'}
           </span>
         </div>
 
-        {/* 1. LifeFactors - 요인별 현황 */}
-        <LifeFactors items={lifeFactorItems} />
+        {/* Transition Card (Work → Life 전환) */}
+        {transitionCard.isVisible && (
+          <WorkLifeTransitionCard />
+        )}
 
-        {/* 2. RelationshipReminder - 관계 관리 */}
-        {relationshipItems.length > 0 ? (
-          <RelationshipReminder items={relationshipItems} />
-        ) : (
-          <Card>
-            <div className="text-center py-6">
-              <div
-                className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center"
-                style={{ backgroundColor: 'var(--surface-subtle)' }}
-              >
-                <Plus size={20} style={{ color: 'var(--text-tertiary)' }} />
+        {/* Recovery Mode Banner */}
+        {isRecoveryMode && showRecoveryBanner && (
+          <RecoveryModeBanner
+            reason={physicalReason || undefined}
+            onDismiss={function() { setShowRecoveryBanner(false); }}
+          />
+        )}
+
+        {/* 1. LifeFactors - 요인별 현황 */}
+        {/* 회복 모드에서는 간소화된 버전 표시 */}
+        <LifeFactors
+          items={isRecoveryMode
+            ? lifeFactorItems.filter(function(item) {
+                return item.id === 'condition' || item.id === 'rest';
+              })
+            : lifeFactorItems
+          }
+        />
+
+        {/* 2. RelationshipReminder - 관계 관리 (회복 모드에서는 숨김) */}
+        {!isRecoveryMode && (
+          relationshipItems.length > 0 ? (
+            <RelationshipReminder items={relationshipItems} />
+          ) : (
+            <Card>
+              <div className="text-center py-6">
+                <div
+                  className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center"
+                  style={{ backgroundColor: 'var(--surface-subtle)' }}
+                >
+                  <Plus size={20} style={{ color: 'var(--text-tertiary)' }} />
+                </div>
+                <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
+                  소중한 사람을 등록해보세요
+                </p>
+                <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                  알프레도가 연락 타이밍을 알려드려요
+                </p>
               </div>
-              <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
-                소중한 사람을 등록해보세요
+            </Card>
+          )
+        )}
+
+        {/* 3. LifeTrends - 트렌드 분석 (회복 모드에서는 숨김) */}
+        {!isRecoveryMode && <LifeTrends />}
+
+        {/* 회복 모드에서는 간단한 휴식 안내 표시 */}
+        {isRecoveryMode && (
+          <Card>
+            <div className="text-center py-8">
+              <span className="text-4xl mb-3 block" aria-hidden="true">🌙</span>
+              <p
+                className="text-base font-medium mb-2"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                지금은 쉬어가는 시간이에요
               </p>
-              <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                알프레도가 연락 타이밍을 알려드려요
+              <p
+                className="text-sm"
+                style={{ color: 'var(--text-tertiary)' }}
+              >
+                필요한 것만 천천히 해도 괜찮아요
               </p>
             </div>
           </Card>
         )}
-
-        {/* 3. LifeTrends - 트렌드 분석 */}
-        <LifeTrends />
       </div>
     </div>
   );
