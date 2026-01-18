@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useAlfredoStore } from '../stores/alfredoStore';
 import { getTodayEvents, isGoogleAuthenticated, CalendarEvent } from '../services/calendar';
@@ -12,7 +12,6 @@ import { hasSeenEntryToday, markEntryAsSeen, updateVisit } from '../services/vis
 import { generateBriefing, generateJudgmentExplanation, WeatherData as BriefingWeatherData, BriefingContext } from '../services/briefing';
 import { usePostAction } from '../stores/postActionStore';
 import { useLiftStore } from '../stores/liftStore';
-import { useHomeModeStore } from '../stores/homeModeStore';
 import { useSmartInsightStore, useVisibleInsights } from '../stores/smartInsightStore';
 import { useWorkOSStore } from '../stores/workOSStore';
 
@@ -22,20 +21,19 @@ import { MoreSheet, OSProgressBar, DecisionMatrix, TodayAgenda, AlfredoInsights,
 import FocusNow from '../components/home/FocusNow';
 import DailyEntry from '../components/home/DailyEntry';
 import { BriefingHero } from '../components/briefing';
-import { SmartInsightSection } from '../components/home/SmartInsightCard';
+import InsightCarousel from '../components/home/InsightCarousel';
+import DailyCheckInModal, { CheckInData } from '../components/home/DailyCheckInModal';
 import { TodaySection } from '../components/home/TodayFocusCard';
 import { EmailSignalSection } from '../components/home/EmailSignalCard';
 import { OfflineIndicator } from '../components/common/SyncResponsibilityBadge';
 import { useEmailSignalStore } from '../services/email/emailSignalStore';
 
-type HomeMode = 'all' | 'work' | 'life' | 'finance';
-
 export default function Home() {
-  const location = useLocation();
   const navigate = useNavigate();
   const user = useAuthStore().user;
   const { initialize: initAlfredo, understanding } = useAlfredoStore();
   const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [currentCondition, setCurrentCondition] = useState<ConditionLevel | null>(null);
   const [currentFocus, setCurrentFocus] = useState<FocusItem | null>(null);
@@ -48,10 +46,8 @@ export default function Home() {
     emailSummary?: string;
     hasImportantEmail?: boolean;
   }>({ headline: '', subline: '' });
-  const [homeMode, setHomeMode] = useState<HomeMode>('all');
   const postAction = usePostAction();
   const liftStore = useLiftStore();
-  const { setMode: setGlobalMode } = useHomeModeStore();
 
   // Smart Insight
   const visibleInsights = useVisibleInsights();
@@ -65,16 +61,6 @@ export default function Home() {
     deselectSuggestion,
     confirmSelectedTasks
   } = useWorkOSStore();
-
-  // URL 쿼리 파라미터에서 mode 확인
-  useEffect(() => {
-    const searchParams = new URLSearchParams(location.search);
-    const mode = searchParams.get('mode');
-    if (mode === 'work' || mode === 'life') {
-      setHomeMode(mode);
-      setGlobalMode(mode); // 전역 스토어 동기화
-    }
-  }, [location, setGlobalMode]);
 
   // 알프레도 스토어 초기화
   useEffect(function() {
@@ -153,7 +139,7 @@ export default function Home() {
   useEffect(function() {
     // Google 캘린더
     var connected = isGoogleAuthenticated();
-    
+
     if (connected) {
       getTodayEvents()
         .then(function(events) {
@@ -161,34 +147,27 @@ export default function Home() {
         })
         .catch(function(err) { console.error('Calendar error:', err); });
     }
-    
+
     // 컨디션
     var todayCondition = getTodayCondition();
     if (todayCondition) {
       setCurrentCondition(todayCondition.level);
     }
-    
+
     // 집중 항목
     var focus = getCurrentFocus();
     setCurrentFocus(focus);
-    
+
     // 날씨
     getWeather().then(function(data) {
       setWeather(data);
     });
 
-    // Top3 아이템 (모드에 따라 필터링 가능)
+    // Top3 아이템
     var items = getTop3();
-    if (homeMode === 'work') {
-      // Work 모드일 때는 업무 관련 항목만 표시
-      items = items.filter(item => !item.isPersonal);
-    } else if (homeMode === 'life') {
-      // Life 모드일 때는 개인 항목만 표시
-      items = items.filter(item => item.isPersonal);
-    }
     setTop3Items(items);
-    
-    // 브리핑 생성 (모드에 따라 다른 메시지)
+
+    // 브리핑 생성
     var now = new Date();
     var days = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
 
@@ -206,36 +185,24 @@ export default function Home() {
       incompleteTasks: incompleteTasks,
       condition: currentCondition || undefined
     });
-    
-    // 모드에 따라 브리핑 메시지 조정
-    if (homeMode === 'work') {
-      setBriefing({
-        headline: '업무에 집중하는 하루를 만들어볼까요',
-        subline: briefingData.subline,
-        emailSummary: briefingData.emailSummary,
-        hasImportantEmail: briefingData.hasImportantEmail
-      });
-    } else if (homeMode === 'life') {
-      setBriefing({
-        headline: '오늘은 나를 위한 시간이에요',
-        subline: '일과 삶의 균형을 맞춰봐요',
-        emailSummary: briefingData.emailSummary,
-        hasImportantEmail: briefingData.hasImportantEmail
-      });
-    } else {
-      setBriefing({
-        headline: briefingData.headline,
-        subline: briefingData.subline,
-        emailSummary: briefingData.emailSummary,
-        hasImportantEmail: briefingData.hasImportantEmail
-      });
-    }
-  }, [homeMode]);
+
+    setBriefing({
+      headline: briefingData.headline,
+      subline: briefingData.subline,
+      emailSummary: briefingData.emailSummary,
+      hasImportantEmail: briefingData.hasImportantEmail
+    });
+  }, []);
 
   // 컨디션 변경 핸들러
   function handleConditionChange(level: ConditionLevel) {
     setCurrentCondition(level);
     postAction.onConditionUpdated(level);
+  }
+
+  // 체크인 완료 핸들러
+  function handleCheckInComplete(data: CheckInData) {
+    handleConditionChange(data.condition);
   }
 
   // 집중 변경
@@ -282,18 +249,8 @@ export default function Home() {
   // 시간 기반 인사
   var now = new Date();
   var hours = now.getHours();
-  
+
   function getGreeting(): string {
-    if (homeMode === 'work') {
-      if (hours < 12) return '생산적인 아침이에요';
-      if (hours < 18) return '집중력이 높은 시간이에요';
-      return '마무리 시간이에요';
-    } else if (homeMode === 'life') {
-      if (hours < 12) return '여유로운 아침이에요';
-      if (hours < 18) return '충전하는 시간이에요';
-      return '편안한 저녁이에요';
-    }
-    
     if (hours < 6) return '아직 이른 시간이에요';
     if (hours < 12) return '좋은 아침이에요';
     if (hours < 18) return '오후도 힘내요';
@@ -320,89 +277,33 @@ export default function Home() {
   var moreContent = getMoreContent();
 
   // Mode Cards 데이터 계산
-  var workCount = top3Items.filter(function(item) { 
+  var workCount = top3Items.filter(function(item) {
     return !item.completed && !item.isPersonal;
   }).length;
-  
+
   var lifeCount = top3Items.filter(function(item) {
     return !item.completed && item.isPersonal;
   }).length;
 
-  // 모드별 배경색 클래스
-  const getModeBackgroundClass = () => {
-    switch (homeMode) {
-      case 'work':
-        return 'bg-work-bg/30';
-      case 'life':
-        return 'bg-life-bg/30';
-      default:
-        return 'bg-background';
-    }
-  };
-
-  // 모드 표시를 위한 배지 (색상 강화)
-  const ModeBadge = () => {
-    if (homeMode === 'all' || homeMode === 'finance') return null;
-
-    const badgeStyles: Record<'work' | 'life', string> = {
-      work: 'bg-work-bg text-work-text border border-work-border',
-      life: 'bg-life-bg text-life-text border border-life-border',
-    };
-
-    return (
-      <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full mb-2 ${badgeStyles[homeMode]}`}>
-        <span className="text-xs font-semibold uppercase">
-          {homeMode} MODE
-        </span>
-      </div>
-    );
-  };
-
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${getModeBackgroundClass()}`}>
+    <div className="min-h-screen bg-background">
       {/* Offline Indicator (오프라인 상태 표시) */}
       <OfflineIndicator />
 
       {/* Daily Entry */}
       {showDailyEntry && (
-        <DailyEntry 
+        <DailyEntry
           onComplete={handleDailyEntryComplete}
           userName={user?.name || 'Boss'}
           briefing={briefing}
           isFirstVisitToday={!hasSeenEntryToday()}
         />
       )}
-      
-      {/* 헤더 - 모드 스위치 & 컨디션 통합 */}
+
+      {/* 헤더 - 컨디션 클릭 시 DailyCheckInModal 열기 */}
       <PageHeader
-        showModeSwitch={true}
-        activeMode={homeMode}
-        onModeChange={function(mode) {
-          // Finance 모드 선택 시 Finance 페이지로 이동
-          if (mode === 'finance') {
-            navigate('/finance');
-            return;
-          }
-
-          var previousMode = homeMode;
-          setHomeMode(mode);
-          setGlobalMode(mode); // 전역 스토어 동기화
-          postAction.onModeChanged(mode);
-
-          // Lift 기록: 모드 변경
-          if (previousMode !== mode && previousMode !== 'all' && mode !== 'all') {
-            liftStore.addLift({
-              type: 'apply',
-              category: 'worklife',
-              previousDecision: previousMode === 'work' ? 'Work 모드' : 'Life 모드',
-              newDecision: mode === 'work' ? 'Work 모드로 전환' : 'Life 모드로 전환',
-              reason: '사용자가 직접 모드를 전환함',
-              impact: 'medium'
-            });
-          }
-        }}
         showCondition={true}
-        onConditionChange={handleConditionChange}
+        onConditionClick={() => setShowCheckInModal(true)}
       />
 
       {/* 메인 컨텐츠 */}
@@ -410,65 +311,63 @@ export default function Home() {
 
         {/* 인사 */}
         <div className="animate-fade-in">
-          <ModeBadge />
           <p className="text-sm sm:text-base" style={{ color: 'var(--text-tertiary)' }}>{getGreeting()}</p>
           <h1 className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
             {user?.name || 'Boss'}님
           </h1>
         </div>
 
-        {/* === 통합 위젯 렌더링 (모드별 필터링은 각 컴포넌트에서 처리) === */}
-        <>
-          {/* 0. Smart Insight Cards (최상단) */}
-          <SmartInsightSection
+        {/* === 새로운 레이아웃 === */}
+
+        {/* 1. Today's Agenda (구글 캘린더 기반) */}
+        <TodayAgenda mode="all" />
+
+        {/* 2. Schedule 타임라인 (현재 시간 바 포함) */}
+        <DaySchedule mode="all" />
+
+        {/* 3. Hero 브리핑 (알프레도 브리핑) */}
+        <BriefingHero mode="all" onMore={function() { setIsMoreSheetOpen(true); }} />
+
+        {/* 4. Work/Life 진행률 바 (브리핑 아래로 이동) */}
+        <OSProgressBar
+          workPercent={workCount}
+          lifePercent={lifeCount}
+          workCount={workCount}
+          lifeCount={lifeCount}
+        />
+
+        {/* 5. Smart Insight 캐러셀 (오늘 하루 / 지금 이 순간 - 브리핑 아래로 이동) */}
+        {visibleInsights.length > 0 && (
+          <InsightCarousel
             insights={visibleInsights}
             onCTA={handleInsightCTA}
             onDismiss={dismissInsight}
           />
+        )}
 
-          {/* 1. Today Section (미팅 기반 or 포커스 기반) */}
-          <TodaySection
-            todayContext={todayContext}
-            onSelectSuggestion={selectSuggestion}
-            onDeselectSuggestion={deselectSuggestion}
-            onConfirmTasks={confirmSelectedTasks}
-            onOpenTask={handleOpenTask}
-          />
+        {/* 6. Today Section (미팅 기반 or 포커스 기반) */}
+        <TodaySection
+          todayContext={todayContext}
+          onSelectSuggestion={selectSuggestion}
+          onDeselectSuggestion={deselectSuggestion}
+          onConfirmTasks={confirmSelectedTasks}
+          onOpenTask={handleOpenTask}
+        />
 
-          {/* 1.5. Email Signal Section (Type A/B만 - 미팅 관련, Life 모드 제외) */}
-          {homeMode !== 'life' && <EmailSignalSection />}
+        {/* 7. Email Signal Section */}
+        <EmailSignalSection />
 
-          {/* 2. Hero 브리핑 */}
-          <BriefingHero mode={homeMode} onMore={function() { setIsMoreSheetOpen(true); }} />
+        {/* 8. AI 의사결정 매트릭스 */}
+        <DecisionMatrix condition={currentCondition} />
 
-          {/* 3. AI 의사결정 매트릭스 */}
-          <DecisionMatrix condition={currentCondition} />
+        {/* 9. 지금 집중할거 */}
+        <FocusNow
+          externalFocus={currentFocus}
+          onFocusChange={handleFocusChange}
+        />
 
-          {/* 4. Today's Agenda (모드별 필터링은 컴포넌트 내부에서 처리) */}
-          <TodayAgenda mode={homeMode === 'finance' ? 'all' : homeMode} />
-
-          {/* 5. Schedule 타임라인 (모드별 필터링은 컴포넌트 내부에서 처리) */}
-          <DaySchedule mode={homeMode === 'finance' ? 'all' : homeMode} />
-
-          {/* 6. 지금 집중할거 (Work 모드에서만 표시) */}
-          {homeMode === 'work' && (
-            <FocusNow
-              externalFocus={currentFocus}
-              onFocusChange={handleFocusChange}
-            />
-          )}
-
-          {/* 7. Work/Life 진행률 바 */}
-          <OSProgressBar
-            workPercent={workCount}
-            lifePercent={lifeCount}
-            workCount={workCount}
-            lifeCount={lifeCount}
-          />
-
-          {/* 8. 알프레도 인사이트 (최하단) */}
-          <AlfredoInsights />
-        </>
+        {/* 10. 알프레도 인사이트 (최하단) */}
+        <AlfredoInsights />
       </div>
 
       {/* 더보기 시트 */}
@@ -481,7 +380,13 @@ export default function Home() {
         tradeOff={moreContent.tradeOff}
       />
 
-      {/* 채팅은 App.tsx의 FloatingBar에서 제공 (중복 제거) */}
+      {/* Daily Check-In 모달 */}
+      <DailyCheckInModal
+        isOpen={showCheckInModal}
+        onClose={() => setShowCheckInModal(false)}
+        onComplete={handleCheckInComplete}
+        initialCondition={currentCondition}
+      />
     </div>
   );
 }
