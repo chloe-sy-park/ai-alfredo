@@ -1,30 +1,45 @@
 import { useState, useEffect } from 'react';
-import { Clock, ChevronDown, ChevronUp, MapPin, ExternalLink, Check, Plus, RefreshCw, Bot } from 'lucide-react';
+import {
+  Clock, ChevronDown, ChevronUp, MapPin, ExternalLink, Check, Plus,
+  RefreshCw, Bot, Briefcase, Home, DollarSign, Heart, Users
+} from 'lucide-react';
 import { getTodayEvents, getCalendarList, CalendarEvent, isCalendarConnected, getCalendarProvider } from '../../services/calendar';
+import { getTimelineItems } from '../../services/agenda';
 import { useNavigate } from 'react-router-dom';
 
-interface ScheduleItem extends CalendarEvent {
+interface ScheduleItem {
+  id: string;
+  type: 'task' | 'event';
+  title: string;
+  start?: string;
+  end?: string;
+  category: string;
+  estimatedMinutes?: number;
+  completed: boolean;
   isExpanded?: boolean;
-  isCompleted?: boolean;
+  // Event specific
+  description?: string;
+  location?: string;
+  backgroundColor?: string;
 }
 
 interface TimeSlot {
   hour: number;
-  events: ScheduleItem[];
+  items: ScheduleItem[];
   isEmpty: boolean;
 }
 
 /**
  * DaySchedule 컴포넌트
- * 시간대별 일정 표시 (세로 타임라인)
- * 클릭하면 상세 정보 확장
- * Google Calendar 연동
+ * - Event와 Task를 통합하여 시간대별로 표시
+ * - 알프레도가 빈 시간에 Task 자동 배치
+ * - 카테고리별 색상 표시
  */
 export default function DaySchedule() {
-  const [events, setEvents] = useState<ScheduleItem[]>([]);
+  const [items, setItems] = useState<ScheduleItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
+  const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const navigate = useNavigate();
 
@@ -32,67 +47,155 @@ export default function DaySchedule() {
   const calendarProvider = getCalendarProvider();
 
   useEffect(() => {
-    loadEvents();
+    loadItems();
   }, []);
 
-  const loadEvents = async () => {
-    if (!isCalendarConnected()) return;
-
+  const loadItems = async () => {
     setIsLoading(true);
     try {
-      await getCalendarList();
-      const todayEvents = await getTodayEvents();
-      setEvents(todayEvents.map(e => ({ ...e, isExpanded: false, isCompleted: false })));
+      // Agenda 서비스에서 통합 아이템 가져오기
+      const timelineItems = await getTimelineItems();
+
+      // Calendar Events도 추가로 가져오기
+      let calendarEvents: CalendarEvent[] = [];
+      if (isCalendarConnected()) {
+        await getCalendarList();
+        calendarEvents = await getTodayEvents();
+      }
+
+      // Timeline 아이템과 Calendar 이벤트 병합
+      const mergedItems: ScheduleItem[] = [];
+
+      // Timeline 아이템 추가
+      timelineItems.forEach(item => {
+        mergedItems.push({
+          id: item.id,
+          type: item.type,
+          title: item.title,
+          start: item.start,
+          end: item.end,
+          category: item.category,
+          estimatedMinutes: item.estimatedMinutes,
+          completed: item.completed,
+          isExpanded: false
+        });
+      });
+
+      // Calendar Events 중 Timeline에 없는 것만 추가
+      const timelineEventIds = new Set(timelineItems.filter(i => i.type === 'event').map(i => i.sourceId));
+      calendarEvents.forEach(event => {
+        if (!timelineEventIds.has(event.id) && !event.allDay) {
+          mergedItems.push({
+            id: event.id,
+            type: 'event',
+            title: event.title,
+            start: event.start,
+            end: event.end,
+            category: autoClassifyCategory(event.title),
+            completed: false,
+            isExpanded: false,
+            description: event.description,
+            location: event.location,
+            backgroundColor: event.backgroundColor
+          });
+        }
+      });
+
+      // 시간순 정렬
+      mergedItems.sort((a, b) => {
+        const timeA = a.start ? new Date(a.start).getTime() : Infinity;
+        const timeB = b.start ? new Date(b.start).getTime() : Infinity;
+        return timeA - timeB;
+      });
+
+      setItems(mergedItems);
       setLastSyncTime(new Date());
     } catch (error) {
-      console.error('Failed to load events:', error);
+      console.error('Failed to load schedule items:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // 카테고리 자동 분류
+  function autoClassifyCategory(title: string): string {
+    const text = title.toLowerCase();
+    if (/회의|미팅|업무|프로젝트|보고|발표/.test(text)) return 'work';
+    if (/운동|헬스|병원|건강/.test(text)) return 'health';
+    if (/결제|송금|은행|세금/.test(text)) return 'finance';
+    if (/친구|가족|모임|약속/.test(text)) return 'social';
+    return 'life';
+  }
+
   const handleSync = async () => {
     setIsSyncing(true);
-    await loadEvents();
+    await loadItems();
     setIsSyncing(false);
   };
 
-  const handleToggleExpand = (eventId: string) => {
-    setExpandedEventId(expandedEventId === eventId ? null : eventId);
+  const handleToggleExpand = (itemId: string) => {
+    setExpandedItemId(expandedItemId === itemId ? null : itemId);
   };
 
-  const handleCompleteEvent = (eventId: string) => {
-    setEvents(prev => prev.map(e =>
-      e.id === eventId ? { ...e, isCompleted: !e.isCompleted } : e
+  const handleCompleteItem = (itemId: string) => {
+    setItems(prev => prev.map(i =>
+      i.id === itemId ? { ...i, completed: !i.completed } : i
     ));
   };
 
-  const handleViewDetails = (event: ScheduleItem) => {
-    navigate('/calendar', { state: { selectedEvent: event } });
+  const handleViewDetails = (item: ScheduleItem) => {
+    if (item.type === 'event') {
+      navigate('/calendar', { state: { selectedEvent: item } });
+    } else {
+      navigate('/work', { state: { selectedTask: item } });
+    }
   };
 
   const handleAddToEmptySlot = (hour: number) => {
-    // 빈 시간에 일정 추가 - 캘린더로 이동
     const date = new Date();
     date.setHours(hour, 0, 0, 0);
     navigate('/calendar', { state: { createEventAt: date.toISOString() } });
   };
 
-  // 시간대별로 이벤트 그룹화 (6시 ~ 23시)
+  // 카테고리 아이콘
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case 'work': return <Briefcase size={12} className="text-blue-500" />;
+      case 'life': return <Home size={12} className="text-green-500" />;
+      case 'finance': return <DollarSign size={12} className="text-purple-500" />;
+      case 'health': return <Heart size={12} className="text-red-500" />;
+      case 'social': return <Users size={12} className="text-pink-500" />;
+      default: return <Clock size={12} className="text-gray-500" />;
+    }
+  };
+
+  // 카테고리 색상
+  const getCategoryBadgeClass = (category: string) => {
+    switch (category) {
+      case 'work': return 'bg-blue-100 text-blue-600';
+      case 'life': return 'bg-green-100 text-green-600';
+      case 'finance': return 'bg-purple-100 text-purple-600';
+      case 'health': return 'bg-red-100 text-red-600';
+      case 'social': return 'bg-pink-100 text-pink-600';
+      default: return 'bg-gray-100 text-gray-600';
+    }
+  };
+
+  // 시간대별로 아이템 그룹화
   const getTimeSlots = (): TimeSlot[] => {
     const slots: TimeSlot[] = [];
 
     for (let hour = 6; hour <= 23; hour++) {
-      const hourEvents = events.filter(event => {
-        if (event.allDay) return false;
-        const eventHour = new Date(event.start).getHours();
-        return eventHour === hour;
+      const hourItems = items.filter(item => {
+        if (!item.start) return false;
+        const itemHour = new Date(item.start).getHours();
+        return itemHour === hour;
       });
 
       slots.push({
         hour,
-        events: hourEvents,
-        isEmpty: hourEvents.length === 0
+        items: hourItems,
+        isEmpty: hourItems.length === 0
       });
     }
 
@@ -100,66 +203,37 @@ export default function DaySchedule() {
   };
 
   const formatHour = (hour: number): string => {
-    const h = hour.toString().padStart(2, '0');
-    return `${h}:00`;
+    return `${hour.toString().padStart(2, '0')}:00`;
   };
 
-  const formatEventTime = (start: string, end: string): string => {
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    const startTime = `${startDate.getHours().toString().padStart(2, '0')}:${startDate.getMinutes().toString().padStart(2, '0')}`;
-    const endTime = `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`;
-    return `${startTime} - ${endTime}`;
+  const formatTime = (dateStr: string): string => {
+    const d = new Date(dateStr);
+    return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
   };
 
   const isCurrentHour = (hour: number): boolean => hour === currentHour;
   const isPastHour = (hour: number): boolean => hour < currentHour;
 
-  // 빈 시간에 대한 AI 제안 생성 (시뮬레이션)
+  // AI 제안 메시지
   const getAISuggestion = (hour: number): string | null => {
-    // 현재 시간 이후의 빈 시간에만 제안
     if (hour <= currentHour) return null;
 
     const suggestions: Record<number, string> = {
-      9: '오전 집중 시간 - 중요한 업무 처리',
-      10: '미팅 또는 협업 시간',
-      14: '오후 에너지 - 창의적 작업',
-      15: '회의 또는 리뷰 시간',
+      9: '집중력이 높은 시간 - 중요 업무 추천',
+      10: '협업하기 좋은 시간',
+      14: '창의적 작업에 적합',
+      15: '리뷰/피드백 시간',
       17: '하루 마무리 정리'
     };
 
     return suggestions[hour] || null;
   };
 
-  if (!isCalendarConnected()) {
-    return (
-      <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-card">
-        <div className="flex items-center gap-2 mb-3">
-          <Clock size={18} className="text-primary" />
-          <span className="font-semibold text-xs text-primary uppercase tracking-wider">Schedule</span>
-        </div>
-        <div className="text-center py-6">
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-            캘린더를 연결하면 일정을 볼 수 있어요
-          </p>
-          <button
-            onClick={() => navigate('/settings')}
-            className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors"
-          >
-            캘린더 연결하기
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   const timeSlots = getTimeSlots();
-  const allDayEvents = events.filter(e => e.allDay);
 
-  // 표시할 시간 범위 결정 (현재 시간 기준으로 앞뒤 일부만 표시)
+  // 현재 시간 기준 앞뒤로 표시
   const visibleSlots = timeSlots.filter(slot => {
-    // 현재 시간 -1시간 부터 +6시간까지 또는 이벤트가 있는 시간
-    return (slot.hour >= currentHour - 1 && slot.hour <= currentHour + 6) || slot.events.length > 0;
+    return (slot.hour >= currentHour - 1 && slot.hour <= currentHour + 6) || slot.items.length > 0;
   });
 
   return (
@@ -170,10 +244,12 @@ export default function DaySchedule() {
           <div className="flex items-center gap-2">
             <Clock size={18} className="text-primary" />
             <span className="font-semibold text-xs text-primary uppercase tracking-wider">Schedule</span>
+            <span className="px-2 py-0.5 bg-primary/10 rounded-full text-xs font-medium text-primary">
+              {items.length}
+            </span>
           </div>
           <div className="flex items-center gap-2">
-            {/* 동기화 상태 */}
-            {lastSyncTime && (
+            {lastSyncTime && isCalendarConnected() && (
               <span className="text-xs text-gray-400">
                 {calendarProvider === 'google' ? 'Google' : 'Outlook'} 연동
               </span>
@@ -194,27 +270,20 @@ export default function DaySchedule() {
           <RefreshCw size={24} className="mx-auto text-primary animate-spin mb-2" />
           <p className="text-sm text-gray-500 dark:text-gray-400">일정을 불러오는 중...</p>
         </div>
+      ) : items.length === 0 ? (
+        <div className="p-6 text-center">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+            오늘 일정이 없어요
+          </p>
+          <button
+            onClick={() => navigate('/calendar')}
+            className="px-4 py-2 bg-primary/10 text-primary rounded-xl text-sm font-medium hover:bg-primary/20 transition-colors"
+          >
+            일정 추가하기
+          </button>
+        </div>
       ) : (
         <div className="p-4">
-          {/* All-day events */}
-          {allDayEvents.length > 0 && (
-            <div className="mb-4 pb-4 border-b border-gray-100 dark:border-gray-700">
-              {allDayEvents.map(event => (
-                <div
-                  key={event.id}
-                  className="flex items-center gap-2 py-2"
-                >
-                  <div
-                    className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: event.backgroundColor || '#A996FF' }}
-                  />
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">{event.title}</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 ml-auto">종일</span>
-                </div>
-              ))}
-            </div>
-          )}
-
           {/* Timeline */}
           <div className="relative">
             {/* 세로 라인 */}
@@ -230,50 +299,64 @@ export default function DaySchedule() {
                   <div key={slot.hour} className={`relative ${isPast && slot.isEmpty ? 'opacity-40' : ''}`}>
                     {/* 시간 dot */}
                     <div className={`absolute left-0 w-[30px] flex items-center justify-center z-10
-                      ${slot.events.length > 0 ? 'top-4' : 'top-1/2 -translate-y-1/2'}
+                      ${slot.items.length > 0 ? 'top-4' : 'top-1/2 -translate-y-1/2'}
                     `}>
                       <div className={`rounded-full transition-all
                         ${isCurrent
                           ? 'w-3 h-3 bg-primary ring-4 ring-primary/20'
-                          : slot.events.length > 0
+                          : slot.items.length > 0
                             ? 'w-3 h-3 bg-primary'
                             : 'w-2 h-2 bg-gray-300 dark:bg-gray-600'
                         }
                       `} />
                     </div>
 
-                    {/* 일정 또는 빈 시간 */}
+                    {/* 아이템 또는 빈 시간 */}
                     <div className="ml-10 min-h-[40px]">
-                      {slot.events.length > 0 ? (
+                      {slot.items.length > 0 ? (
                         <div className="space-y-2">
-                          {slot.events.map(event => {
-                            const isExpanded = expandedEventId === event.id;
+                          {slot.items.map(item => {
+                            const isExpanded = expandedItemId === item.id;
 
                             return (
                               <div
-                                key={event.id}
+                                key={item.id}
                                 className={`rounded-xl overflow-hidden transition-all
                                   ${isCurrent ? 'bg-primary/5 border border-primary/20' : 'bg-gray-50 dark:bg-gray-700/50'}
-                                  ${event.isCompleted ? 'opacity-50' : ''}
+                                  ${item.completed ? 'opacity-50' : ''}
                                 `}
                               >
                                 {/* 기본 정보 */}
                                 <button
-                                  onClick={() => handleToggleExpand(event.id)}
+                                  onClick={() => handleToggleExpand(item.id)}
                                   className="w-full p-3 text-left"
                                 >
                                   <div className="flex items-start justify-between">
                                     <div className="flex-1">
-                                      <p className={`text-xs font-medium mb-1
-                                        ${isCurrent ? 'text-primary' : 'text-gray-500 dark:text-gray-400'}
-                                      `}>
-                                        {formatHour(slot.hour)}
-                                      </p>
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <p className={`text-xs font-medium
+                                          ${isCurrent ? 'text-primary' : 'text-gray-500 dark:text-gray-400'}
+                                        `}>
+                                          {item.start ? formatTime(item.start) : formatHour(slot.hour)}
+                                        </p>
+                                        {/* 타입 & 카테고리 뱃지 */}
+                                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium uppercase flex items-center gap-1 ${getCategoryBadgeClass(item.category)}`}>
+                                          {getCategoryIcon(item.category)}
+                                          {item.type === 'task' ? 'Task' : 'Event'}
+                                        </span>
+                                      </div>
                                       <h4 className={`font-semibold text-gray-900 dark:text-white
-                                        ${event.isCompleted ? 'line-through' : ''}
+                                        ${item.completed ? 'line-through' : ''}
                                       `}>
-                                        {event.title}
+                                        {item.title}
                                       </h4>
+                                      {/* 예상 시간 (Task만) */}
+                                      {item.type === 'task' && item.estimatedMinutes && (
+                                        <span className="text-xs text-gray-400 flex items-center gap-1 mt-1">
+                                          <Clock size={10} />
+                                          {item.estimatedMinutes}분 예상
+                                        </span>
+                                      )}
                                     </div>
                                     {isExpanded ? (
                                       <ChevronUp size={18} className="text-gray-400 flex-shrink-0" />
@@ -286,39 +369,34 @@ export default function DaySchedule() {
                                 {/* 확장 영역 */}
                                 {isExpanded && (
                                   <div className="px-3 pb-3 border-t border-gray-200 dark:border-gray-600">
-                                    {/* 시간 */}
-                                    <p className="text-sm text-gray-600 dark:text-gray-300 mt-3">
-                                      {formatEventTime(event.start, event.end)}
-                                    </p>
-
                                     {/* 설명 */}
-                                    {event.description && (
-                                      <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
-                                        {event.description}
+                                    {item.description && (
+                                      <p className="text-sm text-gray-600 dark:text-gray-300 mt-3">
+                                        {item.description}
                                       </p>
                                     )}
 
-                                    {/* 위치 */}
-                                    {event.location && (
+                                    {/* 위치 (Event만) */}
+                                    {item.location && (
                                       <div className="flex items-center gap-1 mt-2 text-sm text-gray-500 dark:text-gray-400">
                                         <MapPin size={14} />
-                                        <span className="uppercase text-xs font-medium">{event.location}</span>
+                                        <span className="uppercase text-xs font-medium">{item.location}</span>
                                       </div>
                                     )}
 
                                     {/* 액션 버튼들 */}
                                     <div className="flex items-center gap-2 mt-4">
                                       <button
-                                        onClick={() => handleViewDetails(event)}
+                                        onClick={() => handleViewDetails(item)}
                                         className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors"
                                       >
                                         <ExternalLink size={16} />
-                                        View Details
+                                        상세 보기
                                       </button>
                                       <button
-                                        onClick={() => handleCompleteEvent(event.id)}
+                                        onClick={() => handleCompleteItem(item.id)}
                                         className={`p-2.5 rounded-xl border transition-colors
-                                          ${event.isCompleted
+                                          ${item.completed
                                             ? 'bg-green-100 border-green-200 text-green-600'
                                             : 'border-gray-200 dark:border-gray-600 text-gray-400 hover:text-green-600 hover:border-green-200'
                                           }
