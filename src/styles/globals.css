@@ -1,9 +1,13 @@
+/* Alfredo Design Tokens */
+@import './tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* 글로벌 스타일 */
 :root {
+  /* 기존 라벤더 토큰 (호환성 유지) */
   --color-lavender-400: #A996FF;
   --color-lavender-50: #F5F3FF;
 }

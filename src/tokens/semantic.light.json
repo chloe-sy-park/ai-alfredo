@@ -1,0 +1,80 @@
+{
+  "background": {
+    "primary": "{neutral.50}",
+    "secondary": "{neutral.100}"
+  },
+  "surface": {
+    "default": "{neutral.0}",
+    "subtle": "{neutral.50}"
+  },
+  "border": {
+    "default": "{neutral.200}"
+  },
+  "text": {
+    "primary": "{neutral.800}",
+    "secondary": "{neutral.700}",
+    "tertiary": "#6B7280",
+    "disabled": "{neutral.300}"
+  },
+  "accent": {
+    "primary": "{gold.500}",
+    "pressed": "{gold.600}",
+    "onAccent": "#1A140B"
+  },
+  "os": {
+    "work": "{os.work.500}",
+    "life": "{os.life.500}",
+    "finance": "{os.finance.500}"
+  },
+  "chart": {
+    "canvas": "{neutral.50}",
+    "panel": "{neutral.0}",
+    "grid": {
+      "major": "{neutral.200}",
+      "minor": "{neutral.150}"
+    },
+    "axis": {
+      "line": "{neutral.250}",
+      "tick": "{neutral.250}",
+      "label": "{text.secondary}"
+    },
+    "label": {
+      "title": "{text.primary}",
+      "subtitle": "{text.secondary}",
+      "value": "{text.primary}",
+      "muted": "{text.tertiary}"
+    },
+    "series": {
+      "neutral": "{neutral.700}",
+      "work": "{os.work.500}",
+      "life": "{os.life.500}",
+      "finance": "{os.finance.500}"
+    },
+    "emphasis": {
+      "today": "{accent.primary}",
+      "recommended": "{accent.primary}",
+      "selectionRing": "{accent.primary}"
+    },
+    "reference": {
+      "baseline": "{neutral.300}",
+      "threshold": "{state.warning}"
+    },
+    "state": {
+      "success": "{state.success}",
+      "warning": "{state.warning}",
+      "danger": "{state.danger}",
+      "info": "{state.info}"
+    }
+  },
+  "typography": {
+    "font": {
+      "body": "Pretendard",
+      "headingEN": "Canela"
+    },
+    "weight": {
+      "regular": 400,
+      "medium": 500,
+      "semibold": 600
+    }
+  }
+}

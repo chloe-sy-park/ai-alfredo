@@ -1,0 +1,23 @@
+{
+  "chart.line": {
+    "strokeWidth": 2,
+    "strokeWidthEmphasis": 3,
+    "dot": { "radius": 3, "radiusEmphasis": 5 },
+    "area": { "opacity": 0.12 }
+  },
+  "chart.bar": {
+    "radius": 10,
+    "gap": 8
+  },
+  "chart.stacked": {
+    "opacity": 0.85
+  },
+  "chart.donut": {
+    "strokeWidth": 14
+  },
+  "chart.heatmap": {
+    "cell": { "radius": 6, "gap": 4 }
+  },
+  "chart.gauge": {},
+  "chart.distribution": {}
+}

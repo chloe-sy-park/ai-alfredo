@@ -1,0 +1,143 @@
+/**
+ * Alfredo Design Tokens - CSS Custom Properties
+ *
+ * 토큰 파일에서 평탄화(flatten)된 CSS 변수
+ * - :root = Light Theme (기본)
+ * - .dark = Dark Theme (Tailwind dark mode 호환)
+ *
+ * 네이밍 규칙:
+ * - 배경: --bg-*
+ * - 표면: --surface-*
+ * - 테두리: --border-*
+ * - 텍스트: --text-*
+ * - 강조: --accent-*
+ * - OS 컬러: --os-*
+ * - 상태: --state-*
+ * - 차트: --chart-*
+ * - 타이포그래피: --font-*, --font-weight-*
+ */
+
+/* ===== Light Theme (Default) ===== */
+:root {
+  /* Background */
+  --bg-primary: #FAF8F4;
+  --bg-secondary: #F4F1EA;
+
+  /* Surface */
+  --surface-default: #FFFFFF;
+  --surface-subtle: #FAF8F4;
+
+  /* Border */
+  --border-default: #E6E0D6;
+
+  /* Text */
+  --text-primary: #141518;
+  --text-secondary: #3D414A;
+  --text-tertiary: #6B7280;
+  --text-disabled: #D8D0C3;
+
+  /* Accent (Gold) */
+  --accent-primary: #C9A25E;
+  --accent-pressed: #B48D4E;
+  --accent-on: #1A140B;
+
+  /* OS Colors */
+  --os-work: #4A5C73;
+  --os-life: #7E9B8A;
+  --os-finance: #8C7A5E;
+
+  /* Chart - Canvas & Panel */
+  --chart-canvas: #FAF8F4;
+  --chart-panel: #FFFFFF;
+
+  /* Chart - Grid */
+  --chart-grid-major: #E6E0D6;
+  --chart-grid-minor: #EEE8DE;
+
+  /* Chart - Axis */
+  --chart-axis-line: #DCD3C5;
+  --chart-axis-tick: #DCD3C5;
+  --chart-axis-label: #3D414A;
+
+  /* Chart - Labels */
+  --chart-label-title: #141518;
+  --chart-label-subtitle: #3D414A;
+  --chart-label-value: #141518;
+  --chart-label-muted: #6B7280;
+
+  /* Chart - Series */
+  --chart-series-neutral: #3D414A;
+  --chart-series-work: #4A5C73;
+  --chart-series-life: #7E9B8A;
+  --chart-series-finance: #8C7A5E;
+
+  /* Chart - Emphasis */
+  --chart-emphasis-today: #C9A25E;
+  --chart-emphasis-recommended: #C9A25E;
+  --chart-emphasis-selection-ring: #C9A25E;
+
+  /* Chart - Reference */
+  --chart-reference-baseline: #D8D0C3;
+  --chart-reference-threshold: #D68B2C;
+
+  /* State Colors */
+  --state-success: #1FA97B;
+  --state-warning: #D68B2C;
+  --state-danger: #E04646;
+  --state-info: #2F80ED;
+
+  /* Typography */
+  --font-body: Pretendard;
+  --font-heading-en: Canela;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+}
+
+/* ===== Dark Theme ===== */
+.dark {
+  /* Background */
+  --bg-primary: #0B0C0F;
+  --bg-secondary: #101217;
+
+  /* Surface */
+  --surface-default: #141821;
+  --surface-subtle: #181E2A;
+
+  /* Border */
+  --border-default: #232A3A;
+
+  /* Text */
+  --text-primary: #F2F4F8;
+  --text-secondary: #C7CEDB;
+  --text-tertiary: #9AA6BA;
+  --text-disabled: #6D788B;
+
+  /* Chart - Canvas & Panel */
+  --chart-canvas: #0B0C0F;
+  --chart-panel: #141821;
+
+  /* Chart - Grid */
+  --chart-grid-major: #232A3A;
+  --chart-grid-minor: rgba(35,42,58,0.55);
+
+  /* Chart - Axis */
+  --chart-axis-line: #2F394F;
+  --chart-axis-tick: #2F394F;
+  --chart-axis-label: #C7CEDB;
+
+  /* Chart - Labels */
+  --chart-label-title: #F2F4F8;
+  --chart-label-subtitle: #C7CEDB;
+  --chart-label-value: #F2F4F8;
+  --chart-label-muted: #6D788B;
+
+  /* Chart - Series (neutral만 변경, OS 컬러는 유지) */
+  --chart-series-neutral: #C7CEDB;
+
+  /* Chart - Emphasis */
+  --chart-emphasis-selection-ring: rgba(201,162,94,0.55);
+
+  /* Chart - Reference */
+  --chart-reference-baseline: #6D788B;
+}
