@@ -24,6 +24,9 @@ import DailyEntry from '../components/home/DailyEntry';
 import { BriefingHero } from '../components/briefing';
 import { SmartInsightSection } from '../components/home/SmartInsightCard';
 import { TodaySection } from '../components/home/TodayFocusCard';
+import { EmailSignalSection } from '../components/home/EmailSignalCard';
+import { OfflineIndicator } from '../components/common/SyncResponsibilityBadge';
+import { useEmailSignalStore } from '../services/email/emailSignalStore';
 
 type HomeMode = 'all' | 'work' | 'life' | 'finance';
 
@@ -99,6 +102,14 @@ export default function Home() {
   useEffect(function() {
     initializeToday();
   }, [initializeToday]);
+
+  // Email Signal 초기화 (Gmail 연동된 경우만)
+  const { fetchEmailSignals } = useEmailSignalStore();
+  useEffect(function() {
+    if (isGoogleAuthenticated()) {
+      fetchEmailSignals();
+    }
+  }, [fetchEmailSignals]);
 
   // CTA 핸들러 래핑 (navigate 사용)
   function handleInsightCTA(insight: Parameters<typeof handleCTA>[0]) {
@@ -349,6 +360,9 @@ export default function Home() {
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${getModeBackgroundClass()}`}>
+      {/* Offline Indicator (오프라인 상태 표시) */}
+      <OfflineIndicator />
+
       {/* Daily Entry */}
       {showDailyEntry && (
         <DailyEntry 
@@ -421,6 +435,9 @@ export default function Home() {
               onConfirmTasks={confirmSelectedTasks}
               onOpenTask={handleOpenTask}
             />
+
+            {/* 1.5. Email Signal Section (Type A/B만 - 미팅 관련) */}
+            <EmailSignalSection />
 
             {/* 2. Hero 브리핑 */}
             <BriefingHero mode="work" onMore={function() { setIsMoreSheetOpen(true); }} />
@@ -515,6 +532,9 @@ export default function Home() {
               onConfirmTasks={confirmSelectedTasks}
               onOpenTask={handleOpenTask}
             />
+
+            {/* 1.5. Email Signal Section (Type A/B만 - 미팅 관련) */}
+            <EmailSignalSection />
 
             {/* 2. Hero 브리핑 */}
             <BriefingHero mode="all" onMore={function() { setIsMoreSheetOpen(true); }} />
