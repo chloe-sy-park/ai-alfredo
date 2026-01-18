@@ -16,7 +16,8 @@ import { useToneStore } from './toneStore';
 import { triggerLiveBriefingUpdate } from './liveBriefingStore';
 import {
   extractLearningsFromMessage,
-  detectFeedbackSentiment
+  detectFeedbackSentiment,
+  formatLearningsForPrompt
 } from '../services/alfredo/learningExtractor';
 
 // Date 객체 안전 변환 헬퍼 (persist 후 string -> Date 변환)
@@ -495,11 +496,30 @@ async function callClaudeAPI(
       confidence: insight.confidence
     })) : undefined;
 
+    // === 알프레도 학습 컨텍스트 추가 (Phase 1: "어떻게 알았어?" 경험) ===
+    const alfredoState = useAlfredoStore.getState();
+    const activeLearnings = alfredoState.learnings
+      .filter(l => l.isActive && l.confidence >= 50)
+      .slice(0, 20); // 최근 20개
+    const learningsContext = formatLearningsForPrompt(activeLearnings);
+
+    // 알프레도 선호도 (톤 설정)
+    const alfredoPrefs = alfredoState.preferences ? {
+      toneWarmth: alfredoState.preferences.toneWarmth,
+      notificationFreq: alfredoState.preferences.notificationFreq,
+      dataDepth: alfredoState.preferences.dataDepth,
+      motivationStyle: alfredoState.preferences.motivationStyle,
+      currentDomain: alfredoState.preferences.currentDomain
+    } : undefined;
+
     const apiContext = {
       entry: context.entry,
       safetyLevel: safetyResult.emotion.level,
       events: calendarEvents,
       dna: dnaInsights,
+      // Phase 1: 학습 컨텍스트 주입
+      learnings: learningsContext || undefined,
+      alfredoPreferences: alfredoPrefs
     };
 
     // Vercel /api/chat 호출
