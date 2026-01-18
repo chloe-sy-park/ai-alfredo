@@ -14,6 +14,7 @@ import { usePostAction } from '../stores/postActionStore';
 import { useLiftStore } from '../stores/liftStore';
 import { useHomeModeStore } from '../stores/homeModeStore';
 import { useSmartInsightStore, useVisibleInsights } from '../stores/smartInsightStore';
+import { useWorkOSStore } from '../stores/workOSStore';
 
 // Components
 import { PageHeader } from '../components/layout';
@@ -22,6 +23,7 @@ import FocusNow from '../components/home/FocusNow';
 import DailyEntry from '../components/home/DailyEntry';
 import { BriefingHero } from '../components/briefing';
 import { SmartInsightSection } from '../components/home/SmartInsightCard';
+import { TodaySection } from '../components/home/TodayFocusCard';
 
 type HomeMode = 'all' | 'work' | 'life' | 'finance';
 
@@ -51,6 +53,15 @@ export default function Home() {
   // Smart Insight
   const visibleInsights = useVisibleInsights();
   const { generateInsights, handleCTA, dismissInsight } = useSmartInsightStore();
+
+  // Work OS - Today Context
+  const {
+    todayContext,
+    initializeToday,
+    selectSuggestion,
+    deselectSuggestion,
+    confirmSelectedTasks
+  } = useWorkOSStore();
 
   // URL 쿼리 파라미터에서 mode 확인
   useEffect(() => {
@@ -83,6 +94,38 @@ export default function Home() {
   useEffect(function() {
     generateInsights();
   }, [generateInsights]);
+
+  // Work OS Today 초기화
+  useEffect(function() {
+    initializeToday();
+  }, [initializeToday]);
+
+  // CTA 핸들러 래핑 (navigate 사용)
+  function handleInsightCTA(insight: Parameters<typeof handleCTA>[0]) {
+    // 먼저 store의 handleCTA 호출
+    handleCTA(insight);
+
+    // CTA action에 따라 직접 네비게이션
+    if (insight.cta) {
+      switch (insight.cta.action) {
+        case 'CONNECT_CALENDAR':
+          navigate('/settings/integrations');
+          break;
+        case 'OPEN_SETTINGS':
+          navigate('/settings');
+          break;
+        case 'OPEN_FOCUS':
+          navigate('/work');
+          break;
+        // OPEN_CAPTURE, DISMISS는 store에서 처리
+      }
+    }
+  }
+
+  // Task 열기 핸들러
+  function handleOpenTask(taskId: string) {
+    navigate(`/work?task=${taskId}`);
+  }
 
   // WeatherData를 BriefingWeatherData로 변환하는 헬퍼 함수
   function convertWeatherForBriefing(weatherData: WeatherData | null): BriefingWeatherData | undefined {
@@ -366,14 +409,23 @@ export default function Home() {
             {/* 0. Smart Insight Cards (최상단) */}
             <SmartInsightSection
               insights={visibleInsights}
-              onCTA={handleCTA}
+              onCTA={handleInsightCTA}
               onDismiss={dismissInsight}
             />
 
-            {/* 1. Hero 브리핑 */}
+            {/* 1. Today Section (미팅 기반 or 포커스 기반) */}
+            <TodaySection
+              todayContext={todayContext}
+              onSelectSuggestion={selectSuggestion}
+              onDeselectSuggestion={deselectSuggestion}
+              onConfirmTasks={confirmSelectedTasks}
+              onOpenTask={handleOpenTask}
+            />
+
+            {/* 2. Hero 브리핑 */}
             <BriefingHero mode="work" onMore={function() { setIsMoreSheetOpen(true); }} />
 
-            {/* 2. AI 의사결정 매트릭스 */}
+            {/* 3. AI 의사결정 매트릭스 */}
             <DecisionMatrix condition={currentCondition} />
 
             {/* 3. Today's Work Agenda (Work Agenda만 확대 표시) */}
@@ -407,14 +459,23 @@ export default function Home() {
             {/* 0. Smart Insight Cards (최상단) */}
             <SmartInsightSection
               insights={visibleInsights}
-              onCTA={handleCTA}
+              onCTA={handleInsightCTA}
               onDismiss={dismissInsight}
             />
 
-            {/* 1. Hero 브리핑 */}
+            {/* 1. Today Section (미팅 기반 or 포커스 기반) */}
+            <TodaySection
+              todayContext={todayContext}
+              onSelectSuggestion={selectSuggestion}
+              onDeselectSuggestion={deselectSuggestion}
+              onConfirmTasks={confirmSelectedTasks}
+              onOpenTask={handleOpenTask}
+            />
+
+            {/* 2. Hero 브리핑 */}
             <BriefingHero mode="life" onMore={function() { setIsMoreSheetOpen(true); }} />
 
-            {/* 2. AI 의사결정 매트릭스 */}
+            {/* 3. AI 의사결정 매트릭스 */}
             <DecisionMatrix condition={currentCondition} />
 
             {/* 3. Today's Life Agenda (Life Agenda만 확대 표시) */}
@@ -442,14 +503,23 @@ export default function Home() {
             {/* 0. Smart Insight Cards (최상단) */}
             <SmartInsightSection
               insights={visibleInsights}
-              onCTA={handleCTA}
+              onCTA={handleInsightCTA}
               onDismiss={dismissInsight}
             />
 
-            {/* 1. Hero 브리핑 */}
+            {/* 1. Today Section (미팅 기반 or 포커스 기반) */}
+            <TodaySection
+              todayContext={todayContext}
+              onSelectSuggestion={selectSuggestion}
+              onDeselectSuggestion={deselectSuggestion}
+              onConfirmTasks={confirmSelectedTasks}
+              onOpenTask={handleOpenTask}
+            />
+
+            {/* 2. Hero 브리핑 */}
             <BriefingHero mode="all" onMore={function() { setIsMoreSheetOpen(true); }} />
 
-            {/* 2. AI 의사결정 매트릭스 */}
+            {/* 3. AI 의사결정 매트릭스 */}
             <DecisionMatrix condition={currentCondition} />
 
             {/* 3. Today's Agenda (Work/Life/추천 3개, 토글 시 Top3 Task 표시) */}
