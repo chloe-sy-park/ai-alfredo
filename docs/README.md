@@ -63,6 +63,8 @@
 |------|------|------|
 | 11 | [implementation-roadmap.md](./11-implementation-roadmap.md) | 구현 로드맵 |
 | 18 | [progress-log.md](./18-progress-log.md) | 개발 진행 로그 |
+| 27 | [implementation-roadmap-v2.md](./27-implementation-roadmap-v2.md) | 구현 로드맵 v2 |
+| **28** | [**document-vs-implementation.md**](./28-document-vs-implementation.md) | **📊 문서 vs 구현 상태 비교** |
 
 ---
 
