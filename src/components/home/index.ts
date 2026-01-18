@@ -27,6 +27,10 @@ export { EmailSignalCard, EmailSignalSection, SilentCorrectionChip, CompactEmail
 
 // Smart Insight components (Part A)
 export { default as SmartInsightCard, SmartInsightSection } from './SmartInsightCard';
+export { default as InsightCarousel } from './InsightCarousel';
 
 // Today Focus components (Part B)
 export { default as TodayFocusCard, TodaySection } from './TodayFocusCard';
+
+// Daily Check-In
+export { default as DailyCheckInModal } from './DailyCheckInModal';
