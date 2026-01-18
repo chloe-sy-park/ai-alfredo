@@ -33,27 +33,27 @@ export function DomainSwitcher() {
   const styleDesc = getStyleDescription();
 
   return (
-    <div className="bg-white dark:bg-neutral-800 rounded-xl p-4 shadow-card">
+    <div className="rounded-xl p-4 shadow-card" style={{ backgroundColor: 'var(--surface-default)' }}>
       {/* 영역 토글 */}
       <div className="flex items-center gap-2 mb-4">
         <button
           onClick={() => switchDomain('work')}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg transition-all ${
-            currentDomain === 'work'
-              ? 'bg-[#A996FF] text-white'
-              : 'bg-[#F5F5F5] dark:bg-neutral-700 text-[#666666] dark:text-neutral-300 hover:bg-[#E5E5E5] dark:hover:bg-neutral-600'
-          }`}
+          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg transition-all"
+          style={currentDomain === 'work'
+            ? { backgroundColor: 'var(--os-work)', color: 'var(--accent-on)' }
+            : { backgroundColor: 'var(--surface-subtle)', color: 'var(--text-secondary)' }
+          }
         >
           <Briefcase size={18} />
           <span className="font-medium">Work</span>
         </button>
         <button
           onClick={() => switchDomain('life')}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg transition-all ${
-            currentDomain === 'life'
-              ? 'bg-[#4ECDC4] text-white'
-              : 'bg-[#F5F5F5] dark:bg-neutral-700 text-[#666666] dark:text-neutral-300 hover:bg-[#E5E5E5] dark:hover:bg-neutral-600'
-          }`}
+          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg transition-all"
+          style={currentDomain === 'life'
+            ? { backgroundColor: 'var(--os-life)', color: 'var(--accent-on)' }
+            : { backgroundColor: 'var(--surface-subtle)', color: 'var(--text-secondary)' }
+          }
         >
           <Home size={18} />
           <span className="font-medium">Life</span>
@@ -62,7 +62,7 @@ export function DomainSwitcher() {
 
       {/* 현재 스타일 설명 */}
       {styleDesc && (
-        <div className="text-sm text-[#666666] dark:text-neutral-400 space-y-1">
+        <div className="text-sm space-y-1" style={{ color: 'var(--text-secondary)' }}>
           <p>🗣️ {styleDesc.tone} 말할게요</p>
           <p>🔔 {styleDesc.notification} 알려드릴게요</p>
           <p>📊 {styleDesc.detail} 설명해드릴게요</p>
@@ -72,7 +72,7 @@ export function DomainSwitcher() {
 
       {/* 자동 전환 상태 */}
       {autoDomainSwitch && (
-        <p className="text-xs text-[#999999] dark:text-neutral-500 mt-3 pt-3 border-t border-[#E5E5E5] dark:border-neutral-700">
+        <p className="text-xs mt-3 pt-3" style={{ color: 'var(--text-tertiary)', borderTop: '1px solid var(--border-default)' }}>
           ⏰ 근무 시간에 맞춰 자동 전환돼요
         </p>
       )}
@@ -107,17 +107,19 @@ export function UnderstandingCard() {
   }
 
   return (
-    <div className="bg-white dark:bg-neutral-800 rounded-xl p-4 shadow-card">
+    <div className="rounded-xl p-4 shadow-card" style={{ backgroundColor: 'var(--surface-default)' }}>
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Brain size={20} className="text-[#A996FF]" />
-          <h3 className="font-semibold text-[#1A1A1A] dark:text-white">알프레도의 이해도</h3>
+          <Brain size={20} style={{ color: 'var(--os-work)' }} />
+          <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>알프레도의 이해도</h3>
         </div>
         <button
           onClick={handleRefresh}
           disabled={isRefreshing}
-          className="p-2 text-[#999999] hover:text-[#666666] dark:hover:text-neutral-300 hover:bg-[#F5F5F5] dark:hover:bg-neutral-700 rounded-lg disabled:opacity-50"
+          aria-label="이해도 새로고침"
+          className="p-2 rounded-lg disabled:opacity-50 transition-colors"
+          style={{ color: 'var(--text-tertiary)' }}
         >
           <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
         </button>
@@ -132,7 +134,7 @@ export function UnderstandingCard() {
               cx="64"
               cy="64"
               r="56"
-              className="stroke-[#E5E5E5] dark:stroke-neutral-600"
+              stroke="var(--border-default)"
               strokeWidth="8"
               fill="none"
             />
@@ -140,7 +142,7 @@ export function UnderstandingCard() {
               cx="64"
               cy="64"
               r="56"
-              stroke="#A996FF"
+              stroke="var(--os-work)"
               strokeWidth="8"
               fill="none"
               strokeDasharray={`${2 * Math.PI * 56}`}
@@ -150,57 +152,59 @@ export function UnderstandingCard() {
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-3xl font-bold text-[#1A1A1A] dark:text-white">{understandingScore}%</span>
-            <span className="text-sm text-[#A996FF]">Lv.{level}</span>
+            <span className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>{understandingScore}%</span>
+            <span className="text-sm" style={{ color: 'var(--os-work)' }}>Lv.{level}</span>
           </div>
         </div>
-        <p className="text-lg font-medium text-[#1A1A1A] dark:text-white mt-2">{title}</p>
-        <p className="text-sm text-[#999999] dark:text-neutral-400">
+        <p className="text-lg font-medium mt-2" style={{ color: 'var(--text-primary)' }}>{title}</p>
+        <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
           {daysTogether}일째 함께하고 있어요
         </p>
       </div>
 
       {/* 영역별 이해도 */}
-      <div className="grid grid-cols-2 gap-3 pt-4 border-t border-[#E5E5E5] dark:border-neutral-700">
+      <div className="grid grid-cols-2 gap-3 pt-4" style={{ borderTop: '1px solid var(--border-default)' }}>
         <div>
           <div className="flex items-center gap-1 mb-1">
-            <Briefcase size={14} className="text-[#A996FF]" />
-            <span className="text-xs text-[#666666] dark:text-neutral-400">업무</span>
+            <Briefcase size={14} style={{ color: 'var(--os-work)' }} />
+            <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>업무</span>
           </div>
-          <div className="h-2 bg-[#E5E5E5] dark:bg-neutral-700 rounded-full overflow-hidden">
+          <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border-default)' }}>
             <motion.div
-              className="h-full bg-[#A996FF] rounded-full"
+              className="h-full rounded-full"
+              style={{ backgroundColor: 'var(--os-work)' }}
               initial={{ width: 0 }}
               animate={{ width: `${workUnderstanding}%` }}
             />
           </div>
-          <span className="text-xs text-[#999999] dark:text-neutral-400">{workUnderstanding}%</span>
+          <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{workUnderstanding}%</span>
         </div>
         <div>
           <div className="flex items-center gap-1 mb-1">
-            <Home size={14} className="text-[#4ECDC4]" />
-            <span className="text-xs text-[#666666] dark:text-neutral-400">일상</span>
+            <Home size={14} style={{ color: 'var(--os-life)' }} />
+            <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>일상</span>
           </div>
-          <div className="h-2 bg-[#E5E5E5] dark:bg-neutral-700 rounded-full overflow-hidden">
+          <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border-default)' }}>
             <motion.div
-              className="h-full bg-[#4ECDC4] rounded-full"
+              className="h-full rounded-full"
+              style={{ backgroundColor: 'var(--os-life)' }}
               initial={{ width: 0 }}
               animate={{ width: `${lifeUnderstanding}%` }}
             />
           </div>
-          <span className="text-xs text-[#999999] dark:text-neutral-400">{lifeUnderstanding}%</span>
+          <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{lifeUnderstanding}%</span>
         </div>
       </div>
 
       {/* 통계 */}
-      <div className="flex justify-around mt-4 pt-4 border-t border-[#E5E5E5] dark:border-neutral-700">
+      <div className="flex justify-around mt-4 pt-4" style={{ borderTop: '1px solid var(--border-default)' }}>
         <div className="text-center">
-          <p className="text-lg font-bold text-[#A996FF]">{totalLearnings}</p>
-          <p className="text-xs text-[#999999] dark:text-neutral-400">배운 것</p>
+          <p className="text-lg font-bold" style={{ color: 'var(--os-work)' }}>{totalLearnings}</p>
+          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>배운 것</p>
         </div>
         <div className="text-center">
-          <p className="text-lg font-bold text-[#1A1A1A] dark:text-white">{daysTogether}</p>
-          <p className="text-xs text-[#999999] dark:text-neutral-400">함께한 날</p>
+          <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{daysTogether}</p>
+          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>함께한 날</p>
         </div>
       </div>
     </div>
@@ -217,12 +221,12 @@ interface LearningCardProps {
 }
 
 export function LearningCard({ learning, onFeedback }: LearningCardProps) {
-  const typeColors = {
-    preference: '#A996FF',
-    pattern: '#4ECDC4',
-    feedback: '#FFD43B',
-    correction: '#FF6B6B',
-    context: '#60A5FA'
+  const typeColors: Record<string, string> = {
+    preference: 'var(--os-work)',
+    pattern: 'var(--os-life)',
+    feedback: 'var(--state-warning)',
+    correction: 'var(--state-danger)',
+    context: 'var(--state-info)'
   };
 
   const typeLabels = {
@@ -237,24 +241,25 @@ export function LearningCard({ learning, onFeedback }: LearningCardProps) {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white dark:bg-neutral-800 rounded-lg p-3 shadow-sm border border-[#E5E5E5] dark:border-neutral-700"
+      className="rounded-lg p-3 shadow-sm"
+      style={{ backgroundColor: 'var(--surface-default)', border: '1px solid var(--border-default)' }}
     >
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
             <span
-              className="px-2 py-0.5 text-xs rounded-full text-white"
-              style={{ backgroundColor: typeColors[learning.learningType] }}
+              className="px-2 py-0.5 text-xs rounded-full"
+              style={{ backgroundColor: typeColors[learning.learningType], color: 'var(--accent-on)' }}
             >
               {typeLabels[learning.learningType]}
             </span>
-            <span className="text-xs text-[#999999] dark:text-neutral-400">
+            <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
               신뢰도 {learning.confidence}%
             </span>
           </div>
-          <p className="text-sm text-[#1A1A1A] dark:text-white">{learning.summary}</p>
+          <p className="text-sm" style={{ color: 'var(--text-primary)' }}>{learning.summary}</p>
           {learning.originalInput && (
-            <p className="text-xs text-[#999999] dark:text-neutral-400 mt-1 italic">
+            <p className="text-xs mt-1 italic" style={{ color: 'var(--text-tertiary)' }}>
               "{learning.originalInput}"
             </p>
           )}
@@ -264,13 +269,17 @@ export function LearningCard({ learning, onFeedback }: LearningCardProps) {
         <div className="flex items-center gap-1 ml-2">
           <button
             onClick={() => onFeedback(learning.id, true)}
-            className="p-1.5 text-[#999999] dark:text-neutral-400 hover:text-[#4ECDC4] hover:bg-[#E8FAF8] dark:hover:bg-[#4ECDC4]/20 rounded transition-colors"
+            aria-label="도움됨"
+            className="p-1.5 rounded transition-colors"
+            style={{ color: 'var(--text-tertiary)' }}
           >
             <ThumbsUp size={14} />
           </button>
           <button
             onClick={() => onFeedback(learning.id, false)}
-            className="p-1.5 text-[#999999] dark:text-neutral-400 hover:text-[#FF6B6B] hover:bg-[#FEF2F2] dark:hover:bg-[#FF6B6B]/20 rounded transition-colors"
+            aria-label="도움안됨"
+            className="p-1.5 rounded transition-colors"
+            style={{ color: 'var(--text-tertiary)' }}
           >
             <ThumbsDown size={14} />
           </button>
@@ -305,10 +314,10 @@ export function LearningsList() {
 
   if (learnings.length === 0) {
     return (
-      <div className="bg-white dark:bg-neutral-800 rounded-xl p-6 shadow-card text-center">
-        <BookOpen size={32} className="mx-auto text-[#E5E5E5] dark:text-neutral-600 mb-2" />
-        <p className="text-sm text-[#999999] dark:text-neutral-400">아직 배운 것이 없어요</p>
-        <p className="text-xs text-[#CCCCCC] dark:text-neutral-500 mt-1">대화하면서 알아갈게요!</p>
+      <div className="rounded-xl p-6 shadow-card text-center" style={{ backgroundColor: 'var(--surface-default)' }}>
+        <BookOpen size={32} className="mx-auto mb-2" style={{ color: 'var(--border-default)' }} />
+        <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>아직 배운 것이 없어요</p>
+        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)', opacity: 0.7 }}>대화하면서 알아갈게요!</p>
       </div>
     );
   }
@@ -316,11 +325,11 @@ export function LearningsList() {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-[#1A1A1A] dark:text-white flex items-center gap-2">
-          <BookOpen size={18} className="text-[#A996FF]" />
+        <h3 className="font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+          <BookOpen size={18} style={{ color: 'var(--os-work)' }} />
           알프레도가 배운 것들
         </h3>
-        <span className="text-xs text-[#999999] dark:text-neutral-400">{learnings.length}개</span>
+        <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{learnings.length}개</span>
       </div>
 
       {/* 카테고리 필터 */}
@@ -329,11 +338,11 @@ export function LearningsList() {
           <button
             key={type}
             onClick={() => setSelectedType(type)}
-            className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors ${
-              selectedType === type
-                ? 'bg-[#A996FF] text-white'
-                : 'bg-[#F5F5F5] dark:bg-neutral-700 text-[#666666] dark:text-neutral-300 hover:bg-[#E5E5E5] dark:hover:bg-neutral-600'
-            }`}
+            className="px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors"
+            style={selectedType === type
+              ? { backgroundColor: 'var(--os-work)', color: 'var(--accent-on)' }
+              : { backgroundColor: 'var(--surface-subtle)', color: 'var(--text-secondary)' }
+            }
           >
             {LEARNING_TYPE_LABELS[type]}
             {type !== 'all' && (
@@ -348,7 +357,7 @@ export function LearningsList() {
       <AnimatePresence>
         {filteredLearnings.length === 0 ? (
           <div className="text-center py-4">
-            <p className="text-sm text-[#999999] dark:text-neutral-400">
+            <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
               이 카테고리의 학습 내용이 없어요
             </p>
           </div>
@@ -364,7 +373,7 @@ export function LearningsList() {
       </AnimatePresence>
 
       {filteredLearnings.length > 10 && (
-        <p className="text-xs text-center text-[#999999] dark:text-neutral-400 pt-2">
+        <p className="text-xs text-center pt-2" style={{ color: 'var(--text-tertiary)' }}>
           +{filteredLearnings.length - 10}개 더 있어요
         </p>
       )}
@@ -394,16 +403,18 @@ export function WeeklyReportCard({ report, onGenerateReport }: WeeklyReportCardP
   }
 
   return (
-    <div className="bg-gradient-to-br from-[#F5F3FF] to-[#E8FAF8] rounded-xl p-4 shadow-card">
+    <div className="rounded-xl p-4 shadow-card" style={{ background: 'linear-gradient(to bottom right, rgba(169, 150, 255, 0.1), rgba(78, 205, 196, 0.1))' }}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Calendar size={20} className="text-[#A996FF]" />
-          <h3 className="font-semibold text-[#1A1A1A]">주간 성장 리포트</h3>
+          <Calendar size={20} style={{ color: 'var(--os-work)' }} />
+          <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>주간 성장 리포트</h3>
         </div>
         <button
           onClick={handleGenerate}
           disabled={isGenerating}
-          className="px-3 py-1.5 text-xs bg-white text-[#A996FF] rounded-lg hover:bg-[#F5F5F5] disabled:opacity-50 flex items-center gap-1"
+          aria-label="새 리포트 생성"
+          className="px-3 py-1.5 text-xs rounded-lg disabled:opacity-50 flex items-center gap-1 transition-colors"
+          style={{ backgroundColor: 'var(--surface-default)', color: 'var(--os-work)' }}
         >
           {isGenerating ? (
             <RefreshCw size={12} className="animate-spin" />
@@ -417,14 +428,14 @@ export function WeeklyReportCard({ report, onGenerateReport }: WeeklyReportCardP
       {currentReport ? (
         <>
           {/* 하이라이트 메시지 */}
-          <div className="bg-white/50 rounded-lg p-3 mb-4">
-            <p className="text-sm text-[#1A1A1A]">{currentReport.highlightMessage}</p>
+          <div className="rounded-lg p-3 mb-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.5)' }}>
+            <p className="text-sm" style={{ color: 'var(--text-primary)' }}>{currentReport.highlightMessage}</p>
           </div>
 
           {/* 이번 주 배운 것 */}
           {currentReport.learnedItems.length > 0 && (
             <div className="mb-4">
-              <h4 className="text-xs font-medium text-[#666666] mb-2 flex items-center gap-1">
+              <h4 className="text-xs font-medium mb-2 flex items-center gap-1" style={{ color: 'var(--text-secondary)' }}>
                 <TrendingUp size={14} />
                 이번 주 배운 것
               </h4>
@@ -434,8 +445,8 @@ export function WeeklyReportCard({ report, onGenerateReport }: WeeklyReportCardP
                     key={item.id || index}
                     className="flex items-center gap-2 text-sm"
                   >
-                    <span className="text-[#A996FF]">✓</span>
-                    <span className="text-[#1A1A1A]">{item.summary}</span>
+                    <span style={{ color: 'var(--os-work)' }}>✓</span>
+                    <span style={{ color: 'var(--text-primary)' }}>{item.summary}</span>
                   </div>
                 ))}
               </div>
@@ -445,7 +456,7 @@ export function WeeklyReportCard({ report, onGenerateReport }: WeeklyReportCardP
           {/* 파악 중인 것 */}
           {currentReport.pendingItems.length > 0 && (
             <div>
-              <h4 className="text-xs font-medium text-[#666666] mb-2 flex items-center gap-1">
+              <h4 className="text-xs font-medium mb-2 flex items-center gap-1" style={{ color: 'var(--text-secondary)' }}>
                 <Clock size={14} />
                 아직 파악 중인 것
               </h4>
@@ -453,16 +464,16 @@ export function WeeklyReportCard({ report, onGenerateReport }: WeeklyReportCardP
                 {currentReport.pendingItems.map((item, index) => (
                   <div key={index}>
                     <div className="flex items-center justify-between text-sm mb-1">
-                      <span className="text-[#666666]">{item.topic}</span>
-                      <span className="text-xs text-[#999999]">{item.progress}%</span>
+                      <span style={{ color: 'var(--text-secondary)' }}>{item.topic}</span>
+                      <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{item.progress}%</span>
                     </div>
-                    <div className="h-1.5 bg-white/50 rounded-full overflow-hidden">
+                    <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(255, 255, 255, 0.5)' }}>
                       <div
-                        className="h-full bg-[#A996FF]/50 rounded-full transition-all"
-                        style={{ width: `${item.progress}%` }}
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${item.progress}%`, backgroundColor: 'rgba(169, 150, 255, 0.5)' }}
                       />
                     </div>
-                    <p className="text-xs text-[#999999] mt-0.5">{item.hint}</p>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{item.hint}</p>
                   </div>
                 ))}
               </div>
@@ -470,14 +481,14 @@ export function WeeklyReportCard({ report, onGenerateReport }: WeeklyReportCardP
           )}
 
           {/* 리포트 기간 */}
-          <p className="text-xs text-[#999999] mt-4 pt-3 border-t border-white/30">
+          <p className="text-xs mt-4 pt-3" style={{ color: 'var(--text-tertiary)', borderTop: '1px solid rgba(255, 255, 255, 0.3)' }}>
             {currentReport.weekStart} ~ {currentReport.weekEnd}
           </p>
         </>
       ) : (
         <div className="text-center py-4">
-          <p className="text-sm text-[#666666]">아직 리포트가 없어요</p>
-          <p className="text-xs text-[#999999] mt-1">버튼을 눌러 생성해보세요</p>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>아직 리포트가 없어요</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>버튼을 눌러 생성해보세요</p>
         </div>
       )}
     </div>
@@ -495,14 +506,14 @@ export function MiniUnderstandingWidget() {
 
   const { understandingScore, level, title, daysTogether } = understanding;
   const currentDomain = preferences?.currentDomain || 'work';
+  const domainColor = currentDomain === 'work' ? 'var(--os-work)' : 'var(--os-life)';
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`bg-white rounded-xl p-4 shadow-card border-l-4 ${
-        currentDomain === 'work' ? 'border-l-[#A996FF]' : 'border-l-[#4ECDC4]'
-      }`}
+      className="rounded-xl p-4 shadow-card"
+      style={{ backgroundColor: 'var(--surface-default)', borderLeft: `4px solid ${domainColor}` }}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -513,7 +524,7 @@ export function MiniUnderstandingWidget() {
                 cx="24"
                 cy="24"
                 r="20"
-                stroke="#E5E5E5"
+                stroke="var(--border-default)"
                 strokeWidth="4"
                 fill="none"
               />
@@ -521,7 +532,7 @@ export function MiniUnderstandingWidget() {
                 cx="24"
                 cy="24"
                 r="20"
-                stroke={currentDomain === 'work' ? '#A996FF' : '#4ECDC4'}
+                stroke={domainColor}
                 strokeWidth="4"
                 fill="none"
                 strokeDasharray={`${2 * Math.PI * 20}`}
@@ -530,25 +541,25 @@ export function MiniUnderstandingWidget() {
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-xs font-bold text-[#1A1A1A]">{understandingScore}%</span>
+              <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{understandingScore}%</span>
             </div>
           </div>
 
           <div>
-            <p className="text-sm font-medium text-[#1A1A1A]">{title}</p>
-            <p className="text-xs text-[#999999]">
+            <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{title}</p>
+            <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
               Lv.{level} · {daysTogether}일째 함께
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#F5F5F5] rounded-full">
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ backgroundColor: 'var(--surface-subtle)' }}>
           {currentDomain === 'work' ? (
-            <Briefcase size={12} className="text-[#A996FF]" />
+            <Briefcase size={12} style={{ color: 'var(--os-work)' }} />
           ) : (
-            <Home size={12} className="text-[#4ECDC4]" />
+            <Home size={12} style={{ color: 'var(--os-life)' }} />
           )}
-          <span className="text-xs font-medium text-[#666666]">
+          <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
             {currentDomain === 'work' ? 'Work' : 'Life'}
           </span>
         </div>
@@ -569,9 +580,9 @@ export function PendingLearningsList() {
   }
 
   return (
-    <div className="bg-white dark:bg-neutral-800 rounded-xl p-4 shadow-card">
-      <h3 className="font-semibold text-[#1A1A1A] dark:text-white flex items-center gap-2 mb-3">
-        <Clock size={18} className="text-[#FFD43B]" />
+    <div className="rounded-xl p-4 shadow-card" style={{ backgroundColor: 'var(--surface-default)' }}>
+      <h3 className="font-semibold flex items-center gap-2 mb-3" style={{ color: 'var(--text-primary)' }}>
+        <Clock size={18} style={{ color: 'var(--state-warning)' }} />
         아직 파악 중인 것
       </h3>
 
@@ -579,17 +590,18 @@ export function PendingLearningsList() {
         {understanding.pendingLearnings.map((item, index) => (
           <div key={index}>
             <div className="flex items-center justify-between text-sm mb-1">
-              <span className="text-[#1A1A1A] dark:text-white">{item.topic}</span>
-              <span className="text-xs text-[#999999] dark:text-neutral-400">{item.progress}%</span>
+              <span style={{ color: 'var(--text-primary)' }}>{item.topic}</span>
+              <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{item.progress}%</span>
             </div>
-            <div className="h-2 bg-[#E5E5E5] dark:bg-neutral-700 rounded-full overflow-hidden">
+            <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--border-default)' }}>
               <motion.div
-                className="h-full bg-[#FFD43B] rounded-full"
+                className="h-full rounded-full"
+                style={{ backgroundColor: 'var(--state-warning)' }}
                 initial={{ width: 0 }}
                 animate={{ width: `${item.progress}%` }}
               />
             </div>
-            <p className="text-xs text-[#999999] dark:text-neutral-400 mt-1">{item.hint}</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>{item.hint}</p>
           </div>
         ))}
       </div>

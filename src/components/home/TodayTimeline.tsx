@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Clock, ChevronRight } from 'lucide-react';
+import { Clock, ChevronRight, CalendarDays } from 'lucide-react';
 import { getTodayEvents, getCalendarList, CalendarEvent } from '../../services/calendar';
 import { isGoogleConnected } from '../../services/auth';
 import { useNavigate } from 'react-router-dom';
@@ -76,20 +76,54 @@ export default function TodayTimeline() {
     return hour < currentHour;
   }
 
+  // 빈 상태: 캘린더 미연동
   if (!isGoogleConnected()) {
-    return null;
+    return (
+      <div className="rounded-xl p-4 shadow-card" style={{ backgroundColor: 'var(--surface-default)' }}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Clock size={18} style={{ color: 'var(--accent-primary)' }} />
+            <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>오늘 타임라인</h3>
+          </div>
+        </div>
+        <div className="text-center py-4">
+          <div
+            className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center"
+            style={{ backgroundColor: 'var(--surface-subtle)' }}
+          >
+            <CalendarDays size={18} style={{ color: 'var(--text-tertiary)' }} />
+          </div>
+          <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
+            캘린더를 연결해보세요
+          </p>
+          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+            하루 일정을 한눈에 확인할 수 있어요
+          </p>
+          <button
+            onClick={function() { navigate('/settings'); }}
+            className="mt-3 px-4 py-2 text-sm font-medium rounded-lg min-h-[44px]"
+            style={{ backgroundColor: 'rgba(169, 150, 255, 0.15)', color: 'var(--accent-primary)' }}
+            aria-label="설정에서 캘린더 연결하기"
+          >
+            캘린더 연결하기
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="bg-white rounded-xl p-4 shadow-card">
+    <div className="rounded-xl p-4 shadow-card" style={{ backgroundColor: 'var(--surface-default)' }}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Clock size={18} className="text-[#A996FF]" />
-          <h3 className="font-semibold text-[#1A1A1A]">오늘 타임라인</h3>
+          <Clock size={18} style={{ color: 'var(--accent-primary)' }} />
+          <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>오늘 타임라인</h3>
         </div>
-        <button 
+        <button
           onClick={function() { navigate('/calendar'); }}
-          className="flex items-center text-sm text-[#A996FF] hover:text-[#8B7BE8] min-h-[44px]"
+          aria-label="캘린더 페이지로 이동"
+          className="flex items-center text-sm min-h-[44px] transition-colors"
+          style={{ color: 'var(--accent-primary)' }}
         >
           캘린더
           <ChevronRight size={16} />
@@ -97,28 +131,28 @@ export default function TodayTimeline() {
       </div>
 
       {isLoading ? (
-        <div className="text-center py-4 text-[#999999] text-sm">불러오는 중...</div>
+        <div className="text-center py-4 text-sm" style={{ color: 'var(--text-tertiary)' }}>불러오는 중...</div>
       ) : events.length === 0 ? (
-        <div className="text-center py-4 text-[#999999] text-sm">
+        <div className="text-center py-4 text-sm" style={{ color: 'var(--text-tertiary)' }}>
           오늘 일정이 없어요 ✨
         </div>
       ) : (
         <div className="space-y-1">
           {/* All-day events */}
           {allDayEvents.length > 0 && (
-            <div className="mb-3 pb-3 border-b border-[#E5E5E5]">
+            <div className="mb-3 pb-3 border-b" style={{ borderColor: 'var(--border-default)' }}>
               {allDayEvents.map(function(event) {
                 return (
-                  <div 
+                  <div
                     key={event.id}
                     className="flex items-center gap-2 py-1"
                   >
-                    <div 
+                    <div
                       className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: event.backgroundColor || '#A996FF' }}
+                      style={{ backgroundColor: event.backgroundColor || 'var(--accent-primary)' }}
                     />
-                    <span className="text-sm font-medium text-[#1A1A1A]">{event.title}</span>
-                    <span className="text-xs text-[#999999]">종일</span>
+                    <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{event.title}</span>
+                    <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>종일</span>
                   </div>
                 );
               })}
@@ -133,36 +167,45 @@ export default function TodayTimeline() {
               var isPast = isPastHour(hour);
 
               return (
-                <div 
+                <div
                   key={hour}
                   className={'flex gap-3 py-1.5 ' + (isPast ? 'opacity-40' : '')}
                 >
                   {/* Time label */}
-                  <div className={'w-14 text-xs flex-shrink-0 ' + (isCurrent ? 'text-[#A996FF] font-bold' : 'text-[#999999]')}>
+                  <div
+                    className={'w-14 text-xs flex-shrink-0 ' + (isCurrent ? 'font-bold' : '')}
+                    style={{ color: isCurrent ? 'var(--accent-primary)' : 'var(--text-tertiary)' }}
+                  >
                     {formatHour(hour)}
                   </div>
 
                   {/* Events or empty line */}
-                  <div className="flex-1 min-h-[24px] border-l-2 border-[#E5E5E5] pl-3 relative">
+                  <div
+                    className="flex-1 min-h-[24px] border-l-2 pl-3 relative"
+                    style={{ borderColor: 'var(--border-default)' }}
+                  >
                     {/* Current time indicator */}
                     {isCurrent && (
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1.5 w-2 h-2 bg-[#A996FF] rounded-full" />
+                      <div
+                        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1.5 w-2 h-2 rounded-full"
+                        style={{ backgroundColor: 'var(--accent-primary)' }}
+                      />
                     )}
 
                     {hourEvents.length > 0 ? (
                       <div className="space-y-1">
                         {hourEvents.map(function(event) {
                           return (
-                            <div 
+                            <div
                               key={event.id}
                               className="flex items-center gap-2"
                             >
-                              <div 
+                              <div
                                 className="w-1.5 h-4 rounded-full"
-                                style={{ backgroundColor: event.backgroundColor || '#A996FF' }}
+                                style={{ backgroundColor: event.backgroundColor || 'var(--accent-primary)' }}
                               />
-                              <span className="text-sm truncate text-[#1A1A1A]">{event.title}</span>
-                              <span className="text-xs text-[#999999] flex-shrink-0">
+                              <span className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>{event.title}</span>
+                              <span className="text-xs flex-shrink-0" style={{ color: 'var(--text-tertiary)' }}>
                                 {formatEventTime(event.start)}
                               </span>
                             </div>

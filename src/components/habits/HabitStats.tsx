@@ -4,7 +4,7 @@
  */
 
 import { useMemo } from 'react';
-import { Flame, Trophy, TrendingUp, Target } from 'lucide-react';
+import { Flame, Trophy, TrendingUp, Target, Sparkles } from 'lucide-react';
 import { Habit, HabitLog, getStreak } from '../../services/habits';
 
 interface HabitStatsProps {
@@ -57,68 +57,87 @@ export default function HabitStats({ habits, logs }: HabitStatsProps) {
     };
   }, [habits, logs]);
 
+  // 빈 상태: 습관이 없을 때
   if (habits.length === 0) {
-    return null;
+    return (
+      <div className="rounded-xl p-4 shadow-card" style={{ backgroundColor: 'var(--surface-default)' }}>
+        <div className="text-center py-4">
+          <div
+            className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center"
+            style={{ backgroundColor: 'var(--surface-subtle)' }}
+          >
+            <Sparkles size={18} style={{ color: 'var(--accent-primary)' }} />
+          </div>
+          <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
+            습관을 추가해보세요
+          </p>
+          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+            작은 습관부터 시작해보는 건 어떨까요?
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="grid grid-cols-2 gap-3">
       {/* 오늘 달성률 */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
+      <div className="rounded-xl p-4 shadow-card" style={{ backgroundColor: 'var(--surface-default)' }}>
         <div className="flex items-center gap-2 mb-2">
-          <Target size={16} className="text-[#A996FF]" />
-          <span className="text-xs text-gray-500 dark:text-gray-400">오늘 달성</span>
+          <Target size={16} style={{ color: 'var(--accent-primary)' }} />
+          <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>오늘 달성</span>
         </div>
         <div className="flex items-end gap-2">
-          <span className="text-2xl font-bold dark:text-white">{stats.todayRate}%</span>
-          <span className="text-xs text-gray-400 dark:text-gray-500 mb-1">
+          <span className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{stats.todayRate}%</span>
+          <span className="text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
             {stats.completedToday}/{stats.totalHabits}
           </span>
         </div>
         {/* 미니 프로그레스 */}
-        <div className="mt-2 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+        <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
           <div
-            className="h-full bg-[#A996FF] rounded-full transition-all"
-            style={{ width: `${stats.todayRate}%` }}
+            className="h-full rounded-full transition-all"
+            style={{ width: `${stats.todayRate}%`, backgroundColor: 'var(--accent-primary)' }}
           />
         </div>
       </div>
 
       {/* 최고 스트릭 */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
+      <div className="rounded-xl p-4 shadow-card" style={{ backgroundColor: 'var(--surface-default)' }}>
         <div className="flex items-center gap-2 mb-2">
-          <Flame size={16} className="text-orange-500" />
-          <span className="text-xs text-gray-500 dark:text-gray-400">최고 스트릭</span>
+          <Flame size={16} style={{ color: 'var(--state-warning)' }} />
+          <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>최고 스트릭</span>
         </div>
         <div className="flex items-end gap-1">
-          <span className="text-2xl font-bold dark:text-white">{stats.maxStreak}</span>
-          <span className="text-sm text-gray-400 dark:text-gray-500 mb-0.5">일</span>
+          <span className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{stats.maxStreak}</span>
+          <span className="text-sm mb-0.5" style={{ color: 'var(--text-tertiary)' }}>일</span>
         </div>
         {stats.maxStreak > 0 && (
           <div className="mt-2 flex">
             {Array.from({ length: Math.min(stats.maxStreak, 7) }).map((_, i) => (
               <div
                 key={i}
-                className="w-3 h-3 rounded-full bg-gradient-to-r from-orange-400 to-red-400 mr-0.5"
+                className="w-3 h-3 rounded-full mr-0.5"
+                style={{ backgroundColor: 'var(--state-warning)' }}
               />
             ))}
             {stats.maxStreak > 7 && (
-              <span className="text-xs text-orange-400 ml-1">+{stats.maxStreak - 7}</span>
+              <span className="text-xs ml-1" style={{ color: 'var(--state-warning)' }}>+{stats.maxStreak - 7}</span>
             )}
           </div>
         )}
       </div>
 
       {/* 주간 달성률 */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
+      <div className="rounded-xl p-4 shadow-card" style={{ backgroundColor: 'var(--surface-default)' }}>
         <div className="flex items-center gap-2 mb-2">
-          <TrendingUp size={16} className="text-green-500" />
-          <span className="text-xs text-gray-500 dark:text-gray-400">이번 주</span>
+          <TrendingUp size={16} style={{ color: 'var(--state-success)' }} />
+          <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>이번 주</span>
         </div>
         <div className="flex items-end gap-1">
-          <span className="text-2xl font-bold dark:text-white">{stats.weekRate}%</span>
+          <span className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{stats.weekRate}%</span>
         </div>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
           {stats.weekRate >= 80 ? '아주 잘하고 있어요!' :
            stats.weekRate >= 50 ? '꾸준히 하고 있어요' :
            '조금 더 힘내봐요'}
@@ -126,20 +145,20 @@ export default function HabitStats({ habits, logs }: HabitStatsProps) {
       </div>
 
       {/* 가장 잘 지킨 습관 */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
+      <div className="rounded-xl p-4 shadow-card" style={{ backgroundColor: 'var(--surface-default)' }}>
         <div className="flex items-center gap-2 mb-2">
-          <Trophy size={16} className="text-yellow-500" />
-          <span className="text-xs text-gray-500 dark:text-gray-400">베스트 습관</span>
+          <Trophy size={16} style={{ color: 'var(--state-warning)' }} />
+          <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>베스트 습관</span>
         </div>
         {stats.bestHabit ? (
           <div className="flex items-center gap-2">
             <span className="text-xl">{stats.bestHabit.icon}</span>
-            <span className="text-sm font-medium dark:text-white truncate">
+            <span className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
               {stats.bestHabit.title}
             </span>
           </div>
         ) : (
-          <p className="text-sm text-gray-400 dark:text-gray-500">아직 없어요</p>
+          <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>아직 없어요</p>
         )}
       </div>
     </div>
