@@ -10,6 +10,9 @@ import { getTodayCondition, ConditionLevel } from '../../services/condition';
 import { generateBriefing, BriefingContext } from '../../services/briefing';
 import { getTodayEvents, CalendarEvent } from '../../services/calendar';
 import { getTasks, Task } from '../../services/tasks';
+import { useLifeOSStore } from '../../stores/lifeOSStore';
+import SleepEstimateCard from '../life/SleepEstimateCard';
+import SleepCorrectionSheet from '../life/SleepCorrectionSheet';
 
 export type BriefingMode = 'all' | 'work' | 'life' | 'finance';
 
@@ -116,6 +119,20 @@ export default function BriefingHero({
   const [isLoading, setIsLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(true);
   const [showWeatherDetail, setShowWeatherDetail] = useState(false);
+  const [showSleepCorrection, setShowSleepCorrection] = useState(false);
+
+  // Life OS Sleep 데이터
+  const sleepWindow = useLifeOSStore((state) => state.sleepWindow);
+  const sleepLoading = useLifeOSStore((state) => state.sleepLoading);
+  const fetchSleepWindow = useLifeOSStore((state) => state.fetchSleepWindow);
+  const correctSleep = useLifeOSStore((state) => state.correctSleep);
+
+  // 오늘 날짜 (로컬)
+  const today = new Date().toISOString().split('T')[0];
+
+  // Sleep 카드 표시 조건: all 또는 life 모드이고, 아침 시간 (6시~12시)
+  const currentHour = new Date().getHours();
+  const showSleepCard = (mode === 'all' || mode === 'life') && currentHour >= 6 && currentHour < 12;
 
   const config = modeConfig[mode];
   const weatherTip = getWeatherTip(weather);
@@ -123,6 +140,27 @@ export default function BriefingHero({
   useEffect(() => {
     loadData();
   }, [mode]);
+
+  // Sleep 데이터 로드 (아침 시간대에만)
+  useEffect(() => {
+    if (showSleepCard) {
+      fetchSleepWindow(today);
+    }
+  }, [showSleepCard, today, fetchSleepWindow]);
+
+  // Sleep 확인/정정 핸들러
+  const handleConfirmSleep = () => {
+    // 사용자가 "맞아요"를 눌렀을 때 - 추가 액션 없음 (이미 저장됨)
+    console.log('[BriefingHero] Sleep confirmed for', today);
+  };
+
+  const handleRequestSleepCorrection = () => {
+    setShowSleepCorrection(true);
+  };
+
+  const handleSleepCorrectionClose = () => {
+    setShowSleepCorrection(false);
+  };
 
   // 로컬 스토리지에서 접힘 상태 복원
   useEffect(() => {
@@ -250,6 +288,7 @@ export default function BriefingHero({
   }
 
   return (
+    <>
     <div
       className={`relative overflow-hidden bg-gradient-to-r ${config.gradient} rounded-2xl shadow-sm transition-all duration-300`}
       role="region"
@@ -332,6 +371,20 @@ export default function BriefingHero({
         {/* 확장 콘텐츠 */}
         {isExpanded && (
           <div className="mt-3 animate-in slide-in-from-top-2 duration-200">
+            {/* Sleep 추정 카드 (아침 시간대에만) */}
+            {showSleepCard && (
+              <div className="mb-3">
+                <SleepEstimateCard
+                  date={today}
+                  sleepWindow={sleepWindow}
+                  isLoading={sleepLoading}
+                  onConfirmAccurate={handleConfirmSleep}
+                  onRequestCorrection={handleRequestSleepCorrection}
+                  mode="compact"
+                />
+              </div>
+            )}
+
             {/* 메인 메시지 */}
             <h2 className="text-lg font-bold mb-1 leading-tight" style={{ color: 'var(--text-primary)' }}>
               {briefing.headline}
@@ -364,5 +417,19 @@ export default function BriefingHero({
         )}
       </div>
     </div>
+
+    {/* Sleep 정정 바텀시트 (포탈로 렌더링되므로 위치는 중요하지 않음) */}
+    <SleepCorrectionSheet
+      open={showSleepCorrection}
+      date={today}
+      initialBedtimeTs={sleepWindow?.bedtimeTs}
+      initialWaketimeTs={sleepWindow?.waketimeTs}
+      onClose={handleSleepCorrectionClose}
+      onSubmit={async (data) => {
+        await correctSleep(data);
+        handleSleepCorrectionClose();
+      }}
+    />
+  </>
   );
 }
