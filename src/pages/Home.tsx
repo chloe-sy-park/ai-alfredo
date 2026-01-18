@@ -13,6 +13,7 @@ import { generateBriefing, generateJudgmentExplanation, WeatherData as BriefingW
 import { usePostAction } from '../stores/postActionStore';
 import { useLiftStore } from '../stores/liftStore';
 import { useHomeModeStore } from '../stores/homeModeStore';
+import { useSmartInsightStore, useVisibleInsights } from '../stores/smartInsightStore';
 
 // Components
 import { PageHeader } from '../components/layout';
@@ -20,6 +21,7 @@ import { MoreSheet, OSProgressBar, DecisionMatrix, TodayAgenda, AlfredoInsights,
 import FocusNow from '../components/home/FocusNow';
 import DailyEntry from '../components/home/DailyEntry';
 import { BriefingHero } from '../components/briefing';
+import { SmartInsightSection } from '../components/home/SmartInsightCard';
 
 type HomeMode = 'all' | 'work' | 'life' | 'finance';
 
@@ -45,6 +47,10 @@ export default function Home() {
   const postAction = usePostAction();
   const liftStore = useLiftStore();
   const { setMode: setGlobalMode } = useHomeModeStore();
+
+  // Smart Insight
+  const visibleInsights = useVisibleInsights();
+  const { generateInsights, handleCTA, dismissInsight } = useSmartInsightStore();
 
   // URL 쿼리 파라미터에서 mode 확인
   useEffect(() => {
@@ -72,6 +78,11 @@ export default function Home() {
       setShowDailyEntry(true);
     }
   }, []);
+
+  // Smart Insight 생성
+  useEffect(function() {
+    generateInsights();
+  }, [generateInsights]);
 
   // WeatherData를 BriefingWeatherData로 변환하는 헬퍼 함수
   function convertWeatherForBriefing(weatherData: WeatherData | null): BriefingWeatherData | undefined {
@@ -352,7 +363,14 @@ export default function Home() {
         {/* === WORK 모드: 업무 중심 위젯 순서 === */}
         {homeMode === 'work' && (
           <>
-            {/* 1. Hero 브리핑 (최상단) */}
+            {/* 0. Smart Insight Cards (최상단) */}
+            <SmartInsightSection
+              insights={visibleInsights}
+              onCTA={handleCTA}
+              onDismiss={dismissInsight}
+            />
+
+            {/* 1. Hero 브리핑 */}
             <BriefingHero mode="work" onMore={function() { setIsMoreSheetOpen(true); }} />
 
             {/* 2. AI 의사결정 매트릭스 */}
@@ -386,7 +404,14 @@ export default function Home() {
         {/* === LIFE 모드: 개인 중심 위젯 순서 === */}
         {homeMode === 'life' && (
           <>
-            {/* 1. Hero 브리핑 (최상단) */}
+            {/* 0. Smart Insight Cards (최상단) */}
+            <SmartInsightSection
+              insights={visibleInsights}
+              onCTA={handleCTA}
+              onDismiss={dismissInsight}
+            />
+
+            {/* 1. Hero 브리핑 */}
             <BriefingHero mode="life" onMore={function() { setIsMoreSheetOpen(true); }} />
 
             {/* 2. AI 의사결정 매트릭스 */}
@@ -414,7 +439,14 @@ export default function Home() {
         {/* === ALL 모드: 전체 위젯 표시 === */}
         {homeMode === 'all' && (
           <>
-            {/* 1. Hero 브리핑 (최상단) */}
+            {/* 0. Smart Insight Cards (최상단) */}
+            <SmartInsightSection
+              insights={visibleInsights}
+              onCTA={handleCTA}
+              onDismiss={dismissInsight}
+            />
+
+            {/* 1. Hero 브리핑 */}
             <BriefingHero mode="all" onMore={function() { setIsMoreSheetOpen(true); }} />
 
             {/* 2. AI 의사결정 매트릭스 */}
