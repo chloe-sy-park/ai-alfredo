@@ -21,3 +21,12 @@ export { default as ActionCard } from './ActionCard';
 // LIFE mode components
 export { default as LifeFactors } from './LifeFactors';
 export { default as RelationshipReminder } from './RelationshipReminder';
+
+// Email Signal components (Part E)
+export { EmailSignalCard, EmailSignalSection, SilentCorrectionChip, CompactEmailSignal } from './EmailSignalCard';
+
+// Smart Insight components (Part A)
+export { default as SmartInsightCard, SmartInsightSection } from './SmartInsightCard';
+
+// Today Focus components (Part B)
+export { default as TodayFocusCard, TodaySection } from './TodayFocusCard';
