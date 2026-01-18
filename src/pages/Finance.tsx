@@ -42,6 +42,7 @@ import {
   Download,
   Eye,
   ChevronDown,
+  X,
 } from 'lucide-react';
 import { useDrawerStore } from '../stores';
 import { useNotificationStore } from '../stores/notificationStore';
@@ -73,6 +74,12 @@ import {
   analyzeByCategory,
   findSavingsOpportunities,
 } from '../services/finance';
+import {
+  ConditionLevel,
+  conditionConfig,
+  getTodayCondition,
+  setTodayCondition
+} from '../services/condition';
 
 // 상태 타입 정의
 type FinanceState = 'overview' | 'overlaps' | 'candidates' | 'upcoming' | 'allclear' | 'stats' | 'settings';
@@ -115,6 +122,19 @@ export default function Finance() {
   // UI State
   const [currentState, setCurrentState] = useState<FinanceState>('overview');
   const [showAddModal, setShowAddModal] = useState(false);
+
+  // Condition State
+  const [currentCondition, setCurrentCondition] = useState<ConditionLevel | null>(() => {
+    const saved = getTodayCondition();
+    return saved?.level || null;
+  });
+  const [showConditionModal, setShowConditionModal] = useState(false);
+
+  const handleConditionSelect = (level: ConditionLevel) => {
+    setTodayCondition(level);
+    setCurrentCondition(level);
+    setShowConditionModal(false);
+  };
 
   // 초기 로드
   useEffect(() => {
@@ -261,6 +281,8 @@ export default function Finance() {
         onNotification={toggleNotification}
         onMenu={openDrawer}
         unreadCount={unreadCount}
+        currentCondition={currentCondition}
+        onConditionClick={() => setShowConditionModal(true)}
       />
 
       {/* Content */}
@@ -384,6 +406,58 @@ export default function Finance() {
           <AddItemModal onClose={() => setShowAddModal(false)} />
         )}
       </AnimatePresence>
+
+      {/* Condition Modal */}
+      {showConditionModal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center">
+          <div
+            className="absolute inset-0 bg-black/40 animate-fadeIn"
+            onClick={() => setShowConditionModal(false)}
+          />
+          <div className="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-t-2xl p-5 pb-8 animate-slideUp safe-area-bottom">
+            <div className="w-10 h-1 bg-gray-200 dark:bg-gray-600 rounded-full mx-auto mb-4" />
+
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">오늘 컨디션은?</h3>
+              <button
+                onClick={() => setShowConditionModal(false)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full"
+              >
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-4 gap-3">
+              {(['great', 'good', 'normal', 'bad'] as ConditionLevel[]).map((level) => {
+                const info = conditionConfig[level];
+                const isSelected = level === currentCondition;
+                return (
+                  <button
+                    key={level}
+                    onClick={() => handleConditionSelect(level)}
+                    className={`
+                      flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all
+                      ${isSelected
+                        ? 'border-primary bg-primary/10'
+                        : 'border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                      }
+                    `}
+                  >
+                    <span className="text-3xl">{info.emoji}</span>
+                    <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{info.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {currentCondition && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center mt-4">
+                {conditionConfig[currentCondition].message}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -399,6 +473,8 @@ interface FinanceHeaderProps {
   onNotification: () => void;
   onMenu: () => void;
   unreadCount: number;
+  currentCondition: ConditionLevel | null;
+  onConditionClick: () => void;
 }
 
 function FinanceHeader({
@@ -408,6 +484,8 @@ function FinanceHeader({
   onNotification,
   onMenu,
   unreadCount,
+  currentCondition,
+  onConditionClick,
 }: FinanceHeaderProps) {
   const titles: Record<FinanceState, string> = {
     overview: 'Finance OS',
@@ -421,50 +499,65 @@ function FinanceHeader({
 
   return (
     <header className="sticky top-0 z-30 bg-background safe-area-top">
-      <div className="flex items-center justify-between px-4 py-3">
+      <div className="flex items-center justify-between px-4 py-2">
         {/* Left */}
         <div className="flex items-center gap-2">
           {currentState !== 'overview' ? (
             <button
               onClick={onBack}
-              className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-200 rounded-full transition-colors"
+              className="w-9 h-9 flex items-center justify-center text-gray-600 hover:bg-gray-200 rounded-full transition-colors"
             >
-              <ChevronLeft size={24} />
+              <ChevronLeft size={20} />
             </button>
           ) : (
-            <div className="w-8 h-8 bg-lavender-100 rounded-full flex items-center justify-center">
-              <Wallet size={16} className="text-lavender-600" />
+            <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
+              <Wallet size={16} className="text-emerald-600" />
             </div>
           )}
-          <span className="font-semibold text-text-primary">{titles[currentState]}</span>
+          <span className="font-semibold text-text-primary text-sm">{titles[currentState]}</span>
+        </div>
+
+        {/* Center: Mode Badge */}
+        <div className="flex items-center">
+          <span className="px-3 py-1.5 bg-emerald-600 text-white rounded-full text-xs font-semibold">
+            FINANCE
+          </span>
         </div>
 
         {/* Right */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           {currentState === 'overview' && (
             <button
               onClick={onAdd}
-              className="w-10 h-10 flex items-center justify-center text-primary hover:bg-lavender-50 rounded-full transition-colors"
+              className="w-9 h-9 flex items-center justify-center text-primary hover:bg-lavender-50 rounded-full transition-colors"
             >
-              <Plus size={20} />
+              <Plus size={18} />
             </button>
           )}
+          {/* Condition Icon */}
+          <button
+            onClick={onConditionClick}
+            className="w-9 h-9 flex items-center justify-center text-lg hover:bg-neutral-200 rounded-full transition-colors"
+            title="오늘 컨디션"
+          >
+            {currentCondition ? conditionConfig[currentCondition].emoji : '😐'}
+          </button>
           <button
             onClick={onNotification}
-            className="relative w-10 h-10 flex items-center justify-center text-text-secondary hover:bg-neutral-200 rounded-full transition-colors"
+            className="relative w-9 h-9 flex items-center justify-center text-text-secondary hover:bg-neutral-200 rounded-full transition-colors"
           >
-            <Bell size={20} />
+            <Bell size={18} />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 bg-primary text-white text-[10px] font-medium rounded-full flex items-center justify-center">
+              <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-primary text-white text-[9px] font-medium rounded-full flex items-center justify-center">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
           </button>
           <button
             onClick={onMenu}
-            className="w-10 h-10 flex items-center justify-center text-text-secondary hover:bg-neutral-200 rounded-full transition-colors"
+            className="w-9 h-9 flex items-center justify-center text-text-secondary hover:bg-neutral-200 rounded-full transition-colors"
           >
-            <Menu size={20} />
+            <Menu size={18} />
           </button>
         </div>
       </div>
