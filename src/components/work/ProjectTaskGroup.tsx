@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { ChevronDown, ChevronUp, Plus, MoreVertical } from 'lucide-react';
-import { Task, toggleTaskComplete, getDDayLabel } from '../../services/tasks';
+import { Task, getDDayLabel } from '../../services/tasks';
+import { completeTaskWithReward } from '../../services/taskReward';
 import { Project } from '../../services/projects';
 import { useLifeOSStore, ConditionState } from '../../stores/lifeOSStore';
 
@@ -86,10 +87,11 @@ export function ProjectTaskGroup({
     const pending = tasks.filter(function(t) { return t.status !== 'done'; });
     return sortTasksByCondition(pending, conditionState);
   }, [tasks, conditionState]);
-  
-  function handleToggleTask(taskId: string, e: React.MouseEvent) {
+
+  function handleToggleTask(taskId: string, e: React.MouseEvent, wasCompleted: boolean) {
     e.stopPropagation();
-    toggleTaskComplete(taskId);
+    // ADHD 친화: 태스크 완료 시 즉각적인 보상 피드백
+    completeTaskWithReward(taskId, wasCompleted);
   }
   
   return (
@@ -183,7 +185,7 @@ export function ProjectTaskGroup({
                     onClick={function() { onTaskClick(task); }}
                   >
                     <button
-                      onClick={function(e) { handleToggleTask(task.id, e); }}
+                      onClick={function(e) { handleToggleTask(task.id, e, false); }}
                       className="w-5 h-5 rounded border-2 border-[#E5E5E5] hover:border-[#A996FF] flex-shrink-0"
                     />
                     <div className="flex-1">
@@ -218,7 +220,7 @@ export function ProjectTaskGroup({
                           onClick={function() { onTaskClick(task); }}
                         >
                           <button
-                            onClick={function(e) { handleToggleTask(task.id, e); }}
+                            onClick={function(e) { handleToggleTask(task.id, e, true); }}
                             className="w-5 h-5 rounded border-2 border-[#A996FF] bg-[#A996FF] flex-shrink-0 flex items-center justify-center"
                           >
                             <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">

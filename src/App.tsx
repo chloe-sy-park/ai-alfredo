@@ -12,9 +12,10 @@ import Drawer from './components/common/Drawer';
 import { PostActionToast } from './components/common';
 import { NudgeBubble } from './components/nudge/NudgeBubble';
 import { NudgeManager } from './components/nudge/NudgeManager';
-import { NotificationPanel } from './components/notification';
+import { NotificationPanel, PermissionPriming } from './components/notification';
 import { ShopModal, InventoryModal } from './components/penguin';
 import { ErrorContainer, NetworkStatusBanner } from './components/error/ErrorComponents';
+import { RewardFeedbackContainer } from './components/reward/RewardFeedback';
 
 // Pages - Lazy Loaded
 const Login = lazy(() => import('./pages/Login'));
@@ -139,6 +140,9 @@ function App() {
       {/* 알림 패널 */}
       <NotificationPanel />
 
+      {/* 푸시 알림 권한 요청 프라이밍 (먼저 다가감) */}
+      <PermissionPriming />
+
       {/* PRD: PostAction 브리핑 토스트 */}
       <PostActionToast
         briefing={currentBriefing}
@@ -152,6 +156,9 @@ function App() {
       {/* 펭귄 게이미피케이션 모달 */}
       <ShopModal />
       <InventoryModal />
+
+      {/* 보상 피드백 애니메이션 (ADHD 친화: 즉각 반응) */}
+      <RewardFeedbackContainer />
 
       {/* 에러 처리 UI */}
       <ErrorContainer />
