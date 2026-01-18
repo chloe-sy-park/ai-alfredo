@@ -90,7 +90,7 @@ export const useNudgeAnalyticsStore = create<NudgeAnalyticsState>()(
       interactions: [],
       pendingNudges: new Map(),
 
-      recordNudgeShown: (nudgeId, nudgeType, category) => {
+      recordNudgeShown: (nudgeId, _nudgeType, _category) => {
         const pendingNudges = new Map(get().pendingNudges);
         pendingNudges.set(nudgeId, Date.now());
         set({ pendingNudges });
@@ -104,7 +104,7 @@ export const useNudgeAnalyticsStore = create<NudgeAnalyticsState>()(
         // 현재 시간 컨텍스트 계산
         const now = new Date();
         const hour = now.getHours();
-        const timeOfDay: NudgeInteraction['context']['timeOfDay'] =
+        const timeOfDay: 'morning' | 'afternoon' | 'evening' | 'night' =
           hour >= 5 && hour < 12
             ? 'morning'
             : hour >= 12 && hour < 17
@@ -138,7 +138,6 @@ export const useNudgeAnalyticsStore = create<NudgeAnalyticsState>()(
       },
 
       getEffectivenessStats: () => {
-        const { interactions } = get();
         const categories: NudgeCategory[] = [
           'break',
           'focus',
