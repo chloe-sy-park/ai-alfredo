@@ -16,12 +16,10 @@ import { useHomeModeStore } from '../stores/homeModeStore';
 
 // Components
 import { PageHeader } from '../components/layout';
-import { MoreSheet, OSProgressBar, DecisionMatrix, TodayAgenda } from '../components/home';
-import TodayTimeline from '../components/home/TodayTimeline';
+import { MoreSheet, OSProgressBar, DecisionMatrix, TodayAgenda, AlfredoInsights, DaySchedule } from '../components/home';
 import TodayTop3 from '../components/home/TodayTop3';
 import FocusNow from '../components/home/FocusNow';
 import DailyEntry from '../components/home/DailyEntry';
-import { MiniUnderstandingWidget } from '../components/alfredo';
 import { BriefingHero } from '../components/briefing';
 
 type HomeMode = 'all' | 'work' | 'life' | 'finance';
@@ -370,9 +368,6 @@ export default function Home() {
           </h1>
         </div>
 
-        {/* 알프레도 이해도 위젯 */}
-        {understanding && <MiniUnderstandingWidget />}
-
         {/* === WORK 모드: 업무 중심 위젯 순서 === */}
         {homeMode === 'work' && (
           <>
@@ -382,14 +377,14 @@ export default function Home() {
             {/* 2. AI 의사결정 매트릭스 */}
             <DecisionMatrix condition={currentCondition} />
 
-            {/* 3. Today's Agenda */}
+            {/* 3. Today's Agenda (3가지) */}
             <TodayAgenda />
 
-            {/* 4. 오늘의 Top 3 (업무만) */}
-            <TodayTop3 onFocusSelect={handleFocusSelect} mode="work" />
+            {/* 4. Schedule 타임라인 (Google Calendar 연동) */}
+            <DaySchedule />
 
-            {/* 5. 오늘 타임라인 */}
-            <TodayTimeline />
+            {/* 5. 오늘의 Top 3 (업무만) */}
+            <TodayTop3 onFocusSelect={handleFocusSelect} mode="work" />
 
             {/* 6. 지금 집중할거 */}
             <FocusNow
@@ -404,6 +399,9 @@ export default function Home() {
               workCount={workCount}
               lifeCount={lifeCount}
             />
+
+            {/* 8. 알프레도 인사이트 (최하단) */}
+            <AlfredoInsights />
           </>
         )}
 
@@ -416,14 +414,14 @@ export default function Home() {
             {/* 2. AI 의사결정 매트릭스 */}
             <DecisionMatrix condition={currentCondition} />
 
-            {/* 3. Today's Agenda */}
+            {/* 3. Today's Agenda (3가지) */}
             <TodayAgenda />
 
-            {/* 4. 오늘의 Top 3 (개인만) */}
-            <TodayTop3 onFocusSelect={handleFocusSelect} mode="life" />
+            {/* 4. Schedule 타임라인 (Google Calendar 연동) */}
+            <DaySchedule />
 
-            {/* 5. 오늘 타임라인 */}
-            <TodayTimeline />
+            {/* 5. 오늘의 Top 3 (개인만) */}
+            <TodayTop3 onFocusSelect={handleFocusSelect} mode="life" />
 
             {/* 6. Work/Life 진행률 바 */}
             <OSProgressBar
@@ -432,6 +430,9 @@ export default function Home() {
               workCount={workCount}
               lifeCount={lifeCount}
             />
+
+            {/* 7. 알프레도 인사이트 (최하단) */}
+            <AlfredoInsights />
           </>
         )}
 
@@ -444,14 +445,14 @@ export default function Home() {
             {/* 2. AI 의사결정 매트릭스 */}
             <DecisionMatrix condition={currentCondition} />
 
-            {/* 3. Today's Agenda */}
+            {/* 3. Today's Agenda (3가지) */}
             <TodayAgenda />
 
-            {/* 4. 오늘의 Top 3 */}
-            <TodayTop3 onFocusSelect={handleFocusSelect} mode="all" />
+            {/* 4. Schedule 타임라인 (Google Calendar 연동) */}
+            <DaySchedule />
 
-            {/* 5. 오늘 타임라인 */}
-            <TodayTimeline />
+            {/* 5. 오늘의 Top 3 */}
+            <TodayTop3 onFocusSelect={handleFocusSelect} mode="all" />
 
             {/* 6. Work/Life 진행률 바 */}
             <OSProgressBar
@@ -461,15 +462,8 @@ export default function Home() {
               lifeCount={lifeCount}
             />
 
-            {/* 7. 첫 만남 카드 (하단, 오늘 처음 방문 시에만) */}
-            {!hasSeenEntryToday() && (
-              <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-xl p-4 border border-primary/10">
-                <p className="text-sm text-[#666666] mb-2">처음 오셨군요!</p>
-                <p className="text-sm text-[#1A1A1A]">
-                  오늘 하루도 알프레도와 함께해요.
-                </p>
-              </div>
-            )}
+            {/* 7. 알프레도 인사이트 (최하단) */}
+            <AlfredoInsights />
           </>
         )}
       </div>
