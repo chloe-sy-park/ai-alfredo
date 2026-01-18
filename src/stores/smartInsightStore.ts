@@ -243,8 +243,11 @@ export const useSmartInsightStore = create<SmartInsightState>()(
       name: 'alfredo-smart-insight-storage',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
+        // 세션 내 일관성을 위해 currentInsights와 lastGeneratedAt도 persist
+        currentInsights: state.currentInsights,
         dismissedInsightIds: state.dismissedInsightIds,
         shownInsightsToday: state.shownInsightsToday,
+        lastGeneratedAt: state.lastGeneratedAt,
         lastGeneratedDate: state.lastGeneratedDate
       })
     }

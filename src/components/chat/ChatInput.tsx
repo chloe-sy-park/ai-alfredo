@@ -242,17 +242,18 @@ export default function ChatInput({
           </div>
         )}
 
-        {/* 전송 버튼 */}
+        {/* 전송 버튼 - 상태별 명확한 차별화 */}
         <button
           onClick={handleSubmit}
           disabled={!message.trim() || disabled || isActive}
           className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
             message.trim() && !disabled && !isActive
-              ? 'bg-text-primary text-white hover:bg-text-secondary active:scale-95'
-              : 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
+              ? 'bg-primary text-white hover:bg-primary/90 active:scale-95 shadow-sm'
+              : 'bg-neutral-100 text-neutral-300 cursor-not-allowed opacity-60'
           }`}
+          title={message.trim() ? '메시지 전송 (Enter)' : '메시지를 입력해주세요'}
         >
-          <Send size={18} />
+          <Send size={18} className={message.trim() && !disabled && !isActive ? 'translate-x-[1px]' : ''} />
         </button>
       </div>
       <p className="text-xs text-text-muted mt-2">
