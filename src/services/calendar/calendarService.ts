@@ -57,6 +57,8 @@ export interface CalendarEvent {
   calendarId?: string;
   calendarName?: string;
   backgroundColor?: string;
+  // 알림 설정 (분 단위, null이면 알림 없음)
+  reminderMinutes?: number | null;
 }
 
 interface GoogleEvent {
