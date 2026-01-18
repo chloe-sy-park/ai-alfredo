@@ -429,7 +429,32 @@ export function removeTagFromTask(id: string, tag: string): Task | null {
   var tasks = getTasks();
   var task = tasks.find(function(t) { return t.id === id; });
   if (!task || !task.tags) return null;
-  
+
   var newTags = task.tags.filter(function(t) { return t !== tag; });
   return updateTask(id, { tags: newTags });
+}
+
+// 날짜 범위로 태스크 가져오기 (주간 리뷰용)
+export function getTasksForDateRange(startDate: Date, endDate: Date): Task[] {
+  var tasks = getTasks();
+  var start = startDate.getTime();
+  var end = endDate.getTime();
+
+  return tasks.filter(function(task) {
+    // 생성일 또는 마감일이 범위 내인 태스크
+    var createdAt = new Date(task.createdAt).getTime();
+    var dueDate = task.dueDate ? new Date(task.dueDate).getTime() : null;
+    var completedAt = task.completedAt ? new Date(task.completedAt).getTime() : null;
+
+    // 해당 기간에 생성됨
+    if (createdAt >= start && createdAt <= end) return true;
+
+    // 해당 기간에 마감됨
+    if (dueDate && dueDate >= start && dueDate <= end) return true;
+
+    // 해당 기간에 완료됨
+    if (completedAt && completedAt >= start && completedAt <= end) return true;
+
+    return false;
+  });
 }

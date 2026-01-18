@@ -14,6 +14,7 @@ import { NudgeBubble } from './components/nudge/NudgeBubble';
 import { NudgeManager } from './components/nudge/NudgeManager';
 import { NotificationPanel, PermissionPriming } from './components/notification';
 import { ShopModal, InventoryModal } from './components/penguin';
+import { AchievementModal, AchievementNotification } from './components/achievement';
 import { ErrorContainer, NetworkStatusBanner } from './components/error/ErrorComponents';
 import { RewardFeedbackContainer } from './components/reward/RewardFeedback';
 
@@ -156,6 +157,10 @@ function App() {
       {/* 펭귄 게이미피케이션 모달 */}
       <ShopModal />
       <InventoryModal />
+
+      {/* 업적 시스템 */}
+      <AchievementModal />
+      <AchievementNotification />
 
       {/* 보상 피드백 애니메이션 (ADHD 친화: 즉각 반응) */}
       <RewardFeedbackContainer />
