@@ -4,9 +4,10 @@
  * ADHD 친화적: 0.5초 이내 즉각 반응, 작은 성취 인정
  */
 
-import { Task, toggleTaskComplete } from './tasks';
+import { Task, toggleTaskComplete, getTodayCompletedCount } from './tasks';
 import { usePenguinStore } from '../stores/penguinStore';
 import { showXPReward, showCoinsReward, showLevelUpReward, showStreakReward } from '../components/reward/RewardFeedback';
+import { showNotificationPriming } from '../components/notification/PermissionPriming';
 
 /**
  * 우선순위에 따른 XP 보상 계산
@@ -71,6 +72,12 @@ export function grantTaskCompletionReward(task: Task): void {
   const newStatus = usePenguinStore.getState().status;
   if (newStatus && newStatus.level > prevLevel) {
     setTimeout(() => showLevelUpReward(newStatus.level), 400);
+  }
+
+  // 긍정적 상호작용 타이밍: 태스크 3개 완료 후 알림 프라이밍 트리거
+  const todayCompleted = getTodayCompletedCount();
+  if (todayCompleted === 3 || todayCompleted === 5) {
+    setTimeout(() => showNotificationPriming(), 2000); // 2초 후 부드럽게 표시
   }
 }
 

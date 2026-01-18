@@ -12,7 +12,7 @@ import Drawer from './components/common/Drawer';
 import { PostActionToast } from './components/common';
 import { NudgeBubble } from './components/nudge/NudgeBubble';
 import { NudgeManager } from './components/nudge/NudgeManager';
-import { NotificationPanel } from './components/notification';
+import { NotificationPanel, PermissionPriming } from './components/notification';
 import { ShopModal, InventoryModal } from './components/penguin';
 import { ErrorContainer, NetworkStatusBanner } from './components/error/ErrorComponents';
 import { RewardFeedbackContainer } from './components/reward/RewardFeedback';
@@ -139,6 +139,9 @@ function App() {
 
       {/* 알림 패널 */}
       <NotificationPanel />
+
+      {/* 푸시 알림 권한 요청 프라이밍 (먼저 다가감) */}
+      <PermissionPriming />
 
       {/* PRD: PostAction 브리핑 토스트 */}
       <PostActionToast
