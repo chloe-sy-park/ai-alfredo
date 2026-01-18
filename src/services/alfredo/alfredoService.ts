@@ -1,8 +1,8 @@
 // =============================================
 // 알프레도 육성 시스템 서비스
+// (localStorage 기반 - Supabase 직접 호출 제거)
 // =============================================
 
-import { supabase } from '../../lib/supabase';
 import type {
   Domain,
   LearningType,
@@ -59,44 +59,9 @@ function createDefaultPreferences(userId: string): AlfredoPreferences {
   };
 }
 
-// 선호도 로드 (user_settings 테이블 사용)
+// 선호도 로드 (localStorage 사용)
 export async function loadPreferences(userId: string): Promise<AlfredoPreferences> {
-  // Supabase에서 로드 시도 (user_settings 테이블)
-  try {
-    const { data, error } = await (supabase as any)
-      .from('user_settings')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
-
-    if (data && !error) {
-      // tone_axes에서 값 추출 (기존 데이터 호환)
-      const toneAxes = data.tone_axes || {};
-
-      return {
-        id: data.id,
-        userId: data.user_id,
-        // tone_axes의 1-5 스케일을 0-100으로 변환
-        toneWarmth: scaleToPercent(toneAxes.warmth ?? 4),
-        notificationFreq: scaleToPercent(toneAxes.proactivity ?? 3),
-        dataDepth: scaleToPercent(toneAxes.directness ?? 3),
-        motivationStyle: scaleToPercent(toneAxes.pressure ?? 2),
-        // 새로운 Phase 3 필드들
-        domainOverrides: (data.domain_overrides as DomainOverrides) || {},
-        currentDomain: (data.current_domain as Domain) || 'work',
-        autoDomainSwitch: data.auto_domain_switch ?? true,
-        workHoursStart: data.work_start_time || '09:00',
-        workHoursEnd: data.work_end_time || '18:00',
-        workDays: data.work_days || [1, 2, 3, 4, 5],
-        createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at)
-      };
-    }
-  } catch (e) {
-    console.warn('Supabase 로드 실패, localStorage 사용:', e);
-  }
-
-  // LocalStorage 폴백
+  // LocalStorage에서 로드
   const stored = localStorage.getItem(STORAGE_KEYS.preferences);
   if (stored) {
     const parsed = JSON.parse(stored);
@@ -112,39 +77,12 @@ export async function loadPreferences(userId: string): Promise<AlfredoPreference
   return createDefaultPreferences(userId);
 }
 
-// 선호도 저장 (user_settings 테이블 사용)
+// 선호도 저장 (localStorage 사용)
 export async function savePreferences(preferences: AlfredoPreferences): Promise<void> {
   const updated = { ...preferences, updatedAt: new Date() };
 
   // LocalStorage 저장
   localStorage.setItem(STORAGE_KEYS.preferences, JSON.stringify(updated));
-
-  // Supabase 저장 시도 (user_settings 테이블)
-  try {
-    await (supabase as any)
-      .from('user_settings')
-      .update({
-        // tone_axes 업데이트 (0-100을 1-5로 변환)
-        tone_axes: {
-          warmth: percentToScale(preferences.toneWarmth),
-          proactivity: percentToScale(preferences.notificationFreq),
-          directness: percentToScale(preferences.dataDepth),
-          humor: 3, // 기존 값 유지
-          pressure: percentToScale(preferences.motivationStyle)
-        },
-        // 새로운 Phase 3 필드들
-        domain_overrides: preferences.domainOverrides,
-        current_domain: preferences.currentDomain,
-        auto_domain_switch: preferences.autoDomainSwitch,
-        work_start_time: preferences.workHoursStart,
-        work_end_time: preferences.workHoursEnd,
-        work_days: preferences.workDays,
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', preferences.userId);
-  } catch (e) {
-    console.warn('Supabase 저장 실패:', e);
-  }
 }
 
 // 현재 영역에 맞는 스타일 계산
@@ -222,62 +160,12 @@ export async function addLearning(
   const trimmed = learnings.slice(0, 200);
   localStorage.setItem(STORAGE_KEYS.learnings, JSON.stringify(trimmed));
 
-  // Supabase 저장 시도
-  try {
-    await (supabase as any).from('alfredo_learnings').insert({
-      user_id: userId,
-      learning_type: learning.type,
-      category: learning.category,
-      summary: learning.summary,
-      original_input: learning.originalInput,
-      source: learning.source,
-      source_message_id: learning.sourceMessageId,
-      confidence: 50
-    });
-  } catch (e) {
-    console.warn('학습 저장 실패:', e);
-  }
-
   return newLearning;
 }
 
-// 학습 로드
+// 학습 로드 (localStorage 사용)
 export async function loadLearnings(userId: string): Promise<AlfredoLearning[]> {
-  // Supabase에서 로드 시도
-  try {
-    const { data, error } = await (supabase as any)
-      .from('alfredo_learnings')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(100);
-
-    if (data && !error) {
-      return data.map((item: any) => ({
-        id: item.id,
-        userId: item.user_id,
-        learningType: item.learning_type as LearningType,
-        category: item.category as Domain | 'general',
-        summary: item.summary,
-        originalInput: item.original_input,
-        appliedRules: item.applied_rules,
-        confidence: item.confidence,
-        positiveFeedbackCount: item.positive_feedback_count,
-        negativeFeedbackCount: item.negative_feedback_count,
-        source: item.source as LearningSource,
-        sourceMessageId: item.source_message_id,
-        isActive: item.is_active,
-        lastAppliedAt: item.last_applied_at ? new Date(item.last_applied_at) : undefined,
-        createdAt: new Date(item.created_at),
-        updatedAt: new Date(item.updated_at)
-      }));
-    }
-  } catch (e) {
-    console.warn('Supabase 로드 실패:', e);
-  }
-
-  // LocalStorage 폴백
+  // LocalStorage에서 로드
   const stored = localStorage.getItem(STORAGE_KEYS.learnings);
   if (stored) {
     const learnings: AlfredoLearning[] = JSON.parse(stored);
@@ -320,23 +208,6 @@ export async function giveLearningFeedback(
       localStorage.setItem(STORAGE_KEYS.learnings, JSON.stringify(learnings));
     }
   }
-
-  // Supabase 업데이트 시도
-  try {
-    if (isPositive) {
-      await (supabase as any).rpc('increment_learning_feedback', {
-        learning_id: learningId,
-        is_positive: true
-      });
-    } else {
-      await (supabase as any).rpc('increment_learning_feedback', {
-        learning_id: learningId,
-        is_positive: false
-      });
-    }
-  } catch (e) {
-    console.warn('피드백 저장 실패:', e);
-  }
 }
 
 // =============================================
@@ -368,42 +239,9 @@ function createDefaultUnderstanding(userId: string): AlfredoUnderstanding {
   };
 }
 
-// 이해도 로드
+// 이해도 로드 (localStorage 사용)
 export async function loadUnderstanding(userId: string): Promise<AlfredoUnderstanding> {
-  // Supabase에서 로드 시도
-  try {
-    const { data, error } = await (supabase as any)
-      .from('alfredo_understanding')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
-
-    if (data && !error) {
-      return {
-        id: data.id,
-        userId: data.user_id,
-        understandingScore: data.understanding_score,
-        level: data.level,
-        title: data.title,
-        weeklyLearnings: (data.weekly_learnings as WeeklyLearningItem[]) || [],
-        pendingLearnings: (data.pending_learnings as PendingLearning[]) || [],
-        workUnderstanding: data.work_understanding,
-        lifeUnderstanding: data.life_understanding,
-        totalInteractions: data.total_interactions,
-        totalLearnings: data.total_learnings,
-        totalCorrections: data.total_corrections,
-        daysTogether: data.days_together,
-        lastWeeklyReportAt: data.last_weekly_report_at ? new Date(data.last_weekly_report_at) : undefined,
-        lastWeeklyReport: data.last_weekly_report as WeeklyReport | undefined,
-        createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at)
-      };
-    }
-  } catch (e) {
-    console.warn('Supabase 로드 실패:', e);
-  }
-
-  // LocalStorage 폴백
+  // LocalStorage에서 로드
   const stored = localStorage.getItem(STORAGE_KEYS.understanding);
   if (stored) {
     const parsed = JSON.parse(stored);
@@ -420,7 +258,7 @@ export async function loadUnderstanding(userId: string): Promise<AlfredoUndersta
   return createDefaultUnderstanding(userId);
 }
 
-// 이해도 저장
+// 이해도 저장 (localStorage 사용)
 export async function saveUnderstanding(understanding: AlfredoUnderstanding): Promise<void> {
   const updated = { ...understanding, updatedAt: new Date() };
 
@@ -430,31 +268,6 @@ export async function saveUnderstanding(understanding: AlfredoUnderstanding): Pr
 
   // LocalStorage 저장
   localStorage.setItem(STORAGE_KEYS.understanding, JSON.stringify(updated));
-
-  // Supabase 저장 시도
-  try {
-    await (supabase as any)
-      .from('alfredo_understanding')
-      .upsert({
-        user_id: understanding.userId,
-        understanding_score: updated.understandingScore,
-        level: updated.level,
-        title: updated.title,
-        weekly_learnings: updated.weeklyLearnings,
-        pending_learnings: updated.pendingLearnings,
-        work_understanding: updated.workUnderstanding,
-        life_understanding: updated.lifeUnderstanding,
-        total_interactions: updated.totalInteractions,
-        total_learnings: updated.totalLearnings,
-        total_corrections: updated.totalCorrections,
-        days_together: updated.daysTogether,
-        last_weekly_report_at: updated.lastWeeklyReportAt?.toISOString(),
-        last_weekly_report: updated.lastWeeklyReport,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'user_id' });
-  } catch (e) {
-    console.warn('이해도 저장 실패:', e);
-  }
 }
 
 // 이해도 증가
@@ -530,23 +343,6 @@ export async function generateWeeklyReport(userId: string): Promise<WeeklyReport
   understanding.lastWeeklyReport = report;
   understanding.weeklyLearnings = report.learnedItems;
   await saveUnderstanding(understanding);
-
-  // Supabase 저장
-  try {
-    await (supabase as any).from('alfredo_weekly_reports').insert({
-      user_id: userId,
-      week_start: report.weekStart,
-      week_end: report.weekEnd,
-      learnings_count: report.learningsCount,
-      corrections_count: report.correctionsCount,
-      understanding_change: report.understandingChange,
-      learned_items: report.learnedItems,
-      pending_items: report.pendingItems,
-      highlight_message: report.highlightMessage
-    });
-  } catch (e) {
-    console.warn('주간 리포트 저장 실패:', e);
-  }
 
   return report;
 }
