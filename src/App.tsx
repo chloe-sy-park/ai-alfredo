@@ -31,6 +31,7 @@ const Settings = lazy(() => import('./pages/Settings'));
 const BodyDoubling = lazy(() => import('./pages/BodyDoubling'));
 const Integrations = lazy(() => import('./pages/Integrations'));
 const Help = lazy(() => import('./pages/Help'));
+const FocusTimerPage = lazy(() => import('./pages/FocusTimer'));
 
 // Entry Pages - Lazy Loaded
 const Entry = lazy(() => import('./pages/Entry'));
@@ -121,6 +122,7 @@ function App() {
             <Route path="/body-doubling" element={<BodyDoubling />} />
             <Route path="/integrations" element={<Integrations />} />
             <Route path="/help" element={<Help />} />
+            <Route path="/focus-timer" element={<FocusTimerPage />} />
 
             {/* Entry Routes */}
             <Route path="/entry" element={<Entry />} />
