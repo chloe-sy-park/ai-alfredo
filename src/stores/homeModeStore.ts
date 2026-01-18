@@ -1,17 +1,18 @@
 /**
  * Home Mode Store
- * 홈 화면의 현재 모드(all/work/life)를 전역에서 관리
+ * 홈 화면의 현재 모드(all/work/life/finance)를 전역에서 관리
  */
 
 import { create } from 'zustand';
 
-type HomeMode = 'all' | 'work' | 'life';
+type HomeMode = 'all' | 'work' | 'life' | 'finance';
 
 interface HomeModeState {
   mode: HomeMode;
   setMode: (mode: HomeMode) => void;
   isWorkMode: () => boolean;
   isLifeMode: () => boolean;
+  isFinanceMode: () => boolean;
 }
 
 export const useHomeModeStore = create<HomeModeState>(function(set, get) {
@@ -28,6 +29,10 @@ export const useHomeModeStore = create<HomeModeState>(function(set, get) {
 
     isLifeMode: function() {
       return get().mode === 'life';
+    },
+
+    isFinanceMode: function() {
+      return get().mode === 'finance';
     }
   };
 });

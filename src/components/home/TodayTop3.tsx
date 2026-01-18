@@ -15,10 +15,11 @@ import { CelebrationParticles } from '../common/SuccessFeedback';
 
 interface TodayTop3Props {
   onFocusSelect?: (item: Top3Item) => void;
+  mode?: 'all' | 'work' | 'life';  // 페이지별 필터링 모드
 }
 
-export default function TodayTop3({ onFocusSelect }: TodayTop3Props) {
-  var [items, setItems] = useState<Top3Item[]>([]);
+export default function TodayTop3({ onFocusSelect, mode = 'all' }: TodayTop3Props) {
+  var [allItems, setAllItems] = useState<Top3Item[]>([]);
   var [isAdding, setIsAdding] = useState(false);
   var [newTitle, setNewTitle] = useState('');
   var [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -28,6 +29,14 @@ export default function TodayTop3({ onFocusSelect }: TodayTop3Props) {
   useEffect(function() {
     loadItems();
   }, []);
+
+  // mode에 따른 필터링된 아이템
+  var items = allItems.filter(function(item) {
+    if (mode === 'all') return true;
+    if (mode === 'work') return !item.isPersonal;
+    if (mode === 'life') return item.isPersonal;
+    return true;
+  });
 
   // 진도 추적 및 100% 달성 감지
   useEffect(function() {
@@ -46,9 +55,9 @@ export default function TodayTop3({ onFocusSelect }: TodayTop3Props) {
   function loadItems() {
     var data = getTodayTop3();
     if (data) {
-      setItems(data.items);
+      setAllItems(data.items);
     } else {
-      setItems([]);
+      setAllItems([]);
     }
   }
 
@@ -88,23 +97,29 @@ export default function TodayTop3({ onFocusSelect }: TodayTop3Props) {
   function handleDragOver(e: React.DragEvent, idx: number) {
     e.preventDefault();
     if (dragIndex === null || dragIndex === idx) return;
-    
-    var newItems = [...items];
-    var dragged = newItems[dragIndex];
-    newItems.splice(dragIndex, 1);
-    newItems.splice(idx, 0, dragged);
-    
-    newItems = newItems.map(function(item, i) {
-      return { ...item, order: i };
+
+    // 필터링된 아이템 재정렬
+    var filteredItems = [...items];
+    var dragged = filteredItems[dragIndex];
+    filteredItems.splice(dragIndex, 1);
+    filteredItems.splice(idx, 0, dragged);
+
+    // 전체 아이템에서 필터링된 아이템의 순서 반영
+    var newAllItems = allItems.map(function(item) {
+      var filteredIdx = filteredItems.findIndex(function(f) { return f.id === item.id; });
+      if (filteredIdx !== -1) {
+        return { ...item, order: filteredIdx };
+      }
+      return item;
     });
-    
-    setItems(newItems);
+
+    setAllItems(newAllItems);
     setDragIndex(idx);
   }
 
   function handleDragEnd() {
     if (dragIndex !== null) {
-      saveTop3(items);
+      saveTop3(allItems);
     }
     setDragIndex(null);
   }

@@ -16,7 +16,7 @@ import { usePostAction } from '../stores/postActionStore';
 import { getTodayEvents, CalendarEvent } from '../services/calendar';
 import { getActiveProjects, Project, updateProjectTaskCounts } from '../services/projects';
 import { Briefcase, Plus, LayoutGrid, List } from 'lucide-react';
-import PriorityStack from '../components/home/PriorityStack';
+import TodayTop3 from '../components/home/TodayTop3';
 import ProjectPulse from '../components/home/ProjectPulse';
 import ActionCard from '../components/home/ActionCard';
 
@@ -131,27 +131,6 @@ export default function Work() {
     });
   };
 
-  // PRD R5: 우선순위는 순서다 - 업무 태스크를 우선순위로 변환
-  const getWorkPriorityItems = () => {
-    // 미완료 태스크만, 우선순위 높은 것 먼저
-    const pendingTasks = tasks.filter((t) => t.status !== 'done');
-
-    // 우선순위 정렬: high > medium > low
-    const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
-    pendingTasks.sort((a, b) => {
-      return (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2);
-    });
-
-    // Top 3만 반환
-    return pendingTasks.slice(0, 3).map((task) => ({
-      id: task.id,
-      title: task.title,
-      sourceTag: 'WORK' as const,
-      meta: task.priority === 'high' ? '긴급' : task.dueDate ? '마감' : undefined,
-      status: task.status === 'in_progress' ? 'in-progress' as const : 'pending' as const
-    }));
-  };
-
   return (
     <div className="min-h-screen bg-background dark:bg-gray-900">
       <PageHeader />
@@ -211,12 +190,7 @@ export default function Work() {
             <WorkBriefing tasks={tasks} events={events} />
 
             {/* PRD R5: 오늘의 우선순위 (순서로 표시) */}
-            {getWorkPriorityItems().length > 0 && (
-              <PriorityStack
-                items={getWorkPriorityItems()}
-                count={3}
-              />
-            )}
+            <TodayTop3 mode="work" />
 
             {/* PRD: ActionCards - 대응이 필요한 항목 */}
             {events.length > 0 && (

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useAlfredoStore } from '../stores/alfredoStore';
 import { getTodayEvents, isGoogleAuthenticated, CalendarEvent } from '../services/calendar';
@@ -17,8 +17,6 @@ import { useHomeModeStore } from '../stores/homeModeStore';
 // Components
 import { PageHeader } from '../components/layout';
 import { ModeCards, MoreSheet, ModeSwitch, BalanceHint } from '../components/home';
-import BriefingCard from '../components/home/BriefingCard';
-import LiveBriefing from '../components/home/LiveBriefing';
 import TodayTimeline from '../components/home/TodayTimeline';
 import ConditionQuick from '../components/home/ConditionQuick';
 import TodayTop3 from '../components/home/TodayTop3';
@@ -26,16 +24,15 @@ import FocusNow from '../components/home/FocusNow';
 import WeatherCard from '../components/home/WeatherCard';
 import QuickMemoCard from '../components/home/QuickMemoCard';
 import DailyEntry from '../components/home/DailyEntry';
-import { calculateIntensity } from '../components/common/IntensityBadge';
-import { SkeletonCard, SkeletonBriefing } from '../components/common/Skeleton';
+import { SkeletonCard } from '../components/common/Skeleton';
 import { MiniUnderstandingWidget } from '../components/alfredo';
-import { PenguinWidget } from '../components/penguin';
+import { BriefingHero } from '../components/briefing';
 
-type IntensityLevel = 'light' | 'normal' | 'heavy' | 'overloaded';
-type HomeMode = 'all' | 'work' | 'life';
+type HomeMode = 'all' | 'work' | 'life' | 'finance';
 
 export default function Home() {
   const location = useLocation();
+  const navigate = useNavigate();
   const user = useAuthStore().user;
   const { initialize: initAlfredo, understanding } = useAlfredoStore();
   const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
@@ -43,7 +40,6 @@ export default function Home() {
   const [currentCondition, setCurrentCondition] = useState<ConditionLevel | null>(null);
   const [currentFocus, setCurrentFocus] = useState<FocusItem | null>(null);
   const [weather, setWeather] = useState<WeatherData | null>(null);
-  const [intensity, setIntensity] = useState<IntensityLevel>('normal');
   const [top3Items, setTop3Items] = useState<Top3Item[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDailyEntry, setShowDailyEntry] = useState(false);
@@ -103,11 +99,8 @@ export default function Home() {
     
     if (connected) {
       getTodayEvents()
-        .then(function(events) { 
+        .then(function(events) {
           setCalendarEvents(events);
-          // 강도 계산
-          var calculatedIntensity = calculateIntensity(events.length, currentCondition || undefined);
-          setIntensity(calculatedIntensity);
         })
         .catch(function(err) { console.error('Calendar error:', err); });
     }
@@ -184,12 +177,6 @@ export default function Home() {
     // 로딩 완료
     setTimeout(function() { setIsLoading(false); }, 500);
   }, [homeMode]);
-
-  // 컨디션 변경 시 강도 재계산
-  useEffect(function() {
-    var calculatedIntensity = calculateIntensity(calendarEvents.length, currentCondition || undefined);
-    setIntensity(calculatedIntensity);
-  }, [currentCondition, calendarEvents.length]);
 
   // 컨디션 변경 핸들러
   function handleConditionChange(level: ConditionLevel) {
@@ -326,9 +313,9 @@ export default function Home() {
 
   // 모드 표시를 위한 배지 (색상 강화)
   const ModeBadge = () => {
-    if (homeMode === 'all') return null;
+    if (homeMode === 'all' || homeMode === 'finance') return null;
 
-    const badgeStyles = {
+    const badgeStyles: Record<'work' | 'life', string> = {
       work: 'bg-work-bg text-work-text border border-work-border',
       life: 'bg-life-bg text-life-text border border-life-border',
     };
@@ -364,6 +351,12 @@ export default function Home() {
         <ModeSwitch
           activeMode={homeMode}
           onChange={function(mode) {
+            // Finance 모드 선택 시 Finance 페이지로 이동
+            if (mode === 'finance') {
+              navigate('/finance');
+              return;
+            }
+
             var previousMode = homeMode;
             setHomeMode(mode);
             setGlobalMode(mode); // 전역 스토어 동기화
@@ -408,36 +401,20 @@ export default function Home() {
         {/* === WORK 모드: 업무 중심 위젯 순서 === */}
         {homeMode === 'work' && (
           <>
-            {/* 1. 오늘 타임라인 (일정 우선) */}
+            {/* 1. Hero 브리핑 (최상단) */}
+            <BriefingHero mode="work" onMore={function() { setIsMoreSheetOpen(true); }} />
+
+            {/* 2. 오늘의 Top 3 (업무만) */}
+            <TodayTop3 onFocusSelect={handleFocusSelect} mode="work" />
+
+            {/* 3. 오늘 타임라인 */}
             <TodayTimeline />
 
-            {/* 2. 지금 집중할거 */}
+            {/* 4. 지금 집중할거 */}
             <FocusNow
               externalFocus={currentFocus}
               onFocusChange={handleFocusChange}
             />
-
-            {/* 3. 오늘의 Top 3 (업무만) */}
-            <TodayTop3 onFocusSelect={handleFocusSelect} />
-
-            {/* 4. 알프레도 브리핑 */}
-            {isLoading ? (
-              <SkeletonBriefing />
-            ) : (
-              <BriefingCard
-                headline={briefing.headline}
-                subline={briefing.subline}
-                intensity={intensity}
-                emailSummary={briefing.emailSummary}
-                hasImportantEmail={briefing.hasImportantEmail}
-                onMore={function() { setIsMoreSheetOpen(true); }}
-                onFeedback={function(type) {
-                  if (type === 'helpful') postAction.onBriefingFeedback('positive');
-                  else if (type === 'different') postAction.onBriefingFeedback('different');
-                  else if (type === 'skip') postAction.onBriefingFeedback('skip');
-                }}
-              />
-            )}
 
             {/* 5. 기억해야할거 */}
             <QuickMemoCard />
@@ -447,38 +424,19 @@ export default function Home() {
         {/* === LIFE 모드: 개인 중심 위젯 순서 === */}
         {homeMode === 'life' && (
           <>
-            {/* 1. 컨디션 퀵변경 (우선) */}
+            {/* 1. Hero 브리핑 (최상단) */}
+            <BriefingHero mode="life" onMore={function() { setIsMoreSheetOpen(true); }} />
+
+            {/* 2. 오늘의 Top 3 (개인만) */}
+            <TodayTop3 onFocusSelect={handleFocusSelect} mode="life" />
+
+            {/* 3. 컨디션 퀵변경 */}
             <ConditionQuick onConditionChange={handleConditionChange} />
 
-            {/* 2. 알프레도 브리핑 */}
-            {isLoading ? (
-              <SkeletonBriefing />
-            ) : (
-              <BriefingCard
-                headline={briefing.headline}
-                subline={briefing.subline}
-                intensity={intensity}
-                emailSummary={briefing.emailSummary}
-                hasImportantEmail={briefing.hasImportantEmail}
-                onMore={function() { setIsMoreSheetOpen(true); }}
-                onFeedback={function(type) {
-                  if (type === 'helpful') postAction.onBriefingFeedback('positive');
-                  else if (type === 'different') postAction.onBriefingFeedback('different');
-                  else if (type === 'skip') postAction.onBriefingFeedback('skip');
-                }}
-              />
-            )}
-
-            {/* 3. 펭귄 위젯 (게이미피케이션) */}
-            <PenguinWidget />
-
-            {/* 4. 오늘의 Top 3 (개인만) */}
-            <TodayTop3 onFocusSelect={handleFocusSelect} />
-
-            {/* 5. 날씨 카드 */}
+            {/* 4. 날씨 카드 */}
             {isLoading ? <SkeletonCard /> : <WeatherCard />}
 
-            {/* 6. 기억해야할거 */}
+            {/* 5. 기억해야할거 */}
             <QuickMemoCard />
           </>
         )}
@@ -486,35 +444,25 @@ export default function Home() {
         {/* === ALL 모드: 전체 위젯 표시 === */}
         {homeMode === 'all' && (
           <>
-            {/* 날씨 카드 */}
-            {isLoading ? <SkeletonCard /> : <WeatherCard />}
+            {/* 1. Hero 브리핑 (최상단) */}
+            <BriefingHero mode="all" onMore={function() { setIsMoreSheetOpen(true); }} />
 
-            {/* 컨디션 퀵변경 */}
+            {/* 2. 오늘의 Top 3 */}
+            <TodayTop3 onFocusSelect={handleFocusSelect} mode="all" />
+
+            {/* 3. 오늘 타임라인 */}
+            <TodayTimeline />
+
+            {/* 4. 지금 집중할거 */}
+            <FocusNow
+              externalFocus={currentFocus}
+              onFocusChange={handleFocusChange}
+            />
+
+            {/* 5. 컨디션 퀵변경 */}
             <ConditionQuick onConditionChange={handleConditionChange} />
 
-            {/* Live Briefing - 지금 이 순간의 상태 */}
-            <LiveBriefing onMore={function() { setIsMoreSheetOpen(true); }} />
-
-            {/* 알프레도 브리핑 (상세) */}
-            {isLoading ? (
-              <SkeletonBriefing />
-            ) : (
-              <BriefingCard
-                headline={briefing.headline}
-                subline={briefing.subline}
-                intensity={intensity}
-                emailSummary={briefing.emailSummary}
-                hasImportantEmail={briefing.hasImportantEmail}
-                onMore={function() { setIsMoreSheetOpen(true); }}
-                onFeedback={function(type) {
-                  if (type === 'helpful') postAction.onBriefingFeedback('positive');
-                  else if (type === 'different') postAction.onBriefingFeedback('different');
-                  else if (type === 'skip') postAction.onBriefingFeedback('skip');
-                }}
-              />
-            )}
-
-            {/* PRD: BalanceHint (mini) - 균형 표시 */}
+            {/* 6. PRD: BalanceHint (mini) - 균형 표시 */}
             <BalanceHint
               workPercent={workCount > 0 || lifeCount > 0
                 ? Math.round((workCount / (workCount + lifeCount)) * 100)
@@ -524,23 +472,11 @@ export default function Home() {
                 : 50}
             />
 
-            {/* 지금 집중할거 - 가장 강조 */}
-            <FocusNow
-              externalFocus={currentFocus}
-              onFocusChange={handleFocusChange}
-            />
+            {/* 7. 날씨 카드 */}
+            {isLoading ? <SkeletonCard /> : <WeatherCard />}
 
-            {/* 오늘의 Top 3 */}
-            <TodayTop3 onFocusSelect={handleFocusSelect} />
-
-            {/* 펭귄 위젯 (게이미피케이션) */}
-            <PenguinWidget />
-
-            {/* 기억해야할거 */}
+            {/* 8. 기억해야할거 */}
             <QuickMemoCard />
-
-            {/* 오늘 타임라인 */}
-            <TodayTimeline />
           </>
         )}
       </div>

@@ -1,4 +1,4 @@
-type Mode = 'all' | 'work' | 'life';
+type Mode = 'all' | 'work' | 'life' | 'finance';
 
 interface ModeSwitchProps {
   activeMode: Mode;
@@ -10,6 +10,7 @@ export default function ModeSwitch({ activeMode, onChange }: ModeSwitchProps) {
     { key: 'all', label: 'ALL', activeClass: 'bg-primary text-white' },
     { key: 'work', label: 'WORK', activeClass: 'bg-work-text text-white' },
     { key: 'life', label: 'LIFE', activeClass: 'bg-life-text text-white' },
+    { key: 'finance', label: 'FINANCE', activeClass: 'bg-emerald-600 text-white' },
   ];
 
   return (
