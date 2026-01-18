@@ -127,7 +127,7 @@ export function getProactivityLabel(value: number): string {
 // 프리셋 정보
 export const TONE_PRESET_INFO = {
   friend: { icon: '🌸', label: '포근한 친구', desc: '따뜻, 공감, 재촉 안 함' },
-  butler: { icon: '🐧', label: '믿음직한 집사', desc: '따뜻 + 체계적 (기본)' },
+  butler: { icon: '🎩', label: '믿음직한 집사', desc: '따뜻 + 체계적 (기본)' },
   secretary: { icon: '⚖️', label: '담백한 비서', desc: '감정 최소, 정보 중심' },
   coach: { icon: '🔥', label: '열정 코치', desc: '적극 푸시, 동기부여' },
   trainer: { icon: '😈', label: '독한 트레이너', desc: '직설, 약간 도발' }

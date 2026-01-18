@@ -20,9 +20,16 @@ export default function Step5Growth() {
         AlFredo는 성장합니다
       </h1>
       
-      {/* 펭귄 + 프로그레스 */}
-      <div className="bg-[#F0F0FF] rounded-3xl p-8 mb-8 w-full max-w-xs">
-        <div className="text-6xl mb-4">🐧</div>
+      {/* 알프레도 + 프로그레스 */}
+      <div className="rounded-3xl p-8 mb-8 w-full max-w-xs" style={{ backgroundColor: 'var(--surface-subtle)' }}>
+        <div className="w-20 h-20 mx-auto mb-4 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--surface-default)' }}>
+          <img
+            src="/assets/alfredo/avatar/alfredo-avatar-80.png"
+            alt="알프레도"
+            className="w-full h-full object-contain"
+            onError={(e) => { (e.target as HTMLImageElement).outerHTML = '<span class="text-6xl">🎩</span>'; }}
+          />
+        </div>
         
         {/* 성장률 */}
         <div className="flex items-center justify-center gap-2 mb-3">

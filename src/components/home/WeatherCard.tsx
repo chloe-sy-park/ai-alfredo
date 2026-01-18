@@ -98,7 +98,7 @@ export default function WeatherCard() {
       {/* 알프레도의 조언 */}
       <div className="mt-3 pt-3 border-t border-[#E5E5E5]">
         <p className="text-sm text-[#666666]">
-          🐧 {tempAdvice}
+          🎩 {tempAdvice}
         </p>
       </div>
     </div>

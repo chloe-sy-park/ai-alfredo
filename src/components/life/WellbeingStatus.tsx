@@ -47,7 +47,7 @@ export default function WellbeingStatus({ condition: propCondition }: WellbeingS
         };
       default:
         return {
-          icon: '🐧',
+          icon: '🎩',
           message: '오늘은 어떤 하루인가요?',
           subMessage: '알프레도가 곁에서 함께할게요'
         };

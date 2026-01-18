@@ -108,9 +108,14 @@ export default function LiveBriefing({ className = '', onMore }: LiveBriefingPro
     <div className={'bg-white rounded-2xl p-4 shadow-sm border border-[#E5E5E5] ' + className}>
       {/* 헤더 */}
       <div className="flex items-start gap-3">
-        {/* 펭귄 아바타 */}
-        <div className="w-12 h-12 bg-[#F0F0FF] rounded-xl flex items-center justify-center flex-shrink-0">
-          <span className="text-2xl">🐧</span>
+        {/* 알프레도 아바타 */}
+        <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
+          <img
+            src="/assets/alfredo/avatar/alfredo-avatar-48.png"
+            alt="알프레도"
+            className="w-10 h-10 object-contain"
+            onError={(e) => { (e.target as HTMLImageElement).outerHTML = '<span class="text-2xl">🎩</span>'; }}
+          />
         </div>
 
         {/* 브리핑 내용 */}

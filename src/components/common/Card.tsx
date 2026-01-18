@@ -94,10 +94,15 @@ export function AlfredoCard({
         {/* 아바타 - 40x40 */}
         {showAvatar && (
           <div
-            className="w-10 h-10 rounded-full flex items-center justify-center shadow-sm flex-shrink-0"
-            style={{ backgroundColor: 'var(--surface-default)' }}
+            className="w-10 h-10 rounded-full flex items-center justify-center shadow-sm flex-shrink-0 overflow-hidden"
+            style={{ backgroundColor: 'var(--surface-subtle)' }}
           >
-            <span className="text-xl">🐧</span>
+            <img
+              src="/assets/alfredo/avatar/alfredo-avatar-48.png"
+              alt="알프레도"
+              className="w-8 h-8 object-contain"
+              onError={(e) => { (e.target as HTMLImageElement).outerHTML = '<span class="text-xl">🎩</span>'; }}
+            />
           </div>
         )}
         <div className="flex-1 min-w-0">

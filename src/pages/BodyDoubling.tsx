@@ -74,13 +74,20 @@ const BodyDoubling: React.FC = function() {
         {!isActive ? (
           // 세션 시작 화면
           <div className="w-full max-w-sm space-y-6">
-            {/* 펭귄 + 메시지 */}
+            {/* 알프레도 + 메시지 */}
             <div className="text-center">
-              <div className="text-6xl mb-4">🐧</div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+              <div className="w-24 h-24 mx-auto mb-4 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
+                <img
+                  src="/assets/alfredo/avatar/alfredo-avatar-120.png"
+                  alt="알프레도"
+                  className="w-full h-full object-contain"
+                  onError={(e) => { (e.target as HTMLImageElement).outerHTML = '<span class="text-6xl">🎩</span>'; }}
+                />
+              </div>
+              <h2 className="text-xl font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
                 함께 집중해요!
               </h2>
-              <p className="text-gray-600 text-sm">
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                 알프레도가 옆에서 같이 일할게요
               </p>
             </div>
@@ -144,13 +151,18 @@ const BodyDoubling: React.FC = function() {
         ) : (
           // 세션 진행 화면
           <div className="w-full max-w-sm space-y-6 text-center">
-            {/* 펭귄 애니메이션 */}
+            {/* 알프레도 애니메이션 */}
             <div className="relative">
-              <div className="text-8xl animate-bounce">
-                🐧
+              <div className="w-32 h-32 mx-auto animate-bounce rounded-full overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
+                <img
+                  src="/assets/alfredo/avatar/alfredo-avatar-120.png"
+                  alt="알프레도"
+                  className="w-full h-full object-contain"
+                  onError={(e) => { (e.target as HTMLImageElement).outerHTML = '<span class="text-8xl">🎩</span>'; }}
+                />
               </div>
               <div className="absolute -bottom-2 left-1/2 -translate-x-1/2">
-                <div className="text-xs text-gray-500">
+                <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
                   열심히 하고 있어요!
                 </div>
               </div>

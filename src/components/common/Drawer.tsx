@@ -119,10 +119,17 @@ const Drawer: React.FC<DrawerProps> = ({ isOpen, onClose }) => {
         {/* 헤더 */}
         <div className="flex items-center justify-between p-4 border-b border-gray-100 safe-area-top">
           <div className="flex items-center gap-3">
-            <div className="text-3xl">🐧</div>
+            <div className="w-12 h-12 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
+              <img
+                src="/assets/alfredo/avatar/alfredo-avatar-48.png"
+                alt="알프레도"
+                className="w-full h-full object-contain"
+                onError={(e) => { (e.target as HTMLImageElement).outerHTML = '<span class="text-3xl">🎩</span>'; }}
+              />
+            </div>
             <div>
-              <h2 className="font-bold text-gray-900">AlFredo</h2>
-              <p className="text-xs text-gray-500">함께한 지 14일째</p>
+              <h2 className="font-bold" style={{ color: 'var(--text-primary)' }}>AlFredo</h2>
+              <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>함께한 지 14일째</p>
             </div>
           </div>
           <button

@@ -34,7 +34,14 @@ export const NudgeBubble: React.FC = () => {
           {/* 헤더 */}
           <div className="flex items-start justify-between mb-2">
             <div className="flex items-center gap-2">
-              <div className="text-2xl">🐧</div>
+              <div className="w-8 h-8 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
+                <img
+                  src="/assets/alfredo/avatar/alfredo-avatar-32.png"
+                  alt="알프레도"
+                  className="w-full h-full object-contain"
+                  onError={(e) => { (e.target as HTMLImageElement).outerHTML = '<span class="text-2xl">🎩</span>'; }}
+                />
+              </div>
               <span className="text-xs text-gray-500">
                 알프레도
               </span>

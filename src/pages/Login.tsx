@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react';
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [imageError, setImageError] = useState(false);
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
@@ -21,11 +22,22 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F0F0FF] dark:bg-neutral-900 flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ backgroundColor: 'var(--bg-primary)' }}>
       <div className="text-center mb-8">
-        <div className="text-7xl mb-4">🐧</div>
-        <h1 className="text-3xl font-bold text-[#1A1A1A] dark:text-white mb-2">알프레도</h1>
-        <p className="text-[#666666] dark:text-neutral-400">AI 라이프 버틀러</p>
+        <div className="w-28 h-28 mx-auto mb-4 rounded-full flex items-center justify-center overflow-hidden shadow-lg" style={{ backgroundColor: 'var(--surface-subtle)' }}>
+          {!imageError ? (
+            <img
+              src="/assets/alfredo/avatar/alfredo-avatar-256.png"
+              alt="알프레도"
+              className="w-24 h-24 object-contain"
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <span className="text-5xl">🎩</span>
+          )}
+        </div>
+        <h1 className="text-3xl font-bold heading-kr mb-2" style={{ color: 'var(--text-primary)' }}>알프레도</h1>
+        <p style={{ color: 'var(--text-secondary)' }}>AI 라이프 버틀러</p>
       </div>
 
       <div className="w-full max-w-sm space-y-4">

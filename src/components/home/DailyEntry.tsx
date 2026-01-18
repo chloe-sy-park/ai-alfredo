@@ -46,24 +46,31 @@ export default function DailyEntry({ onComplete, userName, briefing, isFirstVisi
         transition={{ duration: 0.5 }}
       >
         <div className="max-w-[400px] mx-auto px-8 text-center">
-          {/* Step 0: 펭귄 등장 */}
+          {/* Step 0: 알프레도 등장 */}
           <AnimatePresence mode="wait">
             {step === 0 && (
               <motion.div
-                key="penguin"
+                key="alfredo"
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
                 transition={{ duration: 0.3 }}
                 className="mb-8"
               >
-                <div className="text-6xl mb-4">🐧</div>
+                <div className="w-24 h-24 mx-auto mb-4 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
+                  <img
+                    src="/assets/alfredo/avatar/alfredo-avatar-120.png"
+                    alt="알프레도"
+                    className="w-full h-full object-contain"
+                    onError={(e) => { (e.target as HTMLImageElement).outerHTML = '<span class="text-6xl">🎩</span>'; }}
+                  />
+                </div>
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
                 >
-                  <p className="text-[#666666] text-sm">알프레도가 준비했어요</p>
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>알프레도가 준비했어요</p>
                 </motion.div>
               </motion.div>
             )}
@@ -76,8 +83,15 @@ export default function DailyEntry({ onComplete, userName, briefing, isFirstVisi
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
               >
-                {/* 작은 펭귄 */}
-                <div className="text-3xl mb-6">🐧</div>
+                {/* 작은 알프레도 */}
+                <div className="w-12 h-12 mx-auto mb-6 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
+                  <img
+                    src="/assets/alfredo/avatar/alfredo-avatar-48.png"
+                    alt="알프레도"
+                    className="w-full h-full object-contain"
+                    onError={(e) => { (e.target as HTMLImageElement).outerHTML = '<span class="text-3xl">🎩</span>'; }}
+                  />
+                </div>
                 
                 {/* 인사 */}
                 <motion.p

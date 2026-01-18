@@ -124,7 +124,7 @@ export default function ShareModal({ isOpen, onClose, data }: ShareModalProps) {
 
   // 텍스트 복사
   const handleCopy = async () => {
-    const text = `🐧 나의 알프레도 Wrapped
+    const text = `🎩 나의 알프레도 Wrapped
 
 📅 ${data.period}
 📊 ${data.totalLifts}번의 판단 변화

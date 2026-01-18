@@ -1,5 +1,5 @@
 /**
- * 🐧 AppEnhanced.jsx - 새 기능들이 통합된 확장 App
+ * 🎩 AppEnhanced.jsx - 새 기능들이 통합된 확장 App
  * 
  * 원본 App.jsx를 import하고 새 기능들을 래핑
  * 
@@ -238,7 +238,7 @@ export function getEnhancedMenuItems(openEnhancedView) {
     },
     {
       id: 'personality',
-      icon: '🐧',
+      icon: '🎩',
       title: '알프레도 성격',
       subtitle: '말투 & 스타일 설정',
       color: 'from-violet-500 to-purple-500',

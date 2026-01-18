@@ -61,7 +61,7 @@ self.addEventListener('push', (event) => {
   console.log('[SW] Push received:', event);
   
   let data = {
-    title: '🐧 알프레도',
+    title: '🎩 알프레도',
     body: '새로운 알림이 있어요!',
     icon: '/icons/icon-192x192.png',
     badge: '/alfredo-badge.svg',
@@ -94,7 +94,7 @@ self.addEventListener('push', (event) => {
       { action: 'dismiss', title: '닫기' }
     ];
   } else if (data.type === 'break') {
-    data.title = '🐧 알프레도가 말해요';
+    data.title = '🎩 알프레도가 말해요';
     data.body = '잠깐 스트레칭 어때요?';
     data.requireInteraction = true;
     data.actions = [

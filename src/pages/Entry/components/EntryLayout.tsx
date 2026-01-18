@@ -16,8 +16,13 @@ export default function EntryLayout({ children }: EntryLayoutProps) {
           transition={{ duration: 0.5 }}
           className="flex justify-center mb-8"
         >
-          <div className="w-16 h-16 bg-primary-main rounded-full flex items-center justify-center">
-            <span className="text-3xl">🐧</span>
+          <div className="w-16 h-16 rounded-full flex items-center justify-center overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
+            <img
+              src="/assets/alfredo/avatar/alfredo-avatar-64.png"
+              alt="알프레도"
+              className="w-12 h-12 object-contain"
+              onError={(e) => { (e.target as HTMLImageElement).outerHTML = '<span class="text-3xl">🎩</span>'; }}
+            />
           </div>
         </motion.div>
 

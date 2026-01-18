@@ -123,7 +123,14 @@ export const PenguinStatusBar: React.FC = () => {
       onClick={openShop}
       className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-neutral-800 rounded-full shadow-md"
     >
-      <span className="text-xl">🐧</span>
+      <div className="w-6 h-6 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
+        <img
+          src="/assets/alfredo/avatar/alfredo-avatar-24.png"
+          alt="알프레도"
+          className="w-full h-full object-contain"
+          onError={(e) => { (e.target as HTMLImageElement).outerHTML = '<span class="text-xl">🎩</span>'; }}
+        />
+      </div>
       <div className="flex items-center gap-2 text-sm">
         <span className="font-medium text-[#A996FF]">Lv.{status.level}</span>
         <span className="text-neutral-300 dark:text-neutral-600">|</span>

@@ -29,7 +29,7 @@ export interface NotificationTemplate {
 // 아침 브리핑 템플릿
 export const MORNING_BRIEFING_TEMPLATES: NotificationTemplate[] = [
   {
-    title: '🐧 좋은 아침이에요!',
+    title: '🎩 좋은 아침이에요!',
     body: '오늘 일정 확인하러 오세요.',
     tag: 'morning-briefing',
     actions: [
@@ -39,7 +39,7 @@ export const MORNING_BRIEFING_TEMPLATES: NotificationTemplate[] = [
     data: { type: 'morning_briefing' }
   },
   {
-    title: '🐧 일어나셨어요?',
+    title: '🎩 일어나셨어요?',
     body: '오늘 하루 시작해볼까요?',
     tag: 'morning-briefing',
     actions: [
@@ -56,7 +56,7 @@ export function getMeetingReminderTemplate(
   minutesBefore: number
 ): NotificationTemplate {
   return {
-    title: '🐧 미팅 알림',
+    title: '🎩 미팅 알림',
     body: minutesBefore > 0 
       ? `${minutesBefore}분 후 "${meetingTitle}" 시작해요!`
       : `"${meetingTitle}" 지금 시작이에요!`,
@@ -86,7 +86,7 @@ export function getTaskReminderTemplate(
   ];
   
   return {
-    title: '🐧 태스크 알림',
+    title: '🎩 태스크 알림',
     body: bodies[Math.floor(Math.random() * bodies.length)],
     tag: `task-${Date.now()}`,
     actions: [
@@ -103,7 +103,7 @@ export function getTaskReminderTemplate(
 // 휴식 알림 템플릿
 export const BREAK_REMINDER_TEMPLATES: NotificationTemplate[] = [
   {
-    title: '🐧 쉬어가요',
+    title: '🎩 쉬어가요',
     body: '집중 잘 하고 있어요! 잠깐 스트레칭 어때요?',
     tag: 'break-reminder',
     actions: [
@@ -113,7 +113,7 @@ export const BREAK_REMINDER_TEMPLATES: NotificationTemplate[] = [
     data: { type: 'break_reminder' }
   },
   {
-    title: '🐧 눈 좀 쉬세요',
+    title: '🎩 눈 좀 쉬세요',
     body: '20-20-20 규칙! 20초간 20피트(6m) 먼 곳을 보세요.',
     tag: 'break-reminder',
     actions: [
@@ -122,7 +122,7 @@ export const BREAK_REMINDER_TEMPLATES: NotificationTemplate[] = [
     data: { type: 'break_reminder' }
   },
   {
-    title: '🐧 물 마실 시간',
+    title: '🎩 물 마실 시간',
     body: '수분 보충도 집중력에 도움이 돼요!',
     tag: 'break-reminder',
     actions: [
@@ -135,7 +135,7 @@ export const BREAK_REMINDER_TEMPLATES: NotificationTemplate[] = [
 // 저녁 마무리 템플릿
 export const EVENING_WRAP_TEMPLATES: NotificationTemplate[] = [
   {
-    title: '🐧 하루 마무리',
+    title: '🎩 하루 마무리',
     body: '오늘 수고했어요! 내일 준비하고 쉬세요.',
     tag: 'evening-wrap',
     actions: [
@@ -145,7 +145,7 @@ export const EVENING_WRAP_TEMPLATES: NotificationTemplate[] = [
     data: { type: 'evening_wrap' }
   },
   {
-    title: '🐧 퇴근 시간이에요',
+    title: '🎩 퇴근 시간이에요',
     body: '오늘 잘했어요. 이제 쉬세요!',
     tag: 'evening-wrap',
     actions: [
@@ -158,19 +158,19 @@ export const EVENING_WRAP_TEMPLATES: NotificationTemplate[] = [
 // 격려 메시지 템플릿
 export const ENCOURAGEMENT_TEMPLATES: NotificationTemplate[] = [
   {
-    title: '🐧 잘하고 있어요!',
+    title: '🎩 잘하고 있어요!',
     body: '오늘 벌써 많이 했어요. 이 페이스 좋아요!',
     tag: 'encouragement',
     data: { type: 'encouragement' }
   },
   {
-    title: '🐧 파이팅!',
+    title: '🎩 파이팅!',
     body: '힘든 일도 조금씩 하면 끝나요. 할 수 있어요!',
     tag: 'encouragement',
     data: { type: 'encouragement' }
   },
   {
-    title: '🐧 대단해요!',
+    title: '🎩 대단해요!',
     body: '오늘 집중 시간이 벌써 2시간! 👏',
     tag: 'encouragement',
     data: { type: 'encouragement' }
@@ -182,7 +182,7 @@ export function getOverloadWarningTemplate(
   meetingCount: number
 ): NotificationTemplate {
   return {
-    title: '🐧 오늘 빡세네요',
+    title: '🎩 오늘 빡세네요',
     body: `미팅 ${meetingCount}개... 사이사이 숨 쉬세요!`,
     tag: 'overload-warning',
     actions: [
@@ -198,7 +198,7 @@ export function getOverloadWarningTemplate(
 // 바디더블링 권유 템플릿
 export const BODY_DOUBLING_TEMPLATES: NotificationTemplate[] = [
   {
-    title: '🐧 같이 일할까요?',
+    title: '🎩 같이 일할까요?',
     body: '바디더블링 모드로 옆에서 함께 할게요.',
     tag: 'body-doubling',
     actions: [
@@ -215,7 +215,7 @@ export function getFocusEndTemplate(
   taskTitle?: string
 ): NotificationTemplate {
   return {
-    title: '🐧 집중 완료!',
+    title: '🎩 집중 완료!',
     body: taskTitle 
       ? `${duration}분 동안 "${taskTitle}" 끝냈어요! 🎉`
       : `${duration}분 집중 완료! 수고했어요 🎉`,

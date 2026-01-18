@@ -122,7 +122,14 @@ export default function SafetyMessage({
         {/* 알프레도 메시지 */}
         <div className="bg-white/80 rounded-xl p-4 mb-3">
           <div className="flex items-start gap-2">
-            <span className="text-xl flex-shrink-0">🐧</span>
+            <div className="w-8 h-8 flex-shrink-0 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
+              <img
+                src="/assets/alfredo/avatar/alfredo-avatar-32.png"
+                alt="알프레도"
+                className="w-full h-full object-contain"
+                onError={(e) => { (e.target as HTMLImageElement).outerHTML = '<span class="text-xl">🎩</span>'; }}
+              />
+            </div>
             <p className="text-sm text-neutral-700 whitespace-pre-wrap leading-relaxed">
               {message}
             </p>
@@ -185,7 +192,14 @@ export function SafetyBanner({ message }: { message: string }) {
   return (
     <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 animate-fade-in">
       <div className="flex items-start gap-2">
-        <span className="text-lg">🐧</span>
+        <div className="w-6 h-6 flex-shrink-0 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
+          <img
+            src="/assets/alfredo/avatar/alfredo-avatar-24.png"
+            alt="알프레도"
+            className="w-full h-full object-contain"
+            onError={(e) => { (e.target as HTMLImageElement).outerHTML = '<span class="text-lg">🎩</span>'; }}
+          />
+        </div>
         <div className="flex-1">
           <p className="text-sm text-blue-800">{message}</p>
         </div>

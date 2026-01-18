@@ -45,14 +45,21 @@ export default function Step4Intervention() {
               </div>
               
               {/* AlFredo 메시지 */}
-              <div className="flex items-start gap-3 bg-[#F0F0FF] rounded-xl p-3">
+              <div className="flex items-start gap-3 rounded-xl p-3" style={{ backgroundColor: 'var(--surface-subtle)' }}>
                 <span className="text-2xl">{scenario.emoji}</span>
                 <div>
                   <div className="flex items-center gap-1 mb-1">
-                    <span className="text-lg">🐧</span>
-                    <span className="text-xs font-medium text-[#A996FF]">AlFredo</span>
+                    <div className="w-6 h-6 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--surface-default)' }}>
+                      <img
+                        src="/assets/alfredo/avatar/alfredo-avatar-24.png"
+                        alt="알프레도"
+                        className="w-full h-full object-contain"
+                        onError={(e) => { (e.target as HTMLImageElement).outerHTML = '<span class="text-lg">🎩</span>'; }}
+                      />
+                    </div>
+                    <span className="text-xs font-medium" style={{ color: 'var(--accent-primary)' }}>AlFredo</span>
                   </div>
-                  <p className="text-sm text-[#1A1A1A]">{scenario.message}</p>
+                  <p className="text-sm" style={{ color: 'var(--text-primary)' }}>{scenario.message}</p>
                 </div>
               </div>
             </div>
