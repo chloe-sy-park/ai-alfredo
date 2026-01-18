@@ -608,29 +608,114 @@ function OverviewScreen({
       .slice(0, 5);
   }, [oneTimeExpenses, recurringItems]);
 
-  // Empty State (데이터 없음)
-  if (itemCount === 0) {
+  // Empty State - 기본 대시보드 (데이터 없어도 유용한 정보 제공)
+  if (itemCount === 0 && oneTimeExpenses.length === 0) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
-        className="px-4 pt-8 text-center"
+        className="px-4 pt-4 space-y-4"
       >
-        <div className="w-20 h-20 bg-lavender-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Wallet size={40} className="text-primary" />
+        {/* Hero 섹션 - 환영 메시지 */}
+        <div className="bg-gradient-to-r from-emerald-50 via-amber-50/30 to-emerald-50 rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-2xl">💰</span>
+            <h2 className="text-lg font-bold text-gray-800">Finance OS</h2>
+          </div>
+          <p className="text-sm text-gray-600 mb-1">
+            돈의 흐름을 한눈에 파악하세요
+          </p>
+          <p className="text-xs text-gray-500">
+            구독, 정기결제, 일상 지출을 체계적으로 관리해요
+          </p>
         </div>
-        <h3 className="text-xl font-semibold text-gray-800 mb-2">시작하기</h3>
-        <p className="text-sm text-gray-500 mb-6">
-          구독/정기결제를 추가하면<br />
-          AlFredo가 똑똑하게 관리해줄게요
-        </p>
-        <button
-          onClick={onQuickAddRecurring}
-          className="px-6 py-3 bg-accent text-accent-dark font-medium rounded-xl hover:bg-accent-muted transition-colors"
-        >
-          첫 구독 추가하기
-        </button>
+
+        {/* 이번 달 요약 (빈 상태) */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div className="text-sm text-gray-500 mb-3">이번 달 요약</div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-center p-4 bg-gray-50 rounded-xl">
+              <div className="text-2xl font-bold text-gray-300">₩0</div>
+              <div className="text-xs text-gray-400 mt-1">고정 지출</div>
+            </div>
+            <div className="text-center p-4 bg-gray-50 rounded-xl">
+              <div className="text-2xl font-bold text-gray-300">₩0</div>
+              <div className="text-xs text-gray-400 mt-1">변동 지출</div>
+            </div>
+          </div>
+        </div>
+
+        {/* 시작하기 가이드 */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div className="flex items-center gap-2 mb-4">
+            <Sparkles size={18} className="text-amber-500" />
+            <span className="text-sm font-medium text-gray-700">시작하기</span>
+          </div>
+
+          <div className="space-y-3">
+            {/* 가이드 아이템 1 */}
+            <button
+              onClick={onQuickAddRecurring}
+              className="w-full flex items-center gap-3 p-3 bg-lavender-50 rounded-xl hover:bg-lavender-100 transition-colors text-left"
+            >
+              <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center flex-shrink-0">
+                <Repeat size={20} className="text-primary" />
+              </div>
+              <div className="flex-1">
+                <div className="text-sm font-medium text-gray-800">정기결제 추가</div>
+                <div className="text-xs text-gray-500">넷플릭스, 유튜브 프리미엄 등</div>
+              </div>
+              <ChevronRight size={18} className="text-gray-400" />
+            </button>
+
+            {/* 가이드 아이템 2 */}
+            <button
+              onClick={onQuickAddRecurring}
+              className="w-full flex items-center gap-3 p-3 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-colors text-left"
+            >
+              <div className="w-10 h-10 bg-emerald-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                <ArrowDownCircle size={20} className="text-emerald-600" />
+              </div>
+              <div className="flex-1">
+                <div className="text-sm font-medium text-gray-800">수입 등록</div>
+                <div className="text-xs text-gray-500">월급, 부수입 등</div>
+              </div>
+              <ChevronRight size={18} className="text-gray-400" />
+            </button>
+
+            {/* 가이드 아이템 3 */}
+            <button
+              onClick={onQuickAddRecurring}
+              className="w-full flex items-center gap-3 p-3 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors text-left"
+            >
+              <div className="w-10 h-10 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                <CreditCard size={20} className="text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <div className="text-sm font-medium text-gray-800">지출 기록</div>
+                <div className="text-xs text-gray-500">영수증, CSV 가져오기</div>
+              </div>
+              <ChevronRight size={18} className="text-gray-400" />
+            </button>
+          </div>
+        </div>
+
+        {/* 하단 팁 */}
+        <div className="bg-amber-50 rounded-xl p-4 border border-amber-100">
+          <div className="flex items-start gap-2">
+            <Target size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm text-amber-800 font-medium">
+                재정 관리 팁
+              </p>
+              <p className="text-xs text-amber-700 mt-1">
+                먼저 정기결제부터 등록하면 매달 나가는 돈을 파악할 수 있어요.
+                중복 구독이나 안 쓰는 서비스를 찾아드릴게요!
+              </p>
+            </div>
+          </div>
+        </div>
       </motion.div>
     );
   }
