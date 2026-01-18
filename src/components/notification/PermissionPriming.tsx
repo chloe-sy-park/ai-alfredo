@@ -85,7 +85,7 @@ export function PermissionPriming({
 }: PermissionPrimingProps) {
   const [isVisible, setIsVisible] = useState(false);
   const { permission, isSupported, subscribe, isLoading } = usePushNotification();
-  const { dismissed, setDismissed, incrementShown, shouldShow } = usePrimingStore();
+  const { setDismissed, incrementShown, shouldShow } = usePrimingStore();
 
   // 자동 트리거: 조건 충족 시 표시
   useEffect(() => {

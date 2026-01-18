@@ -4,7 +4,6 @@
  * ADHD 친화적: 0.5초 이내 즉각 반응, 작은 성취 인정
  */
 
-import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { create } from 'zustand';
 
