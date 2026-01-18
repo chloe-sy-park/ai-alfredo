@@ -174,6 +174,7 @@ export default {
       
       fontFamily: {
         sans: [
+          '"Pretendard Variable"',
           'Pretendard',
           '-apple-system',
           'BlinkMacSystemFont',
@@ -181,6 +182,35 @@ export default {
           'system-ui',
           'sans-serif',
         ],
+        body: ['var(--font-body)'],
+        'heading-en': ['var(--font-heading-en)'],
+        'heading-kr': ['var(--font-heading-kr)'],
+        ui: ['var(--font-ui)'],
+        numbers: ['var(--font-numbers)'],
+      },
+
+      // Letter Spacing (tracking)
+      letterSpacing: {
+        'tight': 'var(--tracking-tight)',      // -3%
+        'heading': 'var(--tracking-heading)',  // -2%
+        'normal': 'var(--tracking-normal)',    // 0%
+        'ui': 'var(--tracking-ui)',            // +1%
+        'wide': 'var(--tracking-wide)',        // +2%
+        'os-work': 'var(--tracking-os-work)',
+        'os-life': 'var(--tracking-os-life)',
+        'os-finance': 'var(--tracking-os-finance)',
+      },
+
+      // Line Height (leading)
+      lineHeight: {
+        'tight': 'var(--leading-tight)',       // 1.2
+        'snug': 'var(--leading-snug)',         // 1.4
+        'normal': 'var(--leading-normal)',     // 1.5
+        'relaxed': 'var(--leading-relaxed)',   // 1.6
+        'loose': 'var(--leading-loose)',       // 1.8
+        'os-work': 'var(--leading-os-work)',
+        'os-life': 'var(--leading-os-life)',
+        'os-finance': 'var(--leading-os-finance)',
       },
       
       // Spacing Scale (8px base)

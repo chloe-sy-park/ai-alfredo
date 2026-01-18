@@ -68,10 +68,13 @@ export default function CalendarConnect({ onNext }: CalendarConnectProps) {
     <div className="flex flex-col h-full">
       {/* 헤더 */}
       <div className="mb-8">
-        <h2 className="text-xl font-bold text-[#1A1A1A] mb-2">
+        <h2
+          className="text-xl font-bold mb-2 heading-kr"
+          style={{ color: 'var(--text-primary)' }}
+        >
           캘린더를 연동하면
         </h2>
-        <p className="text-[#666666]">
+        <p className="body-text" style={{ color: 'var(--text-secondary)' }}>
           알프레도가 더 똑똑해져요
         </p>
       </div>
@@ -83,8 +86,14 @@ export default function CalendarConnect({ onNext }: CalendarConnectProps) {
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.5 }}
       >
-        <div className={`w-32 h-32 ${isConnected ? 'bg-green-100' : 'bg-purple-100'} rounded-3xl flex items-center justify-center relative overflow-hidden`}>
-          <Calendar className={`w-16 h-16 ${isConnected ? 'text-green-600' : 'text-[#A996FF]'}`} />
+        <div
+          className="w-32 h-32 rounded-3xl flex items-center justify-center relative overflow-hidden"
+          style={{ backgroundColor: isConnected ? 'rgba(31, 169, 123, 0.1)' : 'rgba(201, 162, 94, 0.1)' }}
+        >
+          <Calendar
+            className="w-16 h-16"
+            style={{ color: isConnected ? 'var(--state-success)' : 'var(--accent-primary)' }}
+          />
           
           {/* 연동 성공 체크 */}
           {isConnected && (
@@ -92,7 +101,8 @@ export default function CalendarConnect({ onNext }: CalendarConnectProps) {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ type: "spring", stiffness: 300 }}
-              className="absolute -top-2 -right-2 w-10 h-10 bg-green-500 rounded-full flex items-center justify-center"
+              className="absolute -top-2 -right-2 w-10 h-10 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: 'var(--state-success)' }}
             >
               <Check className="w-6 h-6 text-white" />
             </motion.div>
@@ -102,7 +112,10 @@ export default function CalendarConnect({ onNext }: CalendarConnectProps) {
 
       {/* 혜택 리스트 */}
       <div className="flex-1 space-y-3 mb-8">
-        <p className="text-sm font-semibold text-[#1A1A1A] mb-4">
+        <p
+          className="text-sm font-semibold mb-4"
+          style={{ color: 'var(--text-primary)' }}
+        >
           이런 것들이 가능해져요:
         </p>
         {benefits.map((benefit, index) => (
@@ -113,10 +126,13 @@ export default function CalendarConnect({ onNext }: CalendarConnectProps) {
             transition={{ delay: index * 0.1 }}
             className="flex items-start gap-3"
           >
-            <div className="w-5 h-5 bg-[#A996FF] bg-opacity-20 rounded-full flex items-center justify-center mt-0.5">
-              <Check className="w-3 h-3 text-[#A996FF]" />
+            <div
+              className="w-5 h-5 rounded-full flex items-center justify-center mt-0.5"
+              style={{ backgroundColor: 'rgba(201, 162, 94, 0.2)' }}
+            >
+              <Check className="w-3 h-3" style={{ color: 'var(--accent-primary)' }} />
             </div>
-            <p className="text-sm text-[#666666] flex-1">{benefit}</p>
+            <p className="text-sm flex-1" style={{ color: 'var(--text-secondary)' }}>{benefit}</p>
           </motion.div>
         ))}
       </div>
@@ -125,15 +141,22 @@ export default function CalendarConnect({ onNext }: CalendarConnectProps) {
       <div className="mb-6">
         <button
           onClick={() => setShowPreview(!showPreview)}
-          className="w-full flex items-center justify-between p-3 bg-[#F8F8FF] rounded-xl hover:bg-[#F0F0FF] transition-colors"
+          className="w-full flex items-center justify-between p-3 rounded-xl transition-colors"
+          style={{ backgroundColor: 'var(--surface-subtle)' }}
         >
           <div className="flex items-center gap-2">
-            <Eye className="w-4 h-4 text-[#A996FF]" />
-            <span className="text-sm font-medium text-[#666666]">
+            <Eye className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+            <span
+              className="text-sm font-medium"
+              style={{ color: 'var(--text-secondary)' }}
+            >
               이 데이터를 쓰면, 이런 판단이 가능해져요
             </span>
           </div>
-          <ChevronRight className={`w-4 h-4 text-[#999999] transition-transform ${showPreview ? 'rotate-90' : ''}`} />
+          <ChevronRight
+            className={`w-4 h-4 transition-transform ${showPreview ? 'rotate-90' : ''}`}
+            style={{ color: 'var(--text-tertiary)' }}
+          />
         </button>
 
         <AnimatePresence>
@@ -145,10 +168,22 @@ export default function CalendarConnect({ onNext }: CalendarConnectProps) {
               transition={{ duration: 0.3 }}
               className="overflow-hidden"
             >
-              <div className="mt-3 p-4 bg-white rounded-xl border border-[#E5E5E5] shadow-sm">
+              <div
+                className="mt-3 p-4 rounded-xl shadow-sm"
+                style={{
+                  backgroundColor: 'var(--surface-default)',
+                  borderColor: 'var(--border-default)',
+                  borderWidth: 1
+                }}
+              >
                 <div className="flex items-center gap-2 mb-3">
-                  <Sparkles className="w-4 h-4 text-[#A996FF]" />
-                  <span className="text-xs font-medium text-[#A996FF]">샘플 브리핑 미리보기</span>
+                  <Sparkles className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+                  <span
+                    className="text-xs font-medium"
+                    style={{ color: 'var(--accent-primary)' }}
+                  >
+                    샘플 브리핑 미리보기
+                  </span>
                 </div>
 
                 {/* 샘플 브리핑 카드 */}
@@ -159,11 +194,20 @@ export default function CalendarConnect({ onNext }: CalendarConnectProps) {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.3 }}
-                    className="p-3 bg-[#FAFAFA] rounded-lg"
+                    className="p-3 rounded-lg"
+                    style={{ backgroundColor: 'var(--surface-subtle)' }}
                   >
                     <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 bg-[#F0F0FF] rounded-lg flex items-center justify-center flex-shrink-0">
-                        <span className="text-lg">🐧</span>
+                      <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden"
+                        style={{ backgroundColor: 'var(--surface-subtle)' }}
+                      >
+                        <img
+                          src="/assets/alfredo/avatar/alfredo-avatar-32.png"
+                          alt="알프레도"
+                          className="w-6 h-6 object-contain"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
@@ -171,7 +215,10 @@ export default function CalendarConnect({ onNext }: CalendarConnectProps) {
                             {SAMPLE_BRIEFINGS[currentSampleIndex].status}
                           </span>
                         </div>
-                        <p className="text-sm text-[#1A1A1A] leading-snug">
+                        <p
+                          className="text-sm leading-snug"
+                          style={{ color: 'var(--text-primary)' }}
+                        >
                           {SAMPLE_BRIEFINGS[currentSampleIndex].headline}
                         </p>
                       </div>
@@ -185,9 +232,12 @@ export default function CalendarConnect({ onNext }: CalendarConnectProps) {
                     <button
                       key={index}
                       onClick={() => setCurrentSampleIndex(index)}
-                      className={`w-2 h-2 rounded-full transition-colors ${
-                        index === currentSampleIndex ? 'bg-[#A996FF]' : 'bg-[#E5E5E5]'
-                      }`}
+                      className="w-2 h-2 rounded-full transition-colors"
+                      style={{
+                        backgroundColor: index === currentSampleIndex
+                          ? 'var(--accent-primary)'
+                          : 'var(--border-default)'
+                      }}
                       aria-label={`샘플 ${index + 1}`}
                     />
                   ))}
@@ -199,8 +249,14 @@ export default function CalendarConnect({ onNext }: CalendarConnectProps) {
       </div>
 
       {/* 안내 메시지 */}
-      <div className="mb-6 p-4 bg-[#F8F8FF] rounded-xl">
-        <p className="text-sm text-[#666666] text-center">
+      <div
+        className="mb-6 p-4 rounded-xl"
+        style={{ backgroundColor: 'var(--surface-subtle)' }}
+      >
+        <p
+          className="text-sm text-center"
+          style={{ color: 'var(--text-secondary)' }}
+        >
           🔒 데이터는 안전하게 보호되며, 읽기 권한만 요청해요
         </p>
       </div>
@@ -211,15 +267,18 @@ export default function CalendarConnect({ onNext }: CalendarConnectProps) {
           <button
             onClick={handleConnect}
             disabled={isConnecting}
-            className={`w-full py-4 rounded-2xl font-medium transition-all flex items-center justify-center gap-2 ${
-              isConnecting 
-                ? 'bg-[#E5E5E5] text-[#999999]' 
-                : 'bg-[#1A1A1A] text-white hover:bg-[#333333]'
-            }`}
+            className="w-full py-4 rounded-2xl ui-button transition-all flex items-center justify-center gap-2"
+            style={{
+              backgroundColor: isConnecting ? 'var(--border-default)' : 'var(--accent-primary)',
+              color: isConnecting ? 'var(--text-tertiary)' : 'var(--accent-on)'
+            }}
           >
             {isConnecting ? (
               <>
-                <div className="w-5 h-5 border-2 border-[#999999] border-t-transparent rounded-full animate-spin" />
+                <div
+                  className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin"
+                  style={{ borderColor: 'var(--text-tertiary)' }}
+                />
                 <span>연동 중...</span>
               </>
             ) : (
@@ -237,18 +296,23 @@ export default function CalendarConnect({ onNext }: CalendarConnectProps) {
           >
             <button
               onClick={handleContinue}
-              className="w-full py-4 bg-[#1A1A1A] text-white rounded-2xl font-medium hover:bg-[#333333] transition-colors flex items-center justify-center gap-2 group"
+              className="w-full py-4 rounded-2xl ui-button transition-colors flex items-center justify-center gap-2 group"
+              style={{
+                backgroundColor: 'var(--accent-primary)',
+                color: 'var(--accent-on)'
+              }}
             >
               <span>계속하기</span>
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
           </motion.div>
         )}
-        
+
         {!isConnected && (
           <button
             onClick={() => onNext({ calendarConnected: false })}
-            className="w-full py-4 text-[#666666] font-medium hover:text-[#1A1A1A] transition-colors"
+            className="w-full py-4 ui-button transition-colors"
+            style={{ color: 'var(--text-secondary)' }}
           >
             나중에 연동할게요
           </button>

@@ -57,7 +57,7 @@ export function FinanceOverviewWidget({
 
       {/* Monthly Total */}
       <div className="mb-4">
-        <span className="text-2xl font-bold text-gray-900">
+        <span className="text-2xl font-bold text-gray-900 number-finance">
           ₩{monthlyFixedExpense.toLocaleString()}
         </span>
         <span className="text-xs text-gray-500 ml-1">/월</span>
@@ -95,7 +95,7 @@ export function FinanceOverviewWidget({
                 <span className="text-xs text-gray-400">D-{payment.daysUntil}</span>
                 <span className="text-sm text-gray-700">{payment.name}</span>
               </div>
-              <span className="text-sm font-medium text-gray-900">
+              <span className="text-sm font-medium text-gray-900 number-finance">
                 ₩{payment.amount.toLocaleString()}
               </span>
             </div>

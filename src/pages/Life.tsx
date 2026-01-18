@@ -121,7 +121,7 @@ export default function Life() {
   };
 
   return (
-    <div className="min-h-screen bg-background dark:bg-gray-900">
+    <div className="min-h-screen bg-background dark:bg-gray-900 typo-os-life">
       <PageHeader />
 
       <div className="max-w-[640px] mx-auto px-4 py-4 space-y-4">

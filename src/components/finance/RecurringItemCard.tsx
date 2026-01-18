@@ -43,7 +43,7 @@ export function RecurringItemCard({
           <div className="flex items-center gap-2 mb-2">
             {item.icon && <span className="text-lg">{item.icon}</span>}
             <span className="font-medium text-gray-900">{item.name}</span>
-            <span className="text-sm font-semibold text-gray-700">
+            <span className="text-sm font-semibold text-gray-700 number-finance">
               ₩{item.amount.toLocaleString()}
             </span>
           </div>
