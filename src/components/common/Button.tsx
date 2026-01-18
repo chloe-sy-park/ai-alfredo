@@ -1,4 +1,4 @@
-import { ButtonHTMLAttributes, ReactNode } from 'react';
+import { ButtonHTMLAttributes, ReactNode, CSSProperties } from 'react';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'icon';
 type ButtonSize = 'sm' | 'md' | 'lg';
@@ -23,36 +23,58 @@ export default function Button({
   fullWidth = false,
   disabled,
   className = '',
+  style,
   ...props
 }: ButtonProps) {
   // Base styles
-  var baseStyles = 'inline-flex items-center justify-center font-semibold transition-all duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#A996FF] focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
-  
-  // Variant styles (라이트모드)
-  var variantStyles = {
-    primary: 'bg-[#FFD700] text-[#1A1A1A] hover:brightness-110 active:scale-95 shadow-[0_2px_4px_rgba(0,0,0,0.1)] rounded-full',
-    secondary: 'bg-white text-[#1A1A1A] border border-[#E5E5E5] hover:border-[#D4D4D4] active:scale-95 rounded-full',
-    ghost: 'bg-transparent text-[#666666] hover:text-[#1A1A1A] hover:bg-[#F5F5F5] rounded-lg',
-    icon: 'bg-[#F5F5F5] text-[#666666] hover:bg-[#E5E5E5] active:scale-95 rounded-full',
+  const baseStyles = 'inline-flex items-center justify-center font-semibold transition-all duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+
+  // Variant class styles (layout only)
+  const variantClasses: Record<ButtonVariant, string> = {
+    primary: 'hover:brightness-110 active:scale-95 shadow-[0_2px_4px_rgba(0,0,0,0.1)] rounded-full',
+    secondary: 'active:scale-95 rounded-full',
+    ghost: 'rounded-lg',
+    icon: 'active:scale-95 rounded-full',
   };
-  
+
+  // Variant inline styles using design tokens
+  const variantInlineStyles: Record<ButtonVariant, CSSProperties> = {
+    primary: {
+      backgroundColor: 'var(--accent-primary)',
+      color: 'var(--accent-on)',
+    },
+    secondary: {
+      backgroundColor: 'var(--surface-default)',
+      color: 'var(--text-primary)',
+      border: '1px solid var(--border-default)',
+    },
+    ghost: {
+      backgroundColor: 'transparent',
+      color: 'var(--text-secondary)',
+    },
+    icon: {
+      backgroundColor: 'var(--surface-subtle)',
+      color: 'var(--text-secondary)',
+    },
+  };
+
   // Size styles
-  var sizeStyles = {
+  const sizeStyles: Record<ButtonSize, string> = {
     sm: 'text-sm px-4 py-2 min-h-[36px]',
     md: 'text-base px-5 py-2.5 min-h-[44px]',
     lg: 'text-base px-6 py-3 min-h-[48px]',
   };
-  
+
   // Icon size styles
-  var iconSizeStyles = {
+  const iconSizeStyles: Record<ButtonSize, string> = {
     sm: 'w-9 h-9',
     md: 'w-11 h-11',
     lg: 'w-12 h-12',
   };
-  
-  var finalClassName = [
+
+  const finalClassName = [
     baseStyles,
-    variantStyles[variant],
+    variantClasses[variant],
     variant === 'icon' ? iconSizeStyles[size] : sizeStyles[size],
     fullWidth ? 'w-full' : '',
     className,
@@ -61,6 +83,7 @@ export default function Button({
   return (
     <button
       className={finalClassName}
+      style={{ ...variantInlineStyles[variant], ...style }}
       disabled={disabled || isLoading}
       {...props}
     >
@@ -88,9 +111,9 @@ export default function Button({
       ) : leftIcon ? (
         <span className="mr-2">{leftIcon}</span>
       ) : null}
-      
+
       {children}
-      
+
       {rightIcon && !isLoading && (
         <span className="ml-2">{rightIcon}</span>
       )}
