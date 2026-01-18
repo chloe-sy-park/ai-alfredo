@@ -25,6 +25,14 @@ export interface ChatMessage {
 
   // 스트리밍 상태
   isStreaming?: boolean;
+
+  // 학습 추출 결과 ("기억해둘게요" UI용)
+  newLearnings?: Array<{
+    id: string;
+    summary: string;
+    type: string;
+    confirmed?: boolean;
+  }>;
 }
 
 export interface JudgementReflection {

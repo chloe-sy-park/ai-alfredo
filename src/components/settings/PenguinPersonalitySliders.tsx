@@ -194,20 +194,74 @@ export default function PenguinPersonalitySliders() {
     return traits.join(', ') + ' 알프레도';
   };
 
+  // 실시간 톤 프리뷰 - 알프레도가 실제로 어떻게 말하는지 예시
+  const getTonePreviewMessage = () => {
+    const { toneStyle, motivationStyle } = localValues;
+
+    // 상황: 오늘 미팅 3개, 보고서 마감
+    if (toneStyle <= 25) {
+      // 매우 다정
+      if (motivationStyle <= 40) {
+        return '"오늘 미팅 3개나 있네요. 힘들 수 있으니까 중간에 잠깐 쉬어가요, 괜찮죠? 💙"';
+      }
+      return '"미팅 3개에 보고서까지! 오전에 보고서 먼저 끝내볼까요? 할 수 있어요 ✨"';
+    } else if (toneStyle <= 50) {
+      // 친근 + 명확
+      if (motivationStyle <= 40) {
+        return '"미팅 3개, 보고서 마감 있네요. 오전에 보고서 먼저 하면 여유로울 것 같아요."';
+      }
+      return '"오늘 빡세네요! 보고서 먼저 쳐내고 미팅 가볼까요?"';
+    } else if (toneStyle <= 75) {
+      // 직접적
+      if (motivationStyle >= 60) {
+        return '"미팅 3개, 보고서 마감. 보고서 오전 중 완료 필수. 가능하죠?"';
+      }
+      return '"미팅 3개, 보고서 마감. 오전에 보고서 끝내세요."';
+    } else {
+      // 매우 직설적
+      return '"미팅 3개. 보고서 마감 17시. 지금 당장 보고서 시작 안 하면 야근이에요."';
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* 알프레도 프리뷰 */}
-      <div className="rounded-xl p-4 text-center" style={{ background: 'linear-gradient(135deg, rgba(201, 162, 94, 0.1) 0%, rgba(201, 162, 94, 0.05) 100%)' }}>
-        <div className="w-16 h-16 mx-auto mb-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
-          <img
-            src="/assets/alfredo/avatar/alfredo-avatar-64.png"
-            alt="알프레도"
-            className="w-full h-full object-contain"
-            onError={(e) => { (e.target as HTMLImageElement).outerHTML = '<span class="text-4xl">🎩</span>'; }}
-          />
+      <div className="rounded-xl p-4" style={{ background: 'linear-gradient(135deg, rgba(201, 162, 94, 0.1) 0%, rgba(201, 162, 94, 0.05) 100%)' }}>
+        <div className="flex items-start gap-3">
+          <div className="w-12 h-12 flex-shrink-0 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
+            <img
+              src="/assets/alfredo/avatar/alfredo-avatar-64.png"
+              alt="알프레도"
+              className="w-full h-full object-contain"
+              onError={(e) => { (e.target as HTMLImageElement).outerHTML = '<span class="text-2xl">🎩</span>'; }}
+            />
+          </div>
+          <div className="flex-1">
+            <p className="text-xs font-medium mb-1" style={{ color: 'var(--os-work)' }}>{getPersonalitySummary()}</p>
+            {/* 실시간 톤 프리뷰 말풍선 */}
+            <div
+              className="relative p-3 rounded-xl text-sm"
+              style={{
+                backgroundColor: 'var(--surface-default)',
+                color: 'var(--text-primary)',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+              }}
+            >
+              <div
+                className="absolute -left-2 top-3 w-0 h-0"
+                style={{
+                  borderTop: '6px solid transparent',
+                  borderBottom: '6px solid transparent',
+                  borderRight: '8px solid var(--surface-default)'
+                }}
+              />
+              {getTonePreviewMessage()}
+            </div>
+            <p className="text-xs mt-2" style={{ color: 'var(--text-tertiary)' }}>
+              🎯 상황: 오늘 미팅 3개, 보고서 마감
+            </p>
+          </div>
         </div>
-        <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{getPersonalitySummary()}</p>
-        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>슬라이더를 조절해서 알프레도의 성격을 설정하세요</p>
       </div>
 
       {/* 슬라이더들 */}
