@@ -9,6 +9,8 @@ export { default as ChatLauncher } from './ChatLauncher';
 export { default as MoreSheet } from './MoreSheet';
 export { default as ConditionCompact } from './ConditionCompact';
 export { default as OSProgressBar } from './OSProgressBar';
+export { default as DecisionMatrix } from './DecisionMatrix';
+export { default as TodayAgenda } from './TodayAgenda';
 
 // WORK mode components
 export { default as ProjectPulse } from './ProjectPulse';
