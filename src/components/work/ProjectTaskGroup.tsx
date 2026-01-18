@@ -1,7 +1,61 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { ChevronDown, ChevronUp, Plus, MoreVertical } from 'lucide-react';
 import { Task, toggleTaskComplete, getDDayLabel } from '../../services/tasks';
 import { Project } from '../../services/projects';
+import { useLifeOSStore, ConditionState } from '../../stores/lifeOSStore';
+
+/**
+ * 태스크 작업 유형 추론 (Deep/Light/Admin)
+ * - Deep: 30분 이상 또는 high priority
+ * - Admin: tags에 'admin', 'email', 'meeting' 포함
+ * - Light: 그 외
+ */
+type WorkType = 'deep' | 'light' | 'admin';
+
+function inferWorkType(task: Task): WorkType {
+  const adminTags = ['admin', 'email', 'meeting', '미팅', '회의', '이메일'];
+
+  // Admin 체크
+  if (task.tags?.some(tag => adminTags.includes(tag.toLowerCase()))) {
+    return 'admin';
+  }
+
+  // Deep work 체크: 30분 이상 또는 high priority
+  if ((task.estimatedMinutes && task.estimatedMinutes >= 30) || task.priority === 'high') {
+    return 'deep';
+  }
+
+  return 'light';
+}
+
+/**
+ * Condition 상태에 따른 태스크 정렬
+ * - good: Deep → Light → Admin (집중력 높을 때 딥워크 먼저)
+ * - ok: balanced (원래 순서 유지)
+ * - low: Light → Admin → Deep (가벼운 것부터)
+ */
+function sortTasksByCondition(tasks: Task[], conditionState: ConditionState | null): Task[] {
+  if (!conditionState || conditionState === 'ok') {
+    // ok 상태거나 condition 없으면 원래 순서 유지
+    return tasks;
+  }
+
+  const workTypeOrder: Record<ConditionState, WorkType[]> = {
+    good: ['deep', 'light', 'admin'],
+    ok: ['deep', 'light', 'admin'],
+    low: ['light', 'admin', 'deep']
+  };
+
+  const order = workTypeOrder[conditionState];
+
+  return [...tasks].sort((a, b) => {
+    const typeA = inferWorkType(a);
+    const typeB = inferWorkType(b);
+    const indexA = order.indexOf(typeA);
+    const indexB = order.indexOf(typeB);
+    return indexA - indexB;
+  });
+}
 
 interface ProjectTaskGroupProps {
   project: Project;
@@ -11,19 +65,27 @@ interface ProjectTaskGroupProps {
   onProjectEdit: (project: Project) => void;
 }
 
-export function ProjectTaskGroup({ 
-  project, 
-  tasks, 
-  onTaskClick, 
+export function ProjectTaskGroup({
+  project,
+  tasks,
+  onTaskClick,
   onAddTask,
-  onProjectEdit 
+  onProjectEdit
 }: ProjectTaskGroupProps) {
   var [isExpanded, setIsExpanded] = useState(true);
   var [showMenu, setShowMenu] = useState(false);
-  
+
+  // Condition 상태 가져오기
+  const conditionState = useLifeOSStore((state) => state.condition?.state ?? null);
+
   // 진행중/완료 태스크 분리
-  var pendingTasks = tasks.filter(function(t) { return t.status !== 'done'; });
   var completedTasks = tasks.filter(function(t) { return t.status === 'done'; });
+
+  // Condition 기반 정렬 적용 (진행중 태스크만)
+  var pendingTasks = useMemo(() => {
+    const pending = tasks.filter(function(t) { return t.status !== 'done'; });
+    return sortTasksByCondition(pending, conditionState);
+  }, [tasks, conditionState]);
   
   function handleToggleTask(taskId: string, e: React.MouseEvent) {
     e.stopPropagation();
