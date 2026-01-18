@@ -47,7 +47,8 @@ export default function DaySchedule({ mode = 'all' }: DayScheduleProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
-  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  // lastSyncTime은 향후 UI에서 "마지막 동기화" 표시에 사용 예정
+  const [, setLastSyncTime] = useState<Date | null>(null);
   const navigate = useNavigate();
 
   const currentHour = new Date().getHours();

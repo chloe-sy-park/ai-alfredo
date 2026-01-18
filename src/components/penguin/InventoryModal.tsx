@@ -64,7 +64,8 @@ export const InventoryModal: React.FC = () => {
             </div>
             <button
               onClick={closeInventory}
-              className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg"
+              className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+              aria-label="닫기"
             >
               <X size={20} className="text-neutral-500" />
             </button>
