@@ -11,6 +11,8 @@ export { default as ConditionCompact } from './ConditionCompact';
 export { default as OSProgressBar } from './OSProgressBar';
 export { default as DecisionMatrix } from './DecisionMatrix';
 export { default as TodayAgenda } from './TodayAgenda';
+export { default as AlfredoInsights } from './AlfredoInsights';
+export { default as DaySchedule } from './DaySchedule';
 
 // WORK mode components
 export { default as ProjectPulse } from './ProjectPulse';
