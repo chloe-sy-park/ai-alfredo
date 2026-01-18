@@ -48,14 +48,14 @@ export default function WeeklyHabitView({ habit, logs }: WeeklyHabitViewProps) {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
+    <div className="rounded-xl p-4 shadow-card" style={{ backgroundColor: 'var(--surface-default)' }}>
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <span className="text-2xl">{habit.icon}</span>
           <div>
-            <h3 className="font-medium dark:text-white">{habit.title}</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <h3 className="font-medium" style={{ color: 'var(--text-primary)' }}>{habit.title}</h3>
+            <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
               {habit.frequency === 'daily' ? '매일' : '매주'} {habit.targetCount}
               {habit.unit}
             </p>
@@ -63,7 +63,10 @@ export default function WeeklyHabitView({ habit, logs }: WeeklyHabitViewProps) {
         </div>
 
         {streak > 0 && (
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30 text-orange-600 dark:text-orange-400 rounded-full">
+          <div
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
+            style={{ backgroundColor: 'var(--state-warning-bg)', color: 'var(--state-warning)' }}
+          >
             <Flame size={16} />
             <span className="font-bold text-sm">{streak}일 연속</span>
           </div>
@@ -80,22 +83,20 @@ export default function WeeklyHabitView({ habit, logs }: WeeklyHabitViewProps) {
           return (
             <div key={dateStr} className="flex flex-col items-center gap-1">
               <span
-                className={`text-xs ${
-                  today
-                    ? 'text-[#A996FF] font-bold'
-                    : 'text-gray-400 dark:text-gray-500'
-                }`}
+                className={'text-xs ' + (today ? 'font-bold' : '')}
+                style={{ color: today ? 'var(--accent-primary)' : 'var(--text-tertiary)' }}
               >
                 {dayName}
               </span>
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                style={
                   completed
-                    ? 'bg-[#A996FF] text-white'
+                    ? { backgroundColor: 'var(--accent-primary)', color: 'white' }
                     : today
-                    ? 'border-2 border-[#A996FF] text-[#A996FF]'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-300 dark:text-gray-500'
-                }`}
+                    ? { border: '2px solid var(--accent-primary)', color: 'var(--accent-primary)' }
+                    : { backgroundColor: 'var(--surface-subtle)', color: 'var(--text-tertiary)' }
+                }
               >
                 {completed ? (
                   <CheckCircle2 size={16} />
@@ -110,20 +111,21 @@ export default function WeeklyHabitView({ habit, logs }: WeeklyHabitViewProps) {
 
       {/* 진행률 바 */}
       <div className="mt-4">
-        <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
+        <div className="flex justify-between text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
           <span>이번 주 달성률</span>
           <span>
             {Object.values(logsByDate).filter((l) => l.completed).length}/7
           </span>
         </div>
-        <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+        <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
           <div
-            className="h-full bg-gradient-to-r from-[#A996FF] to-[#8B7BE8] rounded-full transition-all duration-500"
+            className="h-full rounded-full transition-all duration-500"
             style={{
               width: `${
                 (Object.values(logsByDate).filter((l) => l.completed).length / 7) *
                 100
               }%`,
+              backgroundColor: 'var(--accent-primary)'
             }}
           />
         </div>

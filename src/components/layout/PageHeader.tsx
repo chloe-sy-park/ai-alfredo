@@ -101,11 +101,14 @@ export default function PageHeader({
             <div className="relative flex-shrink-0">
               <button
                 onClick={() => setShowModeDropdown(!showModeDropdown)}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${currentModeConfig.color}`}
+                aria-label={`현재 모드: ${currentModeConfig.label}, 클릭하여 변경`}
+                aria-expanded={showModeDropdown}
+                aria-haspopup="listbox"
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 min-h-[44px] ${currentModeConfig.color}`}
                 style={{ color: currentModeConfig.textColor }}
               >
                 {currentModeConfig.label}
-                <ChevronDown size={14} className={`transition-transform ${showModeDropdown ? 'rotate-180' : ''}`} />
+                <ChevronDown size={14} className={`transition-transform ${showModeDropdown ? 'rotate-180' : ''}`} aria-hidden="true" />
               </button>
 
               {/* Mode Dropdown */}
@@ -154,9 +157,9 @@ export default function PageHeader({
             {showCondition && (
               <button
                 onClick={() => setShowConditionModal(true)}
+                aria-label={currentCondition ? `오늘 컨디션: ${conditionConfig[currentCondition].label}` : '오늘 컨디션 설정'}
                 className="w-9 h-9 flex items-center justify-center text-lg rounded-full transition-colors touch-target hover:opacity-80"
                 style={{ backgroundColor: 'transparent' }}
-                title="오늘 컨디션"
               >
                 {currentCondition ? conditionConfig[currentCondition].emoji : '😐'}
               </button>
@@ -165,12 +168,14 @@ export default function PageHeader({
             {showNotification && (
               <button
                 onClick={toggleNotification}
+                aria-label={unreadCount > 0 ? `알림 ${unreadCount}개` : '알림'}
                 className="relative w-9 h-9 flex items-center justify-center rounded-full transition-colors touch-target hover:opacity-80"
                 style={{ color: 'var(--text-secondary)' }}
               >
                 <Bell size={18} />
                 {unreadCount > 0 && (
                   <span
+                    aria-hidden="true"
                     className="absolute top-0.5 right-0.5 w-3.5 h-3.5 text-white text-[9px] font-medium rounded-full flex items-center justify-center"
                     style={{ backgroundColor: 'var(--accent-primary)' }}
                   >
@@ -181,6 +186,7 @@ export default function PageHeader({
             )}
             <button
               onClick={open}
+              aria-label="메뉴 열기"
               className="w-9 h-9 flex items-center justify-center rounded-full transition-colors touch-target hover:opacity-80"
               style={{ color: 'var(--text-secondary)' }}
             >
@@ -207,17 +213,18 @@ export default function PageHeader({
             />
 
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>오늘 컨디션은?</h3>
+              <h3 id="condition-modal-title" className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>오늘 컨디션은?</h3>
               <button
                 onClick={() => setShowConditionModal(false)}
-                className="p-2 rounded-full hover:opacity-80"
+                aria-label="닫기"
+                className="p-2 rounded-full hover:opacity-80 min-w-[44px] min-h-[44px] flex items-center justify-center"
                 style={{ color: 'var(--text-tertiary)' }}
               >
                 <X size={20} />
               </button>
             </div>
 
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-4 gap-3" role="group" aria-labelledby="condition-modal-title">
               {(['great', 'good', 'normal', 'bad'] as ConditionLevel[]).map((level) => {
                 const info = conditionConfig[level];
                 const isSelected = level === currentCondition;
@@ -225,13 +232,15 @@ export default function PageHeader({
                   <button
                     key={level}
                     onClick={() => handleConditionSelect(level)}
-                    className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all"
+                    aria-label={`컨디션 ${info.label} 선택`}
+                    aria-pressed={isSelected}
+                    className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all min-h-[44px]"
                     style={{
                       borderColor: isSelected ? 'var(--accent-primary)' : 'var(--border-default)',
                       backgroundColor: isSelected ? 'rgba(201, 162, 94, 0.1)' : 'transparent'
                     }}
                   >
-                    <span className="text-3xl">{info.emoji}</span>
+                    <span className="text-3xl" aria-hidden="true">{info.emoji}</span>
                     <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>{info.label}</span>
                   </button>
                 );
