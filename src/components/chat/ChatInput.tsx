@@ -19,6 +19,7 @@ export default function ChatInput({
   preferWhisper = false
 }: ChatInputProps) {
   const [message, setMessage] = useState('');
+  const [isComposing, setIsComposing] = useState(false); // 한글 IME 조합 상태
   const [showModeSelector, setShowModeSelector] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -120,7 +121,8 @@ export default function ChatInput({
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // 한글 조합 중에는 Enter 무시 (마지막 글자가 따로 보내지는 문제 방지)
+    if (e.key === 'Enter' && !e.shiftKey && !isComposing && !e.nativeEvent.isComposing) {
       e.preventDefault();
       handleSubmit();
     }
@@ -170,6 +172,8 @@ export default function ChatInput({
           value={message}
           onChange={function(e) { setMessage(e.target.value); }}
           onKeyDown={handleKeyDown}
+          onCompositionStart={() => setIsComposing(true)}
+          onCompositionEnd={() => setIsComposing(false)}
           placeholder={displayPlaceholder}
           disabled={disabled || isActive}
           className="flex-1 resize-none outline-none text-sm text-text-primary placeholder:text-text-muted min-h-[44px] max-h-[200px] py-3 px-0 bg-transparent"
