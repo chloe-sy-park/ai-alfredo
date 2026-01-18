@@ -94,6 +94,70 @@ export default {
           800: '#5B21B6',
           900: '#4C1D95',
         },
+
+        // ===== NEW: Token-based Colors (CSS Variables) =====
+        // 사용법: bg-token-bg-primary, text-token-text-primary 등
+
+        // Background (token-bg-*)
+        'token-bg': {
+          primary: 'var(--bg-primary)',
+          secondary: 'var(--bg-secondary)',
+        },
+
+        // Surface (token-surface-*)
+        'token-surface': {
+          DEFAULT: 'var(--surface-default)',
+          subtle: 'var(--surface-subtle)',
+        },
+
+        // Border (token-border-*)
+        'token-border': {
+          DEFAULT: 'var(--border-default)',
+        },
+
+        // Text (token-text-*)
+        'token-text': {
+          primary: 'var(--text-primary)',
+          secondary: 'var(--text-secondary)',
+          tertiary: 'var(--text-tertiary)',
+          disabled: 'var(--text-disabled)',
+        },
+
+        // Accent - Gold (token-accent-*)
+        'token-accent': {
+          DEFAULT: 'var(--accent-primary)',
+          primary: 'var(--accent-primary)',
+          pressed: 'var(--accent-pressed)',
+          on: 'var(--accent-on)',
+        },
+
+        // OS Colors (token-os-*)
+        'token-os': {
+          work: 'var(--os-work)',
+          life: 'var(--os-life)',
+          finance: 'var(--os-finance)',
+        },
+
+        // State Colors (token-state-*)
+        'token-state': {
+          success: 'var(--state-success)',
+          warning: 'var(--state-warning)',
+          danger: 'var(--state-danger)',
+          info: 'var(--state-info)',
+        },
+
+        // Chart Colors (token-chart-*)
+        'token-chart': {
+          canvas: 'var(--chart-canvas)',
+          panel: 'var(--chart-panel)',
+          'grid-major': 'var(--chart-grid-major)',
+          'grid-minor': 'var(--chart-grid-minor)',
+          'series-neutral': 'var(--chart-series-neutral)',
+          'series-work': 'var(--chart-series-work)',
+          'series-life': 'var(--chart-series-life)',
+          'series-finance': 'var(--chart-series-finance)',
+          'emphasis-today': 'var(--chart-emphasis-today)',
+        },
       },
       
       // Typography Scale
