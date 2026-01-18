@@ -47,7 +47,8 @@ export default function DaySchedule({ mode = 'all' }: DayScheduleProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
-  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  // lastSyncTime은 향후 UI에서 "마지막 동기화" 표시에 사용 예정
+  const [, setLastSyncTime] = useState<Date | null>(null);
   const navigate = useNavigate();
 
   const currentHour = new Date().getHours();
@@ -284,16 +285,34 @@ export default function DaySchedule({ mode = 'all' }: DayScheduleProps) {
             </span>
           </div>
           <div className="flex items-center gap-2">
-            {lastSyncTime && isCalendarConnected() && (
-              <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                {calendarProvider === 'google' ? 'Google' : 'Outlook'} 연동
-              </span>
+            {isCalendarConnected() ? (
+              // 연동됨 - 연결 상태 표시
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded-full" style={{ backgroundColor: 'rgba(34, 197, 94, 0.1)' }}>
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                <span className="text-xs font-medium" style={{ color: '#22c55e' }}>
+                  {calendarProvider === 'google' ? 'Google' : 'Outlook'} 연동됨
+                </span>
+              </div>
+            ) : (
+              // 미연동 - 연결 버튼 표시
+              <button
+                onClick={() => navigate('/settings/integrations')}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full transition-colors"
+                style={{
+                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                  color: '#ef4444'
+                }}
+              >
+                <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                <span className="text-xs font-medium">캘린더 연동 필요</span>
+              </button>
             )}
             <button
               onClick={handleSync}
-              disabled={isSyncing}
+              disabled={isSyncing || !isCalendarConnected()}
               className="p-2 rounded-lg transition-colors disabled:opacity-50"
               style={{ color: 'var(--text-tertiary)' }}
+              title={isCalendarConnected() ? '새로고침' : '캘린더를 먼저 연동해주세요'}
             >
               <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />
             </button>

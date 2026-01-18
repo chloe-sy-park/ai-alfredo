@@ -289,11 +289,11 @@ function QuickActionSheet({
                       action.action();
                     }}
                     aria-label={action.ariaLabel}
-                    className="flex flex-col items-center gap-2 p-3 rounded-xl active:scale-95 transition-all"
+                    className="flex flex-col items-center gap-2.5 p-3 rounded-xl active:scale-95 transition-all hover:bg-black/5"
                     style={{ color: 'var(--text-secondary)' }}
                   >
                     <div
-                      className="w-12 h-12 rounded-full flex items-center justify-center"
+                      className="w-12 h-12 rounded-full flex items-center justify-center shadow-sm"
                       style={action.primary
                         ? { backgroundColor: 'var(--accent-primary)', color: 'var(--accent-on)' }
                         : { backgroundColor: 'var(--surface-subtle)', color: 'var(--accent-primary)' }
@@ -301,7 +301,7 @@ function QuickActionSheet({
                     >
                       <Icon className="w-5 h-5" />
                     </div>
-                    <span className="text-xs">{action.label}</span>
+                    <span className="text-sm font-medium">{action.label}</span>
                   </button>
                 );
               })}

@@ -155,6 +155,8 @@ export default function BriefingHero({
   };
 
   const handleRequestSleepCorrection = () => {
+    // 중복 열림 방지
+    if (showSleepCorrection) return;
     setShowSleepCorrection(true);
   };
 
@@ -331,15 +333,19 @@ export default function BriefingHero({
               </button>
             )}
 
-            {/* 토글 버튼 */}
+            {/* 토글 버튼 - 명확한 버튼 스타일 */}
             <button
               onClick={toggleExpanded}
-              className="p-1.5 bg-white/60 hover:bg-white/80 rounded-full transition-colors"
+              className="flex items-center gap-1 px-2.5 py-1.5 bg-white/70 hover:bg-white/90 rounded-full transition-all shadow-sm border border-white/50 active:scale-95"
               aria-label={isExpanded ? '브리핑 접기' : '브리핑 펼치기'}
+              aria-expanded={isExpanded}
             >
+              <span className="text-xs font-medium text-gray-600">
+                {isExpanded ? '접기' : '펼치기'}
+              </span>
               {isExpanded
-                ? <ChevronUp size={16} className="text-gray-600" />
-                : <ChevronDown size={16} className="text-gray-600" />
+                ? <ChevronUp size={14} className="text-gray-600" />
+                : <ChevronDown size={14} className="text-gray-600" />
               }
             </button>
           </div>

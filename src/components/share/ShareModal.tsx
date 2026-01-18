@@ -157,9 +157,10 @@ ${data.insight ? `💬 "${data.insight}"` : ''}
           <h2 className="text-lg font-semibold">공유하기</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+            aria-label="닫기"
           >
-            <X size={20} />
+            <X size={20} className="text-gray-500" />
           </button>
         </div>
 

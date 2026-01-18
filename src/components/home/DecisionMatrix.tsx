@@ -1,9 +1,11 @@
-import { Target, Zap } from 'lucide-react';
+import { useState } from 'react';
+import { Target, Zap, Check } from 'lucide-react';
 import { ConditionLevel } from '../../services/condition';
 
 interface DecisionMatrixProps {
   condition: ConditionLevel | null;
   currentHour?: number;
+  onQuadrantSelect?: (quadrant: QuadrantType) => void;
 }
 
 type QuadrantType = 'doFirst' | 'schedule' | 'delegate' | 'eliminate';
@@ -50,9 +52,11 @@ const QUADRANT_CONFIG: Record<QuadrantType, QuadrantInfo> = {
 /**
  * AI 의사결정 매트릭스
  * 사용자의 시간/컨디션 상태에 따라 적절한 작업 유형을 시각적으로 표현
+ * 각 사분면 클릭 시 해당 유형의 작업에 집중하도록 안내
  */
-export default function DecisionMatrix({ condition, currentHour }: DecisionMatrixProps) {
+export default function DecisionMatrix({ condition, currentHour, onQuadrantSelect }: DecisionMatrixProps) {
   const hour = currentHour ?? new Date().getHours();
+  const [selectedQuadrant, setSelectedQuadrant] = useState<QuadrantType | null>(null);
 
   // 현재 상태에 따른 추천 사분면 계산
   const getRecommendedQuadrant = (): QuadrantType => {
@@ -104,6 +108,28 @@ export default function DecisionMatrix({ condition, currentHour }: DecisionMatri
 
   const recommendedQuadrant = getRecommendedQuadrant();
 
+  // 사분면 클릭 핸들러
+  const handleQuadrantClick = (type: QuadrantType) => {
+    setSelectedQuadrant(prev => prev === type ? null : type);
+    if (onQuadrantSelect) {
+      onQuadrantSelect(type);
+    }
+  };
+
+  // 선택된 사분면에 따른 상세 메시지
+  const getQuadrantDetail = (type: QuadrantType): string => {
+    switch (type) {
+      case 'doFirst':
+        return '중요하고 급한 일을 먼저 처리하세요. 마감이 임박했거나 즉각적인 대응이 필요한 일입니다.';
+      case 'schedule':
+        return '중요하지만 급하지 않은 일입니다. 시간을 정해두고 계획적으로 진행하세요.';
+      case 'delegate':
+        return '급하지만 중요도가 낮은 일입니다. 가능하면 다른 사람에게 위임하세요.';
+      case 'eliminate':
+        return '중요하지도 급하지도 않은 일입니다. 과감하게 제거하거나 미루세요.';
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-card">
       {/* Header */}
@@ -124,56 +150,90 @@ export default function DecisionMatrix({ condition, currentHour }: DecisionMatri
         {/* DO FIRST - 상단 좌측 */}
         <QuadrantCell
           type="doFirst"
-          isActive={recommendedQuadrant === 'doFirst'}
+          isRecommended={recommendedQuadrant === 'doFirst'}
+          isSelected={selectedQuadrant === 'doFirst'}
+          onClick={() => handleQuadrantClick('doFirst')}
         />
         {/* SCHEDULE - 상단 우측 */}
         <QuadrantCell
           type="schedule"
-          isActive={recommendedQuadrant === 'schedule'}
+          isRecommended={recommendedQuadrant === 'schedule'}
+          isSelected={selectedQuadrant === 'schedule'}
+          onClick={() => handleQuadrantClick('schedule')}
         />
         {/* DELEGATE - 하단 좌측 */}
         <QuadrantCell
           type="delegate"
-          isActive={recommendedQuadrant === 'delegate'}
+          isRecommended={recommendedQuadrant === 'delegate'}
+          isSelected={selectedQuadrant === 'delegate'}
+          onClick={() => handleQuadrantClick('delegate')}
         />
         {/* ELIMINATE - 하단 우측 */}
         <QuadrantCell
           type="eliminate"
-          isActive={recommendedQuadrant === 'eliminate'}
+          isRecommended={recommendedQuadrant === 'eliminate'}
+          isSelected={selectedQuadrant === 'eliminate'}
+          onClick={() => handleQuadrantClick('eliminate')}
         />
       </div>
 
-      {/* Status Message */}
+      {/* Status/Detail Message */}
       <div className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
         <Zap size={16} className="text-primary flex-shrink-0 mt-0.5" />
-        <p>{getStatusMessage()}</p>
+        <p>{selectedQuadrant ? getQuadrantDetail(selectedQuadrant) : getStatusMessage()}</p>
       </div>
     </div>
   );
 }
 
-// 사분면 셀 컴포넌트
-function QuadrantCell({ type, isActive }: { type: QuadrantType; isActive: boolean }) {
+// 사분면 셀 컴포넌트 (인터랙티브 버튼)
+interface QuadrantCellProps {
+  type: QuadrantType;
+  isRecommended: boolean;
+  isSelected: boolean;
+  onClick: () => void;
+}
+
+function QuadrantCell({ type, isRecommended, isSelected, onClick }: QuadrantCellProps) {
   const config = QUADRANT_CONFIG[type];
+  const isActive = isRecommended || isSelected;
 
   return (
-    <div
+    <button
+      type="button"
+      onClick={onClick}
       className={`
-        relative p-3 rounded-xl border-2 transition-all
+        relative p-3 rounded-xl border-2 transition-all min-h-[56px]
+        cursor-pointer hover:scale-[1.02] active:scale-[0.98]
+        focus:outline-none focus:ring-2 focus:ring-primary/30
         ${isActive
           ? `${config.bgColor} ${config.borderColor} ${config.color}`
-          : 'bg-gray-50 dark:bg-gray-700/30 border-gray-100 dark:border-gray-600 text-gray-400'
+          : 'bg-gray-50 dark:bg-gray-700/30 border-gray-100 dark:border-gray-600 text-gray-400 hover:border-gray-300'
         }
+        ${isSelected ? 'ring-2 ring-primary/50' : ''}
       `}
+      aria-pressed={isSelected}
+      aria-label={`${config.label}: ${config.description}`}
     >
-      <span className={`text-xs font-bold ${isActive ? config.color : 'text-gray-400'}`}>
-        {config.label}
+      <div className="flex items-center justify-between">
+        <span className={`text-xs font-bold ${isActive ? config.color : 'text-gray-400'}`}>
+          {config.label}
+        </span>
+        {isSelected && (
+          <Check size={14} className="text-primary" />
+        )}
+      </div>
+      <span className={`text-[10px] mt-1 block ${isActive ? 'opacity-70' : 'opacity-50'}`}>
+        {config.description}
       </span>
-      {isActive && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-          <div className="w-3 h-3 bg-primary/30 rounded-full animate-pulse" />
+      {isRecommended && !isSelected && (
+        <div className="absolute top-1 right-1">
+          <div className="w-2 h-2 bg-primary/50 rounded-full animate-pulse" />
         </div>
       )}
-    </div>
+    </button>
   );
 }
+
+// Type export for external use
+export type { QuadrantType };

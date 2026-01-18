@@ -1,4 +1,4 @@
-import { User, Heart } from 'lucide-react';
+import { User, Heart, Plus, UserPlus } from 'lucide-react';
 
 interface Relationship {
   id: string;
@@ -9,29 +9,43 @@ interface Relationship {
 interface RelationshipReminderProps {
   items: Relationship[];
   onOpen?: (id: string) => void;
+  onAddPerson?: () => void;
 }
 
-export default function RelationshipReminder({ items, onOpen }: RelationshipReminderProps) {
-  // 빈 상태 처리
+export default function RelationshipReminder({ items, onOpen, onAddPerson }: RelationshipReminderProps) {
+  // 빈 상태 처리 - 더 상세한 설명과 명확한 CTA
   if (items.length === 0) {
     return (
       <div className="rounded-xl p-4 shadow-card" style={{ backgroundColor: 'var(--surface-default)' }}>
-        <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
+        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+          <Heart size={16} style={{ color: 'var(--os-life)' }} />
           소중한 사람들
         </h3>
         <div className="text-center py-4">
           <div
-            className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center"
-            style={{ backgroundColor: 'var(--surface-subtle)' }}
+            className="w-14 h-14 rounded-full mx-auto mb-3 flex items-center justify-center"
+            style={{ backgroundColor: 'rgba(126, 155, 138, 0.15)' }}
           >
-            <Heart size={18} style={{ color: 'var(--os-life)' }} />
+            <UserPlus size={24} style={{ color: 'var(--os-life)' }} />
           </div>
-          <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
-            소중한 사람을 등록해보세요
+          <p className="text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+            관계를 관리해보세요
           </p>
-          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-            알프레도가 연락 타이밍을 알려드려요
+          <p className="text-xs leading-relaxed mb-4" style={{ color: 'var(--text-secondary)' }}>
+            연락이 뜸해지면 알프레도가 먼저 알려드려요.<br />
+            바쁜 일상 속에서도 소중한 사람들을 놓치지 않도록 도와드릴게요.
           </p>
+          <button
+            onClick={onAddPerson}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors hover:opacity-90"
+            style={{
+              backgroundColor: 'var(--os-life)',
+              color: 'white'
+            }}
+          >
+            <Plus size={16} />
+            소중한 사람 등록하기
+          </button>
         </div>
       </div>
     );

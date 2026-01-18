@@ -194,7 +194,8 @@ export function TaskModal({
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+            aria-label="닫기"
           >
             <X size={20} className="text-gray-500 dark:text-gray-400" />
           </button>
