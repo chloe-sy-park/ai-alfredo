@@ -6,6 +6,7 @@
 
 import { Task, toggleTaskComplete, getTodayCompletedCount } from './tasks';
 import { usePenguinStore } from '../stores/penguinStore';
+import { useAchievementStore } from '../stores/achievementStore';
 import { showXPReward, showCoinsReward, showLevelUpReward, showStreakReward } from '../components/reward/RewardFeedback';
 import { showNotificationPriming } from '../components/notification/PermissionPriming';
 
@@ -53,6 +54,11 @@ export function completeTaskWithReward(taskId: string, wasCompleted: boolean = f
  */
 export function grantTaskCompletionReward(task: Task): void {
   const { addExperience, addCoins, status } = usePenguinStore.getState();
+  const {
+    incrementTasksCompleted,
+    updateLevel,
+    checkAndUnlockAchievements,
+  } = useAchievementStore.getState();
 
   const xpReward = calculateXPReward(task);
   const coinReward = calculateCoinReward(task);
@@ -72,7 +78,15 @@ export function grantTaskCompletionReward(task: Task): void {
   const newStatus = usePenguinStore.getState().status;
   if (newStatus && newStatus.level > prevLevel) {
     setTimeout(() => showLevelUpReward(newStatus.level), 400);
+    // 업적 스토어에 레벨 업데이트
+    updateLevel(newStatus.level);
   }
+
+  // 업적 시스템: 태스크 완료 수 증가 및 업적 체크
+  incrementTasksCompleted();
+  setTimeout(() => {
+    checkAndUnlockAchievements();
+  }, 500); // 보상 애니메이션 후 업적 체크
 
   // 긍정적 상호작용 타이밍: 태스크 3개 완료 후 알림 프라이밍 트리거
   const todayCompleted = getTodayCompletedCount();

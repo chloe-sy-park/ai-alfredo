@@ -4,13 +4,16 @@
 
 import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Coins, Sparkles, ShoppingBag, Backpack, TrendingUp } from 'lucide-react';
+import { Coins, Sparkles, ShoppingBag, Backpack, TrendingUp, Trophy } from 'lucide-react';
 import { usePenguinStore, usePenguinLevel, getLevelTitle } from '../../stores/penguinStore';
+import { useAchievementStore, ACHIEVEMENTS } from '../../stores/achievementStore';
 import { PenguinAvatar } from './PenguinAvatar';
 
 export const PenguinWidget: React.FC = () => {
   const { status, fetchStatus, openShop, openInventory } = usePenguinStore();
+  const { openModal: openAchievements, unlocked } = useAchievementStore();
   const levelInfo = usePenguinLevel();
+  const achievementProgress = Math.round((unlocked.length / ACHIEVEMENTS.length) * 100);
 
   useEffect(() => {
     if (!status) {
@@ -101,6 +104,18 @@ export const PenguinWidget: React.FC = () => {
         >
           <Backpack size={16} />
           <span className="text-sm font-medium">인벤토리</span>
+        </button>
+        <button
+          onClick={openAchievements}
+          className="flex-1 flex items-center justify-center gap-2 py-2 bg-yellow-50 dark:bg-yellow-900/20 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 rounded-lg transition-colors relative"
+        >
+          <Trophy size={16} />
+          <span className="text-sm font-medium">업적</span>
+          {achievementProgress > 0 && (
+            <span className="absolute -top-1 -right-1 text-[10px] bg-yellow-500 text-white px-1.5 rounded-full">
+              {achievementProgress}%
+            </span>
+          )}
         </button>
       </div>
     </motion.div>
