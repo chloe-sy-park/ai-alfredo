@@ -16,7 +16,7 @@ import { useHomeModeStore } from '../stores/homeModeStore';
 
 // Components
 import { PageHeader } from '../components/layout';
-import { MoreSheet, ModeSwitch, ConditionCompact, OSProgressBar } from '../components/home';
+import { MoreSheet, OSProgressBar } from '../components/home';
 import TodayTimeline from '../components/home/TodayTimeline';
 import TodayTop3 from '../components/home/TodayTop3';
 import FocusNow from '../components/home/FocusNow';
@@ -326,40 +326,40 @@ export default function Home() {
         />
       )}
       
-      {/* 헤더 */}
-      <PageHeader />
+      {/* 헤더 - 모드 스위치 & 컨디션 통합 */}
+      <PageHeader
+        showModeSwitch={true}
+        activeMode={homeMode}
+        onModeChange={function(mode) {
+          // Finance 모드 선택 시 Finance 페이지로 이동
+          if (mode === 'finance') {
+            navigate('/finance');
+            return;
+          }
+
+          var previousMode = homeMode;
+          setHomeMode(mode);
+          setGlobalMode(mode); // 전역 스토어 동기화
+          postAction.onModeChanged(mode);
+
+          // Lift 기록: 모드 변경
+          if (previousMode !== mode && previousMode !== 'all' && mode !== 'all') {
+            liftStore.addLift({
+              type: 'apply',
+              category: 'worklife',
+              previousDecision: previousMode === 'work' ? 'Work 모드' : 'Life 모드',
+              newDecision: mode === 'work' ? 'Work 모드로 전환' : 'Life 모드로 전환',
+              reason: '사용자가 직접 모드를 전환함',
+              impact: 'medium'
+            });
+          }
+        }}
+        showCondition={true}
+        onConditionChange={handleConditionChange}
+      />
 
       {/* 메인 컨텐츠 */}
       <div className="max-w-[640px] mx-auto px-4 sm:px-6 py-4 space-y-4">
-        
-        {/* PRD: ModeSwitch - ALL/WORK/LIFE 탭 전환 */}
-        <ModeSwitch
-          activeMode={homeMode}
-          onChange={function(mode) {
-            // Finance 모드 선택 시 Finance 페이지로 이동
-            if (mode === 'finance') {
-              navigate('/finance');
-              return;
-            }
-
-            var previousMode = homeMode;
-            setHomeMode(mode);
-            setGlobalMode(mode); // 전역 스토어 동기화
-            postAction.onModeChanged(mode);
-
-            // Lift 기록: 모드 변경
-            if (previousMode !== mode && previousMode !== 'all' && mode !== 'all') {
-              liftStore.addLift({
-                type: 'apply',
-                category: 'worklife',
-                previousDecision: previousMode === 'work' ? 'Work 모드' : 'Life 모드',
-                newDecision: mode === 'work' ? 'Work 모드로 전환' : 'Life 모드로 전환',
-                reason: '사용자가 직접 모드를 전환함',
-                impact: 'medium'
-              });
-            }
-          }}
-        />
 
         {/* 인사 */}
         <div className="animate-fade-in">
@@ -413,10 +413,7 @@ export default function Home() {
             {/* 3. 오늘 타임라인 */}
             <TodayTimeline />
 
-            {/* 4. 컨디션 체크 (컴팩트) */}
-            <ConditionCompact onConditionChange={handleConditionChange} />
-
-            {/* 5. Work/Life 진행률 바 */}
+            {/* 4. Work/Life 진행률 바 */}
             <OSProgressBar
               workPercent={workCount}
               lifePercent={lifeCount}
@@ -438,10 +435,7 @@ export default function Home() {
             {/* 3. 오늘 타임라인 */}
             <TodayTimeline />
 
-            {/* 4. 컨디션 체크 (컴팩트) */}
-            <ConditionCompact onConditionChange={handleConditionChange} />
-
-            {/* 5. Work/Life 진행률 바 */}
+            {/* 4. Work/Life 진행률 바 */}
             <OSProgressBar
               workPercent={workCount}
               lifePercent={lifeCount}
