@@ -20,23 +20,23 @@ export default function RingProgress({
   animate = true,
 }: RingProgressProps) {
   // Size configs
-  var sizeConfigs = {
+  const sizeConfigs = {
     sm: { dimension: 48, defaultStroke: 4, fontSize: 'text-xs' },
     md: { dimension: 80, defaultStroke: 8, fontSize: 'text-sm' },
     lg: { dimension: 120, defaultStroke: 12, fontSize: 'text-lg' },
   };
-  
-  var config = sizeConfigs[size];
-  var actualStrokeWidth = strokeWidth || config.defaultStroke;
-  var radius = (config.dimension - actualStrokeWidth) / 2;
-  var circumference = 2 * Math.PI * radius;
-  var offset = circumference - (percent / 100) * circumference;
-  
-  // 라이트모드 색상 (hex)
-  var colorValues = {
-    accent: '#FFD700',
-    success: '#4ADE80',
-    primary: '#A996FF',
+
+  const config = sizeConfigs[size];
+  const actualStrokeWidth = strokeWidth || config.defaultStroke;
+  const radius = (config.dimension - actualStrokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (percent / 100) * circumference;
+
+  // Design token color mapping
+  const colorTokens = {
+    accent: 'var(--accent-primary)',
+    success: 'var(--state-success)',
+    primary: 'var(--accent-primary)',
   };
 
   return (
@@ -55,17 +55,17 @@ export default function RingProgress({
           cy={config.dimension / 2}
           r={radius}
           fill="none"
-          stroke="#E5E5E5"
+          stroke="var(--border-default)"
           strokeWidth={actualStrokeWidth}
         />
-        
+
         {/* Progress ring */}
         <circle
           cx={config.dimension / 2}
           cy={config.dimension / 2}
           r={radius}
           fill="none"
-          stroke={colorValues[color]}
+          stroke={colorTokens[color]}
           strokeWidth={actualStrokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -73,13 +73,13 @@ export default function RingProgress({
           className={animate ? 'transition-all duration-300 ease-out' : ''}
         />
       </svg>
-      
+
       {/* Center content */}
       <div className="absolute inset-0 flex items-center justify-center">
         {centerContent ? (
           centerContent
         ) : showPercent ? (
-          <span className={'font-bold text-[#1A1A1A] ' + config.fontSize}>
+          <span className={`font-bold ${config.fontSize}`} style={{ color: 'var(--text-primary)' }}>
             {Math.round(percent)}%
           </span>
         ) : null}
@@ -103,29 +103,29 @@ export function Sparkline({
   color = 'accent',
 }: SparklineProps) {
   if (data.length < 2) return null;
-  
-  var max = Math.max(...data);
-  var min = Math.min(...data);
-  var range = max - min || 1;
-  
-  var points = data.map(function(value, index) {
-    var x = (index / (data.length - 1)) * width;
-    var y = height - ((value - min) / range) * (height - 4) - 2;
+
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+
+  const points = data.map(function(value, index) {
+    const x = (index / (data.length - 1)) * width;
+    const y = height - ((value - min) / range) * (height - 4) - 2;
     return x + ',' + y;
   }).join(' ');
-  
-  // 라이트모드 색상 (hex)
-  var colorValues = {
-    accent: '#FFD700',
-    success: '#4ADE80',
-    error: '#EF4444',
+
+  // Design token color mapping
+  const colorTokens = {
+    accent: 'var(--accent-primary)',
+    success: 'var(--state-success)',
+    error: 'var(--state-danger)',
   };
 
   return (
     <svg width={width} height={height} className="overflow-visible">
       <polyline
         fill="none"
-        stroke={colorValues[color]}
+        stroke={colorTokens[color]}
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -136,7 +136,7 @@ export function Sparkline({
         cx={(data.length - 1) / (data.length - 1) * width}
         cy={height - ((data[data.length - 1] - min) / range) * (height - 4) - 2}
         r="3"
-        fill={colorValues[color]}
+        fill={colorTokens[color]}
       />
     </svg>
   );

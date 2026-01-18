@@ -417,149 +417,58 @@ export default function Home() {
           </h1>
         </div>
 
-        {/* === WORK 모드: 업무 중심 위젯 순서 === */}
-        {homeMode === 'work' && (
-          <>
-            {/* 0. Smart Insight Cards (최상단) */}
-            <SmartInsightSection
-              insights={visibleInsights}
-              onCTA={handleInsightCTA}
-              onDismiss={dismissInsight}
-            />
+        {/* === 통합 위젯 렌더링 (모드별 필터링은 각 컴포넌트에서 처리) === */}
+        <>
+          {/* 0. Smart Insight Cards (최상단) */}
+          <SmartInsightSection
+            insights={visibleInsights}
+            onCTA={handleInsightCTA}
+            onDismiss={dismissInsight}
+          />
 
-            {/* 1. Today Section (미팅 기반 or 포커스 기반) */}
-            <TodaySection
-              todayContext={todayContext}
-              onSelectSuggestion={selectSuggestion}
-              onDeselectSuggestion={deselectSuggestion}
-              onConfirmTasks={confirmSelectedTasks}
-              onOpenTask={handleOpenTask}
-            />
+          {/* 1. Today Section (미팅 기반 or 포커스 기반) */}
+          <TodaySection
+            todayContext={todayContext}
+            onSelectSuggestion={selectSuggestion}
+            onDeselectSuggestion={deselectSuggestion}
+            onConfirmTasks={confirmSelectedTasks}
+            onOpenTask={handleOpenTask}
+          />
 
-            {/* 1.5. Email Signal Section (Type A/B만 - 미팅 관련) */}
-            <EmailSignalSection />
+          {/* 1.5. Email Signal Section (Type A/B만 - 미팅 관련, Life 모드 제외) */}
+          {homeMode !== 'life' && <EmailSignalSection />}
 
-            {/* 2. Hero 브리핑 */}
-            <BriefingHero mode="work" onMore={function() { setIsMoreSheetOpen(true); }} />
+          {/* 2. Hero 브리핑 */}
+          <BriefingHero mode={homeMode} onMore={function() { setIsMoreSheetOpen(true); }} />
 
-            {/* 3. AI 의사결정 매트릭스 */}
-            <DecisionMatrix condition={currentCondition} />
+          {/* 3. AI 의사결정 매트릭스 */}
+          <DecisionMatrix condition={currentCondition} />
 
-            {/* 3. Today's Work Agenda (Work Agenda만 확대 표시) */}
-            <TodayAgenda mode="work" />
+          {/* 4. Today's Agenda (모드별 필터링은 컴포넌트 내부에서 처리) */}
+          <TodayAgenda mode={homeMode === 'finance' ? 'all' : homeMode} />
 
-            {/* 4. Work Schedule 타임라인 (업무 관련만 필터링) */}
-            <DaySchedule mode="work" />
+          {/* 5. Schedule 타임라인 (모드별 필터링은 컴포넌트 내부에서 처리) */}
+          <DaySchedule mode={homeMode === 'finance' ? 'all' : homeMode} />
 
-            {/* 5. 지금 집중할거 */}
+          {/* 6. 지금 집중할거 (Work 모드에서만 표시) */}
+          {homeMode === 'work' && (
             <FocusNow
               externalFocus={currentFocus}
               onFocusChange={handleFocusChange}
             />
+          )}
 
-            {/* 6. Work/Life 진행률 바 */}
-            <OSProgressBar
-              workPercent={workCount}
-              lifePercent={lifeCount}
-              workCount={workCount}
-              lifeCount={lifeCount}
-            />
+          {/* 7. Work/Life 진행률 바 */}
+          <OSProgressBar
+            workPercent={workCount}
+            lifePercent={lifeCount}
+            workCount={workCount}
+            lifeCount={lifeCount}
+          />
 
-            {/* 7. 알프레도 인사이트 (최하단) */}
-            <AlfredoInsights />
-          </>
-        )}
-
-        {/* === LIFE 모드: 개인 중심 위젯 순서 === */}
-        {homeMode === 'life' && (
-          <>
-            {/* 0. Smart Insight Cards (최상단) */}
-            <SmartInsightSection
-              insights={visibleInsights}
-              onCTA={handleInsightCTA}
-              onDismiss={dismissInsight}
-            />
-
-            {/* 1. Today Section (미팅 기반 or 포커스 기반) */}
-            <TodaySection
-              todayContext={todayContext}
-              onSelectSuggestion={selectSuggestion}
-              onDeselectSuggestion={deselectSuggestion}
-              onConfirmTasks={confirmSelectedTasks}
-              onOpenTask={handleOpenTask}
-            />
-
-            {/* 2. Hero 브리핑 */}
-            <BriefingHero mode="life" onMore={function() { setIsMoreSheetOpen(true); }} />
-
-            {/* 3. AI 의사결정 매트릭스 */}
-            <DecisionMatrix condition={currentCondition} />
-
-            {/* 3. Today's Life Agenda (Life Agenda만 확대 표시) */}
-            <TodayAgenda mode="life" />
-
-            {/* 4. Life Schedule 타임라인 (생활 관련만 필터링) */}
-            <DaySchedule mode="life" />
-
-            {/* 5. Work/Life 진행률 바 */}
-            <OSProgressBar
-              workPercent={workCount}
-              lifePercent={lifeCount}
-              workCount={workCount}
-              lifeCount={lifeCount}
-            />
-
-            {/* 6. 알프레도 인사이트 (최하단) */}
-            <AlfredoInsights />
-          </>
-        )}
-
-        {/* === ALL 모드: 전체 위젯 표시 === */}
-        {homeMode === 'all' && (
-          <>
-            {/* 0. Smart Insight Cards (최상단) */}
-            <SmartInsightSection
-              insights={visibleInsights}
-              onCTA={handleInsightCTA}
-              onDismiss={dismissInsight}
-            />
-
-            {/* 1. Today Section (미팅 기반 or 포커스 기반) */}
-            <TodaySection
-              todayContext={todayContext}
-              onSelectSuggestion={selectSuggestion}
-              onDeselectSuggestion={deselectSuggestion}
-              onConfirmTasks={confirmSelectedTasks}
-              onOpenTask={handleOpenTask}
-            />
-
-            {/* 1.5. Email Signal Section (Type A/B만 - 미팅 관련) */}
-            <EmailSignalSection />
-
-            {/* 2. Hero 브리핑 */}
-            <BriefingHero mode="all" onMore={function() { setIsMoreSheetOpen(true); }} />
-
-            {/* 3. AI 의사결정 매트릭스 */}
-            <DecisionMatrix condition={currentCondition} />
-
-            {/* 3. Today's Agenda (Work/Life/추천 3개, 토글 시 Top3 Task 표시) */}
-            <TodayAgenda mode="all" />
-
-            {/* 4. Schedule 타임라인 (Task + Event 통합) */}
-            <DaySchedule mode="all" />
-
-            {/* 5. Work/Life 진행률 바 */}
-            <OSProgressBar
-              workPercent={workCount}
-              lifePercent={lifeCount}
-              workCount={workCount}
-              lifeCount={lifeCount}
-            />
-
-            {/* 6. 알프레도 인사이트 (최하단) */}
-            <AlfredoInsights />
-          </>
-        )}
+          {/* 8. 알프레도 인사이트 (최하단) */}
+          <AlfredoInsights />
+        </>
       </div>
 
       {/* 더보기 시트 */}

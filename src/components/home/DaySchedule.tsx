@@ -272,27 +272,28 @@ export default function DaySchedule({ mode = 'all' }: DayScheduleProps) {
   });
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-card overflow-hidden">
+    <div className="rounded-2xl shadow-card overflow-hidden" style={{ backgroundColor: 'var(--surface-default)' }}>
       {/* Header */}
-      <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+      <div className="p-4" style={{ borderBottom: '1px solid var(--border-default)' }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Clock size={18} className="text-primary" />
-            <span className="font-semibold text-xs text-primary uppercase tracking-wider">{getModeTitle()}</span>
-            <span className="px-2 py-0.5 bg-primary/10 rounded-full text-xs font-medium text-primary">
+            <Clock size={18} style={{ color: 'var(--accent-primary)' }} />
+            <span className="font-semibold text-xs uppercase tracking-wider" style={{ color: 'var(--accent-primary)' }}>{getModeTitle()}</span>
+            <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgba(201, 162, 94, 0.1)', color: 'var(--accent-primary)' }}>
               {filteredItems.length}
             </span>
           </div>
           <div className="flex items-center gap-2">
             {lastSyncTime && isCalendarConnected() && (
-              <span className="text-xs text-gray-400">
+              <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
                 {calendarProvider === 'google' ? 'Google' : 'Outlook'} 연동
               </span>
             )}
             <button
               onClick={handleSync}
               disabled={isSyncing}
-              className="p-2 text-gray-400 hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
+              className="p-2 rounded-lg transition-colors disabled:opacity-50"
+              style={{ color: 'var(--text-tertiary)' }}
             >
               <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />
             </button>
@@ -302,17 +303,24 @@ export default function DaySchedule({ mode = 'all' }: DayScheduleProps) {
 
       {isLoading ? (
         <div className="p-6 text-center">
-          <RefreshCw size={24} className="mx-auto text-primary animate-spin mb-2" />
-          <p className="text-sm text-gray-500 dark:text-gray-400">일정을 불러오는 중...</p>
+          <RefreshCw size={24} className="mx-auto animate-spin mb-2" style={{ color: 'var(--accent-primary)' }} />
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>일정을 불러오는 중...</p>
         </div>
       ) : filteredItems.length === 0 ? (
         <div className="p-6 text-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+          <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ backgroundColor: 'var(--surface-subtle)' }}>
+            <Clock size={20} style={{ color: 'var(--text-tertiary)' }} />
+          </div>
+          <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
             {mode === 'work' ? '오늘 업무 일정이 없어요' : mode === 'life' ? '오늘 생활 일정이 없어요' : '오늘 일정이 없어요'}
+          </p>
+          <p className="text-xs mb-3" style={{ color: 'var(--text-tertiary)' }}>
+            {mode === 'work' ? '여유롭게 집중할 수 있는 날이에요' : mode === 'life' ? '나만의 시간을 만들어보세요' : '오늘 하루를 계획해보세요'}
           </p>
           <button
             onClick={() => navigate('/calendar')}
-            className="px-4 py-2 bg-primary/10 text-primary rounded-xl text-sm font-medium hover:bg-primary/20 transition-colors"
+            className="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+            style={{ backgroundColor: 'rgba(201, 162, 94, 0.1)', color: 'var(--accent-primary)' }}
           >
             일정 추가하기
           </button>
@@ -322,7 +330,7 @@ export default function DaySchedule({ mode = 'all' }: DayScheduleProps) {
           {/* Timeline */}
           <div className="relative">
             {/* 세로 라인 */}
-            <div className="absolute left-[14px] top-0 bottom-0 w-[2px] bg-gray-100 dark:bg-gray-700" />
+            <div className="absolute left-[14px] top-0 bottom-0 w-[2px]" style={{ backgroundColor: 'var(--border-default)' }} />
 
             <div className="space-y-1">
               {visibleSlots.map(slot => {
@@ -484,7 +492,8 @@ export default function DaySchedule({ mode = 'all' }: DayScheduleProps) {
           {/* 전체 일정 보기 */}
           <button
             onClick={() => navigate('/calendar')}
-            className="w-full mt-4 py-3 text-sm font-medium text-primary hover:bg-primary/5 rounded-xl transition-colors"
+            className="w-full mt-4 py-3 text-sm font-medium rounded-xl transition-colors"
+            style={{ color: 'var(--accent-primary)' }}
           >
             전체 일정 보기
           </button>

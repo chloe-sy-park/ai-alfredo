@@ -145,18 +145,28 @@ const FloatingBar: React.FC = () => {
 
   return (
     <>
-      <div className="fixed bottom-0 left-0 right-0 z-50 px-4 sm:px-6 pb-6 pt-2 bg-gradient-to-t from-gray-50 via-gray-50 to-transparent safe-area-bottom">
+      <div
+        className="fixed bottom-0 left-0 right-0 z-50 px-4 sm:px-6 pt-2"
+        style={{
+          paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
+          background: 'linear-gradient(to top, var(--surface-default), var(--surface-default) 80%, transparent)'
+        }}
+      >
         <div ref={containerRef} className="max-w-md sm:max-w-lg mx-auto">
           {/* 메인 입력 바 */}
           <div className="flex items-center gap-2">
             {/* 채팅 입력창 - 포커스 시 확장 */}
             <div
               className={`
-                flex-1 bg-white rounded-full shadow-lg border border-gray-100
+                flex-1 rounded-full shadow-lg
                 flex items-center overflow-hidden
                 transition-all duration-300 ease-out
                 ${isInputFocused ? 'flex-[1]' : 'flex-[0.85]'}
               `}
+              style={{
+                backgroundColor: 'var(--surface-default)',
+                border: '1px solid var(--border-default)'
+              }}
             >
               <input
                 ref={inputRef}
@@ -166,7 +176,8 @@ const FloatingBar: React.FC = () => {
                 onKeyDown={handleKeyDown}
                 onFocus={handleInputFocus}
                 placeholder="알프레도에게 물어보세요..."
-                className="flex-1 px-5 py-3.5 text-sm bg-transparent outline-none placeholder:text-gray-400 min-h-[48px]"
+                className="flex-1 px-5 py-3.5 text-sm bg-transparent outline-none min-h-[48px]"
+                style={{ color: 'var(--text-primary)' }}
                 aria-label="알프레도에게 메시지 입력"
               />
 
@@ -176,13 +187,11 @@ const FloatingBar: React.FC = () => {
                   onClick={handleSubmit}
                   disabled={!inputValue.trim()}
                   aria-label="메시지 전송"
-                  className={`
-                    mr-2 p-2.5 rounded-full transition-all duration-200
-                    ${inputValue.trim()
-                      ? 'bg-[#A996FF] text-white hover:bg-[#8B7BE8]'
-                      : 'bg-gray-100 text-gray-400'
-                    }
-                  `}
+                  className="mr-2 p-2.5 rounded-full transition-all duration-200"
+                  style={inputValue.trim()
+                    ? { backgroundColor: 'var(--accent-primary)', color: 'var(--accent-on)' }
+                    : { backgroundColor: 'var(--surface-subtle)', color: 'var(--text-tertiary)' }
+                  }
                 >
                   <Send className="w-4 h-4" />
                 </button>
@@ -200,16 +209,16 @@ const FloatingBar: React.FC = () => {
                 rounded-full shadow-lg
                 flex items-center justify-center
                 transition-all duration-300 ease-out
-                focus:outline-none focus:ring-2 focus:ring-[#A996FF] focus:ring-offset-2
+                focus:outline-none focus:ring-2 focus:ring-offset-2
                 ${isInputFocused
                   ? 'w-10 h-10 opacity-60 scale-90'
                   : 'w-14 h-14'
                 }
-                ${activeSheet === 'more'
-                  ? 'bg-gray-200 text-gray-600'
-                  : 'bg-[#A996FF] text-white shadow-[#A996FF]/30 hover:bg-[#8B7BE8]'
-                }
               `}
+              style={activeSheet === 'more'
+                ? { backgroundColor: 'var(--surface-subtle)', color: 'var(--text-secondary)' }
+                : { backgroundColor: 'var(--accent-primary)', color: 'var(--accent-on)' }
+              }
             >
               {activeSheet === 'more'
                 ? <X className={isInputFocused ? 'w-4 h-4' : 'w-5 h-5'} />
@@ -261,7 +270,13 @@ function QuickActionSheet({
       {/* Sheet */}
       <div className="absolute bottom-24 left-0 right-0 px-4 sm:px-6 animate-in slide-in-from-bottom-4 duration-300">
         <div className="max-w-md sm:max-w-lg mx-auto">
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4">
+          <div
+            className="rounded-2xl shadow-xl p-4"
+            style={{
+              backgroundColor: 'var(--surface-default)',
+              border: '1px solid var(--border-default)'
+            }}
+          >
             {/* 퀵액션 그리드 */}
             <div className="grid grid-cols-4 gap-2">
               {actions.map((action, index) => {
@@ -274,25 +289,26 @@ function QuickActionSheet({
                       action.action();
                     }}
                     aria-label={action.ariaLabel}
-                    className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-gray-50 active:scale-95 transition-all"
+                    className="flex flex-col items-center gap-2 p-3 rounded-xl active:scale-95 transition-all"
+                    style={{ color: 'var(--text-secondary)' }}
                   >
-                    <div className={`
-                      w-12 h-12 rounded-full flex items-center justify-center
-                      ${action.primary
-                        ? 'bg-[#A996FF] text-white'
-                        : 'bg-[#F5F3FF] text-[#A996FF]'
+                    <div
+                      className="w-12 h-12 rounded-full flex items-center justify-center"
+                      style={action.primary
+                        ? { backgroundColor: 'var(--accent-primary)', color: 'var(--accent-on)' }
+                        : { backgroundColor: 'var(--surface-subtle)', color: 'var(--accent-primary)' }
                       }
-                    `}>
+                    >
                       <Icon className="w-5 h-5" />
                     </div>
-                    <span className="text-xs text-gray-600">{action.label}</span>
+                    <span className="text-xs">{action.label}</span>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          <p className="text-center text-xs text-gray-400 mt-3">
+          <p className="text-center text-xs mt-3" style={{ color: 'var(--text-tertiary)' }}>
             바깥을 탭하거나 ESC로 닫기
           </p>
         </div>
@@ -352,14 +368,15 @@ function ConditionSheet({
 
   return (
     <SheetOverlay onClose={onClose}>
-      <div className="bg-white rounded-t-2xl p-6 safe-area-bottom">
+      <div className="rounded-t-2xl p-6 safe-area-bottom" style={{ backgroundColor: 'var(--surface-default)' }}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-[#1A1A1A]">오늘 컨디션</h3>
+          <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>오늘 컨디션</h3>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full"
+            className="p-2 rounded-full transition-colors"
+            style={{ color: 'var(--text-tertiary)' }}
           >
-            <X size={20} className="text-gray-500" />
+            <X size={20} />
           </button>
         </div>
 
@@ -371,22 +388,21 @@ function ConditionSheet({
               <button
                 key={level}
                 onClick={function() { handleSelect(level); }}
-                className={
-                  'flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all min-h-[100px] ' +
-                  (isSelected
-                    ? 'border-[#A996FF] bg-[#F0F0FF]'
-                    : 'border-[#F5F5F5] hover:border-[#E5E5E5] hover:bg-gray-50')
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all min-h-[100px]"
+                style={isSelected
+                  ? { borderColor: 'var(--accent-primary)', backgroundColor: 'rgba(169, 150, 255, 0.1)' }
+                  : { borderColor: 'var(--border-default)', backgroundColor: 'transparent' }
                 }
               >
                 <span className="text-3xl">{info.emoji}</span>
-                <span className="text-sm font-medium text-[#666666]">{info.label}</span>
+                <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{info.label}</span>
               </button>
             );
           })}
         </div>
 
         {currentLevel && (
-          <p className="text-sm text-[#999999] text-center mt-4">
+          <p className="text-sm text-center mt-4" style={{ color: 'var(--text-tertiary)' }}>
             {conditionConfig[currentLevel].message}
           </p>
         )}
@@ -447,14 +463,15 @@ function MemoSheet({
 
   return (
     <SheetOverlay onClose={onClose}>
-      <div className="bg-white rounded-t-2xl p-6 safe-area-bottom max-h-[70vh] overflow-y-auto">
+      <div className="rounded-t-2xl p-6 safe-area-bottom max-h-[70vh] overflow-y-auto" style={{ backgroundColor: 'var(--surface-default)' }}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-[#1A1A1A]">빠른 메모</h3>
+          <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>빠른 메모</h3>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full"
+            className="p-2 rounded-full transition-colors"
+            style={{ color: 'var(--text-tertiary)' }}
           >
-            <X size={20} className="text-gray-500" />
+            <X size={20} />
           </button>
         </div>
 
@@ -466,13 +483,18 @@ function MemoSheet({
             onChange={function(e) { setNewContent(e.target.value); }}
             onKeyDown={handleKeyDown}
             placeholder="기억할 것을 입력하세요"
-            className="flex-1 px-4 py-3 border border-[#E5E5E5] rounded-xl text-sm focus:outline-none focus:border-[#A996FF]"
+            className="flex-1 px-4 py-3 rounded-xl text-sm focus:outline-none"
+            style={{
+              border: '1px solid var(--border-default)',
+              color: 'var(--text-primary)'
+            }}
             autoFocus
           />
           <button
             onClick={handleAdd}
             disabled={!newContent.trim()}
-            className="px-4 py-3 bg-[#A996FF] text-white font-medium rounded-xl hover:bg-[#8B7BE8] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-3 font-medium rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--accent-on)' }}
           >
             추가
           </button>
@@ -484,31 +506,32 @@ function MemoSheet({
             return (
               <div
                 key={memo.id}
-                className={
-                  'flex items-start gap-3 p-3 rounded-xl ' +
-                  (memo.pinned ? 'bg-[#FFFBEB] border border-[#FFD700]/30' : 'bg-[#F5F5F5]')
+                className="flex items-start gap-3 p-3 rounded-xl"
+                style={memo.pinned
+                  ? { backgroundColor: 'var(--state-warning-bg)', border: '1px solid var(--state-warning)' }
+                  : { backgroundColor: 'var(--surface-subtle)' }
                 }
               >
                 <button
                   onClick={function() { handleToggleComplete(memo.id); }}
-                  className="w-5 h-5 rounded-full border-2 border-[#E5E5E5] hover:border-[#A996FF] flex items-center justify-center flex-shrink-0 mt-0.5"
+                  className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors"
+                  style={{ borderColor: 'var(--border-default)' }}
                 >
-                  {memo.completed && <Check size={12} className="text-[#4ADE80]" />}
+                  {memo.completed && <Check size={12} style={{ color: 'var(--state-success)' }} />}
                 </button>
-                <p className="flex-1 text-sm text-[#1A1A1A]">{memo.content}</p>
+                <p className="flex-1 text-sm" style={{ color: 'var(--text-primary)' }}>{memo.content}</p>
                 <div className="flex gap-1">
                   <button
                     onClick={function() { handleTogglePin(memo.id); }}
-                    className={
-                      'p-1.5 rounded-lg ' +
-                      (memo.pinned ? 'text-[#FFD700]' : 'text-[#999999] hover:text-[#FFD700]')
-                    }
+                    className="p-1.5 rounded-lg transition-colors"
+                    style={{ color: memo.pinned ? 'var(--state-warning)' : 'var(--text-tertiary)' }}
                   >
                     <Pin size={14} className={memo.pinned ? 'fill-current' : ''} />
                   </button>
                   <button
                     onClick={function() { handleDelete(memo.id); }}
-                    className="p-1.5 text-[#999999] hover:text-[#EF4444] rounded-lg"
+                    className="p-1.5 rounded-lg transition-colors"
+                    style={{ color: 'var(--text-tertiary)' }}
                   >
                     <X size={14} />
                   </button>
@@ -518,7 +541,7 @@ function MemoSheet({
           })}
 
           {memos.length === 0 && (
-            <p className="text-center text-sm text-[#999999] py-4">
+            <p className="text-center text-sm py-4" style={{ color: 'var(--text-tertiary)' }}>
               아직 메모가 없어요
             </p>
           )}
@@ -570,41 +593,50 @@ function CalendarSheet({ onClose }: { onClose: () => void }) {
     }
   }
 
+  const inputStyle = {
+    border: '1px solid var(--border-default)',
+    color: 'var(--text-primary)',
+    backgroundColor: 'var(--surface-default)'
+  };
+
   return (
     <SheetOverlay onClose={onClose}>
-      <div className="bg-white rounded-t-2xl p-6 safe-area-bottom max-h-[80vh] overflow-y-auto">
+      <div className="rounded-t-2xl p-6 safe-area-bottom max-h-[80vh] overflow-y-auto" style={{ backgroundColor: 'var(--surface-default)' }}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-[#1A1A1A]">새 일정</h3>
+          <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>새 일정</h3>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full"
+            className="p-2 rounded-full transition-colors"
+            style={{ color: 'var(--text-tertiary)' }}
           >
-            <X size={20} className="text-gray-500" />
+            <X size={20} />
           </button>
         </div>
 
         <div className="space-y-4">
           {/* 제목 */}
           <div>
-            <label className="text-sm font-medium text-[#666666] mb-1 block">제목</label>
+            <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>제목</label>
             <input
               type="text"
               value={title}
               onChange={function(e) { setTitle(e.target.value); }}
               placeholder="일정 제목"
-              className="w-full px-4 py-3 border border-[#E5E5E5] rounded-xl text-sm focus:outline-none focus:border-[#A996FF]"
+              className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none"
+              style={inputStyle}
               autoFocus
             />
           </div>
 
           {/* 날짜 */}
           <div>
-            <label className="text-sm font-medium text-[#666666] mb-1 block">날짜</label>
+            <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>날짜</label>
             <input
               type="date"
               value={date}
               onChange={function(e) { setDate(e.target.value); }}
-              className="w-full px-4 py-3 border border-[#E5E5E5] rounded-xl text-sm focus:outline-none focus:border-[#A996FF]"
+              className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none"
+              style={inputStyle}
             />
           </div>
 
@@ -615,30 +647,33 @@ function CalendarSheet({ onClose }: { onClose: () => void }) {
               id="allDay"
               checked={isAllDay}
               onChange={function(e) { setIsAllDay(e.target.checked); }}
-              className="w-5 h-5 rounded border-[#E5E5E5] text-[#A996FF] focus:ring-[#A996FF]"
+              className="w-5 h-5 rounded"
+              style={{ borderColor: 'var(--border-default)', accentColor: 'var(--accent-primary)' }}
             />
-            <label htmlFor="allDay" className="text-sm text-[#666666]">종일</label>
+            <label htmlFor="allDay" className="text-sm" style={{ color: 'var(--text-secondary)' }}>종일</label>
           </div>
 
           {/* 시간 */}
           {!isAllDay && (
             <div className="flex gap-3">
               <div className="flex-1">
-                <label className="text-sm font-medium text-[#666666] mb-1 block">시작</label>
+                <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>시작</label>
                 <input
                   type="time"
                   value={startTime}
                   onChange={function(e) { setStartTime(e.target.value); }}
-                  className="w-full px-4 py-3 border border-[#E5E5E5] rounded-xl text-sm focus:outline-none focus:border-[#A996FF]"
+                  className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none"
+                  style={inputStyle}
                 />
               </div>
               <div className="flex-1">
-                <label className="text-sm font-medium text-[#666666] mb-1 block">종료</label>
+                <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>종료</label>
                 <input
                   type="time"
                   value={endTime}
                   onChange={function(e) { setEndTime(e.target.value); }}
-                  className="w-full px-4 py-3 border border-[#E5E5E5] rounded-xl text-sm focus:outline-none focus:border-[#A996FF]"
+                  className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none"
+                  style={inputStyle}
                 />
               </div>
             </div>
@@ -647,11 +682,12 @@ function CalendarSheet({ onClose }: { onClose: () => void }) {
           {/* 캘린더 선택 */}
           {calendars.length > 1 && (
             <div>
-              <label className="text-sm font-medium text-[#666666] mb-1 block">캘린더</label>
+              <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>캘린더</label>
               <select
                 value={selectedCalendarId}
                 onChange={function(e) { setSelectedCalendarId(e.target.value); }}
-                className="w-full px-4 py-3 border border-[#E5E5E5] rounded-xl text-sm focus:outline-none focus:border-[#A996FF] bg-white"
+                className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none"
+                style={inputStyle}
               >
                 {calendars.map(function(cal) {
                   return (
@@ -668,7 +704,8 @@ function CalendarSheet({ onClose }: { onClose: () => void }) {
           <button
             onClick={handleSubmit}
             disabled={!title.trim() || isSubmitting}
-            className="w-full py-4 bg-[#A996FF] text-white font-medium rounded-xl hover:bg-[#8B7BE8] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-4 font-medium rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            style={{ backgroundColor: 'var(--accent-primary)', color: 'var(--accent-on)' }}
           >
             {isSubmitting ? '저장 중...' : '일정 추가'}
           </button>

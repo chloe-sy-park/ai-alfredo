@@ -70,32 +70,32 @@ function getInsightTypeLabel(type: InsightType): string {
 }
 
 /**
- * Confidence에 따른 스타일
+ * Confidence에 따른 스타일 (CSS 변수 기반)
  */
 function getConfidenceStyle(confidence: Insight['confidence']): {
-  bg: string;
-  text: string;
-  border: string;
+  backgroundColor: string;
+  color: string;
+  borderColor: string;
 } {
   switch (confidence) {
     case 'HIGH':
       return {
-        bg: 'bg-[#E8F5E9]',
-        text: 'text-[#2E7D32]',
-        border: 'border-[#C8E6C9]'
+        backgroundColor: 'rgba(78, 172, 91, 0.15)',
+        color: 'var(--state-success)',
+        borderColor: 'rgba(78, 172, 91, 0.3)'
       };
     case 'MED':
       return {
-        bg: 'bg-[#F3E8FF]',
-        text: 'text-[#7C3AED]',
-        border: 'border-[#E9D5FF]'
+        backgroundColor: 'rgba(169, 150, 255, 0.15)',
+        color: 'var(--accent-primary)',
+        borderColor: 'rgba(169, 150, 255, 0.3)'
       };
     case 'LOW':
     default:
       return {
-        bg: 'bg-[#F5F5F5]',
-        text: 'text-[#666666]',
-        border: 'border-[#E5E5E5]'
+        backgroundColor: 'var(--surface-subtle)',
+        color: 'var(--text-secondary)',
+        borderColor: 'var(--border-default)'
       };
   }
 }
@@ -131,10 +131,11 @@ export default function SmartInsightCard({
             e.stopPropagation();
             onDismiss();
           }}
-          className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-[#F5F5F5] transition-colors"
+          className="absolute top-3 right-3 p-1.5 rounded-full transition-colors"
+          style={{ color: 'var(--text-tertiary)' }}
           aria-label="닫기"
         >
-          <X size={16} className="text-[#999999]" />
+          <X size={16} />
         </button>
       )}
 
@@ -143,25 +144,29 @@ export default function SmartInsightCard({
         <div className="flex items-center gap-2">
           <span className="text-lg">{icon}</span>
           <span
-            className={`text-xs px-2 py-0.5 rounded-full ${confidenceStyle.bg} ${confidenceStyle.text}`}
+            className="text-xs px-2 py-0.5 rounded-full"
+            style={{
+              backgroundColor: confidenceStyle.backgroundColor,
+              color: confidenceStyle.color
+            }}
           >
             {typeLabel}
           </span>
         </div>
 
         {/* 제목 (22-36자) */}
-        <h3 className="font-semibold text-[#1A1A1A] leading-snug pr-6">
+        <h3 className="font-semibold leading-snug pr-6" style={{ color: 'var(--text-primary)' }}>
           {insight.title}
         </h3>
 
         {/* 이유 (28-44자) */}
-        <p className="text-sm text-[#666666] leading-relaxed">
+        <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
           {insight.reason}
         </p>
 
         {/* Confidence 고백 (LOW/MED일 때만) */}
         {insight.confidence !== 'HIGH' && confidenceText.disclosure && (
-          <p className="text-xs text-[#999999] italic">
+          <p className="text-xs italic" style={{ color: 'var(--text-tertiary)' }}>
             {confidenceText.disclosure}
           </p>
         )}
@@ -170,12 +175,11 @@ export default function SmartInsightCard({
         {insight.cta && onCTA && (
           <button
             onClick={onCTA}
-            className={`w-full mt-2 py-2.5 px-4 rounded-xl text-sm font-medium transition-all
-              ${insight.type === 'AVOID_ONE'
-                ? 'bg-[#F5F5F5] text-[#666666] hover:bg-[#E5E5E5]'
-                : 'bg-[#F0EDFF] text-[#7C3AED] hover:bg-[#E8E4FF]'
-              }
-            `}
+            className="w-full mt-2 py-2.5 px-4 rounded-xl text-sm font-medium transition-all"
+            style={insight.type === 'AVOID_ONE'
+              ? { backgroundColor: 'var(--surface-subtle)', color: 'var(--text-secondary)' }
+              : { backgroundColor: 'rgba(169, 150, 255, 0.15)', color: 'var(--accent-primary)' }
+            }
           >
             {insight.cta.label}
           </button>

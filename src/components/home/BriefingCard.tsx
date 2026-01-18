@@ -153,49 +153,61 @@ export default function BriefingCard({
           )}
           {/* Phase 6: 브리핑 진화 레벨 표시 */}
           {evolutionLevel.level > 1 && (
-            <span className="text-[10px] px-2 py-0.5 bg-[#F0F0FF] text-[#A996FF] rounded-full dark:bg-[#A996FF]/20">
+            <span
+              className="text-[10px] px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: 'var(--surface-subtle)', color: 'var(--accent-primary)' }}
+            >
               {evolutionLevel.description}
             </span>
           )}
           {/* 중요 메일 배지 */}
           {hasImportantEmail && (
-            <span className="text-[10px] px-2 py-0.5 bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded-full">
+            <span
+              className="text-[10px] px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: 'rgba(224, 70, 70, 0.1)', color: 'var(--state-danger)' }}
+            >
               📧 중요 메일
             </span>
           )}
         </div>
 
         {/* 헤드라인 */}
-        <h2 className="font-semibold text-[#1A1A1A] leading-relaxed">
+        <h2 className="font-semibold leading-relaxed" style={{ color: 'var(--text-primary)' }}>
           {headline}
         </h2>
 
         {/* 서브라인 */}
         {subline && (
-          <p className="text-sm text-[#666666] dark:text-neutral-400 leading-relaxed animate-fade-in animation-delay-150">
+          <p
+            className="text-sm leading-relaxed animate-fade-in animation-delay-150"
+            style={{ color: 'var(--text-secondary)' }}
+          >
             {subline}
           </p>
         )}
 
         {/* 이메일 요약 */}
         {emailSummary && (
-          <div className="mt-2 p-3 bg-[#F5F5F5] dark:bg-neutral-800 rounded-lg animate-fade-in animation-delay-150">
+          <div
+            className="mt-2 p-3 rounded-lg animate-fade-in animation-delay-150"
+            style={{ backgroundColor: 'var(--surface-subtle)' }}
+          >
             <div className="flex items-center gap-2 mb-1">
               <span className="text-sm">📬</span>
-              <span className="text-xs font-medium text-[#666666] dark:text-neutral-400">
+              <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                 메일 요약
               </span>
             </div>
-            <p className="text-sm text-[#1A1A1A] dark:text-white leading-relaxed">
+            <p className="text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>
               {emailSummary}
             </p>
           </div>
         )}
 
         {/* 피드백 버튼 */}
-        <div className="pt-3 border-t border-gray-100 animate-fade-in animation-delay-200">
+        <div className="pt-3 animate-fade-in animation-delay-200" style={{ borderTop: '1px solid var(--border-default)' }}>
           {showResponse && selectedFeedback ? (
-            <p className="text-sm text-primary text-center py-2 animate-fade-in">
+            <p className="text-sm text-center py-2 animate-fade-in" style={{ color: 'var(--accent-primary)' }}>
               {feedbackResponses[selectedFeedback]}
             </p>
           ) : (
@@ -207,11 +219,14 @@ export default function BriefingCard({
                     key={btn.type}
                     onClick={() => handleFeedback(btn.type)}
                     aria-label={btn.ariaLabel}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm transition-all ${
-                      isSelected
-                        ? 'bg-primary text-white'
-                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100 active:scale-95'
-                    }`}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-full text-sm transition-all active:scale-95"
+                    style={isSelected ? {
+                      backgroundColor: 'var(--accent-primary)',
+                      color: 'var(--accent-on)',
+                    } : {
+                      backgroundColor: 'var(--surface-subtle)',
+                      color: 'var(--text-secondary)',
+                    }}
                   >
                     {btn.emoji && <span>{btn.emoji}</span>}
                     <span>{btn.label}</span>
