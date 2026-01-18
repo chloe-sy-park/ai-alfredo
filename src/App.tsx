@@ -10,10 +10,8 @@ import { lazy, Suspense, useEffect } from 'react';
 import FloatingBar from './components/common/FloatingBar';
 import Drawer from './components/common/Drawer';
 import { PostActionToast } from './components/common';
-import { BodyDoublingButton } from './components/body-doubling/BodyDoublingButton';
 import { NudgeBubble } from './components/nudge/NudgeBubble';
 import { NudgeManager } from './components/nudge/NudgeManager';
-import ReflectButton from './components/common/ReflectButton';
 import { NotificationPanel } from './components/notification';
 import { ShopModal, InventoryModal } from './components/penguin';
 import { ErrorContainer, NetworkStatusBanner } from './components/error/ErrorComponents';
@@ -141,10 +139,8 @@ function App() {
       />
 
       {/* 기타 플로팅 요소들 */}
-      <BodyDoublingButton />
       <NudgeBubble />
       <NudgeManager />
-      <ReflectButton />
 
       {/* 펭귄 게이미피케이션 모달 */}
       <ShopModal />
