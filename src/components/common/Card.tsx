@@ -1,4 +1,4 @@
-import { ReactNode, HTMLAttributes } from 'react';
+import { ReactNode, HTMLAttributes, CSSProperties } from 'react';
 
 type CardVariant = 'default' | 'elevated' | 'priority' | 'alfredo';
 type PriorityLevel = 1 | 2 | 3;
@@ -18,36 +18,45 @@ export default function Card({
   noPadding = false,
   hoverable = false,
   className = '',
+  style,
   ...props
 }: CardProps) {
   // Base styles - radius: 16px (rounded-xl)
-  var baseStyles = 'rounded-xl transition-all duration-200';
-  
-  // Variant styles (라이트모드)
-  var variantStyles = {
-    default: 'bg-white shadow-card',
-    elevated: 'bg-[#F0F0FF]', // 알프레도 메시지 배경
-    priority: 'bg-white shadow-card border-l-[3px]',
-    alfredo: 'bg-[#F0F0FF]', // 알프레도 메시지 배경
+  const baseStyles = 'rounded-xl transition-all duration-200';
+
+  // Variant class styles
+  const variantClasses: Record<CardVariant, string> = {
+    default: 'shadow-card',
+    elevated: '', // 알프레도 메시지 배경
+    priority: 'shadow-card border-l-[3px]',
+    alfredo: '', // 알프레도 메시지 배경
   };
-  
-  // Priority border colors
-  var priorityBorderColors = {
-    1: 'border-l-[#FFD700]', // 골드
-    2: 'border-l-[#D4D4D4]',
-    3: 'border-l-[#E5E5E5]',
+
+  // Variant inline styles using tokens
+  const variantInlineStyles: Record<CardVariant, CSSProperties> = {
+    default: { backgroundColor: 'var(--surface-default)' },
+    elevated: { backgroundColor: 'var(--surface-subtle)' },
+    priority: { backgroundColor: 'var(--surface-default)' },
+    alfredo: { backgroundColor: 'var(--surface-subtle)' },
   };
-  
+
+  // Priority border colors using tokens
+  const priorityBorderColors: Record<PriorityLevel, string> = {
+    1: 'border-l-[var(--accent-primary)]', // 골드
+    2: 'border-l-[var(--border-default)]',
+    3: 'border-l-[var(--border-default)]',
+  };
+
   // Hover styles
-  var hoverStyles = hoverable ? 'hover:shadow-card-hover cursor-pointer' : '';
-  
+  const hoverStyles = hoverable ? 'hover:shadow-card-hover cursor-pointer' : '';
+
   // Padding - 16px
-  var paddingStyles = noPadding ? '' : 'p-4';
-  
+  const paddingStyles = noPadding ? '' : 'p-4';
+
   // Build final className
-  var finalClassName = [
+  const finalClassName = [
     baseStyles,
-    variantStyles[variant],
+    variantClasses[variant],
     variant === 'priority' && priority ? priorityBorderColors[priority] : '',
     hoverStyles,
     paddingStyles,
@@ -55,7 +64,11 @@ export default function Card({
   ].filter(Boolean).join(' ');
 
   return (
-    <div className={finalClassName} {...props}>
+    <div
+      className={finalClassName}
+      style={{ ...variantInlineStyles[variant], ...style }}
+      {...props}
+    >
       {children}
     </div>
   );
@@ -80,7 +93,10 @@ export function AlfredoCard({
       <div className="flex gap-3">
         {/* 아바타 - 40x40 */}
         {showAvatar && (
-          <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm flex-shrink-0">
+          <div
+            className="w-10 h-10 rounded-full flex items-center justify-center shadow-sm flex-shrink-0"
+            style={{ backgroundColor: 'var(--surface-default)' }}
+          >
             <span className="text-xl">🐧</span>
           </div>
         )}
@@ -90,7 +106,8 @@ export function AlfredoCard({
         {onMore && (
           <button
             onClick={onMore}
-            className="text-sm text-[#666666] hover:text-[#1A1A1A] flex-shrink-0 min-h-[44px] flex items-center"
+            className="text-sm flex-shrink-0 min-h-[44px] flex items-center hover:opacity-80"
+            style={{ color: 'var(--text-secondary)' }}
           >
             더보기
           </button>

@@ -343,8 +343,8 @@ export default function Home() {
         {/* 인사 */}
         <div className="animate-fade-in">
           <ModeBadge />
-          <p className="text-sm sm:text-base text-[#999999]">{getGreeting()}</p>
-          <h1 className="text-xl sm:text-2xl font-bold text-[#1A1A1A] dark:text-white">
+          <p className="text-sm sm:text-base" style={{ color: 'var(--text-tertiary)' }}>{getGreeting()}</p>
+          <h1 className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
             {user?.name || 'Boss'}님
           </h1>
         </div>

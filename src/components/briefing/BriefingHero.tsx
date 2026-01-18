@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, CSSProperties } from 'react';
 import {
   Sun, Cloud, CloudRain, CloudSnow, Wind,
   Briefcase, Heart, Wallet, Layout,
@@ -18,41 +18,46 @@ interface BriefingHeroProps {
   onMore?: () => void;
 }
 
-// 모드별 설정
+// 모드별 설정 (디자인 토큰 기반)
 const modeConfig: Record<BriefingMode, {
   gradient: string;
   icon: LucideIcon;
   title: string;
   emoji: string;
   accentColor: string;
+  accentStyle: CSSProperties;
 }> = {
   all: {
-    gradient: 'from-primary/10 via-secondary/5 to-primary/10',
+    gradient: 'from-[rgba(201,162,94,0.08)] via-[rgba(201,162,94,0.04)] to-[rgba(201,162,94,0.08)]',
     icon: Layout,
     title: '오늘의 브리핑',
     emoji: '🐧',
-    accentColor: 'text-primary'
+    accentColor: 'text-os-work',
+    accentStyle: { color: 'var(--accent-primary)' }
   },
   work: {
-    gradient: 'from-blue-50 via-indigo-50/50 to-blue-50',
+    gradient: 'from-[rgba(74,92,115,0.08)] via-[rgba(74,92,115,0.04)] to-[rgba(74,92,115,0.08)]',
     icon: Briefcase,
     title: '업무 브리핑',
     emoji: '💼',
-    accentColor: 'text-blue-600'
+    accentColor: 'text-os-work',
+    accentStyle: { color: 'var(--os-work)' }
   },
   life: {
-    gradient: 'from-green-50 via-teal-50/50 to-green-50',
+    gradient: 'from-[rgba(126,155,138,0.08)] via-[rgba(126,155,138,0.04)] to-[rgba(126,155,138,0.08)]',
     icon: Heart,
     title: '웰빙 브리핑',
     emoji: '🌿',
-    accentColor: 'text-green-600'
+    accentColor: 'text-os-life',
+    accentStyle: { color: 'var(--os-life)' }
   },
   finance: {
-    gradient: 'from-emerald-50 via-amber-50/30 to-emerald-50',
+    gradient: 'from-[rgba(140,122,94,0.08)] via-[rgba(140,122,94,0.04)] to-[rgba(140,122,94,0.08)]',
     icon: Wallet,
     title: '재정 브리핑',
     emoji: '💰',
-    accentColor: 'text-emerald-600'
+    accentColor: 'text-os-finance',
+    accentStyle: { color: 'var(--os-finance)' }
   }
 };
 
@@ -259,7 +264,7 @@ export default function BriefingHero({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-xl">{config.emoji}</span>
-            <span className={`text-sm font-medium ${config.accentColor}`}>
+            <span className="text-sm font-medium" style={config.accentStyle}>
               {config.title}
             </span>
           </div>
@@ -328,11 +333,11 @@ export default function BriefingHero({
         {isExpanded && (
           <div className="mt-3 animate-in slide-in-from-top-2 duration-200">
             {/* 메인 메시지 */}
-            <h2 className="text-lg font-bold text-gray-900 mb-1 leading-tight">
+            <h2 className="text-lg font-bold mb-1 leading-tight" style={{ color: 'var(--text-primary)' }}>
               {briefing.headline}
             </h2>
             {briefing.subline && (
-              <p className="text-sm text-gray-600 leading-relaxed">
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
                 {briefing.subline}
               </p>
             )}
@@ -349,7 +354,8 @@ export default function BriefingHero({
             {onMore && (
               <button
                 onClick={onMore}
-                className={`mt-3 text-xs ${config.accentColor} hover:underline flex items-center gap-1 transition-colors`}
+                className="mt-3 text-xs hover:underline flex items-center gap-1 transition-colors"
+                style={config.accentStyle}
               >
                 자세히 보기 →
               </button>
