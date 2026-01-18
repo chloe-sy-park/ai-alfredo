@@ -10,17 +10,22 @@ import {
 } from '../../services/agenda';
 import { v4 as uuidv4 } from 'uuid';
 
+type HomeMode = 'all' | 'work' | 'life';
+
 interface TodayAgendaProps {
+  mode?: HomeMode;
   onTaskComplete?: (taskId: string) => void;
 }
 
 /**
  * Today's Agenda 컴포넌트
- * - Work 1개, Life 1개, 알프레도 추천 1개 = 총 3개 Agenda
+ * - All 모드: Work 1개, Life 1개, 알프레도 추천 1개 = 총 3개 Agenda
+ * - Work 모드: Work Agenda만 확대 표시
+ * - Life 모드: Life Agenda만 확대 표시
  * - 각 Agenda 토글 시 하위 Task 3개 표시
  * - 알프레도가 제안하고 사용자가 수정 가능
  */
-export default function TodayAgenda({ onTaskComplete }: TodayAgendaProps) {
+export default function TodayAgenda({ mode = 'all', onTaskComplete }: TodayAgendaProps) {
   const [agendas, setAgendas] = useState<TodayAgendas | null>(null);
   const [expandedAgenda, setExpandedAgenda] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,6 +36,25 @@ export default function TodayAgenda({ onTaskComplete }: TodayAgendaProps) {
   useEffect(() => {
     loadAgendas();
   }, []);
+
+  // Work/Life 모드에서는 첫 번째 Agenda 자동 확장
+  useEffect(() => {
+    if (agendas && mode !== 'all') {
+      const targetAgenda = mode === 'work' ? agendas.work : agendas.life;
+      if (targetAgenda) {
+        setExpandedAgenda(targetAgenda.id);
+      }
+    }
+  }, [agendas, mode]);
+
+  // 모드별 타이틀
+  const getModeTitle = () => {
+    switch (mode) {
+      case 'work': return "Today's Work Agenda";
+      case 'life': return "Today's Life Agenda";
+      default: return "Today's Agenda";
+    }
+  };
 
   const loadAgendas = async () => {
     setIsLoading(true);
@@ -115,17 +139,43 @@ export default function TodayAgenda({ onTaskComplete }: TodayAgendaProps) {
     );
   }
 
-  const agendaList = [
-    { key: 'work' as const, data: agendas?.work },
-    { key: 'life' as const, data: agendas?.life },
-    { key: 'recommended' as const, data: agendas?.recommended }
-  ].filter(a => a.data !== null);
+  // 모드별 Agenda 필터링
+  const getAgendaList = () => {
+    const allAgendas = [
+      { key: 'work' as const, data: agendas?.work },
+      { key: 'life' as const, data: agendas?.life },
+      { key: 'recommended' as const, data: agendas?.recommended }
+    ].filter(a => a.data !== null);
+
+    if (mode === 'work') {
+      // Work 모드: Work Agenda만 표시 (없으면 recommended도 추가)
+      const workAgenda = allAgendas.filter(a => a.key === 'work');
+      if (workAgenda.length === 0) {
+        return allAgendas.filter(a => a.key === 'recommended');
+      }
+      return workAgenda;
+    }
+
+    if (mode === 'life') {
+      // Life 모드: Life Agenda만 표시 (없으면 recommended도 추가)
+      const lifeAgenda = allAgendas.filter(a => a.key === 'life');
+      if (lifeAgenda.length === 0) {
+        return allAgendas.filter(a => a.key === 'recommended');
+      }
+      return lifeAgenda;
+    }
+
+    // All 모드: 전체 표시
+    return allAgendas;
+  };
+
+  const agendaList = getAgendaList();
 
   if (agendaList.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-card">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-bold text-gray-900 dark:text-white">Today's Agenda</h2>
+          <h2 className="font-bold text-gray-900 dark:text-white">{getModeTitle()}</h2>
           <button
             onClick={handleRegenerate}
             disabled={isRegenerating}
@@ -149,7 +199,7 @@ export default function TodayAgenda({ onTaskComplete }: TodayAgendaProps) {
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <h2 className="font-bold text-gray-900 dark:text-white">Today's Agenda</h2>
+            <h2 className="font-bold text-gray-900 dark:text-white">{getModeTitle()}</h2>
             <span className="px-2 py-0.5 bg-primary/10 rounded-full text-xs font-medium text-primary">
               {agendaList.length}
             </span>

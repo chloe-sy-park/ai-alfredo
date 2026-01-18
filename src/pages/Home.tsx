@@ -358,11 +358,11 @@ export default function Home() {
             {/* 2. AI 의사결정 매트릭스 */}
             <DecisionMatrix condition={currentCondition} />
 
-            {/* 3. Today's Agenda (Work/Life/추천 3개, 토글 시 Top3 Task 표시) */}
-            <TodayAgenda />
+            {/* 3. Today's Work Agenda (Work Agenda만 확대 표시) */}
+            <TodayAgenda mode="work" />
 
-            {/* 4. Schedule 타임라인 (Task + Event 통합) */}
-            <DaySchedule />
+            {/* 4. Work Schedule 타임라인 (업무 관련만 필터링) */}
+            <DaySchedule mode="work" />
 
             {/* 5. 지금 집중할거 */}
             <FocusNow
@@ -392,11 +392,11 @@ export default function Home() {
             {/* 2. AI 의사결정 매트릭스 */}
             <DecisionMatrix condition={currentCondition} />
 
-            {/* 3. Today's Agenda (Work/Life/추천 3개, 토글 시 Top3 Task 표시) */}
-            <TodayAgenda />
+            {/* 3. Today's Life Agenda (Life Agenda만 확대 표시) */}
+            <TodayAgenda mode="life" />
 
-            {/* 4. Schedule 타임라인 (Task + Event 통합) */}
-            <DaySchedule />
+            {/* 4. Life Schedule 타임라인 (생활 관련만 필터링) */}
+            <DaySchedule mode="life" />
 
             {/* 5. Work/Life 진행률 바 */}
             <OSProgressBar
@@ -421,10 +421,10 @@ export default function Home() {
             <DecisionMatrix condition={currentCondition} />
 
             {/* 3. Today's Agenda (Work/Life/추천 3개, 토글 시 Top3 Task 표시) */}
-            <TodayAgenda />
+            <TodayAgenda mode="all" />
 
             {/* 4. Schedule 타임라인 (Task + Event 통합) */}
-            <DaySchedule />
+            <DaySchedule mode="all" />
 
             {/* 5. Work/Life 진행률 바 */}
             <OSProgressBar
