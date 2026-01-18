@@ -132,9 +132,9 @@ export default function Work() {
   };
 
   return (
-    <div className="min-h-screen bg-background dark:bg-gray-900">
+    <div className="min-h-screen bg-background dark:bg-gray-900 typo-os-work">
       <PageHeader />
-      
+
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-4">
         {/* 페이지 헤더 */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">

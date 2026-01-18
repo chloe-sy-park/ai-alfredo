@@ -86,12 +86,39 @@
   --state-danger: #E04646;
   --state-info: #2F80ED;
 
-  /* Typography */
-  --font-body: Pretendard;
-  --font-heading-en: Canela;
+  /* Typography - Font Family */
+  --font-body: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', sans-serif;
+  --font-heading-en: 'Canela', Georgia, 'Times New Roman', serif;
+  --font-heading-kr: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-ui: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-numbers: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+
+  /* Typography - Font Weight */
   --font-weight-regular: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
+
+  /* Typography - Letter Spacing (tracking) */
+  --tracking-tight: -0.03em;    /* -3% for EN heading */
+  --tracking-heading: -0.02em;  /* -2% for KR heading */
+  --tracking-normal: 0em;       /* 0% for body */
+  --tracking-ui: 0.01em;        /* +1% for UI/labels */
+  --tracking-wide: 0.02em;      /* +2% for buttons */
+
+  /* Typography - Line Height */
+  --leading-tight: 1.2;         /* Headings */
+  --leading-snug: 1.4;          /* Compact text */
+  --leading-normal: 1.5;        /* Default body */
+  --leading-relaxed: 1.6;       /* Body KR/EN mixed */
+  --leading-loose: 1.8;         /* Life mode - slightly loose */
+
+  /* Typography - OS-specific adjustments */
+  --tracking-os-work: -0.01em;    /* Neutral/Tight */
+  --leading-os-work: 1.5;
+  --tracking-os-life: 0em;        /* Slightly Loose */
+  --leading-os-life: 1.7;
+  --tracking-os-finance: -0.01em; /* Dense/Calm */
+  --leading-os-finance: 1.45;
 }
 
 /* ===== Dark Theme ===== */
