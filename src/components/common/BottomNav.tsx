@@ -24,7 +24,13 @@ const BottomNav: React.FC = () => {
   if (shouldHide) return null;
   
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-50">
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 border-t"
+      style={{
+        backgroundColor: 'var(--surface-default)',
+        borderColor: 'var(--border-default)'
+      }}
+    >
       <div className="max-w-md mx-auto flex justify-around items-center h-16 px-2">
         {navItems.map(function(item) {
           const isActive = location.pathname === item.path;
@@ -35,12 +41,10 @@ const BottomNav: React.FC = () => {
             <button
               key={item.path}
               onClick={function() { navigate(item.path); }}
-              className={[
-                'flex flex-col items-center justify-center py-2 px-3 rounded-lg transition-all min-w-[56px]',
-                isActive
-                  ? 'text-primary'
-                  : 'text-text-muted hover:text-text-secondary'
-              ].join(' ')}
+              className="flex flex-col items-center justify-center py-2 px-3 rounded-lg transition-all min-w-[56px]"
+              style={{
+                color: isActive ? 'var(--accent-primary)' : 'var(--text-tertiary)'
+              }}
             >
               <Icon className={[
                 isCenter ? 'w-6 h-6 mb-0.5' : 'w-5 h-5 mb-1',

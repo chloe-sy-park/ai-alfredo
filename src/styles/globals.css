@@ -7,9 +7,9 @@
 
 /* 글로벌 스타일 */
 :root {
-  /* 기존 라벤더 토큰 (호환성 유지) */
-  --color-lavender-400: #A996FF;
-  --color-lavender-50: #F5F3FF;
+  /* 레거시 호환성 (점진적 마이그레이션) */
+  --color-lavender-400: var(--accent-primary);
+  --color-lavender-50: var(--bg-primary);
 }
 
 * {
@@ -24,11 +24,17 @@ html {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #F5F3FF;
-  color: #18181B;
+  font-family: var(--font-body), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
   line-height: 1.5;
   overflow-x: hidden;
+}
+
+/* 다크모드 body */
+.dark body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 /* 스크롤바 스타일 */
@@ -41,12 +47,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #DDD6FE;
+  background: var(--border-default);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #C4B5FD;
+  background: var(--accent-primary);
 }
 
 /* Safe Area for PWA */
@@ -64,34 +70,82 @@ body {
     background: rgba(255, 255, 255, 0.7);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid var(--border-default);
+  }
+
+  .dark .glass {
+    background: rgba(20, 24, 33, 0.7);
+    border: 1px solid var(--border-default);
   }
 
   .glass-card {
     @apply glass rounded-2xl shadow-card;
   }
 
+  /* 토큰 기반 버튼 */
   .btn-primary {
-    @apply bg-lavender-400 text-white font-medium py-3 px-6 rounded-xl
-           hover:bg-lavender-500 active:bg-lavender-600
-           transition-colors duration-200
-           disabled:opacity-50 disabled:cursor-not-allowed;
+    background-color: var(--accent-primary);
+    color: var(--accent-on);
+    @apply font-medium py-3 px-6 rounded-xl transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary:hover {
+    background-color: var(--accent-pressed);
+  }
+
+  .btn-primary:active {
+    background-color: var(--accent-pressed);
   }
 
   .btn-secondary {
-    @apply bg-white text-gray-700 font-medium py-3 px-6 rounded-xl
-           border border-gray-200
-           hover:bg-gray-50 active:bg-gray-100
-           transition-colors duration-200;
+    background-color: var(--surface-default);
+    color: var(--text-primary);
+    border: 1px solid var(--border-default);
+    @apply font-medium py-3 px-6 rounded-xl transition-colors duration-200;
   }
 
-  .input {
-    @apply w-full px-4 py-3 rounded-xl border border-gray-200
-           bg-white text-gray-900
-           placeholder:text-gray-400
-           focus:outline-none focus:ring-2 focus:ring-lavender-400 focus:border-transparent
-           transition-all duration-200;
+  .btn-secondary:hover {
+    background-color: var(--surface-subtle);
   }
+
+  /* 토큰 기반 인풋 */
+  .input {
+    background-color: var(--surface-default);
+    color: var(--text-primary);
+    border: 1px solid var(--border-default);
+    @apply w-full px-4 py-3 rounded-xl transition-all duration-200;
+  }
+
+  .input::placeholder {
+    color: var(--text-tertiary);
+  }
+
+  .input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px rgba(201, 162, 94, 0.2);
+  }
+
+  /* OS 색상 유틸리티 */
+  .bg-os-work { background-color: var(--os-work); }
+  .bg-os-life { background-color: var(--os-life); }
+  .bg-os-finance { background-color: var(--os-finance); }
+  .text-os-work { color: var(--os-work); }
+  .text-os-life { color: var(--os-life); }
+  .text-os-finance { color: var(--os-finance); }
+  .border-os-work { border-color: var(--os-work); }
+  .border-os-life { border-color: var(--os-life); }
+  .border-os-finance { border-color: var(--os-finance); }
+
+  /* 상태 색상 유틸리티 */
+  .text-state-success { color: var(--state-success); }
+  .text-state-warning { color: var(--state-warning); }
+  .text-state-danger { color: var(--state-danger); }
+  .text-state-info { color: var(--state-info); }
+  .bg-state-success { background-color: var(--state-success); }
+  .bg-state-warning { background-color: var(--state-warning); }
+  .bg-state-danger { background-color: var(--state-danger); }
+  .bg-state-info { background-color: var(--state-info); }
 }
 
 /* 애니메이션 */
