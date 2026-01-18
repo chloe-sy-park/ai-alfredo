@@ -8,13 +8,10 @@ import type {
   LearningType,
   LearningSource,
   StyleAxes,
-  DomainOverrides,
   AlfredoPreferences,
   AlfredoLearning,
   AlfredoUnderstanding,
-  WeeklyReport,
-  PendingLearning,
-  WeeklyLearningItem
+  WeeklyReport
 } from './types';
 import { DEFAULT_DOMAIN_STYLES, LEARNING_POINTS, LEVEL_TITLES } from './types';
 
@@ -28,16 +25,6 @@ const STORAGE_KEYS = {
 // =============================================
 // 선호도 (Preferences) 관리
 // =============================================
-
-// 1-5 스케일을 0-100 스케일로 변환
-function scaleToPercent(value: number): number {
-  return Math.round((value - 1) * 25); // 1→0, 2→25, 3→50, 4→75, 5→100
-}
-
-// 0-100 스케일을 1-5 스케일로 변환
-function percentToScale(value: number): number {
-  return Math.round(value / 25) + 1; // 0→1, 25→2, 50→3, 75→4, 100→5
-}
 
 // 기본 선호도 생성
 function createDefaultPreferences(userId: string): AlfredoPreferences {
