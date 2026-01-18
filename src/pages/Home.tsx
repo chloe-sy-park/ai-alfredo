@@ -6,7 +6,7 @@ import { getTodayEvents, isGoogleAuthenticated, CalendarEvent } from '../service
 import { ConditionLevel, getTodayCondition } from '../services/condition';
 import { Top3Item, getTop3 } from '../services/top3';
 import { getTasks, Task } from '../services/tasks';
-import { FocusItem, setFocusFromTop3, getCurrentFocus } from '../services/focusNow';
+import { FocusItem, getCurrentFocus } from '../services/focusNow';
 import { getWeather, WeatherData } from '../services/weather';
 import { hasSeenEntryToday, markEntryAsSeen, updateVisit } from '../services/visit';
 import { generateBriefing, generateJudgmentExplanation, WeatherData as BriefingWeatherData, BriefingContext } from '../services/briefing';
@@ -17,7 +17,6 @@ import { useHomeModeStore } from '../stores/homeModeStore';
 // Components
 import { PageHeader } from '../components/layout';
 import { MoreSheet, OSProgressBar, DecisionMatrix, TodayAgenda, AlfredoInsights, DaySchedule } from '../components/home';
-import TodayTop3 from '../components/home/TodayTop3';
 import FocusNow from '../components/home/FocusNow';
 import DailyEntry from '../components/home/DailyEntry';
 import { BriefingHero } from '../components/briefing';
@@ -172,24 +171,6 @@ export default function Home() {
   function handleConditionChange(level: ConditionLevel) {
     setCurrentCondition(level);
     postAction.onConditionUpdated(level);
-  }
-
-  // Top3에서 집중 선택
-  function handleFocusSelect(item: Top3Item) {
-    var previousFocus = currentFocus;
-    var focusItem = setFocusFromTop3(item.id, item.title);
-    setCurrentFocus(focusItem);
-    postAction.onFocusSet(item.title);
-
-    // Lift 기록: 우선순위 집중 변경
-    liftStore.addLift({
-      type: 'apply',
-      category: 'priority',
-      previousDecision: previousFocus ? previousFocus.title : '집중 없음',
-      newDecision: item.title + '에 집중',
-      reason: 'Top3에서 집중 항목 선택',
-      impact: 'high'
-    });
   }
 
   // 집중 변경
@@ -377,22 +358,19 @@ export default function Home() {
             {/* 2. AI 의사결정 매트릭스 */}
             <DecisionMatrix condition={currentCondition} />
 
-            {/* 3. Today's Agenda (3가지) */}
+            {/* 3. Today's Agenda (Work/Life/추천 3개, 토글 시 Top3 Task 표시) */}
             <TodayAgenda />
 
-            {/* 4. Schedule 타임라인 (Google Calendar 연동) */}
+            {/* 4. Schedule 타임라인 (Task + Event 통합) */}
             <DaySchedule />
 
-            {/* 5. 오늘의 Top 3 (업무만) */}
-            <TodayTop3 onFocusSelect={handleFocusSelect} mode="work" />
-
-            {/* 6. 지금 집중할거 */}
+            {/* 5. 지금 집중할거 */}
             <FocusNow
               externalFocus={currentFocus}
               onFocusChange={handleFocusChange}
             />
 
-            {/* 7. Work/Life 진행률 바 */}
+            {/* 6. Work/Life 진행률 바 */}
             <OSProgressBar
               workPercent={workCount}
               lifePercent={lifeCount}
@@ -400,7 +378,7 @@ export default function Home() {
               lifeCount={lifeCount}
             />
 
-            {/* 8. 알프레도 인사이트 (최하단) */}
+            {/* 7. 알프레도 인사이트 (최하단) */}
             <AlfredoInsights />
           </>
         )}
@@ -414,16 +392,13 @@ export default function Home() {
             {/* 2. AI 의사결정 매트릭스 */}
             <DecisionMatrix condition={currentCondition} />
 
-            {/* 3. Today's Agenda (3가지) */}
+            {/* 3. Today's Agenda (Work/Life/추천 3개, 토글 시 Top3 Task 표시) */}
             <TodayAgenda />
 
-            {/* 4. Schedule 타임라인 (Google Calendar 연동) */}
+            {/* 4. Schedule 타임라인 (Task + Event 통합) */}
             <DaySchedule />
 
-            {/* 5. 오늘의 Top 3 (개인만) */}
-            <TodayTop3 onFocusSelect={handleFocusSelect} mode="life" />
-
-            {/* 6. Work/Life 진행률 바 */}
+            {/* 5. Work/Life 진행률 바 */}
             <OSProgressBar
               workPercent={workCount}
               lifePercent={lifeCount}
@@ -431,7 +406,7 @@ export default function Home() {
               lifeCount={lifeCount}
             />
 
-            {/* 7. 알프레도 인사이트 (최하단) */}
+            {/* 6. 알프레도 인사이트 (최하단) */}
             <AlfredoInsights />
           </>
         )}
@@ -445,16 +420,13 @@ export default function Home() {
             {/* 2. AI 의사결정 매트릭스 */}
             <DecisionMatrix condition={currentCondition} />
 
-            {/* 3. Today's Agenda (3가지) */}
+            {/* 3. Today's Agenda (Work/Life/추천 3개, 토글 시 Top3 Task 표시) */}
             <TodayAgenda />
 
-            {/* 4. Schedule 타임라인 (Google Calendar 연동) */}
+            {/* 4. Schedule 타임라인 (Task + Event 통합) */}
             <DaySchedule />
 
-            {/* 5. 오늘의 Top 3 */}
-            <TodayTop3 onFocusSelect={handleFocusSelect} mode="all" />
-
-            {/* 6. Work/Life 진행률 바 */}
+            {/* 5. Work/Life 진행률 바 */}
             <OSProgressBar
               workPercent={workCount}
               lifePercent={lifeCount}
@@ -462,7 +434,7 @@ export default function Home() {
               lifeCount={lifeCount}
             />
 
-            {/* 7. 알프레도 인사이트 (최하단) */}
+            {/* 6. 알프레도 인사이트 (최하단) */}
             <AlfredoInsights />
           </>
         )}
