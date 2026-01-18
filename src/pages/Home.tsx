@@ -16,15 +16,11 @@ import { useHomeModeStore } from '../stores/homeModeStore';
 
 // Components
 import { PageHeader } from '../components/layout';
-import { ModeCards, MoreSheet, ModeSwitch, BalanceHint } from '../components/home';
+import { MoreSheet, ModeSwitch, ConditionCompact, OSProgressBar } from '../components/home';
 import TodayTimeline from '../components/home/TodayTimeline';
-import ConditionQuick from '../components/home/ConditionQuick';
 import TodayTop3 from '../components/home/TodayTop3';
 import FocusNow from '../components/home/FocusNow';
-import WeatherCard from '../components/home/WeatherCard';
-import QuickMemoCard from '../components/home/QuickMemoCard';
 import DailyEntry from '../components/home/DailyEntry';
-import { SkeletonCard } from '../components/common/Skeleton';
 import { MiniUnderstandingWidget } from '../components/alfredo';
 import { BriefingHero } from '../components/briefing';
 
@@ -41,7 +37,6 @@ export default function Home() {
   const [currentFocus, setCurrentFocus] = useState<FocusItem | null>(null);
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [top3Items, setTop3Items] = useState<Top3Item[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [showDailyEntry, setShowDailyEntry] = useState(false);
   const [briefing, setBriefing] = useState<{
     headline: string;
@@ -173,9 +168,6 @@ export default function Home() {
         hasImportantEmail: briefingData.hasImportantEmail
       });
     }
-    
-    // 로딩 완료
-    setTimeout(function() { setIsLoading(false); }, 500);
   }, [homeMode]);
 
   // 컨디션 변경 핸들러
@@ -288,16 +280,9 @@ export default function Home() {
     return !item.completed && !item.isPersonal;
   }).length;
   
-  var lifeCount = top3Items.filter(function(item) { 
+  var lifeCount = top3Items.filter(function(item) {
     return !item.completed && item.isPersonal;
   }).length;
-  
-  var conditionStatus = currentCondition ? {
-    'great': '아주 좋음',
-    'good': '좋음',
-    'normal': '보통',
-    'bad': '좋지 않음'
-  }[currentCondition] : '미설정';
 
   // 모드별 배경색 클래스
   const getModeBackgroundClass = () => {
@@ -385,16 +370,6 @@ export default function Home() {
           </h1>
         </div>
 
-        {/* 모드 카드 - Work/Life 가로 2개 (ALL 모드에서만) */}
-        {homeMode === 'all' && (
-          <ModeCards
-            workCount={workCount}
-            lifeCount={lifeCount}
-            workStatus={calendarEvents.length + '개 일정'}
-            lifeStatus={'컨디션 ' + conditionStatus}
-          />
-        )}
-
         {/* 알프레도 이해도 위젯 */}
         {understanding && <MiniUnderstandingWidget />}
 
@@ -416,8 +391,13 @@ export default function Home() {
               onFocusChange={handleFocusChange}
             />
 
-            {/* 5. 기억해야할거 */}
-            <QuickMemoCard />
+            {/* 5. Work/Life 진행률 바 */}
+            <OSProgressBar
+              workPercent={workCount}
+              lifePercent={lifeCount}
+              workCount={workCount}
+              lifeCount={lifeCount}
+            />
           </>
         )}
 
@@ -430,14 +410,19 @@ export default function Home() {
             {/* 2. 오늘의 Top 3 (개인만) */}
             <TodayTop3 onFocusSelect={handleFocusSelect} mode="life" />
 
-            {/* 3. 컨디션 퀵변경 */}
-            <ConditionQuick onConditionChange={handleConditionChange} />
+            {/* 3. 오늘 타임라인 */}
+            <TodayTimeline />
 
-            {/* 4. 날씨 카드 */}
-            {isLoading ? <SkeletonCard /> : <WeatherCard />}
+            {/* 4. 컨디션 체크 (컴팩트) */}
+            <ConditionCompact onConditionChange={handleConditionChange} />
 
-            {/* 5. 기억해야할거 */}
-            <QuickMemoCard />
+            {/* 5. Work/Life 진행률 바 */}
+            <OSProgressBar
+              workPercent={workCount}
+              lifePercent={lifeCount}
+              workCount={workCount}
+              lifeCount={lifeCount}
+            />
           </>
         )}
 
@@ -453,30 +438,26 @@ export default function Home() {
             {/* 3. 오늘 타임라인 */}
             <TodayTimeline />
 
-            {/* 4. 지금 집중할거 */}
-            <FocusNow
-              externalFocus={currentFocus}
-              onFocusChange={handleFocusChange}
+            {/* 4. 컨디션 체크 (컴팩트) */}
+            <ConditionCompact onConditionChange={handleConditionChange} />
+
+            {/* 5. Work/Life 진행률 바 */}
+            <OSProgressBar
+              workPercent={workCount}
+              lifePercent={lifeCount}
+              workCount={workCount}
+              lifeCount={lifeCount}
             />
 
-            {/* 5. 컨디션 퀵변경 */}
-            <ConditionQuick onConditionChange={handleConditionChange} />
-
-            {/* 6. PRD: BalanceHint (mini) - 균형 표시 */}
-            <BalanceHint
-              workPercent={workCount > 0 || lifeCount > 0
-                ? Math.round((workCount / (workCount + lifeCount)) * 100)
-                : 50}
-              lifePercent={workCount > 0 || lifeCount > 0
-                ? Math.round((lifeCount / (workCount + lifeCount)) * 100)
-                : 50}
-            />
-
-            {/* 7. 날씨 카드 */}
-            {isLoading ? <SkeletonCard /> : <WeatherCard />}
-
-            {/* 8. 기억해야할거 */}
-            <QuickMemoCard />
+            {/* 6. 첫 만남 카드 (하단, 오늘 처음 방문 시에만) */}
+            {!hasSeenEntryToday() && (
+              <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-xl p-4 border border-primary/10">
+                <p className="text-sm text-[#666666] mb-2">처음 오셨군요!</p>
+                <p className="text-sm text-[#1A1A1A]">
+                  오늘 하루도 알프레도와 함께해요.
+                </p>
+              </div>
+            )}
           </>
         )}
       </div>

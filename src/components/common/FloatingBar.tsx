@@ -10,8 +10,6 @@ import {
   X,
   Check,
   Pin,
-  Timer,
-  Sparkles,
 } from 'lucide-react';
 import {
   ConditionLevel,
@@ -114,22 +112,6 @@ const FloatingBar: React.FC = () => {
       label: '일정',
       ariaLabel: '새 일정 추가하기',
       action: () => setActiveSheet('calendar'),
-    },
-  ];
-
-  // 자주 사용하지 않는 액션 (더보기 메뉴)
-  const secondaryActions: QuickAction[] = [
-    {
-      icon: Timer,
-      label: '바디더블링',
-      ariaLabel: '집중 타이머 시작하기',
-      action: () => navigate('/body-doubling'),
-    },
-    {
-      icon: Sparkles,
-      label: '리플렉트',
-      ariaLabel: '하루 돌아보기',
-      action: () => navigate('/report'),
     },
   ];
 
@@ -241,8 +223,7 @@ const FloatingBar: React.FC = () => {
       {/* 퀵액션 메뉴 시트 */}
       {activeSheet === 'more' && (
         <QuickActionSheet
-          primaryActions={primaryActions}
-          secondaryActions={secondaryActions}
+          actions={primaryActions}
           onClose={closeSheet}
         />
       )}
@@ -263,12 +244,10 @@ const FloatingBar: React.FC = () => {
 
 // Quick Action Sheet Component
 function QuickActionSheet({
-  primaryActions,
-  secondaryActions,
+  actions,
   onClose,
 }: {
-  primaryActions: QuickAction[];
-  secondaryActions: QuickAction[];
+  actions: QuickAction[];
   onClose: () => void;
 }) {
   return (
@@ -282,10 +261,10 @@ function QuickActionSheet({
       {/* Sheet */}
       <div className="absolute bottom-24 left-0 right-0 px-4 sm:px-6 animate-in slide-in-from-bottom-4 duration-300">
         <div className="max-w-md sm:max-w-lg mx-auto">
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4 space-y-4">
-            {/* 주요 액션 */}
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4">
+            {/* 퀵액션 그리드 */}
             <div className="grid grid-cols-4 gap-2">
-              {primaryActions.map((action, index) => {
+              {actions.map((action, index) => {
                 const Icon = action.icon;
                 return (
                   <button
@@ -307,30 +286,6 @@ function QuickActionSheet({
                       <Icon className="w-5 h-5" />
                     </div>
                     <span className="text-xs text-gray-600">{action.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* 구분선 */}
-            <div className="border-t border-gray-100" />
-
-            {/* 부가 액션 (자주 안 쓰는 것들) */}
-            <div className="flex gap-2">
-              {secondaryActions.map((action, index) => {
-                const Icon = action.icon;
-                return (
-                  <button
-                    key={index}
-                    onClick={() => {
-                      onClose();
-                      action.action();
-                    }}
-                    aria-label={action.ariaLabel}
-                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gray-50 hover:bg-gray-100 active:scale-98 transition-all"
-                  >
-                    <Icon className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm text-gray-600">{action.label}</span>
                   </button>
                 );
               })}

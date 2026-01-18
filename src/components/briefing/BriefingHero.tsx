@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Sun, Cloud, CloudRain, Briefcase, Heart, Wallet, Layout, Sparkles, LucideIcon } from 'lucide-react';
+import {
+  Sun, Cloud, CloudRain, CloudSnow, Wind,
+  Briefcase, Heart, Wallet, Layout,
+  ChevronDown, ChevronUp, Lightbulb, Thermometer,
+  LucideIcon
+} from 'lucide-react';
 import { getWeather, WeatherData } from '../../services/weather';
 import { getTodayCondition, ConditionLevel } from '../../services/condition';
 import { generateBriefing, BriefingContext } from '../../services/briefing';
@@ -10,7 +15,6 @@ export type BriefingMode = 'all' | 'work' | 'life' | 'finance';
 
 interface BriefingHeroProps {
   mode?: BriefingMode;
-  compact?: boolean;
   onMore?: () => void;
 }
 
@@ -53,31 +57,51 @@ const modeConfig: Record<BriefingMode, {
 };
 
 // 날씨 아이콘 매핑
-function getWeatherIcon(condition: string) {
+function getWeatherIcon(condition: string, size: number = 18) {
+  const iconClass = "text-gray-600";
+  if (condition.includes('snow') || condition.includes('눈')) {
+    return <CloudSnow size={size} className="text-blue-400" />;
+  }
   if (condition.includes('rain') || condition.includes('비')) {
-    return <CloudRain size={18} className="text-blue-500" />;
+    return <CloudRain size={size} className="text-blue-500" />;
   }
   if (condition.includes('cloud') || condition.includes('구름')) {
-    return <Cloud size={18} className="text-gray-500" />;
+    return <Cloud size={size} className={iconClass} />;
   }
-  return <Sun size={18} className="text-yellow-500" />;
+  if (condition.includes('wind') || condition.includes('바람')) {
+    return <Wind size={size} className={iconClass} />;
+  }
+  return <Sun size={size} className="text-yellow-500" />;
 }
 
-// 컨디션 텍스트
-function getConditionText(level: ConditionLevel | null): string {
-  if (!level) return '컨디션 미설정';
-  const map: Record<ConditionLevel, string> = {
-    great: '아주 좋음',
-    good: '좋음',
-    normal: '보통',
-    bad: '좋지 않음'
-  };
-  return map[level];
+// 날씨 기반 팁 생성
+function getWeatherTip(weather: WeatherData | null): string | null {
+  if (!weather) return null;
+
+  const temp = weather.temp;
+  const condition = weather.condition.toLowerCase();
+
+  if (temp <= 0) {
+    return '영하로 추워요. 따뜻하게 입고 나가세요 🧥';
+  }
+  if (temp <= 5) {
+    return '쌀쌀해요. 외투 챙기세요 🧣';
+  }
+  if (condition.includes('rain') || condition.includes('비')) {
+    return '비가 와요. 우산 잊지 마세요 ☔';
+  }
+  if (condition.includes('snow') || condition.includes('눈')) {
+    return '눈이 와요. 미끄럼 조심하세요 ❄️';
+  }
+  if (temp >= 30) {
+    return '무더워요. 수분 섭취 잊지 마세요 💧';
+  }
+
+  return null;
 }
 
 export default function BriefingHero({
   mode = 'all',
-  compact = false,
   onMore
 }: BriefingHeroProps) {
   const [weather, setWeather] = useState<WeatherData | null>(null);
@@ -85,13 +109,30 @@ export default function BriefingHero({
   const [briefing, setBriefing] = useState({ headline: '', subline: '' });
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [showWeatherDetail, setShowWeatherDetail] = useState(false);
 
   const config = modeConfig[mode];
-  const IconComponent = config.icon;
+  const weatherTip = getWeatherTip(weather);
 
   useEffect(() => {
     loadData();
   }, [mode]);
+
+  // 로컬 스토리지에서 접힘 상태 복원
+  useEffect(() => {
+    const savedState = localStorage.getItem('briefing_expanded');
+    if (savedState !== null) {
+      setIsExpanded(savedState === 'true');
+    }
+  }, []);
+
+  // 접힘 상태 저장
+  const toggleExpanded = () => {
+    const newState = !isExpanded;
+    setIsExpanded(newState);
+    localStorage.setItem('briefing_expanded', String(newState));
+  };
 
   async function loadData() {
     setIsLoading(true);
@@ -205,7 +246,7 @@ export default function BriefingHero({
 
   return (
     <div
-      className={`relative overflow-hidden bg-gradient-to-r ${config.gradient} rounded-2xl ${compact ? 'p-4' : 'p-5'} shadow-sm transition-all duration-300 animate-slide-down`}
+      className={`relative overflow-hidden bg-gradient-to-r ${config.gradient} rounded-2xl shadow-sm transition-all duration-300`}
       role="region"
       aria-label={config.title}
     >
@@ -213,64 +254,107 @@ export default function BriefingHero({
       <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/20 rounded-full blur-2xl" />
       <div className="absolute -bottom-10 -left-10 w-24 h-24 bg-white/20 rounded-full blur-xl" />
 
-      <div className="relative z-10">
-        {/* 헤더 */}
-        <div className="flex items-center justify-between mb-3">
+      <div className="relative z-10 p-4">
+        {/* 헤더 (항상 표시) */}
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-2xl">{config.emoji}</span>
-            <div className="flex items-center gap-1.5">
-              <IconComponent size={14} className={config.accentColor} />
-              <span className={`text-xs font-medium ${config.accentColor}`}>
-                {config.title}
-              </span>
-            </div>
+            <span className="text-xl">{config.emoji}</span>
+            <span className={`text-sm font-medium ${config.accentColor}`}>
+              {config.title}
+            </span>
           </div>
 
-          {/* 날씨 + 컨디션 요약 (ALL/LIFE 모드) */}
-          {(mode === 'all' || mode === 'life') && (
-            <div className="flex items-center gap-3 text-xs text-gray-600">
-              {weather && (
-                <div className="flex items-center gap-1">
-                  {getWeatherIcon(weather.condition)}
-                  <span>{weather.temp}°</span>
-                </div>
-              )}
-              {condition && (
-                <div className="flex items-center gap-1 px-2 py-0.5 bg-white/50 rounded-full">
-                  <Sparkles size={12} className={config.accentColor} />
-                  <span>{getConditionText(condition)}</span>
-                </div>
-              )}
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {/* 날씨 아이콘 (클릭 시 상세보기) */}
+            {weather && (
+              <button
+                onClick={() => setShowWeatherDetail(!showWeatherDetail)}
+                className="flex items-center gap-1.5 px-2.5 py-1 bg-white/60 hover:bg-white/80 rounded-full text-sm transition-colors"
+                aria-label="날씨 상세보기"
+              >
+                {getWeatherIcon(weather.condition, 16)}
+                <span className="font-medium text-gray-700">{weather.temp}°</span>
+              </button>
+            )}
 
-          {/* 일정 수 (WORK 모드) */}
-          {mode === 'work' && events.length > 0 && (
-            <div className="flex items-center gap-1 px-2 py-0.5 bg-white/50 rounded-full text-xs text-gray-600">
-              <Briefcase size={12} />
-              <span>{events.length}개 일정</span>
-            </div>
-          )}
+            {/* 컨디션 아이콘 */}
+            {condition && (mode === 'all' || mode === 'life') && (
+              <button
+                className="p-1.5 bg-white/60 hover:bg-white/80 rounded-full transition-colors"
+                aria-label="컨디션"
+              >
+                <Thermometer size={16} className={config.accentColor} />
+              </button>
+            )}
+
+            {/* 토글 버튼 */}
+            <button
+              onClick={toggleExpanded}
+              className="p-1.5 bg-white/60 hover:bg-white/80 rounded-full transition-colors"
+              aria-label={isExpanded ? '브리핑 접기' : '브리핑 펼치기'}
+            >
+              {isExpanded
+                ? <ChevronUp size={16} className="text-gray-600" />
+                : <ChevronDown size={16} className="text-gray-600" />
+              }
+            </button>
+          </div>
         </div>
 
-        {/* 메인 메시지 */}
-        <h2 className={`${compact ? 'text-lg' : 'text-xl'} font-bold text-gray-900 mb-1 leading-tight`}>
-          {briefing.headline}
-        </h2>
-        {briefing.subline && (
-          <p className="text-sm text-gray-600 leading-relaxed">
-            {briefing.subline}
-          </p>
+        {/* 날씨 상세 팝업 */}
+        {showWeatherDetail && weather && (
+          <div className="mt-3 p-3 bg-white/80 backdrop-blur rounded-xl border border-white/50 animate-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {getWeatherIcon(weather.condition, 32)}
+                <div>
+                  <div className="text-2xl font-bold text-gray-900">{weather.temp}°C</div>
+                  <div className="text-xs text-gray-500">체감 {weather.feelsLike || weather.temp}°</div>
+                </div>
+              </div>
+              <div className="text-right text-sm text-gray-600">
+                <div>{weather.description}</div>
+                {weather.high && weather.low && (
+                  <div className="text-xs text-gray-400">
+                    최고 {weather.high}° / 최저 {weather.low}°
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         )}
 
-        {/* 더보기 버튼 */}
-        {onMore && (
-          <button
-            onClick={onMore}
-            className={`mt-3 text-xs ${config.accentColor} hover:underline flex items-center gap-1 transition-colors`}
-          >
-            자세히 보기 →
-          </button>
+        {/* 확장 콘텐츠 */}
+        {isExpanded && (
+          <div className="mt-3 animate-in slide-in-from-top-2 duration-200">
+            {/* 메인 메시지 */}
+            <h2 className="text-lg font-bold text-gray-900 mb-1 leading-tight">
+              {briefing.headline}
+            </h2>
+            {briefing.subline && (
+              <p className="text-sm text-gray-600 leading-relaxed">
+                {briefing.subline}
+              </p>
+            )}
+
+            {/* 날씨 팁 (기억해야 할 것) */}
+            {weatherTip && (
+              <div className="mt-3 flex items-start gap-2 p-2.5 bg-amber-50/80 rounded-xl border border-amber-100">
+                <Lightbulb size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-800">{weatherTip}</p>
+              </div>
+            )}
+
+            {/* 더보기 버튼 */}
+            {onMore && (
+              <button
+                onClick={onMore}
+                className={`mt-3 text-xs ${config.accentColor} hover:underline flex items-center gap-1 transition-colors`}
+              >
+                자세히 보기 →
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

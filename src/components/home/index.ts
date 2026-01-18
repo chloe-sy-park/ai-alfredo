@@ -1,12 +1,14 @@
 // Core components (ALL mode)
 export { default as ModeSwitch } from './ModeSwitch';
-export { default as ModeCards } from './ModeCards';  // 🆕 추가
+export { default as ModeCards } from './ModeCards';
 export { default as BriefingCard } from './BriefingCard';
 export { default as TodayTop3 } from './TodayTop3';
 export { default as BalanceHint } from './BalanceHint';
 export { default as Timeline } from './Timeline';
 export { default as ChatLauncher } from './ChatLauncher';
 export { default as MoreSheet } from './MoreSheet';
+export { default as ConditionCompact } from './ConditionCompact';
+export { default as OSProgressBar } from './OSProgressBar';
 
 // WORK mode components
 export { default as ProjectPulse } from './ProjectPulse';
