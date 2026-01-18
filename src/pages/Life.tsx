@@ -7,7 +7,7 @@ import { getRelationships, Relationship } from '../services/relationships';
 
 // Home 컴포넌트 재사용 (PRD 구조)
 import BriefingCard from '../components/home/BriefingCard';
-import PriorityStack from '../components/home/PriorityStack';
+import TodayTop3 from '../components/home/TodayTop3';
 import RelationshipReminder from '../components/home/RelationshipReminder';
 import LifeFactors from '../components/home/LifeFactors';
 import { MoreSheet } from '../components/home';
@@ -71,15 +71,6 @@ export default function Life() {
       subline: lifeSubline
     });
   };
-
-  // PriorityStack용 데이터 변환
-  const priorityItems = lifePriorities.map((item) => ({
-    id: item.id,
-    title: item.title,
-    sourceTag: 'LIFE' as const,
-    meta: item.completed ? '완료' : undefined,
-    status: item.completed ? 'done' as const : 'pending' as const
-  }));
 
   // RelationshipReminder용 데이터 변환
   const relationshipItems = relationships.map((rel) => ({
@@ -147,14 +138,8 @@ export default function Life() {
           onMore={() => setIsMoreSheetOpen(true)}
         />
 
-        {/* 2. PriorityStack - PRD R5: 우선순위는 순서다 */}
-        {priorityItems.length > 0 && (
-          <PriorityStack
-            items={priorityItems}
-            count={3}
-            onMore={() => setIsMoreSheetOpen(true)}
-          />
-        )}
+        {/* 2. TodayTop3 - PRD R5: 우선순위는 순서다 */}
+        <TodayTop3 mode="life" />
 
         {/* 3. RelationshipReminder - PRD 명세 */}
         {relationshipItems.length > 0 && (

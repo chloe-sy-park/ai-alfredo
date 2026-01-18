@@ -20,6 +20,10 @@ export { GoalSuggestionCard } from './GoalSuggestionCard';
 // Modals
 export { UsageCheckModal } from './UsageCheckModal';
 
+// Data Import
+export { default as CSVImporter } from './CSVImporter';
+export { default as ReceiptScanner } from './ReceiptScanner';
+
 // Questions
 export { GrowthQuestion } from './GrowthQuestion';
 

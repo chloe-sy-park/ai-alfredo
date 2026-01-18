@@ -15,6 +15,7 @@ import {
   PendingLearningsList
 } from '../components/alfredo';
 import { PenguinPersonalitySliders } from '../components/settings';
+import { PenguinWidget } from '../components/penguin';
 
 // 설정 카테고리 정의 (ADHD-friendly: 2개 탭으로 단순화)
 type SettingsCategory = 'general' | 'advanced';
@@ -316,6 +317,15 @@ const Settings = () => {
                   </div>
                 </div>
               )}
+            </section>
+
+            {/* 펭귄 상태 섹션 */}
+            <section className="bg-white dark:bg-neutral-800 rounded-xl p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-xl">🐧</span>
+                <h2 className="text-base font-semibold text-text-primary dark:text-white">나의 펭귄</h2>
+              </div>
+              <PenguinWidget />
             </section>
           </div>
         );
