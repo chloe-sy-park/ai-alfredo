@@ -339,7 +339,7 @@ function generateHighlightMessage(understanding: AlfredoUnderstanding, weeklyCou
   const { level, daysTogether } = understanding;
 
   if (weeklyCount === 0) {
-    return '이번 주는 조용했네요. 천천히 알아가도 괜찮아요 🐧';
+    return '이번 주는 조용했네요. 천천히 알아가도 괜찮아요 🎩';
   }
 
   if (level <= 2) {

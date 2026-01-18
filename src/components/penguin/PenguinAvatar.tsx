@@ -91,7 +91,7 @@ export const PenguinAvatar: React.FC<PenguinAvatarProps> = ({
           role="img"
           aria-label="알프레도"
         >
-          🐧
+          🎩
         </span>
       )}
 
@@ -160,7 +160,7 @@ export const MiniPenguin: React.FC<{ onClick?: () => void }> = ({ onClick }) => 
           onError={() => setImageError(true)}
         />
       ) : (
-        <span className="text-2xl">🐧</span>
+        <span className="text-2xl">🎩</span>
       )}
     </motion.button>
   );
@@ -173,7 +173,7 @@ export const InlineAlfredo: React.FC<{ className?: string }> = ({ className = ''
   const [imageError, setImageError] = useState(false);
 
   if (imageError) {
-    return <span className={`inline-block ${className}`}>🐧</span>;
+    return <span className={`inline-block ${className}`}>🎩</span>;
   }
 
   return (

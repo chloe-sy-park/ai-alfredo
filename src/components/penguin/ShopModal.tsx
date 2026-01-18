@@ -115,7 +115,14 @@ export const ShopModal: React.FC = () => {
           <div className="p-4 overflow-y-auto max-h-[50vh]">
             {isLoading ? (
               <div className="text-center py-8">
-                <div className="text-4xl animate-bounce">🐧</div>
+                <div className="w-16 h-16 mx-auto animate-bounce rounded-full overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
+                  <img
+                    src="/assets/alfredo/avatar/alfredo-avatar-64.png"
+                    alt="알프레도"
+                    className="w-full h-full object-contain"
+                    onError={(e) => { (e.target as HTMLImageElement).outerHTML = '<span class="text-4xl">🎩</span>'; }}
+                  />
+                </div>
                 <p className="text-sm text-neutral-500 mt-2">상점 불러오는 중...</p>
               </div>
             ) : filteredItems.length === 0 ? (

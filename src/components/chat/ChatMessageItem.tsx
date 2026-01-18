@@ -88,11 +88,16 @@ export default function ChatMessageItem({
         {/* 아바타 (연속 메시지일 때는 숨김) */}
         {showAvatar && (
           <div className="flex-shrink-0">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-              isAlfredo ? 'bg-primary/10' : 'bg-neutral-100'
-            }`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center overflow-hidden ${
+              isAlfredo ? '' : 'bg-neutral-100'
+            }`} style={isAlfredo ? { backgroundColor: 'var(--surface-subtle)' } : undefined}>
               {isAlfredo ? (
-                <span className="text-lg">🐧</span>
+                <img
+                  src="/assets/alfredo/avatar/alfredo-avatar-48.png"
+                  alt="알프레도"
+                  className="w-8 h-8 object-contain"
+                  onError={(e) => { (e.target as HTMLImageElement).outerHTML = '<span class="text-lg">🎩</span>'; }}
+                />
               ) : (
                 <span className="text-sm font-medium text-neutral-600">나</span>
               )}

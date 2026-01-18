@@ -319,11 +319,18 @@ const Settings = () => {
               )}
             </section>
 
-            {/* 펭귄 상태 섹션 */}
+            {/* 알프레도 상태 섹션 */}
             <section className="bg-white dark:bg-neutral-800 rounded-xl p-5">
               <div className="flex items-center gap-3 mb-4">
-                <span className="text-xl">🐧</span>
-                <h2 className="text-base font-semibold text-text-primary dark:text-white">나의 펭귄</h2>
+                <div className="w-8 h-8 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
+                  <img
+                    src="/assets/alfredo/avatar/alfredo-avatar-32.png"
+                    alt="알프레도"
+                    className="w-full h-full object-contain"
+                    onError={(e) => { (e.target as HTMLImageElement).outerHTML = '<span class="text-xl">🎩</span>'; }}
+                  />
+                </div>
+                <h2 className="text-base font-semibold text-text-primary dark:text-white">나의 알프레도</h2>
               </div>
               <PenguinWidget />
             </section>
@@ -354,7 +361,14 @@ const Settings = () => {
             {/* 알프레도 학습 데이터 */}
             {alfredoLoading ? (
               <div className="text-center py-8">
-                <div className="text-3xl animate-bounce mb-2">🐧</div>
+                <div className="w-12 h-12 mx-auto mb-2 animate-bounce">
+                  <img
+                    src="/assets/alfredo/avatar/alfredo-avatar-48.png"
+                    alt="알프레도"
+                    className="w-full h-full object-contain"
+                    onError={(e) => { (e.target as HTMLImageElement).outerHTML = '<span class="text-3xl">🎩</span>'; }}
+                  />
+                </div>
                 <p className="text-sm text-text-muted">알프레도 불러오는 중...</p>
               </div>
             ) : (

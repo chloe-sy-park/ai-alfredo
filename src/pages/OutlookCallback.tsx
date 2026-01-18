@@ -75,8 +75,13 @@ export default function OutlookCallback() {
         </div>
       ) : status === 'success' ? (
         <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
-            <span className="text-2xl">🐧</span>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center overflow-hidden">
+            <img
+              src="/assets/alfredo/avatar/alfredo-avatar-64.png"
+              alt="알프레도"
+              className="w-12 h-12 object-contain"
+              onError={(e) => { (e.target as HTMLImageElement).outerHTML = '<span class="text-2xl">🎩</span>'; }}
+            />
           </div>
           <p className="text-green-600 font-medium">{getStatusMessage()}</p>
           <p className="text-sm text-gray-500 mt-2">홈으로 이동합니다...</p>

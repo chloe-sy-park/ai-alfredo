@@ -81,7 +81,14 @@ export default function PageHeader({
           <div className="flex items-center gap-2 flex-shrink-0">
             {showLogo ? (
               <>
-                <span className="text-lg">🐧</span>
+                <div className="w-7 h-7 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
+                  <img
+                    src="/assets/alfredo/avatar/alfredo-avatar-32.png"
+                    alt="알프레도"
+                    className="w-full h-full object-contain"
+                    onError={(e) => { (e.target as HTMLImageElement).outerHTML = '<span class="text-lg">🎩</span>'; }}
+                  />
+                </div>
                 <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>AlFredo</span>
               </>
             ) : (

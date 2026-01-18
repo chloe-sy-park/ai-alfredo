@@ -44,10 +44,17 @@ const OutlookCallback = lazy(() => import('./pages/OutlookCallback'));
 
 // Loading Component
 const PageLoader = () => (
-  <div className="flex items-center justify-center min-h-screen">
+  <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
     <div className="text-center">
-      <div className="text-5xl animate-bounce mb-2">🐧</div>
-      <div className="text-gray-500 text-sm">로딩 중...</div>
+      <div className="w-20 h-20 mx-auto mb-2 animate-bounce">
+        <img
+          src="/assets/alfredo/avatar/alfredo-avatar-80.png"
+          alt="알프레도"
+          className="w-full h-full object-contain"
+          onError={(e) => { (e.target as HTMLImageElement).outerHTML = '<span class="text-5xl">🎩</span>'; }}
+        />
+      </div>
+      <div style={{ color: 'var(--text-secondary)' }} className="text-sm">로딩 중...</div>
     </div>
   </div>
 );

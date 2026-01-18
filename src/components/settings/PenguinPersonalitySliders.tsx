@@ -196,11 +196,18 @@ export default function PenguinPersonalitySliders() {
 
   return (
     <div className="space-y-4">
-      {/* 펭귄 프리뷰 */}
-      <div className="bg-gradient-to-br from-[#A996FF]/10 to-[#A996FF]/5 rounded-xl p-4 text-center">
-        <div className="text-4xl mb-2">🐧</div>
-        <p className="text-sm font-medium text-gray-900">{getPersonalitySummary()}</p>
-        <p className="text-xs text-gray-500 mt-1">슬라이더를 조절해서 알프레도의 성격을 설정하세요</p>
+      {/* 알프레도 프리뷰 */}
+      <div className="rounded-xl p-4 text-center" style={{ background: 'linear-gradient(135deg, rgba(201, 162, 94, 0.1) 0%, rgba(201, 162, 94, 0.05) 100%)' }}>
+        <div className="w-16 h-16 mx-auto mb-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
+          <img
+            src="/assets/alfredo/avatar/alfredo-avatar-64.png"
+            alt="알프레도"
+            className="w-full h-full object-contain"
+            onError={(e) => { (e.target as HTMLImageElement).outerHTML = '<span class="text-4xl">🎩</span>'; }}
+          />
+        </div>
+        <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{getPersonalitySummary()}</p>
+        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>슬라이더를 조절해서 알프레도의 성격을 설정하세요</p>
       </div>
 
       {/* 슬라이더들 */}

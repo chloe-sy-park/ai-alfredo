@@ -148,12 +148,17 @@ const Chat: React.FC = () => {
           <ArrowLeft className="w-5 h-5 text-text-primary" />
         </button>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-            <span className="text-xl">🐧</span>
+          <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
+            <img
+              src="/assets/alfredo/avatar/alfredo-avatar-48.png"
+              alt="알프레도"
+              className="w-8 h-8 object-contain"
+              onError={(e) => { (e.target as HTMLImageElement).outerHTML = '<span class="text-xl">🎩</span>'; }}
+            />
           </div>
           <div>
-            <h1 className="font-semibold text-text-primary">알프레도</h1>
-            <p className="text-xs text-text-muted">
+            <h1 className="font-semibold" style={{ color: 'var(--text-primary)' }}>알프레도</h1>
+            <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
               {entryInfo.title}
             </p>
           </div>
@@ -163,10 +168,17 @@ const Chat: React.FC = () => {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-text-muted">
-            <span className="text-6xl mb-4">🐧</span>
-            <p className="text-sm text-text-secondary mb-1">{emptyGreeting}</p>
-            <p className="text-center text-sm">
+          <div className="flex flex-col items-center justify-center h-full">
+            <div className="w-24 h-24 mb-4 rounded-full flex items-center justify-center overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
+              <img
+                src="/assets/alfredo/avatar/alfredo-avatar-120.png"
+                alt="알프레도"
+                className="w-20 h-20 object-contain"
+                onError={(e) => { (e.target as HTMLImageElement).outerHTML = '<span class="text-5xl">🎩</span>'; }}
+              />
+            </div>
+            <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>{emptyGreeting}</p>
+            <p className="text-center text-sm" style={{ color: 'var(--text-tertiary)' }}>
               {emptyPrompt}
             </p>
           </div>

@@ -31,7 +31,7 @@ const modeConfig: Record<BriefingMode, {
     gradient: 'from-[rgba(201,162,94,0.08)] via-[rgba(201,162,94,0.04)] to-[rgba(201,162,94,0.08)]',
     icon: Layout,
     title: '오늘의 브리핑',
-    emoji: '🐧',
+    emoji: '🎩',
     accentColor: 'text-os-work',
     accentStyle: { color: 'var(--accent-primary)' }
   },

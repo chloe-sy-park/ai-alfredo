@@ -26,7 +26,7 @@ const NUDGE_TYPE_TO_TAG: Record<NudgeType, string> = {
  */
 function nudgeToNotificationTemplate(nudge: Nudge): NotificationTemplate {
   return {
-    title: `${nudge.emoji || '🐧'} ${nudge.title}`,
+    title: `${nudge.emoji || '🎩'} ${nudge.title}`,
     body: nudge.body,
     tag: `${NUDGE_TYPE_TO_TAG[nudge.type]}-${nudge.id}`,
     requireInteraction: nudge.priority === 'high',

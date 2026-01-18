@@ -115,9 +115,9 @@ export default function BoundaryPreview({ onNext }: BoundaryPreviewProps) {
       </div>
 
       {/* 안내 메시지 */}
-      <div className="mb-6 p-4 bg-[#F8F8FF] rounded-xl">
-        <p className="text-sm text-[#666666] text-center">
-          🐧 언제든 설정에서 바꿀 수 있어요
+      <div className="mb-6 p-4 rounded-xl" style={{ backgroundColor: 'var(--surface-subtle)' }}>
+        <p className="text-sm text-center" style={{ color: 'var(--text-secondary)' }}>
+          🎩 언제든 설정에서 바꿀 수 있어요
         </p>
       </div>
 

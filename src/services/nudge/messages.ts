@@ -423,7 +423,7 @@ export function applyToneToNudge(
 
 // === 이모지 매핑 ===
 export const NUDGE_EMOJIS: Record<NudgeType, string> = {
-  morning_briefing: '🐧',
+  morning_briefing: '🎩',
   evening_wrapup: '🌙',
   meeting_reminder: '📅',
   focus_suggest: '🎯',

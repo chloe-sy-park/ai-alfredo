@@ -43,7 +43,14 @@ export const WrappedCard = forwardRef<HTMLDivElement, WrappedCardProps>(
       >
         {/* 헤더 */}
         <div className="p-6 text-center">
-          <div className="text-4xl mb-2">🐧</div>
+          <div className="w-16 h-16 mx-auto mb-2 rounded-full overflow-hidden bg-white/20">
+            <img
+              src="/assets/alfredo/avatar/alfredo-avatar-64.png"
+              alt="알프레도"
+              className="w-full h-full object-contain"
+              onError={(e) => { (e.target as HTMLImageElement).outerHTML = '<span class="text-4xl">🎩</span>'; }}
+            />
+          </div>
           <h1 className="text-white text-xl font-bold mb-1">
             {data.userName ? `${data.userName}의` : '나의'} 알프레도
           </h1>
