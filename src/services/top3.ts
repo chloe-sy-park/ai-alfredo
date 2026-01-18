@@ -11,6 +11,9 @@ export interface Top3Item {
   category?: 'work' | 'life' | 'health';
   isPersonal?: boolean; // Work/Life 모드 필터링용
   order?: number;
+  // Task/Event 연동을 위한 필드
+  sourceId?: string; // 원본 Task ID 또는 Calendar Event ID
+  sourceType?: 'task' | 'calendar'; // 원본 타입
 }
 
 export interface Top3Data {
@@ -241,4 +244,141 @@ export const getWorkItems = (): Top3Item[] => {
 // Life 아이템만 가져오기
 export const getLifeItems = (): Top3Item[] => {
   return getTop3().filter(item => item.isPersonal);
+};
+
+// Task를 Top3에 추가
+export const addTaskToTop3 = (task: {
+  id: string;
+  title: string;
+  category?: 'work' | 'life';
+  dueDate?: string;
+  priority?: string;
+}): Top3Item | null => {
+  const data = getTodayTop3();
+  if (!data) return null;
+
+  // 이미 3개면 추가 불가
+  if (data.items.length >= 3) {
+    return null;
+  }
+
+  // 이미 같은 Task가 있으면 추가 안함
+  const existing = data.items.find(item => item.sourceId === task.id && item.sourceType === 'task');
+  if (existing) {
+    return existing;
+  }
+
+  const newItem: Top3Item = {
+    id: uuidv4(),
+    title: task.title,
+    type: 'task',
+    completed: false,
+    category: task.category || 'work',
+    isPersonal: task.category === 'life',
+    order: data.items.length,
+    timeRange: task.dueDate,
+    sourceId: task.id,
+    sourceType: 'task'
+  };
+
+  data.items.push(newItem);
+  saveTop3(data.items);
+
+  return newItem;
+};
+
+// Calendar Event를 Top3에 추가
+export const addEventToTop3 = (event: {
+  id: string;
+  title: string;
+  start: string;
+  end?: string;
+  isPersonal?: boolean;
+}): Top3Item | null => {
+  const data = getTodayTop3();
+  if (!data) return null;
+
+  // 이미 3개면 추가 불가
+  if (data.items.length >= 3) {
+    return null;
+  }
+
+  // 이미 같은 Event가 있으면 추가 안함
+  const existing = data.items.find(item => item.sourceId === event.id && item.sourceType === 'calendar');
+  if (existing) {
+    return existing;
+  }
+
+  // 시간 포맷팅
+  const startTime = event.start.includes('T')
+    ? event.start.split('T')[1]?.substring(0, 5)
+    : '';
+  const endTime = event.end?.includes('T')
+    ? event.end.split('T')[1]?.substring(0, 5)
+    : '';
+  const timeRange = startTime && endTime ? startTime + '-' + endTime : startTime;
+
+  const newItem: Top3Item = {
+    id: uuidv4(),
+    title: event.title,
+    type: 'event',
+    completed: false,
+    category: event.isPersonal ? 'life' : 'work',
+    isPersonal: event.isPersonal || false,
+    order: data.items.length,
+    timeRange: timeRange,
+    sourceId: event.id,
+    sourceType: 'calendar'
+  };
+
+  data.items.push(newItem);
+  saveTop3(data.items);
+
+  return newItem;
+};
+
+// Top3 완료 시 연동된 Task도 완료 처리
+export const completeTop3WithSync = (id: string): { taskId?: string; eventId?: string } | null => {
+  const data = getTodayTop3();
+  if (!data) return null;
+
+  const item = data.items.find(i => i.id === id);
+  if (!item) return null;
+
+  // 완료 처리
+  item.completed = true;
+  addToHistory(item);
+  saveTop3(data.items);
+
+  // 연동된 원본 반환 (호출자가 Task/Event 완료 처리)
+  if (item.sourceType === 'task' && item.sourceId) {
+    return { taskId: item.sourceId };
+  } else if (item.sourceType === 'calendar' && item.sourceId) {
+    return { eventId: item.sourceId };
+  }
+
+  return null;
+};
+
+// Task 완료 시 Top3 동기화
+export const syncTaskCompletionToTop3 = (taskId: string, completed: boolean): void => {
+  const data = getTodayTop3();
+  if (!data) return;
+
+  const item = data.items.find(i => i.sourceId === taskId && i.sourceType === 'task');
+  if (item && item.completed !== completed) {
+    item.completed = completed;
+    if (completed) {
+      addToHistory(item);
+    }
+    saveTop3(data.items);
+  }
+};
+
+// sourceId로 Top3 아이템 찾기
+export const findTop3BySourceId = (sourceId: string, sourceType: 'task' | 'calendar'): Top3Item | null => {
+  const data = getTodayTop3();
+  if (!data) return null;
+
+  return data.items.find(i => i.sourceId === sourceId && i.sourceType === sourceType) || null;
 };
