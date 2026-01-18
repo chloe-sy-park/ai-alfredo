@@ -16,7 +16,8 @@ import { useToneStore } from './toneStore';
 import { triggerLiveBriefingUpdate } from './liveBriefingStore';
 import {
   extractLearningsFromMessage,
-  detectFeedbackSentiment
+  detectFeedbackSentiment,
+  formatLearningsForPrompt
 } from '../services/alfredo/learningExtractor';
 
 // Date 객체 안전 변환 헬퍼 (persist 후 string -> Date 변환)
@@ -296,20 +297,53 @@ export const useChatStore = create<ChatStore>()(
             { entry: entryContext.entry }
           );
 
-          // 2. 추출된 학습 저장
+          // 2. 추출된 학습 저장 및 메시지에 첨부 ("기억해둘게요" UI)
+          const newLearningsForMessage: Array<{ id: string; summary: string; type: string; confirmed?: boolean }> = [];
+
           for (const learning of extractedLearnings) {
             if (alfredoStore.preferences) {
-              await alfredoStore.addNewLearning({
+              const savedLearning = await alfredoStore.addNewLearning({
                 type: learning.type,
                 category: learning.category,
                 summary: learning.summary,
                 originalInput: learning.originalInput,
                 source: 'chat'
               });
+
+              // 메시지에 첨부할 학습 정보
+              newLearningsForMessage.push({
+                id: savedLearning.id,
+                summary: learning.summary,
+                type: learning.type,
+                confirmed: undefined // 아직 확인 안 됨
+              });
             }
           }
 
-          // 3. 피드백 감지 (이전 응답에 대한 긍정/부정)
+          // 3. 학습이 추출되었으면 알프레도 메시지 업데이트
+          if (newLearningsForMessage.length > 0) {
+            const currentState = get();
+            const currentSession = currentState.currentSession;
+            if (currentSession) {
+              const lastMessageIndex = currentSession.messages.length - 1;
+              if (lastMessageIndex >= 0) {
+                const updatedMessages = [...currentSession.messages];
+                updatedMessages[lastMessageIndex] = {
+                  ...updatedMessages[lastMessageIndex],
+                  newLearnings: newLearningsForMessage
+                };
+
+                set({
+                  currentSession: {
+                    ...currentSession,
+                    messages: updatedMessages
+                  }
+                });
+              }
+            }
+          }
+
+          // 4. 피드백 감지 (이전 응답에 대한 긍정/부정)
           const sentiment = detectFeedbackSentiment(content);
           if (sentiment !== 'neutral' && alfredoStore.learnings.length > 0) {
             // 가장 최근 학습에 피드백 적용
@@ -495,11 +529,30 @@ async function callClaudeAPI(
       confidence: insight.confidence
     })) : undefined;
 
+    // === 알프레도 학습 컨텍스트 추가 (Phase 1: "어떻게 알았어?" 경험) ===
+    const alfredoState = useAlfredoStore.getState();
+    const activeLearnings = alfredoState.learnings
+      .filter(l => l.isActive && l.confidence >= 50)
+      .slice(0, 20); // 최근 20개
+    const learningsContext = formatLearningsForPrompt(activeLearnings);
+
+    // 알프레도 선호도 (톤 설정)
+    const alfredoPrefs = alfredoState.preferences ? {
+      toneWarmth: alfredoState.preferences.toneWarmth,
+      notificationFreq: alfredoState.preferences.notificationFreq,
+      dataDepth: alfredoState.preferences.dataDepth,
+      motivationStyle: alfredoState.preferences.motivationStyle,
+      currentDomain: alfredoState.preferences.currentDomain
+    } : undefined;
+
     const apiContext = {
       entry: context.entry,
       safetyLevel: safetyResult.emotion.level,
       events: calendarEvents,
       dna: dnaInsights,
+      // Phase 1: 학습 컨텍스트 주입
+      learnings: learningsContext || undefined,
+      alfredoPreferences: alfredoPrefs
     };
 
     // Vercel /api/chat 호출

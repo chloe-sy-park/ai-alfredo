@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChatMessage } from '../../types/chat';
-import { CheckCircle2, AlertCircle, Lightbulb, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Lightbulb, ThumbsUp, ThumbsDown, BookOpen, Check, X } from 'lucide-react';
 import { useAlfredoStore } from '../../stores/alfredoStore';
 
 // Date 안전 변환 헬퍼
@@ -9,6 +9,86 @@ const toDate = (value: Date | string | undefined): Date => {
   if (value instanceof Date) return value;
   return new Date(value);
 };
+
+// "기억해둘게요" 학습 확인 컴포넌트
+interface LearningConfirmationProps {
+  learnings: Array<{ id: string; summary: string; type: string; confirmed?: boolean }>;
+  onConfirm: (learningId: string, isConfirmed: boolean) => void;
+}
+
+function LearningConfirmation({ learnings, onConfirm }: LearningConfirmationProps) {
+  const [confirmStates, setConfirmStates] = useState<Record<string, boolean | undefined>>({});
+
+  const handleConfirm = (learningId: string, isConfirmed: boolean) => {
+    setConfirmStates(prev => ({ ...prev, [learningId]: isConfirmed }));
+    onConfirm(learningId, isConfirmed);
+  };
+
+  const allConfirmed = learnings.every(l => confirmStates[l.id] !== undefined);
+
+  if (allConfirmed) {
+    const confirmedCount = learnings.filter(l => confirmStates[l.id] === true).length;
+    return (
+      <div className="bg-blue-50 rounded-xl px-3 py-2 text-xs text-blue-700 flex items-center gap-2">
+        <BookOpen size={14} />
+        <span>
+          {confirmedCount > 0
+            ? `${confirmedCount}개 기억했어요!`
+            : '피드백 반영할게요'}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-blue-50 rounded-xl px-4 py-3 border border-blue-200">
+      <div className="flex items-center gap-2 mb-2">
+        <BookOpen size={14} className="text-blue-600" />
+        <span className="text-xs font-medium text-blue-800">이렇게 기억했어요</span>
+      </div>
+      <div className="space-y-2">
+        {learnings.map((learning) => {
+          const isConfirmed = confirmStates[learning.id];
+
+          if (isConfirmed !== undefined) {
+            return (
+              <div key={learning.id} className="flex items-center gap-2 text-xs">
+                {isConfirmed ? (
+                  <Check size={12} className="text-green-600" />
+                ) : (
+                  <X size={12} className="text-red-500" />
+                )}
+                <span className={isConfirmed ? 'text-blue-700' : 'text-neutral-400 line-through'}>
+                  {learning.summary}
+                </span>
+              </div>
+            );
+          }
+
+          return (
+            <div key={learning.id} className="flex items-center justify-between">
+              <span className="text-xs text-blue-700">• {learning.summary}</span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => handleConfirm(learning.id, true)}
+                  className="px-2 py-1 text-[10px] bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                >
+                  맞아요
+                </button>
+                <button
+                  onClick={() => handleConfirm(learning.id, false)}
+                  className="px-2 py-1 text-[10px] bg-neutral-100 text-neutral-600 rounded-md hover:bg-neutral-200 transition-colors"
+                >
+                  아니야
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 interface ChatMessageItemProps {
   message: ChatMessage;
@@ -25,6 +105,8 @@ export default function ChatMessageItem({
   const messageTime = toDate(message.timestamp);
   const [feedbackGiven, setFeedbackGiven] = useState<'positive' | 'negative' | null>(null);
   const { addNewLearning, preferences } = useAlfredoStore();
+
+  const { feedbackLearning } = useAlfredoStore();
 
   // 피드백 핸들러
   const handleFeedback = async (isPositive: boolean) => {
@@ -47,6 +129,16 @@ export default function ChatMessageItem({
       } catch (error) {
         console.error('Failed to save feedback:', error);
       }
+    }
+  };
+
+  // 학습 확인 핸들러 ("기억해둘게요" UI)
+  const handleLearningConfirm = async (learningId: string, isConfirmed: boolean) => {
+    try {
+      // 피드백을 통해 학습 신뢰도 조정
+      await feedbackLearning(learningId, isConfirmed);
+    } catch (error) {
+      console.error('Failed to confirm learning:', error);
     }
   };
   
@@ -192,6 +284,14 @@ export default function ChatMessageItem({
                     ))}
                   </div>
                 </div>
+              )}
+
+              {/* "기억해둘게요" 학습 확인 UI */}
+              {message.newLearnings && message.newLearnings.length > 0 && (
+                <LearningConfirmation
+                  learnings={message.newLearnings}
+                  onConfirm={(learningId, isConfirmed) => handleLearningConfirm(learningId, isConfirmed)}
+                />
               )}
 
               {/* 피드백 버튼 (판단이 있는 메시지에만) */}

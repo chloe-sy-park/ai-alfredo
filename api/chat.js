@@ -216,8 +216,50 @@ function buildSystemPrompt(context) {
         prompt += `\n- 가장 바쁜 요일: ${context.dna.busiestDay}`;
       }
     }
+
+    // === Phase 1: 알프레도 학습 컨텍스트 ("어떻게 알았어?" 경험) ===
+    if (context.learnings && context.learnings.length > 0) {
+      prompt += `\n\n${context.learnings}`;
+      prompt += `\n\n⚠️ 위 학습 내용을 자연스럽게 대화에 반영하되, "제가 알기로는~" 처럼 명시하지 말고 당연히 알고 있는 것처럼 반영하세요. 사용자가 "어떻게 알았어?"라고 놀라게 만드는 게 목표입니다.`;
+    }
+
+    // === 알프레도 톤 설정 (육성 시스템) ===
+    if (context.alfredoPreferences) {
+      const prefs = context.alfredoPreferences;
+      prompt += `\n\n## 알프레도 톤 설정 (사용자가 조정함)`;
+
+      // 따뜻함 (0: 직설적 ~ 100: 다정)
+      if (prefs.toneWarmth !== undefined) {
+        if (prefs.toneWarmth >= 70) {
+          prompt += `\n- 말투: 다정하게 (공감 많이, 부드러운 표현)`;
+        } else if (prefs.toneWarmth <= 30) {
+          prompt += `\n- 말투: 직설적으로 (간결하게, 핵심만)`;
+        } else {
+          prompt += `\n- 말투: 균형 (친근하되 효율적)`;
+        }
+      }
+
+      // 동기부여 스타일 (0: 느긋 ~ 100: 도전적)
+      if (prefs.motivationStyle !== undefined) {
+        if (prefs.motivationStyle >= 70) {
+          prompt += `\n- 동기부여: 도전적 (적극 푸시, 목표 강조)`;
+        } else if (prefs.motivationStyle <= 30) {
+          prompt += `\n- 동기부여: 느긋하게 (압박 최소, 여유 허용)`;
+        }
+      }
+
+      // 현재 영역 (work/life)
+      if (prefs.currentDomain) {
+        prompt += `\n- 현재 모드: ${prefs.currentDomain === 'work' ? '업무 모드' : '라이프 모드'}`;
+        if (prefs.currentDomain === 'work') {
+          prompt += ` (효율적, 간결하게)`;
+        } else {
+          prompt += ` (여유롭게, 공감 위주)`;
+        }
+      }
+    }
   }
-  
+
   return prompt;
 }
 
