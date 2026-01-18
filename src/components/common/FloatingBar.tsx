@@ -145,7 +145,7 @@ const FloatingBar: React.FC = () => {
 
   return (
     <>
-      <div className="fixed bottom-0 left-0 right-0 z-50 px-4 sm:px-6 pb-6 pt-2 bg-gradient-to-t from-gray-50 via-gray-50 to-transparent safe-area-bottom">
+      <div className="fixed bottom-0 left-0 right-0 z-50 px-4 sm:px-6 pt-2 bg-gradient-to-t from-gray-50 via-gray-50 to-transparent" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}>
         <div ref={containerRef} className="max-w-md sm:max-w-lg mx-auto">
           {/* 메인 입력 바 */}
           <div className="flex items-center gap-2">

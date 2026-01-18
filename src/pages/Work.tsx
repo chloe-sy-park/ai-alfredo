@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { PageHeader } from '../components/layout';
 import {
-  WorkBriefing,
   WorkTimeline,
   IncomingSignals,
   ProjectTaskGroup,
@@ -16,7 +15,6 @@ import { usePostAction } from '../stores/postActionStore';
 import { getTodayEvents, CalendarEvent } from '../services/calendar';
 import { getActiveProjects, Project, updateProjectTaskCounts } from '../services/projects';
 import { Briefcase, Plus, LayoutGrid, List } from 'lucide-react';
-import TodayTop3 from '../components/home/TodayTop3';
 import ProjectPulse from '../components/home/ProjectPulse';
 import ActionCard from '../components/home/ActionCard';
 import { MeetingPrepSection } from '../components/work/MeetingPrepCard';
@@ -198,12 +196,6 @@ export default function Work() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* 메인 컨텐츠 (2열) */}
           <div className="lg:col-span-2 space-y-4">
-            {/* 상황 브리핑 */}
-            <WorkBriefing tasks={tasks} events={events} />
-
-            {/* PRD R5: 오늘의 우선순위 (순서로 표시) */}
-            <TodayTop3 mode="work" />
-
             {/* 미팅 준비 섹션 */}
             {todayContext?.mode === 'meeting-based' &&
               todayContext.meetingAnalyses.filter(a => a.shouldRecommend).length > 0 && (
