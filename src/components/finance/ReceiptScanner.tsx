@@ -3,7 +3,7 @@
  *
  * 기능:
  * - 카메라/갤러리에서 영수증 이미지 선택
- * - OCR API 호출 (Claude Vision API)
+ * - Tesseract.js 기반 로컬 OCR (무료, 오픈소스)
  * - 인식 결과 수정 및 저장
  */
 
@@ -23,85 +23,7 @@ import {
   OneTimeExpenseCategory,
   EXPENSE_CATEGORY_LABELS,
 } from '../../services/finance/types';
-
-// OCR 결과 타입
-interface ReceiptData {
-  storeName?: string;
-  date?: string;
-  totalAmount?: number;
-  items?: Array<{ name: string; price: number }>;
-  category?: OneTimeExpenseCategory;
-  confidence?: number;
-}
-
-// 카테고리 자동 추론 (가맹점명 기반)
-function inferCategoryFromStore(storeName: string): OneTimeExpenseCategory {
-  const lower = storeName.toLowerCase();
-
-  // 음식점/카페
-  if (
-    lower.includes('카페') ||
-    lower.includes('커피') ||
-    lower.includes('스타벅스') ||
-    lower.includes('이디야') ||
-    lower.includes('투썸') ||
-    lower.includes('맥도날드') ||
-    lower.includes('버거킹') ||
-    lower.includes('롯데리아') ||
-    lower.includes('식당') ||
-    lower.includes('레스토랑')
-  ) {
-    return 'dining';
-  }
-
-  // 편의점/마트
-  if (
-    lower.includes('cu') ||
-    lower.includes('gs25') ||
-    lower.includes('세븐일레븐') ||
-    lower.includes('이마트') ||
-    lower.includes('홈플러스') ||
-    lower.includes('롯데마트') ||
-    lower.includes('편의점') ||
-    lower.includes('마트')
-  ) {
-    return 'groceries';
-  }
-
-  // 주유소/교통
-  if (
-    lower.includes('주유') ||
-    lower.includes('sk') ||
-    lower.includes('gs칼텍스') ||
-    lower.includes('s-oil') ||
-    lower.includes('현대오일')
-  ) {
-    return 'transport';
-  }
-
-  // 약국/병원
-  if (
-    lower.includes('약국') ||
-    lower.includes('병원') ||
-    lower.includes('의원') ||
-    lower.includes('클리닉')
-  ) {
-    return 'medical';
-  }
-
-  // 쇼핑
-  if (
-    lower.includes('다이소') ||
-    lower.includes('올리브영') ||
-    lower.includes('무신사') ||
-    lower.includes('백화점') ||
-    lower.includes('아울렛')
-  ) {
-    return 'shopping';
-  }
-
-  return 'other';
-}
+import { scanReceipt, ReceiptOCRResult } from '../../services/ocr';
 
 interface ReceiptScannerProps {
   onClose: () => void;
@@ -112,9 +34,10 @@ export default function ReceiptScanner({ onClose, onScanComplete }: ReceiptScann
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState<'capture' | 'processing' | 'review' | 'done'>('capture');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
+  const [receiptData, setReceiptData] = useState<ReceiptOCRResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [ocrProgress, setOcrProgress] = useState(0);
 
   // 수정 가능한 필드
   const [editedData, setEditedData] = useState({
@@ -149,51 +72,29 @@ export default function ReceiptScanner({ onClose, onScanComplete }: ReceiptScann
     reader.readAsDataURL(file);
   }, []);
 
-  // OCR 처리
+  // OCR 처리 (Tesseract.js 사용)
   const processImage = async (file: File) => {
     setStep('processing');
     setError(null);
+    setOcrProgress(0);
 
     try {
-      // 이미지를 base64로 변환
-      const base64Image = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
+      // Tesseract.js로 OCR 실행
+      const result = await scanReceipt(file, (progress) => {
+        setOcrProgress(progress);
       });
 
-      // JSON으로 전송
-      const response = await fetch('/api/receipt-ocr', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ image: base64Image }),
-      });
-
-      if (!response.ok) {
-        throw new Error('OCR 처리 중 오류가 발생했습니다.');
-      }
-
-      const data: ReceiptData = await response.json();
-
-      // 카테고리 자동 추론
-      if (data.storeName && !data.category) {
-        data.category = inferCategoryFromStore(data.storeName);
-      }
-
-      setReceiptData(data);
+      setReceiptData(result);
       setEditedData({
-        storeName: data.storeName || '',
-        date: data.date || new Date().toISOString().split('T')[0],
-        totalAmount: data.totalAmount || 0,
-        category: data.category || 'other',
+        storeName: result.storeName || '',
+        date: result.date || new Date().toISOString().split('T')[0],
+        totalAmount: result.totalAmount || 0,
+        category: result.category || 'other',
       });
       setStep('review');
     } catch (err) {
       console.error('OCR error:', err);
-      setError(err instanceof Error ? err.message : 'OCR 처리에 실패했습니다.');
+      setError('영수증 인식에 실패했습니다. 다시 시도해주세요.');
       setStep('capture');
     }
   };
@@ -203,6 +104,7 @@ export default function ReceiptScanner({ onClose, onScanComplete }: ReceiptScann
     setSelectedImage(null);
     setReceiptData(null);
     setError(null);
+    setOcrProgress(0);
     setStep('capture');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -305,6 +207,11 @@ export default function ReceiptScanner({ onClose, onScanComplete }: ReceiptScann
                   <li>• 영수증 전체가 화면에 들어오도록 하세요</li>
                 </ul>
               </div>
+
+              {/* 오픈소스 OCR 안내 */}
+              <div className="text-center text-xs text-gray-400 dark:text-gray-500">
+                Tesseract.js 오픈소스 OCR 사용 (무료)
+              </div>
             </div>
           )}
 
@@ -322,7 +229,21 @@ export default function ReceiptScanner({ onClose, onScanComplete }: ReceiptScann
               )}
               <Loader2 size={32} className="text-emerald-600 animate-spin" />
               <p className="text-gray-600 dark:text-gray-400">영수증을 분석하고 있어요...</p>
-              <p className="text-xs text-gray-400">AI가 금액과 내역을 읽고 있습니다</p>
+
+              {/* 진행률 표시 */}
+              <div className="w-full max-w-xs">
+                <div className="bg-neutral-200 dark:bg-neutral-600 rounded-full h-2">
+                  <div
+                    className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${ocrProgress}%` }}
+                  />
+                </div>
+                <p className="text-xs text-center text-gray-400 mt-2">{ocrProgress}%</p>
+              </div>
+
+              <p className="text-xs text-gray-400">
+                첫 스캔 시 언어 데이터 다운로드로 시간이 걸릴 수 있습니다
+              </p>
             </div>
           )}
 
@@ -447,12 +368,14 @@ export default function ReceiptScanner({ onClose, onScanComplete }: ReceiptScann
                 {/* 품목 목록 (있는 경우) */}
                 {receiptData.items && receiptData.items.length > 0 && (
                   <div className="space-y-1">
-                    <label className="text-xs text-gray-500">품목</label>
-                    <div className="bg-neutral-50 dark:bg-neutral-700 rounded-lg p-3 space-y-2">
+                    <label className="text-xs text-gray-500">인식된 품목</label>
+                    <div className="bg-neutral-50 dark:bg-neutral-700 rounded-lg p-3 space-y-2 max-h-32 overflow-y-auto">
                       {receiptData.items.map((item, i) => (
                         <div key={i} className="flex justify-between text-xs">
-                          <span className="text-gray-600 dark:text-gray-400">{item.name}</span>
-                          <span className="text-gray-900 dark:text-white">
+                          <span className="text-gray-600 dark:text-gray-400 truncate flex-1">
+                            {item.name}
+                          </span>
+                          <span className="text-gray-900 dark:text-white ml-2">
                             {item.price.toLocaleString()}원
                           </span>
                         </div>
@@ -468,9 +391,9 @@ export default function ReceiptScanner({ onClose, onScanComplete }: ReceiptScann
                     <div className="flex-1 bg-neutral-200 dark:bg-neutral-600 rounded-full h-1.5">
                       <div
                         className={`h-1.5 rounded-full ${
-                          receiptData.confidence > 0.8
+                          receiptData.confidence > 0.7
                             ? 'bg-emerald-500'
-                            : receiptData.confidence > 0.5
+                            : receiptData.confidence > 0.4
                             ? 'bg-yellow-500'
                             : 'bg-red-500'
                         }`}
@@ -478,6 +401,16 @@ export default function ReceiptScanner({ onClose, onScanComplete }: ReceiptScann
                       />
                     </div>
                     <span>{Math.round((receiptData.confidence || 0) * 100)}%</span>
+                  </div>
+                )}
+
+                {/* 낮은 신뢰도 경고 */}
+                {receiptData.confidence !== undefined && receiptData.confidence < 0.5 && (
+                  <div className="flex items-start gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                    <AlertCircle size={16} className="text-yellow-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-yellow-700 dark:text-yellow-400">
+                      인식 정확도가 낮습니다. 금액과 내용을 확인 후 수정해주세요.
+                    </p>
                   </div>
                 )}
               </div>
