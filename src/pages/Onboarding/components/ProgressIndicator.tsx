@@ -25,7 +25,7 @@ export default function ProgressIndicator({
   return (
     <div className="w-full" role="progressbar" aria-valuenow={progressPercent} aria-valuemin={0} aria-valuemax={100} aria-label="온보딩 진행률">
       {/* 스텝 번호 표시 */}
-      <div className="flex justify-between text-xs text-[#999999] mb-2">
+      <div className="flex justify-between text-xs mb-2" style={{ color: 'var(--text-tertiary)' }}>
         <span>Step {displayStep} of {displayTotal}</span>
         <span>{progressPercent}%</span>
       </div>
@@ -35,11 +35,12 @@ export default function ProgressIndicator({
         {[...Array(displayTotal)].map((_, index) => (
           <div
             key={index}
-            className={`h-1 flex-1 rounded-full transition-all duration-300 ${
-              index < displayStep
-                ? 'bg-[#A996FF]'
-                : 'bg-[#E5E5E5]'
-            }`}
+            className="h-1 flex-1 rounded-full transition-all duration-300"
+            style={{
+              backgroundColor: index < displayStep
+                ? 'var(--accent-primary)'
+                : 'var(--border-default)'
+            }}
             aria-hidden="true"
           />
         ))}
