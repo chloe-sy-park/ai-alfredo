@@ -7,8 +7,8 @@ interface EntryLayoutProps {
 
 export default function EntryLayout({ children }: EntryLayoutProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-lavender-50 to-white">
-      <div className="max-w-md mx-auto px-6 py-12">
+    <div className="min-h-screen w-full" style={{ backgroundColor: 'var(--bg-primary)' }}>
+      <div className="min-h-screen w-full max-w-md mx-auto px-6 py-12">
         {/* 알프레도 아이콘 */}
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
@@ -16,7 +16,7 @@ export default function EntryLayout({ children }: EntryLayoutProps) {
           transition={{ duration: 0.5 }}
           className="flex justify-center mb-8"
         >
-          <div className="w-16 h-16 rounded-full flex items-center justify-center overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
+          <div className="w-16 h-16 rounded-full flex items-center justify-center overflow-hidden" style={{ backgroundColor: 'var(--surface-default)' }}>
             <img
               src="/assets/alfredo/avatar/alfredo-avatar-64.png"
               alt="알프레도"

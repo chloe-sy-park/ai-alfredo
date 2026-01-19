@@ -9,15 +9,14 @@ import LoadingState from '../../components/common/LoadingState';
 interface LifeStatus {
   emoji: string;
   label: string;
-  color: string;
 }
 
 const lifeStatuses: LifeStatus[] = [
-  { emoji: '🌟', label: '활기찬', color: 'bg-yellow-100' },
-  { emoji: '😌', label: '평온한', color: 'bg-blue-100' },
-  { emoji: '💪', label: '에너지 넘치는', color: 'bg-orange-100' },
-  { emoji: '🌱', label: '성장하는', color: 'bg-green-100' },
-  { emoji: '✨', label: '기대되는', color: 'bg-purple-100' }
+  { emoji: '🌟', label: '활기찬' },
+  { emoji: '😌', label: '평온한' },
+  { emoji: '💪', label: '에너지 넘치는' },
+  { emoji: '🌱', label: '성장하는' },
+  { emoji: '✨', label: '기대되는' }
 ];
 
 interface Suggestion {
@@ -76,16 +75,16 @@ export default function LifeEntry() {
         className="mb-8"
       >
         <div className="flex items-center gap-3 mb-3">
-          <Heart className="w-5 h-5 text-gray-600" />
-          <h2 className="text-sm font-semibold text-gray-600">Life Briefing</h2>
+          <Heart className="w-5 h-5" style={{ color: 'var(--text-tertiary)' }} />
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-tertiary)' }}>Life Briefing</h2>
         </div>
-        
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <p className="text-lg text-gray-800 leading-relaxed mb-3">
+
+        <div className="rounded-2xl p-5 shadow-card" style={{ backgroundColor: 'var(--surface-default)', border: '1px solid var(--border-default)' }}>
+          <p className="text-lg leading-relaxed mb-3" style={{ color: 'var(--text-primary)' }}>
             {userName}님, 최근 일에 집중하느라 개인 시간이 부족했어요.
           </p>
           <div className="inline-flex items-center gap-2">
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${currentStatus.color}`}>
+            <span className="px-3 py-1 rounded-full text-sm font-medium" style={{ backgroundColor: 'var(--surface-subtle)', color: 'var(--text-secondary)' }}>
               {currentStatus.emoji} {currentStatus.label}
             </span>
           </div>
@@ -100,15 +99,15 @@ export default function LifeEntry() {
         className="mb-8"
       >
         <div className="flex items-center gap-3 mb-3">
-          <Compass className="w-5 h-5 text-gray-600" />
-          <h2 className="text-sm font-semibold text-gray-600">Today's Life Focus</h2>
+          <Compass className="w-5 h-5" style={{ color: 'var(--text-tertiary)' }} />
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-tertiary)' }}>Today's Life Focus</h2>
         </div>
-        
-        <div className="bg-pink-50 rounded-2xl p-5 border border-pink-100">
-          <p className="text-lg font-medium text-gray-800">
+
+        <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--surface-default)', border: '1px solid var(--border-default)' }}>
+          <p className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>
             {todayFocus}
           </p>
-          <p className="text-sm text-gray-600 mt-2">
+          <p className="text-sm mt-2" style={{ color: 'var(--text-secondary)' }}>
             작은 행동이 큰 변화를 만들어요
           </p>
         </div>
@@ -122,10 +121,10 @@ export default function LifeEntry() {
         className="mb-12"
       >
         <div className="flex items-center gap-3 mb-3">
-          <Sparkles className="w-5 h-5 text-gray-600" />
-          <h2 className="text-sm font-semibold text-gray-600">What Might Help</h2>
+          <Sparkles className="w-5 h-5" style={{ color: 'var(--text-tertiary)' }} />
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-tertiary)' }}>What Might Help</h2>
         </div>
-        
+
         <div className="space-y-3">
           {suggestions.map((suggestion, index) => {
             const Icon = suggestion.icon;
@@ -135,13 +134,14 @@ export default function LifeEntry() {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.5 + index * 0.1 }}
-                className="bg-white rounded-xl p-4 border border-gray-100 hover:border-primary-200 transition-colors cursor-pointer"
+                className="rounded-xl p-4 transition-colors cursor-pointer"
+                style={{ backgroundColor: 'var(--surface-default)', border: '1px solid var(--border-default)' }}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center">
-                    <Icon className="w-5 h-5 text-gray-600" />
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--surface-subtle)' }}>
+                    <Icon className="w-5 h-5" style={{ color: 'var(--text-tertiary)' }} />
                   </div>
-                  <p className="text-gray-700">{suggestion.text}</p>
+                  <p style={{ color: 'var(--text-secondary)' }}>{suggestion.text}</p>
                 </div>
               </motion.div>
             );
@@ -158,15 +158,17 @@ export default function LifeEntry() {
       >
         <button
           onClick={handleEnter}
-          className="w-full py-4 bg-gray-900 text-white rounded-2xl font-medium hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 group"
+          className="w-full py-4 rounded-2xl font-medium transition-colors flex items-center justify-center gap-2 group"
+          style={{ backgroundColor: 'var(--text-primary)', color: 'var(--surface-default)' }}
         >
           <span>Life 모드로 시작</span>
           <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
         </button>
-        
+
         <button
           onClick={handleNotNow}
-          className="w-full py-4 text-gray-600 font-medium hover:text-gray-900 transition-colors"
+          className="w-full py-4 font-medium transition-colors"
+          style={{ color: 'var(--text-tertiary)' }}
         >
           나중에 결정할게요
         </button>

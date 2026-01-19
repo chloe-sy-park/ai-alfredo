@@ -9,15 +9,14 @@ import LoadingState from '../../components/common/LoadingState';
 interface WorkStatus {
   emoji: string;
   label: string;
-  color: string;
 }
 
 const workStatuses: WorkStatus[] = [
-  { emoji: '🚀', label: '집중 모드', color: 'bg-blue-100' },
-  { emoji: '🎯', label: '목표 달성', color: 'bg-green-100' },
-  { emoji: '🔥', label: '바쁜 하루', color: 'bg-orange-100' },
-  { emoji: '💪', label: '도전적인', color: 'bg-purple-100' },
-  { emoji: '⚡', label: '생산적인', color: 'bg-yellow-100' }
+  { emoji: '🚀', label: '집중 모드' },
+  { emoji: '🎯', label: '목표 달성' },
+  { emoji: '🔥', label: '바쁜 하루' },
+  { emoji: '💪', label: '도전적인' },
+  { emoji: '⚡', label: '생산적인' }
 ];
 
 export default function WorkEntry() {
@@ -66,16 +65,16 @@ export default function WorkEntry() {
         className="mb-8"
       >
         <div className="flex items-center gap-3 mb-3">
-          <Briefcase className="w-5 h-5 text-gray-600" />
-          <h2 className="text-sm font-semibold text-gray-600">Work Briefing</h2>
+          <Briefcase className="w-5 h-5" style={{ color: 'var(--text-tertiary)' }} />
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-tertiary)' }}>Work Briefing</h2>
         </div>
-        
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <p className="text-lg text-gray-800 leading-relaxed mb-3">
+
+        <div className="rounded-2xl p-5 shadow-card" style={{ backgroundColor: 'var(--surface-default)', border: '1px solid var(--border-default)' }}>
+          <p className="text-lg leading-relaxed mb-3" style={{ color: 'var(--text-primary)' }}>
             {userName}님, 오늘은 중요한 마감이 2개 있어요.
           </p>
           <div className="inline-flex items-center gap-2">
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${currentStatus.color}`}>
+            <span className="px-3 py-1 rounded-full text-sm font-medium" style={{ backgroundColor: 'var(--surface-subtle)', color: 'var(--text-secondary)' }}>
               {currentStatus.emoji} {currentStatus.label}
             </span>
           </div>
@@ -90,15 +89,15 @@ export default function WorkEntry() {
         className="mb-8"
       >
         <div className="flex items-center gap-3 mb-3">
-          <Target className="w-5 h-5 text-gray-600" />
-          <h2 className="text-sm font-semibold text-gray-600">Today's Work Focus</h2>
+          <Target className="w-5 h-5" style={{ color: 'var(--text-tertiary)' }} />
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-tertiary)' }}>Today's Work Focus</h2>
         </div>
-        
-        <div className="bg-primary-50 rounded-2xl p-5 border border-primary-100">
-          <p className="text-lg font-medium text-gray-800">
+
+        <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--surface-default)', border: '1px solid var(--border-default)' }}>
+          <p className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>
             {todayFocus}
           </p>
-          <p className="text-sm text-gray-600 mt-2">
+          <p className="text-sm mt-2" style={{ color: 'var(--text-secondary)' }}>
             오후 2-4시가 집중하기 좋은 시간이에요
           </p>
         </div>
@@ -112,17 +111,17 @@ export default function WorkEntry() {
         className="mb-12"
       >
         <div className="flex items-center gap-3 mb-3">
-          <Layers className="w-5 h-5 text-gray-600" />
-          <h2 className="text-sm font-semibold text-gray-600">On Your Plate</h2>
+          <Layers className="w-5 h-5" style={{ color: 'var(--text-tertiary)' }} />
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-tertiary)' }}>On Your Plate</h2>
         </div>
-        
-        <div className="bg-gray-50 rounded-2xl p-5">
+
+        <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--surface-subtle)' }}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-3xl font-bold text-gray-800">{plateCount}</p>
-              <p className="text-sm text-gray-600">할 일이 있어요</p>
+              <p className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>{plateCount}</p>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>할 일이 있어요</p>
             </div>
-            <div className="text-5xl opacity-20">📋</div>
+            <div className="text-5xl opacity-10">📋</div>
           </div>
         </div>
       </motion.div>
@@ -136,15 +135,17 @@ export default function WorkEntry() {
       >
         <button
           onClick={handleEnter}
-          className="w-full py-4 bg-gray-900 text-white rounded-2xl font-medium hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 group"
+          className="w-full py-4 rounded-2xl font-medium transition-colors flex items-center justify-center gap-2 group"
+          style={{ backgroundColor: 'var(--text-primary)', color: 'var(--surface-default)' }}
         >
           <span>Work 모드로 시작</span>
           <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
         </button>
-        
+
         <button
           onClick={handleNotNow}
-          className="w-full py-4 text-gray-600 font-medium hover:text-gray-900 transition-colors"
+          className="w-full py-4 font-medium transition-colors"
+          style={{ color: 'var(--text-tertiary)' }}
         >
           나중에 결정할게요
         </button>
