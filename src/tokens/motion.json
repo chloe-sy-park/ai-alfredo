@@ -1,0 +1,28 @@
+{
+  "motion": {
+    "duration": {
+      "fast": "150ms",
+      "default": "200ms"
+    },
+    "easing": {
+      "enter": "cubic-bezier(0, 0, 0.2, 1)",
+      "exit": "cubic-bezier(0.4, 0, 1, 1)",
+      "default": "ease-out"
+    }
+  },
+  "_comment": {
+    "forbidden": [
+      "bounce",
+      "shake",
+      "pulse",
+      "glow",
+      "scaleInBounce",
+      "gold-glow"
+    ],
+    "allowed": [
+      "fade",
+      "slideY",
+      "scale (subtle, max 1.02)"
+    ]
+  }
+}

@@ -361,7 +361,7 @@ const Settings = () => {
             {/* 알프레도 학습 데이터 */}
             {alfredoLoading ? (
               <div className="text-center py-8">
-                <div className="w-12 h-12 mx-auto mb-2 animate-bounce">
+                <div className="w-12 h-12 mx-auto mb-2 animate-scale-in">
                   <img
                     src="/assets/alfredo/avatar/alfredo-avatar-48.png"
                     alt="알프레도"

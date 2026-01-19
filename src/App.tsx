@@ -49,7 +49,7 @@ const OutlookCallback = lazy(() => import('./pages/OutlookCallback'));
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: 'var(--bg-primary)' }}>
     <div className="text-center">
-      <div className="w-20 h-20 mx-auto mb-2 animate-bounce">
+      <div className="w-20 h-20 mx-auto mb-2 animate-scale-in">
         <img
           src="/assets/alfredo/avatar/alfredo-avatar-80.png"
           alt="알프레도"

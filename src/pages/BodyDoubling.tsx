@@ -153,7 +153,7 @@ const BodyDoubling: React.FC = function() {
           <div className="w-full max-w-sm space-y-6 text-center">
             {/* 알프레도 애니메이션 */}
             <div className="relative">
-              <div className="w-32 h-32 mx-auto animate-bounce rounded-full overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
+              <div className="w-32 h-32 mx-auto animate-scale-in rounded-full overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
                 <img
                   src="/assets/alfredo/avatar/alfredo-avatar-120.png"
                   alt="알프레도"

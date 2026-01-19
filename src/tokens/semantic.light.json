@@ -5,7 +5,17 @@
   },
   "surface": {
     "default": "{neutral.0}",
-    "subtle": "{neutral.50}"
+    "subtle": "{neutral.50}",
+    "glass": {
+      "bg": "rgba(255, 255, 255, 0.96)",
+      "blur": "4px",
+      "border": "rgba(20, 21, 24, 0.06)"
+    }
+  },
+  "shadow": {
+    "card": "0 2px 8px rgba(0,0,0,0.04)",
+    "cardHover": "0 4px 12px rgba(0,0,0,0.08)",
+    "focusRing": "0 0 0 3px rgba(201,162,94,0.28)"
   },
   "border": {
     "default": "{neutral.200}"

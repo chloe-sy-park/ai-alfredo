@@ -16,7 +16,7 @@ export default function Step1Welcome() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-6 text-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/* 알프레도 */}
-      <div className="w-32 h-32 mb-6 animate-bounce rounded-full overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
+      <div className="w-32 h-32 mb-6 animate-scale-in rounded-full overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
         <img
           src="/assets/alfredo/avatar/alfredo-avatar-120.png"
           alt="알프레도"
