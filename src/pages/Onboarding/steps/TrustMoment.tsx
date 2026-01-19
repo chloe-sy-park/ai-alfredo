@@ -29,10 +29,13 @@ export default function TrustMoment({ onNext }: TrustMomentProps) {
     <div className="flex flex-col h-full">
       {/* 헤더 */}
       <div className="mb-8">
-        <h2 className="text-xl font-bold text-[#1A1A1A] mb-2">
+        <h2
+          className="text-xl font-bold mb-2 heading-kr"
+          style={{ color: 'var(--text-primary)' }}
+        >
           정직하게 시작할게요
         </h2>
-        <p className="text-[#666666]">
+        <p className="body-text" style={{ color: 'var(--text-secondary)' }}>
           알프레도는 아직 당신을 잘 몰라요
         </p>
       </div>
@@ -40,16 +43,25 @@ export default function TrustMoment({ onNext }: TrustMomentProps) {
       {/* 성장 표시 */}
       <div className="flex-1">
         {/* 이해도 게이지 */}
-        <div className="bg-white rounded-2xl p-6 border border-[#E5E5E5] mb-6">
+        <div
+          className="rounded-2xl p-6 mb-6"
+          style={{
+            backgroundColor: 'var(--surface-default)',
+            border: '1px solid var(--border-default)'
+          }}
+        >
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-[#1A1A1A]" />
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{ backgroundColor: 'rgba(201, 162, 94, 0.15)' }}
+            >
+              <TrendingUp className="w-5 h-5" style={{ color: 'var(--text-primary)' }} />
             </div>
             <div>
-              <h3 className="font-semibold text-[#1A1A1A]">
+              <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
                 알프레도의 이해도
               </h3>
-              <p className="text-sm text-[#666666]">
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                 당신에 대한 이해 수준
               </p>
             </div>
@@ -58,15 +70,19 @@ export default function TrustMoment({ onNext }: TrustMomentProps) {
           {/* 프로그레스 바 */}
           <div className="mb-2">
             <div className="flex justify-between text-sm mb-1">
-              <span className="text-[#A996FF] font-semibold">현재 {progress}%</span>
-              <span className="text-[#999999] text-xs">목표 100%</span>
+              <span className="font-semibold" style={{ color: 'var(--accent-primary)' }}>현재 {progress}%</span>
+              <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>목표 100%</span>
             </div>
-            <div className="h-3 bg-[#F0F0F0] rounded-full overflow-hidden">
+            <div
+              className="h-3 rounded-full overflow-hidden"
+              style={{ backgroundColor: 'var(--surface-subtle)' }}
+            >
               <motion.div
                 initial={{ width: '0%' }}
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
-                className="h-full bg-gradient-to-r from-[#A996FF] to-[#8B7ACC] rounded-full"
+                className="h-full rounded-full"
+                style={{ backgroundColor: 'var(--accent-primary)' }}
               />
             </div>
           </div>
@@ -77,15 +93,16 @@ export default function TrustMoment({ onNext }: TrustMomentProps) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="bg-[#F8F8FF] rounded-2xl p-4 mb-6"
+          className="rounded-2xl p-4 mb-6"
+          style={{ backgroundColor: 'rgba(201, 162, 94, 0.08)' }}
         >
           <div className="flex gap-3">
-            <Info className="w-5 h-5 text-[#A996FF] flex-shrink-0 mt-0.5" />
+            <Info className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--accent-primary)' }} />
             <div>
-              <p className="text-sm text-[#1A1A1A] mb-2">
+              <p className="text-sm mb-2" style={{ color: 'var(--text-primary)' }}>
                 <span className="font-semibold">함께 성장해요</span>
               </p>
-              <p className="text-sm text-[#666666]">
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                 • 매일 조금씩 더 정확해져요<br />
                 • 패턴을 발견하고 학습해요<br />
                 • 3주 후엔 꽤 똑똑해질 거예요
@@ -101,7 +118,7 @@ export default function TrustMoment({ onNext }: TrustMomentProps) {
           transition={{ delay: 0.7 }}
           className="mb-8"
         >
-          <label className="block text-sm text-[#666666] mb-2">
+          <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
             뭐라고 부를까요? (선택)
           </label>
           <input
@@ -109,9 +126,21 @@ export default function TrustMoment({ onNext }: TrustMomentProps) {
             value={userName}
             onChange={(e) => setUserName(e.target.value)}
             placeholder="알프레도가 부를 이름 (예: 민지)"
-            className="w-full px-4 py-3 bg-white border border-[#E5E5E5] rounded-xl focus:outline-none focus:border-[#A996FF] transition-colors"
+            className="w-full px-4 py-3 rounded-xl transition-colors"
+            style={{
+              backgroundColor: 'var(--surface-default)',
+              border: '1px solid var(--border-default)',
+              color: 'var(--text-primary)',
+              outline: 'none'
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = 'var(--accent-primary)';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = 'var(--border-default)';
+            }}
           />
-          <p className="text-xs text-[#999999] mt-1">
+          <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
             입력하지 않으면 "사용자님"으로 불러요
           </p>
         </motion.div>
@@ -120,7 +149,11 @@ export default function TrustMoment({ onNext }: TrustMomentProps) {
       {/* 버튼 */}
       <button
         onClick={handleContinue}
-        className="w-full py-4 bg-[#1A1A1A] text-white rounded-2xl font-medium hover:bg-[#333333] transition-colors"
+        className="w-full py-4 rounded-2xl ui-button transition-colors"
+        style={{
+          backgroundColor: 'var(--text-primary)',
+          color: 'var(--surface-default)'
+        }}
       >
         알겠어요, 시작할게요
       </button>
