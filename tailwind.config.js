@@ -8,29 +8,42 @@ export default {
   theme: {
     extend: {
       colors: {
-        // ===== AlFredo Design System v2 (Light Mode) =====
-        
-        // Primary - 메인 강조 (라벤더)
-        primary: '#A996FF',
-        
-        // Accent - CTA, Priority 1, 핵심 강조 (골드)
-        accent: {
-          DEFAULT: '#FFD700',
-          muted: '#FBBF24',
-          dark: '#1A1A1A', // 골드 버튼 위 텍스트
+        // ===== AlFredo Design System v1 =====
+
+        // Primary - Gold (유일한 Accent/CTA)
+        // Lavender는 Work 서브컬러로만 사용
+        primary: '#A996FF', // Work 서브컬러 (backward compat)
+
+        // Gold - 유일한 Accent/CTA
+        gold: {
+          300: '#F1E7D3',
+          500: '#C9A25E',
+          600: '#B48D4E',
         },
-        
+
+        // Accent - CTA, Priority 1, 핵심 강조 (Gold 기반)
+        accent: {
+          DEFAULT: '#C9A25E',
+          pressed: '#B48D4E',
+          onAccent: '#1A140B', // 골드 버튼 위 텍스트
+        },
+
         // Secondary - 보조 강조
         secondary: '#C8BFD9',
-        
+
         // Background & Surface (라이트모드 기준)
-        background: '#F5F5F5',
+        background: '#FAF8F4',
         surface: {
           DEFAULT: '#FFFFFF',
-          elevated: '#F0F0FF', // 알프레도 메시지 배경
+          subtle: '#FAF8F4',
           card: '#FFFFFF',
         },
-        
+
+        // OS Colors (구분용, 배경/CTA에 사용 금지)
+        'os-work': '#4A5C73',
+        'os-life': '#7E9B8A',
+        'os-finance': '#8C7A5E',
+
         // Semantic Colors - 강도/상태 표시
         intensity: {
           light: '#4ADE80',      // Light - 초록
@@ -38,13 +51,19 @@ export default {
           heavy: '#F97316',      // Heavy - 주황
           overloaded: '#EF4444', // Overloaded - 빨강
         },
-        
-        // Status Colors
-        success: '#4ADE80',
-        warning: '#FBBF24',
-        error: '#EF4444',
-        info: '#60A5FA',
-        
+
+        // State Colors
+        state: {
+          success: '#1FA97B',
+          warning: '#D68B2C',
+          danger: '#E04646',
+          info: '#2F80ED',
+        },
+        success: '#1FA97B',
+        warning: '#D68B2C',
+        error: '#E04646',
+        info: '#2F80ED',
+
         // Source Tags
         work: {
           bg: '#EDE9FE',
@@ -56,32 +75,39 @@ export default {
           text: '#DB2777',
           border: '#FBCFE8',
         },
-        
+
         // Text Colors
         text: {
-          primary: '#1A1A1A',
-          secondary: '#666666',
+          primary: '#141518',
+          secondary: '#3D414A',
+          tertiary: '#6B7280',
           muted: '#999999',
+          disabled: '#D8D0C3',
         },
-        
+
         // Border
-        border: '#E5E5E5',
-        
-        // Neutral Scale
+        border: '#E6E0D6',
+
+        // Neutral Scale (Design System v1)
         neutral: {
-          50: '#FAFAFA',
-          100: '#F5F5F5',
-          200: '#E5E5E5',
-          300: '#D4D4D4',
+          0: '#FFFFFF',
+          25: '#FDFCFA',
+          50: '#FAF8F4',
+          75: '#F7F4EE',
+          100: '#F4F1EA',
+          150: '#EEE8DE',
+          200: '#E6E0D6',
+          250: '#DCD3C5',
+          300: '#D8D0C3',
           400: '#A3A3A3',
           500: '#737373',
           600: '#525252',
-          700: '#404040',
-          800: '#262626',
-          900: '#171717',
+          700: '#3D414A',
+          800: '#141518',
+          900: '#0B0C0F',
         },
-        
-        // Lavender Scale
+
+        // Lavender Scale (Work 서브컬러)
         lavender: {
           50: '#F5F3FF',
           100: '#EDE9FE',
@@ -95,58 +121,41 @@ export default {
           900: '#4C1D95',
         },
 
-        // ===== NEW: Token-based Colors (CSS Variables) =====
-        // 사용법: bg-token-bg-primary, text-token-text-primary 등
-
-        // Background (token-bg-*)
+        // ===== Token-based Colors (CSS Variables) =====
         'token-bg': {
           primary: 'var(--bg-primary)',
           secondary: 'var(--bg-secondary)',
         },
-
-        // Surface (token-surface-*)
         'token-surface': {
           DEFAULT: 'var(--surface-default)',
           subtle: 'var(--surface-subtle)',
         },
-
-        // Border (token-border-*)
         'token-border': {
           DEFAULT: 'var(--border-default)',
         },
-
-        // Text (token-text-*)
         'token-text': {
           primary: 'var(--text-primary)',
           secondary: 'var(--text-secondary)',
           tertiary: 'var(--text-tertiary)',
           disabled: 'var(--text-disabled)',
         },
-
-        // Accent - Gold (token-accent-*)
         'token-accent': {
           DEFAULT: 'var(--accent-primary)',
           primary: 'var(--accent-primary)',
           pressed: 'var(--accent-pressed)',
           on: 'var(--accent-on)',
         },
-
-        // OS Colors (token-os-*)
         'token-os': {
           work: 'var(--os-work)',
           life: 'var(--os-life)',
           finance: 'var(--os-finance)',
         },
-
-        // State Colors (token-state-*)
         'token-state': {
           success: 'var(--state-success)',
           warning: 'var(--state-warning)',
           danger: 'var(--state-danger)',
           info: 'var(--state-info)',
         },
-
-        // Chart Colors (token-chart-*)
         'token-chart': {
           canvas: 'var(--chart-canvas)',
           panel: 'var(--chart-panel)',
@@ -159,19 +168,25 @@ export default {
           'emphasis-today': 'var(--chart-emphasis-today)',
         },
       },
-      
+
       // Typography Scale
       fontSize: {
+        'micro': ['11px', { lineHeight: '1.3' }],
+        'caption': ['13px', { lineHeight: '1.4' }],
         'xs': ['10px', { lineHeight: '14px' }],
         'sm': ['12px', { lineHeight: '16px' }],
         'base': ['14px', { lineHeight: '20px' }],
+        'body': ['16px', { lineHeight: '1.55' }],
         'md': ['16px', { lineHeight: '24px' }],
         'lg': ['18px', { lineHeight: '28px' }],
+        'h2': ['20px', { lineHeight: '1.3' }],
         'xl': ['20px', { lineHeight: '28px' }],
+        'h1': ['24px', { lineHeight: '1.3' }],
         '2xl': ['24px', { lineHeight: '32px' }],
+        'display': ['32px', { lineHeight: '1.2' }],
         '3xl': ['32px', { lineHeight: '40px' }],
       },
-      
+
       fontFamily: {
         sans: [
           '"Pretendard Variable"',
@@ -182,37 +197,34 @@ export default {
           'system-ui',
           'sans-serif',
         ],
+        kr: ['Pretendard', 'sans-serif'],
+        ui: ['Pretendard', 'sans-serif'],
+        number: ['Pretendard', 'sans-serif'],
+        en: ['Canela', 'Georgia', 'serif'],
         body: ['var(--font-body)'],
         'heading-en': ['var(--font-heading-en)'],
         'heading-kr': ['var(--font-heading-kr)'],
-        ui: ['var(--font-ui)'],
         numbers: ['var(--font-numbers)'],
       },
 
       // Letter Spacing (tracking)
       letterSpacing: {
-        'tight': 'var(--tracking-tight)',      // -3%
-        'heading': 'var(--tracking-heading)',  // -2%
-        'normal': 'var(--tracking-normal)',    // 0%
-        'ui': 'var(--tracking-ui)',            // +1%
-        'wide': 'var(--tracking-wide)',        // +2%
-        'os-work': 'var(--tracking-os-work)',
-        'os-life': 'var(--tracking-os-life)',
-        'os-finance': 'var(--tracking-os-finance)',
+        'tight': '-0.01em',
+        'heading': '-0.02em',
+        'normal': '0em',
+        'ui': '0.01em',
+        'wide': '0.02em',
       },
 
       // Line Height (leading)
       lineHeight: {
-        'tight': 'var(--leading-tight)',       // 1.2
-        'snug': 'var(--leading-snug)',         // 1.4
-        'normal': 'var(--leading-normal)',     // 1.5
-        'relaxed': 'var(--leading-relaxed)',   // 1.6
-        'loose': 'var(--leading-loose)',       // 1.8
-        'os-work': 'var(--leading-os-work)',
-        'os-life': 'var(--leading-os-life)',
-        'os-finance': 'var(--leading-os-finance)',
+        'tight': '1.2',
+        'snug': '1.4',
+        'normal': '1.5',
+        'relaxed': '1.6',
+        'loose': '1.8',
       },
-      
+
       // Spacing Scale (8px base)
       spacing: {
         '0': '0px',
@@ -226,7 +238,7 @@ export default {
         '10': '40px',
         '12': '48px',
       },
-      
+
       // Border Radius
       borderRadius: {
         'none': '0px',
@@ -234,60 +246,50 @@ export default {
         'DEFAULT': '8px',
         'md': '8px',
         'lg': '12px',
-        'xl': '16px',     // Card default
+        'xl': '16px',
         '2xl': '20px',
         '3xl': '24px',
-        'full': '9999px', // Pill buttons
+        'full': '9999px',
       },
-      
-      // Shadows
+
+      // Shadows (Design System v1)
       boxShadow: {
         'none': 'none',
         'sm': '0 1px 2px rgba(0, 0, 0, 0.05)',
         'card': '0 2px 8px rgba(0, 0, 0, 0.04)',
         'card-hover': '0 4px 12px rgba(0, 0, 0, 0.08)',
-        'card-focus': '0 0 0 3px rgba(169, 150, 255, 0.3)',
-        'gold-glow': '0 0 12px rgba(255, 215, 0, 0.4)',
+        'focus-ring': '0 0 0 3px rgba(201, 162, 94, 0.28)',
         'sheet': '0 -4px 24px rgba(0, 0, 0, 0.12)',
         'button': '0 2px 4px rgba(0, 0, 0, 0.1)',
+        // Dark mode shadows
+        'card-dark': '0 2px 10px rgba(0, 0, 0, 0.22)',
+        'card-hover-dark': '0 4px 14px rgba(0, 0, 0, 0.28)',
+        'focus-ring-dark': '0 0 0 3px rgba(201, 162, 94, 0.22)',
       },
-      
-      // Motion (200ms 이내)
+
+      // Motion - Design System v1 (150-200ms, ease-out 기반)
       transitionDuration: {
-        'instant': '100ms',
         'fast': '150ms',
         'DEFAULT': '200ms',
-        'slow': '300ms',
       },
-      
+
       transitionTimingFunction: {
         'DEFAULT': 'ease-out',
-        'bounce': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
         'enter': 'cubic-bezier(0, 0, 0.2, 1)',
         'exit': 'cubic-bezier(0.4, 0, 1, 1)',
       },
-      
+
+      // Allowed Animations Only
       animation: {
-        'slide-up': 'slideUp 200ms ease-out',
-        'slide-down': 'slideDown 200ms ease-out',
         'fade-in': 'fadeIn 200ms ease-out',
         'fade-out': 'fadeOut 150ms ease-out',
-        'scale-in': 'scaleIn 150ms ease-out',
-        'pulse-soft': 'pulse 2s ease-in-out infinite',
-        'glow': 'glow 2s ease-in-out infinite',
-        'float-up': 'floatUp 2s ease-out forwards',
+        'slide-up': 'slideUp 200ms ease-out',
+        'slide-down': 'slideDown 200ms ease-out',
+        'scale-in': 'scaleIn 200ms ease-out',
         'spin': 'spin 1s linear infinite',
       },
-      
+
       keyframes: {
-        slideUp: {
-          '0%': { transform: 'translateY(16px)', opacity: '0' },
-          '100%': { transform: 'translateY(0)', opacity: '1' },
-        },
-        slideDown: {
-          '0%': { transform: 'translateY(-16px)', opacity: '0' },
-          '100%': { transform: 'translateY(0)', opacity: '1' },
-        },
         fadeIn: {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
@@ -296,38 +298,24 @@ export default {
           '0%': { opacity: '1' },
           '100%': { opacity: '0' },
         },
+        slideUp: {
+          '0%': { transform: 'translateY(8px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        slideDown: {
+          '0%': { transform: 'translateY(-8px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
         scaleIn: {
-          '0%': { transform: 'scale(0.95)', opacity: '0' },
+          '0%': { transform: 'scale(0.98)', opacity: '0' },
           '100%': { transform: 'scale(1)', opacity: '1' },
-        },
-        pulse: {
-          '0%, 100%': { opacity: '1' },
-          '50%': { opacity: '0.7' },
-        },
-        glow: {
-          '0%, 100%': { boxShadow: '0 0 5px rgba(255, 215, 0, 0.3)' },
-          '50%': { boxShadow: '0 0 20px rgba(255, 215, 0, 0.6)' },
-        },
-        floatUp: {
-          '0%': { 
-            transform: 'translateY(0) scale(0)', 
-            opacity: '0' 
-          },
-          '10%': { 
-            transform: 'translateY(-20px) scale(1)', 
-            opacity: '1' 
-          },
-          '100%': { 
-            transform: 'translateY(-150px) scale(0.5)', 
-            opacity: '0' 
-          },
         },
         spin: {
           '0%': { transform: 'rotate(0deg)' },
           '100%': { transform: 'rotate(360deg)' },
         },
       },
-      
+
       // Touch target (44px minimum)
       minHeight: {
         'touch': '44px',
@@ -337,7 +325,7 @@ export default {
         'touch': '44px',
         'button': '48px',
       },
-      
+
       // Max width
       maxWidth: {
         'mobile': '640px',
@@ -355,12 +343,6 @@ export default {
         },
         '.animation-delay-200': {
           animationDelay: '200ms',
-        },
-        '.animation-delay-300': {
-          animationDelay: '300ms',
-        },
-        '.animation-delay-500': {
-          animationDelay: '500ms',
         },
       }
       addUtilities(newUtilities)

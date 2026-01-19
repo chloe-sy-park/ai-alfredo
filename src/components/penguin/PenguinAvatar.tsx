@@ -150,7 +150,7 @@ export const MiniPenguin: React.FC<{ onClick?: () => void }> = ({ onClick }) => 
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
-      className="w-8 h-8 hover:animate-bounce flex items-center justify-center"
+      className="w-8 h-8 flex items-center justify-center"
     >
       {!imageError ? (
         <img

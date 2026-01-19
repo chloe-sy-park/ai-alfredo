@@ -105,7 +105,7 @@ export const InventoryModal: React.FC = () => {
           <div className="p-4 overflow-y-auto max-h-[50vh]">
             {isLoading ? (
               <div className="text-center py-8">
-                <div className="w-16 h-16 mx-auto animate-bounce rounded-full overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
+                <div className="w-16 h-16 mx-auto animate-scale-in rounded-full overflow-hidden" style={{ backgroundColor: 'var(--surface-subtle)' }}>
                   <img
                     src="/assets/alfredo/avatar/alfredo-avatar-64.png"
                     alt="알프레도"

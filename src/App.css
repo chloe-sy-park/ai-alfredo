@@ -33,11 +33,7 @@
   }
 }
 
-/* Custom utilities */
-.animate-bounce-slow {
-  animation: bounce 2s infinite;
-}
-
+/* Custom utilities - Design System v1 Compliant */
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out;
 }

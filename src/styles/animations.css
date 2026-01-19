@@ -1,166 +1,146 @@
-/* 🎭 Alfredo Custom Animations */
+/* 🎭 Alfredo Design System v1 - Allowed Animations Only */
+/* Duration: 150-200ms, Easing: ease-out based */
 
-/* Shake - 걱정/불안할 때 */
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
-  20%, 40%, 60%, 80% { transform: translateX(2px); }
-}
-
-.animate-shake {
-  animation: shake 0.5s ease-in-out;
-}
-
-/* Droop - 슬플 때 */
-@keyframes droop {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(4px) rotate(-3deg); }
-}
-
-.animate-droop {
-  animation: droop 2s ease-in-out infinite;
-}
-
-/* Tremble - 긴장할 때 */
-@keyframes tremble {
-  0%, 100% { transform: translateX(0) translateY(0); }
-  25% { transform: translateX(-1px) translateY(1px); }
-  50% { transform: translateX(1px) translateY(-1px); }
-  75% { transform: translateX(-1px) translateY(-1px); }
-}
-
-.animate-tremble {
-  animation: tremble 0.3s ease-in-out infinite;
-}
-
-/* Sway - 졸릴 때 */
-@keyframes sway {
-  0%, 100% { transform: rotate(-3deg); }
-  50% { transform: rotate(3deg); }
-}
-
-.animate-sway {
-  animation: sway 2s ease-in-out infinite;
-}
-
-/* Bounce Slow - 환영/기쁨 */
-@keyframes bounce-slow {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-
-.animate-bounce-slow {
-  animation: bounce-slow 2s ease-in-out infinite;
-}
-
-/* Float - 평화로운 상태 */
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
-}
-
-.animate-float {
-  animation: float 3s ease-in-out infinite;
-}
-
-/* Wiggle - 신남 */
-@keyframes wiggle {
-  0%, 100% { transform: rotate(0deg); }
-  25% { transform: rotate(-5deg); }
-  75% { transform: rotate(5deg); }
-}
-
-.animate-wiggle {
-  animation: wiggle 0.5s ease-in-out infinite;
-}
-
-/* Pop - 완료 축하 */
-@keyframes pop {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.2); }
-  100% { transform: scale(1); }
-}
-
-.animate-pop {
-  animation: pop 0.3s ease-out;
-}
+/* ========================================
+   ALLOWED: Fade Animations
+   ======================================== */
 
 /* Fade In */
 @keyframes fade-in {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .animate-fade-in {
-  animation: fade-in 0.3s ease-out;
+  animation: fade-in 200ms ease-out;
 }
+
+/* Fade Out */
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.animate-fade-out {
+  animation: fade-out 150ms ease-out;
+}
+
+/* ========================================
+   ALLOWED: Slide Y Animations
+   ======================================== */
 
 /* Slide Up */
 @keyframes slide-up {
-  from { opacity: 0; transform: translateY(20px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-slide-up {
-  animation: slide-up 0.4s ease-out;
+  animation: slide-up 200ms ease-out;
 }
 
 /* Slide Down */
 @keyframes slide-down {
-  from { opacity: 0; transform: translateY(-20px); }
+  from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-slide-down {
-  animation: slide-down 0.4s ease-out;
+  animation: slide-down 200ms ease-out;
 }
 
-/* Scale In */
+/* ========================================
+   ALLOWED: Subtle Scale
+   ======================================== */
+
+/* Scale In (subtle, max 1.02) */
 @keyframes scale-in {
-  from { opacity: 0; transform: scale(0.9); }
+  from { opacity: 0; transform: scale(0.98); }
   to { opacity: 1; transform: scale(1); }
 }
 
 .animate-scale-in {
-  animation: scale-in 0.3s ease-out;
+  animation: scale-in 200ms ease-out;
 }
 
-/* Confetti burst effect */
-@keyframes confetti {
-  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-  100% { transform: translateY(-100px) rotate(720deg); opacity: 0; }
-}
+/* ========================================
+   UTILITY: Progress Bar
+   ======================================== */
 
-.animate-confetti {
-  animation: confetti 1s ease-out forwards;
-}
-
-/* Progress bar fill */
 @keyframes progress-fill {
   from { width: 0%; }
   to { width: var(--progress-width, 100%); }
 }
 
 .animate-progress-fill {
-  animation: progress-fill 1s ease-out forwards;
+  animation: progress-fill 300ms ease-out forwards;
 }
 
-/* Glow effect for achievements */
-@keyframes glow {
-  0%, 100% { box-shadow: 0 0 5px rgba(147, 51, 234, 0.5); }
-  50% { box-shadow: 0 0 20px rgba(147, 51, 234, 0.8); }
+/* ========================================
+   UTILITY: Skeleton Loading
+   ======================================== */
+
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
-.animate-glow {
-  animation: glow 2s ease-in-out infinite;
+.animate-skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
 }
 
-/* Typing indicator */
-@keyframes typing {
-  0%, 60%, 100% { transform: translateY(0); }
-  30% { transform: translateY(-5px); }
+/* Dark mode skeleton */
+.dark .animate-skeleton {
+  background: linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%);
+  background-size: 200% 100%;
 }
 
-.animate-typing-1 { animation: typing 1s ease-in-out infinite; }
-.animate-typing-2 { animation: typing 1s ease-in-out infinite 0.2s; }
-.animate-typing-3 { animation: typing 1s ease-in-out infinite 0.4s; }
+/* ========================================
+   UTILITY: Spin (for loaders only)
+   ======================================== */
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* ========================================
+   TRANSITION UTILITIES
+   ======================================== */
+
+.transition-fast {
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
+}
+
+.transition-default {
+  transition-duration: 200ms;
+  transition-timing-function: ease-out;
+}
+
+/* OS Transition (content swap) */
+.os-transition-enter {
+  animation: fade-in 150ms ease-out;
+}
+
+.os-transition-exit {
+  animation: fade-out 150ms ease-out;
+}
+
+/* ========================================
+   FORBIDDEN ANIMATIONS (REMOVED)
+   - bounce, bounce-slow
+   - shake, tremble
+   - pulse, glow
+   - scaleInBounce
+   - wiggle, sway, droop
+   - confetti, pop
+   - float
+   - gold-glow
+   ======================================== */
